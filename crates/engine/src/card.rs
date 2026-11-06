@@ -1322,13 +1322,22 @@ impl Duel {
         min_tribute: u8,
         zone: u32,
     ) -> (i32, EffectSet) {
-        unported!(self, self.filter_effect(card, EFFECT_LIMIT_SUMMON_PROC, true));
-        unported!(self, self.filter_effect(card, EFFECT_SUMMON_PROC, true));
+        let check = |duel: &Self, effect| duel.check_summon_procedure(card, effect, playerid, ignore_count, min_tribute, zone);
+        let limits = self.filter_effect(card, EFFECT_LIMIT_SUMMON_PROC, true);
+        if !limits.is_empty() {
+            let procedures: EffectSet = limits.into_iter().filter(|&effect| check(self, effect)).collect();
+            return (if procedures.is_empty() { -2 } else { -1 }, procedures);
+        }
+        let procedures: EffectSet = self
+            .filter_effect(card, EFFECT_SUMMON_PROC, true)
+            .into_iter()
+            .filter(|&effect| check(self, effect))
+            .collect();
         if !self.is_player_can_summon(SUMMON_TYPE_NORMAL, playerid, card, playerid) {
-            return (0, EffectSet::default());
+            return (0, procedures);
         }
         if self.check_unique_onfield(card, playerid, LOCATION_MZONE).is_some() {
-            return (0, EffectSet::default());
+            return (0, procedures);
         }
         let rcount = self.get_summon_tribute_count(card);
         let mut min = (rcount & 0xffff) as u8;
@@ -1338,20 +1347,67 @@ impl Duel {
         }
         min = min.max(min_tribute);
         if max < min {
-            return (0, EffectSet::default());
+            return (0, procedures);
         }
         if !ignore_count
             && self.core.extra_summon[playerid] == 0
             && self.core.summon_count[playerid] >= self.get_summon_count_limit(playerid)
         {
             unported!(self, self.filter_effect(card, EFFECT_EXTRA_SUMMON_COUNT, true));
-            return (0, EffectSet::default());
+            return (0, procedures);
         }
         let controler = self.cards[card].current.controler;
         (
-            i32::from(self.check_tribute(card, i32::from(min), i32::from(max), controler, zone, 0xff00ff)),
-            EffectSet::default(),
+            i32::from(self.field_check_tribute(card, i32::from(min), i32::from(max), None, controler, zone, 0xff00ff)),
+            procedures,
         )
+    }
+
+    // card::check_summon_procedure; the script checks min_tribute with Duel.CheckTribute.
+    pub(crate) fn check_summon_procedure(
+        &self,
+        card: CardId,
+        effect: EffectId,
+        playerid: u8,
+        ignore_count: bool,
+        min_tribute: u8,
+        zone: u32,
+    ) -> bool {
+        if !self.check_count_limit(effect, playerid) {
+            return false;
+        }
+        let peffect = &self.effects[effect];
+        let toplayer = if peffect.is_flag(EFFECT_FLAG_SPSUM_PARAM) && peffect.o_range != 0 {
+            1 - playerid
+        } else {
+            playerid
+        };
+        if !self.is_player_can_summon(self.get_value(effect, card) as u32, playerid, card, toplayer)
+            || self.check_unique_onfield(card, toplayer, LOCATION_MZONE).is_some()
+        {
+            return false;
+        }
+        if !ignore_count
+            && self.core.extra_summon[playerid] == 0
+            && self.core.summon_count[playerid] >= self.get_summon_count_limit(playerid)
+        {
+            unported!(self, self.filter_effect(card, EFFECT_EXTRA_SUMMON_COUNT, true));
+            return false;
+        }
+        self.is_summonable(card, effect, min_tribute, zone, 0xff00ff)
+    }
+
+    // card::is_summonable: the procedure's condition (e, c, minc, zone, relzone, exeff) with exeff nil.
+    pub(crate) fn is_summonable(&self, card: CardId, effect: EffectId, min_tribute: u8, zone: u32, releasable: u32) -> bool {
+        let args = Args {
+            e: effect,
+            c: Some(card),
+            min: u16::from(min_tribute),
+            zone,
+            releasable,
+            ..Args::default()
+        };
+        self.check_procedure_condition_with(card, effect, &args)
     }
 
     // Same as filter_summon_procedure for setting.
@@ -1387,7 +1443,7 @@ impl Duel {
         }
         let controler = self.cards[card].current.controler;
         (
-            i32::from(self.check_tribute(card, min, max, controler, zone, 0xff00ff)),
+            i32::from(self.field_check_tribute(card, min, max, None, controler, zone, 0xff00ff)),
             EffectSet::default(),
         )
     }

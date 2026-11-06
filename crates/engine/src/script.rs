@@ -25,7 +25,8 @@ pub type Script<T> = Result<T, Interrupt>;
 // only e and c), followed by the materials it must use, the only ones it may, and a forced minimum and maximum (0 for
 // nil, as the core leaves them out then). The condition (e, g, gc, chkf) and operation (e, tp, eg, ..., gc, chkf) of
 // EFFECT_FUSION_MATERIAL get g as `materials` and gc as `must`; the summoning effect passed after them is left out, as
-// only cards that are not ported read it.
+// only cards that are not ported read it. A Normal Summon procedure (e, c, minc, zone, relzone, exeff) gets minc as
+// `min`, then `zone` and `releasable`; exeff, an EFFECT_EXTRA_SUMMON_COUNT effect, comes with the cards that grant one.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Args {
     pub e: EffectId,
@@ -42,6 +43,8 @@ pub struct Args {
     pub min: u16,
     pub max: u16,
     pub chkf: u64,
+    pub zone: u32,
+    pub releasable: u32,
 }
 
 impl Args {
@@ -74,6 +77,8 @@ pub struct Procedure {
     pub min: u16,
     pub max: u16,
     pub chkf: u64,
+    pub zone: u32,
+    pub releasable: u32,
 }
 
 pub type InitialEffect = fn(&mut Duel, CardId);

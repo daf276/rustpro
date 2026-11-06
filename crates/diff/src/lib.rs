@@ -37,6 +37,7 @@ const MSG_PLAYER_HINT: u8 = 165;
 const PHINT_DESC_REMOVE: u8 = 7;
 const REASON_RELEASE: u32 = 0x2;
 const REASON_MATERIAL: u32 = 0x8;
+const REASON_SUMMON: u32 = 0x10;
 const REASON_BATTLE: u32 = 0x20;
 const HINT_REPLAY: u64 = 30;
 
@@ -130,6 +131,9 @@ pub struct Tally {
     pub card_hints: BTreeMap<u64, u32>,
     // Messages per type.
     pub messages: BTreeMap<u8, u32>,
+    // Normal Summons per card code and number of tributes released for them.
+    pub summon_tributes: BTreeMap<(u32, u32), u32>,
+    tributes_pending: u32,
     pub chain_disabled: u32,
     // The card code and effect description of the current chain's links.
     chain: [(u32, u64); 16],
@@ -169,6 +173,15 @@ impl Tally {
         self.count_chain(message);
         if let Some(&kind) = message.first() {
             *self.messages.entry(kind).or_default() += 1;
+        }
+        match message {
+            [MSG_MOVE, .., a, b, c, d] if u32::from_ne_bytes([*a, *b, *c, *d]) & REASON_SUMMON != 0 => self.tributes_pending += 1,
+            [MSG_SUMMONING, a, b, c, d, ..] => {
+                let code = u32::from_ne_bytes([*a, *b, *c, *d]);
+                *self.summon_tributes.entry((code, self.tributes_pending)).or_default() += 1;
+                self.tributes_pending = 0;
+            }
+            _ => {}
         }
         if let [MSG_SPSUMMONING, a, b, c, d, ..] = message {
             *self.special_summons.entry(u32::from_ne_bytes([*a, *b, *c, *d])).or_default() += 1;
@@ -249,6 +262,14 @@ impl std::ops::Add for Tally {
                 *messages.entry(kind).or_default() += count;
                 messages
             }),
+            summon_tributes: other
+                .summon_tributes
+                .into_iter()
+                .fold(self.summon_tributes, |mut summons, (key, count)| {
+                    *summons.entry(key).or_default() += count;
+                    summons
+                }),
+            tributes_pending: 0,
             chain_disabled: self.chain_disabled + other.chain_disabled,
             chain: [(0, 0); 16],
         }

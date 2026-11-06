@@ -17,6 +17,7 @@ mod official;
 mod proc_fusion;
 mod proc_gemini;
 mod proc_link;
+mod proc_normal;
 mod proc_pendulum;
 mod proc_persistent;
 mod proc_spirit;
@@ -37,6 +38,7 @@ pub mod prelude {
     pub use crate::proc_fusion::{ContactFusion, DuelFusion, Fusion, FusionMaterial, FusionMix, FusionMixRep, FusionSummonParams};
     pub use crate::proc_gemini::Gemini;
     pub use crate::proc_link::{Link, LinkProcedure};
+    pub use crate::proc_normal::{Normal, NormalProcedure};
     pub use crate::proc_pendulum::Pendulum;
     pub use crate::proc_persistent::{Persistent, PersistentProcedure};
     pub use crate::proc_spirit::Spirit;

@@ -416,6 +416,8 @@ impl Duel {
                     min,
                     max,
                     chkf,
+                    zone,
+                    releasable,
                 }) => Args {
                     c: Some(card),
                     must,
@@ -423,6 +425,8 @@ impl Duel {
                     min,
                     max,
                     chkf,
+                    zone,
+                    releasable,
                     ..Args::event(effect, player, &event)
                 },
                 None => Args::event(effect, player, &event),

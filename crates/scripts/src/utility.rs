@@ -310,6 +310,17 @@ pub mod aux {
         })
     }
 
+    // Auxiliary.IsZone: whether the card's zone, as seen from tp, is in `zone`.
+    pub fn is_zone(c: CardId, duel: &Duel, zone: u32, tp: u8) -> bool {
+        let sequence = c.get_sequence(duel);
+        let own = c.is_controler(duel, tp);
+        let mut rzone = if own { 1 << sequence } else { 1 << (16 + sequence) };
+        if c.is_sequence(duel, 5) || c.is_sequence(duel, 6) {
+            rzone |= if own { 1 << (16 + 11 - sequence) } else { 1 << (11 - sequence) };
+        }
+        rzone & zone > 0
+    }
+
     // The lowest limit of the player's Summon Gate effects, which come with the cards that register them.
     pub fn check_summon_gate(duel: &Duel, tp: u8) -> Option<i32> {
         if !duel.get_player_effect(tp, CARD_SUMMON_GATE).is_empty() {

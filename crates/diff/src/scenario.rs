@@ -9,7 +9,7 @@ const XYZ_MATERIALS_MAX: usize = 3;
 
 // Cards an effect of the card under test needs, placed with it in the given location, or in a random zone for 0; for
 // the same player, or the opponent with OPPONENT.
-const SUPPORT: [(u32, &[(u32, u16)]); 19] = [
+const SUPPORT: [(u32, &[(u32, u16)]); 20] = [
     // Fusionist from the Extra Deck with its materials, Petit Angel and Mystical Sheep #2, and Polymerization.
     (1641882, &[(1641882, EXTRA), (24094653, HAND), (38142739, HAND), (83464209, HAND)]),
     // Polymerization's materials for Albion the Branded Dragon in the Elfnote Extra Deck: Fallen of Albaz and a LIGHT
@@ -17,8 +17,10 @@ const SUPPORT: [(u32, &[(u32, u16)]); 19] = [
     (24094653, &[(68468459, HAND), (38142739, HAND)]),
     // Extox Hydra from the Extra Deck, Fusion Summoned by Polymerization, and on the field to attack.
     (26050548, &[(26050548, EXTRA), (24094653, HAND), (26050548, MZONE)]),
-    // Gemini Lancer on the field, to be Normal Summoned again.
-    (26254876, &[(26254876, MZONE)]),
+    // Gemini Lancer on the field twice, to be Normal Summoned again.
+    (26254876, &[(26254876, MZONE), (26254876, MZONE)]),
+    // Blizzard Princess in the hand, to be Tribute Summoned with a Spellcaster on the field: Elfnote Lucina.
+    (28348537, &[(28348537, HAND), (13597785, MZONE)]),
     // F.A. Dawn Dragster's level-up needs an "F.A." Spell/Trap: F.A. Downforce.
     (33158448, &[(66322203, 0)]),
     // Drill Driver Vespenato from the Extra Deck can be Xyz Summoned with a Rank 4 Xyz Monster on the field: Tornado

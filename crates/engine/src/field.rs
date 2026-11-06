@@ -2131,15 +2131,34 @@ impl Duel {
         None
     }
 
-    // Puts the cards the target may tribute into the sets and returns their total release count.
+    // Puts the cards the target may tribute into the sets, sets their release_param and returns their total release
+    // count; `mg` restricts them to its cards.
     pub(crate) fn get_summon_release_list(
         &mut self,
         target: CardId,
         release_list: &mut CardSet,
         ex_list: &mut CardSet,
+        mg: Option<CardSet>,
         ex: bool,
         releasable: u32,
     ) -> u32 {
+        let (rcount, params) = self.summon_release_list(target, release_list, ex_list, mg, ex, releasable);
+        for (card, param) in params {
+            self.cards[card].release_param = param;
+        }
+        rcount
+    }
+
+    // get_summon_release_list without setting release_param, which only the tribute selection after it reads.
+    pub(crate) fn summon_release_list(
+        &self,
+        target: CardId,
+        release_list: &mut CardSet,
+        ex_list: &mut CardSet,
+        mg: Option<CardSet>,
+        ex: bool,
+        releasable: u32,
+    ) -> (u32, List<(CardId, u32), 8>) {
         let p = self.cards[target].current.controler;
         unported!(self, self.filter_effect(target, EFFECT_ADD_EXTRA_TRIBUTE, true));
         let release_param = |duel: &Self, card: CardId| {
@@ -2151,30 +2170,39 @@ impl Duel {
                 1
             }
         };
-        let mut rcount = 0;
+        let (mut rcount, mut params) = (0, List::default());
+        let in_mg = |card: CardId| mg.is_none_or(|mg| mg.contains(card));
         for card in self.player[p].list_mzone.into_iter().flatten() {
             if (releasable >> self.cards[card].current.sequence) & 1 != 0 && self.is_releasable_by_summon(card, p, target) {
+                if !in_mg(card) {
+                    continue;
+                }
                 release_list.insert(card);
-                self.cards[card].release_param = release_param(self, card);
-                rcount += self.cards[card].release_param;
+                let param = release_param(self, card);
+                params.push((card, param));
+                rcount += param;
             }
         }
         for card in self.player[1 - p].list_mzone.into_iter().flatten() {
             if (releasable >> (self.cards[card].current.sequence + 16)) & 1 == 0 || !self.is_releasable_by_summon(card, p, target) {
                 continue;
             }
-            self.cards[card].release_param = release_param(self, card);
+            if !in_mg(card) {
+                continue;
+            }
+            let param = release_param(self, card);
+            params.push((card, param));
             if self.is_affected_by_effect(card, EFFECT_EXTRA_RELEASE).is_some() {
                 ex_list.insert(card);
-                rcount += self.cards[card].release_param;
+                rcount += param;
             } else if ex {
                 release_list.insert(card);
-                rcount += self.cards[card].release_param;
+                rcount += param;
             } else {
                 unported!(self, self.is_affected_by_effect(card, EFFECT_EXTRA_RELEASE_SUM));
             }
         }
-        rcount
+        (rcount, params)
     }
 
     pub(crate) fn get_summon_count_limit(&self, playerid: u8) -> i32 {
@@ -2191,11 +2219,22 @@ impl Duel {
     }
 
     // The EFFECT_ADD_EXTRA_TRIBUTE position filter (`pos`) comes with the cards that register it.
-    pub(crate) fn check_tribute(&mut self, card: CardId, min: i32, max: i32, toplayer: u8, zone: u32, releasable: u32) -> bool {
+    pub(crate) fn field_check_tribute(
+        &self,
+        card: CardId,
+        min: i32,
+        max: i32,
+        mg: Option<CardSet>,
+        toplayer: u8,
+        zone: u32,
+        releasable: u32,
+    ) -> bool {
         let sumplayer = self.cards[card].current.controler;
         let ex = toplayer == 1 - sumplayer;
         let (mut release_list, mut ex_list) = (CardSet::default(), CardSet::default());
-        let m = self.get_summon_release_list(card, &mut release_list, &mut ex_list, ex, releasable) as i32;
+        let m = self
+            .summon_release_list(card, &mut release_list, &mut ex_list, mg, ex, releasable)
+            .0 as i32;
         let mut max = max.min(m);
         if min > max {
             return false;

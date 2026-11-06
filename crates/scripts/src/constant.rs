@@ -293,3 +293,7 @@ pub const PLAYER_ALL: u8 = 3;
 pub const STATUS_DESTROY_CONFIRMED: u32 = 0x1000;
 pub const EVENT_LEAVE_FIELD: u32 = 1015;
 pub const REASON_DESTROY: u32 = 0x1;
+pub const SUMMON_TYPE_TRIBUTE: u32 = 0x1100_0000;
+pub const EFFECT_SUMMON_PROC: u32 = 32;
+pub const EFFECT_LIMIT_SUMMON_PROC: u32 = 33;
+pub const REASON_SUMMON: u32 = 0x10;

@@ -9,9 +9,11 @@ const XYZ_MATERIALS_MAX: usize = 3;
 
 // Cards an effect of the card under test needs, placed with it in the given location, or in a random zone for 0; for
 // the same player, or the opponent with OPPONENT.
-const SUPPORT: [(u32, &[(u32, u16)]); 22] = [
+const SUPPORT: [(u32, &[(u32, u16)]); 23] = [
     // Fusionist from the Extra Deck with its materials, Petit Angel and Mystical Sheep #2, and Polymerization.
     (1641882, &[(1641882, EXTRA), (24094653, HAND), (38142739, HAND), (83464209, HAND)]),
+    // Metallizing Parasite - Lunatite on the field with a monster to equip: Elfnote Lucina.
+    (7369217, &[(7369217, MZONE), (13597785, MZONE)]),
     // Polymerization's materials for Albion the Branded Dragon in the Elfnote Extra Deck: Fallen of Albaz and a LIGHT
     // monster, Petit Angel.
     (24094653, &[(68468459, HAND), (38142739, HAND)]),

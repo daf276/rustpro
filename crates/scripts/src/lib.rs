@@ -23,6 +23,7 @@ mod proc_pendulum;
 mod proc_persistent;
 mod proc_spirit;
 mod proc_synchro;
+mod proc_union;
 mod proc_workaround;
 mod proc_xyz;
 mod utility;
@@ -45,6 +46,7 @@ pub mod prelude {
     pub use crate::proc_persistent::{Persistent, PersistentProcedure};
     pub use crate::proc_spirit::Spirit;
     pub use crate::proc_synchro::{Synchro, SynchroProcedure};
+    pub use crate::proc_union::{Union, UnionProcedure};
     pub use crate::proc_workaround::{CardWorkaround, DuelWorkaround};
     pub use crate::proc_xyz::{AlterFilter, Xyz, XyzFilter, XyzProcedure};
     pub use crate::utility::{CardUtility, Cost, DuelUtility, EffectUtility, aux};

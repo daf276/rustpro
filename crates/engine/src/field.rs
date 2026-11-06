@@ -219,6 +219,11 @@ pub struct Processor {
     pub ss_tograve_set: CardSet,
     pub delayed_enable_set: CardSet,
     pub destroy_canceled: CardSet,
+    // The cards an EFFECT_DESTROY_SUBSTITUTE destroys in place of those destroyed by battle.
+    pub battle_destroy_rep: CardSet,
+    // What is left of the cards a battle destroys once the Destroy unit of BattleCommand step 28 has run; the core
+    // shares that group between both units.
+    pub battle_destroyed: CardSet,
     pub operated_set: CardSet,
     pub reseted_effects: Vec<EffectId>,
     // effect_count_code, effect_count_code_duel and effect_count_code_chain: hash maps in the core, only looked up.
@@ -345,6 +350,8 @@ clone_by_field!(Processor {
     ss_tograve_set,
     delayed_enable_set,
     destroy_canceled,
+    battle_destroy_rep,
+    battle_destroyed,
     operated_set,
     reseted_effects,
     effect_count_code,
@@ -469,6 +476,8 @@ impl Processor {
             ss_tograve_set: CardSet::default(),
             delayed_enable_set: CardSet::default(),
             destroy_canceled: CardSet::default(),
+            battle_destroy_rep: CardSet::default(),
+            battle_destroyed: CardSet::default(),
             operated_set: CardSet::default(),
             reseted_effects: Vec::new(),
             effect_count_code: Vec::new(),

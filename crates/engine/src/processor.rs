@@ -1992,6 +1992,7 @@ impl Duel {
                 for card in [Some(attacker), attack_target].into_iter().flatten() {
                     self.cards[card].set_status(STATUS_BATTLE_RESULT, false);
                 }
+                self.core.battle_destroy_rep.clear();
                 if !destroyed.is_empty() {
                     let (targets, reason) = (destroyed, REASON_BATTLE);
                     self.emplace_process(Destroy {
@@ -2006,8 +2007,22 @@ impl Duel {
                 false
             }
             29 => {
-                // The core also destroys core.battle_destroy_rep and runs core.desrep_chain here, which only
-                // EFFECT_DESTROY_SUBSTITUTE and EFFECT_DESTROY_REPLACE fill.
+                if let Some(destroyed) = &mut arg.cards_destroyed_by_battle {
+                    *destroyed = self.core.battle_destroyed;
+                }
+                if !self.core.battle_destroy_rep.is_empty() {
+                    let rep = self.core.battle_destroy_rep;
+                    self.field_destroy(
+                        rep,
+                        None,
+                        REASON_EFFECT | REASON_REPLACE,
+                        PLAYER_NONE,
+                        PLAYER_NONE,
+                        LOCATION_GRAVE,
+                        0,
+                    );
+                }
+                // The core also runs core.desrep_chain here, which only EFFECT_DESTROY_REPLACE fills.
                 self.adjust_all();
                 false
             }

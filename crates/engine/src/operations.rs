@@ -896,7 +896,7 @@ impl Duel {
         let (reason_effect, reason, reason_player) = (arg.reason_effect, arg.reason, arg.reason_player);
         match arg.step {
             0 => {
-                let mut indestructable = CardSet::default();
+                let (mut indestructable, mut extra) = (CardSet::default(), CardSet::default());
                 let mut indestructable_effects = EffectSet::default();
                 for card in arg.targets {
                     if !self.is_destructable(card) {
@@ -922,13 +922,39 @@ impl Duel {
                             continue;
                         }
                     }
-                    let codes = [EFFECT_INDESTRUCTABLE, EFFECT_INDESTRUCTABLE_COUNT, EFFECT_DESTROY_SUBSTITUTE];
+                    let codes = [EFFECT_INDESTRUCTABLE, EFFECT_INDESTRUCTABLE_COUNT];
                     unported!(self, codes.into_iter().flat_map(|code| self.filter_effect(card, code, true)));
+                    let substitutes = self.destroy_substitutes(card);
+                    if !substitutes.is_empty() {
+                        extra.merge(substitutes);
+                        self.restore_reason(card);
+                        self.core.destroy_canceled.insert(card);
+                        arg.targets.remove(card);
+                    }
                 }
                 for card in indestructable {
                     self.restore_reason(card);
                     self.cards[card].set_status(STATUS_DESTROY_CONFIRMED, false);
                     arg.targets.remove(card);
+                }
+                for rep in extra {
+                    if arg.targets.contains(rep) {
+                        continue;
+                    }
+                    let target = &mut self.cards[rep];
+                    target.temp.reason = target.current.reason;
+                    target.temp.reason_effect = target.current.reason_effect;
+                    target.temp.reason_player = target.current.reason_player;
+                    target.current.reason = REASON_EFFECT | REASON_DESTROY | REASON_REPLACE;
+                    target.current.reason_effect = None;
+                    target.current.reason_player = target.current.controler;
+                    target.sendto_param = SendtoParam {
+                        playerid: target.owner,
+                        position: POS_FACEUP as u8,
+                        location: LOCATION_GRAVE,
+                        sequence: 0,
+                    };
+                    arg.targets.insert(rep);
                 }
                 // The core keeps them in a set ordered by id.
                 indestructable_effects.sort_by_key(|&effect| self.effects.id(effect));
@@ -1044,8 +1070,15 @@ impl Duel {
                         arg.targets.remove(card);
                         continue;
                     }
-                    let codes = [EFFECT_INDESTRUCTABLE, EFFECT_INDESTRUCTABLE_COUNT, EFFECT_DESTROY_SUBSTITUTE];
+                    let codes = [EFFECT_INDESTRUCTABLE, EFFECT_INDESTRUCTABLE_COUNT];
                     unported!(self, codes.into_iter().flat_map(|code| self.filter_effect(card, code, true)));
+                    let substitutes = self.destroy_substitutes(card);
+                    if !substitutes.is_empty() {
+                        self.core.battle_destroy_rep.merge(substitutes);
+                        self.restore_reason(card);
+                        self.core.destroy_canceled.insert(card);
+                        arg.targets.remove(card);
+                    }
                 }
                 if !arg.targets.is_empty() {
                     // operation_replace(EFFECT_DESTROY_REPLACE, 12, targets)
@@ -1070,7 +1103,13 @@ impl Duel {
                             .equal_range(Container::Single, Some(card), EFFECT_DESTROY_REPLACE)
                     );
                 }
-                // Step 12 only clears core.destroy_canceled, which holds EFFECT_DESTROY_SUBSTITUTE cards.
+                self.core.battle_destroyed = arg.targets;
+                false
+            }
+            12 => {
+                for card in std::mem::take(&mut self.core.destroy_canceled) {
+                    self.cards[card].set_status(STATUS_DESTROY_CONFIRMED, false);
+                }
                 true
             }
             _ => true,
@@ -1480,6 +1519,23 @@ impl Duel {
         target.current.location & LOCATION_ONFIELD != 0
             && !target.is_status(STATUS_SUMMON_DISABLED)
             && !target.is_status(STATUS_ACTIVATE_DISABLED)
+    }
+
+    // The handlers of the card's EFFECT_DESTROY_SUBSTITUTE effects whose value (e, re, r, rp) accepts its destruction.
+    fn destroy_substitutes(&self, card: CardId) -> CardSet {
+        let current = self.cards[card].current;
+        self.filter_effect(card, EFFECT_DESTROY_SUBSTITUTE, true)
+            .into_iter()
+            .filter(|&effect| match self.effects[effect].value {
+                Value::Int(value) => value != 0,
+                Value::Reason(value) => value(self, effect, current.reason_effect, current.reason, current.reason_player),
+                _ => {
+                    debug_assert!(false, "a value read with the wrong parameters");
+                    false
+                }
+            })
+            .map(|effect| self.get_handler(effect))
+            .collect()
     }
 
     fn restore_reason(&mut self, card: CardId) {

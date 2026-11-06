@@ -688,6 +688,7 @@ impl CardUtility for CardId {
 
 pub trait EffectUtility: Copy {
     fn is_monster_effect(self, duel: &Duel) -> bool;
+    fn is_spell_effect(self, duel: &Duel) -> bool;
     fn is_spell_trap_effect(self, duel: &Duel) -> bool;
 }
 
@@ -698,6 +699,10 @@ impl EffectUtility for EffectId {
 
     fn is_monster_effect(self, duel: &Duel) -> bool {
         self.is_active_type(duel, TYPE_MONSTER)
+    }
+
+    fn is_spell_effect(self, duel: &Duel) -> bool {
+        self.is_active_type(duel, TYPE_SPELL)
     }
 }
 

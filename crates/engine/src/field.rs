@@ -1,0 +1,2644 @@
+use std::num::NonZeroU64;
+use std::ops::{Index, IndexMut};
+
+use crate::card::{CardId, CardSet, LocInfo, Relation};
+use crate::constants::*;
+use crate::duel::Duel;
+use crate::effect::{Chain, Container, CustomCounter, EffectId, EffectSet, Event, Target, container_key, remove_item};
+use crate::list::List;
+use crate::processor::{Adjust, Unit};
+use crate::script::Replay;
+
+// Per-player arrays indexed by player id like the core's `x[playerid]`; any id but 0 reads player 1.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct PerPlayer<T>(pub [T; 2]);
+
+impl<T> Index<u8> for PerPlayer<T> {
+    type Output = T;
+
+    fn index(&self, player: u8) -> &T {
+        let [zero, one] = &self.0;
+        if player == 0 { zero } else { one }
+    }
+}
+
+impl<T> IndexMut<u8> for PerPlayer<T> {
+    fn index_mut(&mut self, player: u8) -> &mut T {
+        let [zero, one] = &mut self.0;
+        if player == 0 { zero } else { one }
+    }
+}
+
+// The monster a count of zones for a summon from the Extra Deck is for; without a card the core places its temporary
+// card there, with no type, or with the type Duel.GetLocationCountFromEx names (face-up if a Pendulum).
+// The temporary card has no link markers, so it never links the Extra Monster Zones.
+#[derive(Debug, Clone, Copy)]
+pub struct FromEx {
+    pub card: Option<CardId>,
+    pub card_type: u32,
+    pub facedown: bool,
+}
+
+impl FromEx {
+    pub fn card(duel: &Duel, card: Option<CardId>) -> Self {
+        let Some(card) = card else {
+            return Self {
+                card: None,
+                card_type: 0,
+                facedown: false,
+            };
+        };
+        Self {
+            card: Some(card),
+            card_type: duel.cards[card].data.card_type,
+            facedown: duel.cards[card].is_position(POS_FACEDOWN),
+        }
+    }
+
+    pub fn card_type(card_type: u32) -> Self {
+        Self {
+            card: None,
+            card_type: TYPE_MONSTER | card_type,
+            facedown: card_type & TYPE_PENDULUM == 0,
+        }
+    }
+}
+
+// The zones a count reads: the field's, or with monsters left out (Duel.GetMZoneCount and GetLocationCountFromEx
+// swap in a monster zone list without them), or with a monster placed for check_extra_link.
+#[derive(Debug, Clone, Copy)]
+pub struct Zones {
+    pub used: PerPlayer<u32>,
+    pub disabled: PerPlayer<u32>,
+    pub mzone: PerPlayer<[Option<CardId>; 7]>,
+    pub placed: Option<(CardId, u8, u32)>,
+}
+
+// player_info; tag and relay duels (extra_lists_*) are unsupported.
+#[derive(Debug, Clone, Default)]
+pub struct PlayerInfo {
+    pub lp: i32,
+    pub start_count: i32,
+    pub draw_count: i32,
+    pub used_location: u32,
+    pub disabled_location: u32,
+    pub extra_p_count: u32,
+    pub list_mzone: [Option<CardId>; 7],
+    pub list_szone: [Option<CardId>; 8],
+    pub list_main: Pile,
+    pub list_grave: Pile,
+    pub list_hand: Pile,
+    pub list_remove: Pile,
+    pub list_extra: Pile,
+}
+
+impl PlayerInfo {
+    pub fn zone_mut(&mut self, location: u8, sequence: u32) -> Option<&mut Option<CardId>> {
+        let sequence = sequence as usize;
+        if location == LOCATION_MZONE {
+            self.list_mzone.get_mut(sequence)
+        } else {
+            self.list_szone.get_mut(sequence)
+        }
+    }
+}
+
+// `field_id` changes while effects are only read (effect::is_available), so it is a Cell.
+#[derive(Debug, Clone)]
+pub struct FieldInfo {
+    pub event_id: u32,
+    pub field_id: std::cell::Cell<u32>,
+    pub turn_id: i16,
+    pub turn_id_by_player: PerPlayer<i16>,
+    pub phase: u16,
+    pub turn_player: u8,
+    pub priorities: PerPlayer<u8>,
+    pub can_shuffle: bool,
+}
+
+impl Default for FieldInfo {
+    fn default() -> Self {
+        Self {
+            event_id: 1,
+            field_id: std::cell::Cell::new(1),
+            turn_id: 0,
+            turn_id_by_player: PerPlayer::default(),
+            phase: 0,
+            turn_player: 0,
+            priorities: PerPlayer::default(),
+            can_shuffle: true,
+        }
+    }
+}
+
+// The inline sizes of the lists below cover typical duels; longer lists still work but allocate when cloned.
+pub type Pile = List<CardId, 48>;
+pub type Cards16 = List<CardId, 16>;
+pub type Cards8 = List<CardId, 8>;
+pub type Events = List<Event, 4>;
+// Event lists the step that fills them also empties, so they rarely hold an event at a prompt.
+pub type PendingEvents = List<Event, 1>;
+pub type FieldIds = List<u32, 8>;
+pub type Relations = List<Relation, 8>;
+
+#[derive(Debug, Clone, Default)]
+pub struct ReturnCards {
+    pub canceled: bool,
+    pub list: Cards8,
+}
+
+impl ReturnCards {
+    pub fn clear(&mut self) {
+        self.canceled = false;
+        self.list.clear();
+    }
+}
+
+// processor in field.h, reduced to what the port reads so far. `units` keeps its front at the end; the chain lists
+// are std::list in the core and Vecs here.
+#[derive(Debug)]
+pub struct Processor {
+    pub units: Vec<Unit>,
+    pub subunits: Vec<Unit>,
+    // A prompt to show in place of the unit that ran a script function, which waits for the answer.
+    pub presented: Option<Box<Unit>>,
+    pub replay: Replay,
+    pub just_sent_cards: CardSet,
+    pub select_cards: Cards16,
+    pub unselect_cards: Cards16,
+    pub select_options: List<u64, 4>,
+    pub select_effects: List<EffectId, 4>,
+    // The group a summon procedure of EFFECT_SPSUMMON_PROC_G fills (SpSummonRule's cards_to_summon_g).
+    pub cards_to_summon_g: CardSet,
+    // The summon, attack and chain counters of action_counter_t, keyed by id like the core's maps.
+    pub custom_counters: List<CustomCounter, 2>,
+    pub release_cards: CardSet,
+    pub release_cards_ex: CardSet,
+    pub release_cards_ex_oneof: CardSet,
+    pub summonable_cards: Cards8,
+    pub spsummonable_cards: Cards8,
+    pub repositionable_cards: Cards8,
+    pub msetable_cards: Cards8,
+    pub ssetable_cards: Cards8,
+    pub attackable_cards: Cards8,
+    pub point_event: Events,
+    pub instant_event: Events,
+    pub queue_event: PendingEvents,
+    pub delayed_activate_event: Events,
+    pub full_event: Events,
+    pub single_event: PendingEvents,
+    pub solving_event: PendingEvents,
+    pub sub_solving_event: PendingEvents,
+    pub select_chains: Vec<Chain>,
+    pub current_chain: Vec<Chain>,
+    pub real_chain_count: i32,
+    pub ignition_priority_chains: Vec<Chain>,
+    pub continuous_chain: Vec<Chain>,
+    pub solving_continuous: Vec<Chain>,
+    pub sub_solving_continuous: Vec<Chain>,
+    pub delayed_continuous_tp: Vec<Chain>,
+    pub delayed_continuous_ntp: Vec<Chain>,
+    // The continuous effects an event triggers for the turn player and the other, kept for their capacity.
+    pub continuous_tp: Vec<Chain>,
+    pub continuous_ntp: Vec<Chain>,
+    pub new_fchain: Vec<Chain>,
+    pub new_fchain_s: Vec<Chain>,
+    pub new_ochain: Vec<Chain>,
+    pub new_ochain_s: Vec<Chain>,
+    pub new_fchain_b: Vec<Chain>,
+    pub new_ochain_b: Vec<Chain>,
+    pub new_ochain_h: Vec<Chain>,
+    pub new_chains: Vec<Chain>,
+    // std::set of (effect, event) in the core, ordered by address; only filled by EFFECT_FLAG_DELAY quick effects.
+    pub delayed_quick_tmp: Vec<(EffectId, Event)>,
+    pub delayed_quick: Vec<(EffectId, Event)>,
+    // std::map from effect to chain in the core, ordered by address; only filled by EFFECT_TYPE_QUICK_F effects.
+    pub quick_f_chain: Vec<(EffectId, Chain)>,
+    pub leave_confirmed: CardSet,
+    pub special_summoning: CardSet,
+    pub ss_tograve_set: CardSet,
+    pub delayed_enable_set: CardSet,
+    pub destroy_canceled: CardSet,
+    pub operated_set: CardSet,
+    pub reseted_effects: Vec<EffectId>,
+    // effect_count_code, effect_count_code_duel and effect_count_code_chain: hash maps in the core, only looked up.
+    pub effect_count_code: Vec<(u64, u32)>,
+    pub effect_count_code_duel: Vec<(u64, u32)>,
+    pub effect_count_code_chain: Vec<(u64, u32)>,
+    pub global_flag: u32,
+    pub chain_solving: bool,
+    pub conti_solving: bool,
+    pub conti_player: u8,
+    pub check_level: i32,
+    pub win_player: u8,
+    pub win_reason: u8,
+    pub re_adjust: bool,
+    pub reason_effect: std::cell::Cell<Option<EffectId>>,
+    pub reason_player: std::cell::Cell<u8>,
+    pub attacker: Option<CardId>,
+    pub attack_target: Option<CardId>,
+    pub pre_field: [u32; 2],
+    // std::set in the core; kept sorted, since only equality is asked.
+    pub opp_mzone: FieldIds,
+    pub attack_rollback: bool,
+    pub battle_damage: PerPlayer<i32>,
+    pub summon_count: PerPlayer<i32>,
+    pub extra_summon: PerPlayer<u8>,
+    pub spe_effect: PerPlayer<i32>,
+    pub duel_options: u64,
+    pub to_bp: bool,
+    pub to_m2: bool,
+    pub to_ep: bool,
+    pub skip_m2: bool,
+    pub chain_attack: bool,
+    pub chain_attacker_id: u32,
+    pub chain_attack_target: Option<CardId>,
+    pub attack_player: bool,
+    pub selfdes_disabled: bool,
+    pub overdraw: PerPlayer<bool>,
+    pub shuffle_check_disabled: bool,
+    pub shuffle_hand_check: PerPlayer<bool>,
+    pub shuffle_deck_check: PerPlayer<bool>,
+    pub deck_reversed: bool,
+    pub flip_delayed: bool,
+    pub damage_calculated: bool,
+    pub hand_adjusted: bool,
+    pub summon_state_count: PerPlayer<u8>,
+    pub normalsummon_state_count: PerPlayer<u8>,
+    pub flipsummon_state_count: PerPlayer<u8>,
+    pub spsummon_state_count: PerPlayer<u8>,
+    pub spsummon_state_count_rst: PerPlayer<u8>,
+    pub spsummon_state_count_tmp: PerPlayer<u8>,
+    pub spsummon_rst: bool,
+    pub attack_state_count: PerPlayer<u8>,
+    pub battle_phase_count: PerPlayer<u8>,
+    pub battled_count: PerPlayer<u8>,
+    pub phase_action: bool,
+    pub hint_timing: PerPlayer<u32>,
+    pub current_player: u8,
+    pub force_turn_end: bool,
+    pub attack_cancelable: bool,
+    pub attack_cost_paid: u8,
+    pub summon_depth: u8,
+    pub summon_cancelable: bool,
+    // A procedure summon a chain link started, run once the link has resolved.
+    pub reserved: Option<Box<Unit>>,
+    pub summoning_card: Option<CardId>,
+    // The group of the SpSummon running, which its failed steps leave.
+    pub spsummon_group: CardSet,
+    pub fusion_materials: CardSet,
+}
+
+clone_by_field!(Processor {
+    units,
+    subunits,
+    presented,
+    replay,
+    just_sent_cards,
+    select_cards,
+    unselect_cards,
+    select_options,
+    select_effects,
+    cards_to_summon_g,
+    custom_counters,
+    release_cards,
+    release_cards_ex,
+    release_cards_ex_oneof,
+    summonable_cards,
+    spsummonable_cards,
+    repositionable_cards,
+    msetable_cards,
+    ssetable_cards,
+    attackable_cards,
+    point_event,
+    instant_event,
+    queue_event,
+    delayed_activate_event,
+    full_event,
+    single_event,
+    solving_event,
+    sub_solving_event,
+    select_chains,
+    current_chain,
+    real_chain_count,
+    ignition_priority_chains,
+    continuous_chain,
+    solving_continuous,
+    sub_solving_continuous,
+    delayed_continuous_tp,
+    delayed_continuous_ntp,
+    continuous_tp,
+    continuous_ntp,
+    new_fchain,
+    new_fchain_s,
+    new_ochain,
+    new_ochain_s,
+    new_fchain_b,
+    new_ochain_b,
+    new_ochain_h,
+    new_chains,
+    delayed_quick_tmp,
+    delayed_quick,
+    quick_f_chain,
+    leave_confirmed,
+    special_summoning,
+    ss_tograve_set,
+    delayed_enable_set,
+    destroy_canceled,
+    operated_set,
+    reseted_effects,
+    effect_count_code,
+    effect_count_code_duel,
+    effect_count_code_chain,
+    global_flag,
+    chain_solving,
+    conti_solving,
+    conti_player,
+    check_level,
+    win_player,
+    win_reason,
+    re_adjust,
+    reason_effect,
+    reason_player,
+    attacker,
+    attack_target,
+    pre_field,
+    opp_mzone,
+    attack_rollback,
+    battle_damage,
+    summon_count,
+    extra_summon,
+    spe_effect,
+    duel_options,
+    to_bp,
+    to_m2,
+    to_ep,
+    skip_m2,
+    chain_attack,
+    chain_attacker_id,
+    chain_attack_target,
+    attack_player,
+    selfdes_disabled,
+    overdraw,
+    shuffle_check_disabled,
+    shuffle_hand_check,
+    shuffle_deck_check,
+    deck_reversed,
+    flip_delayed,
+    damage_calculated,
+    hand_adjusted,
+    summon_state_count,
+    normalsummon_state_count,
+    flipsummon_state_count,
+    spsummon_state_count,
+    spsummon_state_count_rst,
+    spsummon_state_count_tmp,
+    spsummon_rst,
+    attack_state_count,
+    battle_phase_count,
+    battled_count,
+    phase_action,
+    hint_timing,
+    current_player,
+    force_turn_end,
+    attack_cancelable,
+    attack_cost_paid,
+    summon_depth,
+    summon_cancelable,
+    reserved,
+    summoning_card,
+    spsummon_group,
+    fusion_materials
+});
+
+impl Processor {
+    pub fn new(duel_options: u64) -> Self {
+        Self {
+            units: Vec::new(),
+            subunits: Vec::new(),
+            presented: None,
+            replay: Replay::default(),
+            just_sent_cards: CardSet::default(),
+            select_cards: Default::default(),
+            unselect_cards: Default::default(),
+            select_options: Default::default(),
+            select_effects: Default::default(),
+            cards_to_summon_g: CardSet::default(),
+            custom_counters: Default::default(),
+            release_cards: CardSet::default(),
+            release_cards_ex: CardSet::default(),
+            release_cards_ex_oneof: CardSet::default(),
+            summonable_cards: Default::default(),
+            spsummonable_cards: Default::default(),
+            repositionable_cards: Default::default(),
+            msetable_cards: Default::default(),
+            ssetable_cards: Default::default(),
+            attackable_cards: Default::default(),
+            point_event: Default::default(),
+            instant_event: Default::default(),
+            queue_event: Default::default(),
+            delayed_activate_event: Default::default(),
+            full_event: Default::default(),
+            single_event: Default::default(),
+            solving_event: Default::default(),
+            sub_solving_event: Default::default(),
+            select_chains: Vec::new(),
+            current_chain: Vec::new(),
+            real_chain_count: 0,
+            ignition_priority_chains: Vec::new(),
+            continuous_chain: Vec::new(),
+            solving_continuous: Vec::new(),
+            sub_solving_continuous: Vec::new(),
+            delayed_continuous_tp: Vec::new(),
+            delayed_continuous_ntp: Vec::new(),
+            continuous_tp: Vec::new(),
+            continuous_ntp: Vec::new(),
+            new_fchain: Vec::new(),
+            new_fchain_s: Vec::new(),
+            new_ochain: Vec::new(),
+            new_ochain_s: Vec::new(),
+            new_fchain_b: Vec::new(),
+            new_ochain_b: Vec::new(),
+            new_ochain_h: Vec::new(),
+            new_chains: Vec::new(),
+            delayed_quick_tmp: Vec::new(),
+            delayed_quick: Vec::new(),
+            quick_f_chain: Vec::new(),
+            leave_confirmed: CardSet::default(),
+            special_summoning: CardSet::default(),
+            ss_tograve_set: CardSet::default(),
+            delayed_enable_set: CardSet::default(),
+            destroy_canceled: CardSet::default(),
+            operated_set: CardSet::default(),
+            reseted_effects: Vec::new(),
+            effect_count_code: Vec::new(),
+            effect_count_code_duel: Vec::new(),
+            effect_count_code_chain: Vec::new(),
+            global_flag: 0,
+            chain_solving: false,
+            conti_solving: false,
+            conti_player: PLAYER_NONE,
+            check_level: 0,
+            win_player: 5,
+            win_reason: 0,
+            re_adjust: false,
+            reason_effect: std::cell::Cell::new(None),
+            reason_player: std::cell::Cell::new(PLAYER_NONE),
+            attacker: None,
+            attack_target: None,
+            pre_field: [0; 2],
+            opp_mzone: Default::default(),
+            attack_rollback: false,
+            battle_damage: PerPlayer::default(),
+            summon_count: PerPlayer::default(),
+            extra_summon: PerPlayer::default(),
+            spe_effect: PerPlayer::default(),
+            duel_options,
+            to_bp: false,
+            to_m2: false,
+            to_ep: false,
+            skip_m2: false,
+            chain_attack: false,
+            chain_attacker_id: 0,
+            chain_attack_target: None,
+            attack_player: false,
+            selfdes_disabled: false,
+            overdraw: PerPlayer::default(),
+            shuffle_check_disabled: false,
+            shuffle_hand_check: PerPlayer::default(),
+            shuffle_deck_check: PerPlayer::default(),
+            deck_reversed: false,
+            flip_delayed: false,
+            damage_calculated: false,
+            hand_adjusted: false,
+            summon_state_count: PerPlayer::default(),
+            normalsummon_state_count: PerPlayer::default(),
+            flipsummon_state_count: PerPlayer::default(),
+            spsummon_state_count: PerPlayer::default(),
+            spsummon_state_count_rst: PerPlayer::default(),
+            spsummon_state_count_tmp: PerPlayer::default(),
+            spsummon_rst: false,
+            attack_state_count: PerPlayer::default(),
+            battle_phase_count: PerPlayer::default(),
+            battled_count: PerPlayer::default(),
+            phase_action: false,
+            hint_timing: PerPlayer::default(),
+            current_player: 0,
+            force_turn_end: false,
+            attack_cancelable: false,
+            attack_cost_paid: 0,
+            summon_depth: 0,
+            summon_cancelable: false,
+            reserved: None,
+            summoning_card: None,
+            spsummon_group: CardSet::default(),
+            fusion_materials: CardSet::default(),
+        }
+    }
+}
+
+fn field_used_count(flag: u32) -> i32 {
+    (flag & 0x1f).count_ones() as i32
+}
+
+fn count_map_key(code: u32, flag: u8, hopt_index: u8, playerid: u8) -> u64 {
+    (u64::from(code) << 32) | u64::from((u32::from(hopt_index) << 16) | (u32::from(flag) << 8) | u32::from(playerid))
+}
+
+impl Duel {
+    pub(crate) fn is_flag(&self, flag: u64) -> bool {
+        self.core.duel_options & flag == flag
+    }
+
+    pub(crate) fn get_extra_deck_types(&self) -> u32 {
+        let types = TYPE_FUSION | TYPE_SYNCHRO | TYPE_XYZ | TYPE_LINK;
+        if self.is_flag(DUEL_EXTRA_DECK_RITUAL) {
+            types | TYPE_RITUAL
+        } else {
+            types
+        }
+    }
+
+    pub(crate) fn get_pzone_index(&self, sequence: u32) -> u32 {
+        if sequence > 1 {
+            0
+        } else if self.is_flag(DUEL_SEPARATE_PZONE) {
+            sequence + 6
+        } else if self.is_flag(DUEL_3_COLUMNS_FIELD) {
+            sequence * 2 + 1
+        } else {
+            sequence * 4
+        }
+    }
+
+    fn list_mut(&mut self, playerid: u8, location: u8) -> Option<&mut Pile> {
+        let player = &mut self.player[playerid];
+        match location {
+            LOCATION_DECK => Some(&mut player.list_main),
+            LOCATION_HAND => Some(&mut player.list_hand),
+            LOCATION_GRAVE => Some(&mut player.list_grave),
+            LOCATION_REMOVED => Some(&mut player.list_remove),
+            LOCATION_EXTRA => Some(&mut player.list_extra),
+            _ => None,
+        }
+    }
+
+    // The core of moving cards; checks the rule redirection of Fusion/Synchro/Xyz/Link monsters and sets fieldid_r.
+    pub(crate) fn add_card(&mut self, playerid: u8, card: CardId, location: u8, sequence: u8, pzone: bool) {
+        if self.cards[card].current.location != 0 || !self.is_location_useable(playerid, u16::from(location), u32::from(sequence)) {
+            return;
+        }
+        let mut location = location;
+        let card_type = self.cards[card].data.card_type;
+        // Fusion spell cards may start in the Extra Deck.
+        if self.is_extra_deck_monster(card) || card_type & TYPE_FUSION != 0 {
+            if location & (LOCATION_HAND | LOCATION_DECK) != 0 {
+                location = LOCATION_EXTRA;
+                self.cards[card].sendto_param.position = POS_FACEDOWN_DEFENSE as u8;
+            }
+        } else if location == LOCATION_EXTRA
+            && (card_type & TYPE_PENDULUM == 0 || u32::from(self.cards[card].sendto_param.position) & POS_FACEUP == 0)
+        {
+            location = LOCATION_DECK;
+            self.cards[card].sendto_param.position = POS_FACEDOWN_DEFENSE as u8;
+        }
+        self.cards[card].current.controler = playerid;
+        self.cards[card].current.location = location;
+        let player = &mut self.player[playerid];
+        match location {
+            LOCATION_MZONE | LOCATION_SZONE => {
+                if let Some(slot) = player.zone_mut(location, u32::from(sequence)) {
+                    *slot = Some(card);
+                }
+                self.cards[card].current.sequence = u32::from(sequence);
+            }
+            LOCATION_DECK => {
+                if sequence == 1 {
+                    player.list_main.insert(0, card);
+                    self.reset_sequence(playerid, LOCATION_DECK);
+                } else {
+                    player.list_main.push(card);
+                    self.cards[card].current.sequence = (player.list_main.len() - 1) as u32;
+                    if sequence != 0 && !self.core.shuffle_check_disabled {
+                        self.core.shuffle_deck_check[playerid] = true;
+                    }
+                }
+                self.cards[card].sendto_param.position = POS_FACEDOWN as u8;
+            }
+            LOCATION_HAND => {
+                player.list_hand.push(card);
+                self.cards[card].current.sequence = (player.list_hand.len() - 1) as u32;
+                let public = self.is_affected_by_effect(card, EFFECT_PUBLIC).is_some();
+                self.cards[card].sendto_param.position = if public { POS_FACEUP as u8 } else { POS_FACEDOWN as u8 };
+                if self.cards[card].current.reason & REASON_DRAW == 0 && !self.core.shuffle_check_disabled {
+                    self.core.shuffle_hand_check[playerid] = true;
+                }
+            }
+            LOCATION_GRAVE => {
+                player.list_grave.push(card);
+                self.cards[card].current.sequence = (player.list_grave.len() - 1) as u32;
+            }
+            LOCATION_REMOVED => {
+                player.list_remove.push(card);
+                self.cards[card].current.sequence = (player.list_remove.len() - 1) as u32;
+            }
+            LOCATION_EXTRA => {
+                let faceup_pendulum = card_type & TYPE_PENDULUM != 0 && u32::from(self.cards[card].sendto_param.position) & POS_FACEUP != 0;
+                if player.extra_p_count == 0 || faceup_pendulum {
+                    player.list_extra.push(card);
+                } else {
+                    let index = player.list_extra.len().saturating_sub(player.extra_p_count as usize);
+                    player.list_extra.insert(index, card);
+                }
+                if faceup_pendulum {
+                    player.extra_p_count += 1;
+                }
+                self.reset_sequence(playerid, LOCATION_EXTRA);
+            }
+            _ => {}
+        }
+        self.cards[card].current.pzone = pzone;
+        self.apply_field_effect(card);
+        let field_id = self.next_field_id();
+        let (turn_id, current) = (self.infos.turn_id as u16, self.cards[card].current);
+        let target = &mut self.cards[card];
+        target.fieldid = field_id;
+        target.fieldid_r = field_id;
+        target.turnid = turn_id;
+        unported!(self, self.check_unique_onfield(card, current.controler, current.location));
+        if location == LOCATION_MZONE {
+            self.player[playerid].used_location |= 1 << sequence;
+        }
+        if location == LOCATION_SZONE {
+            self.player[playerid].used_location |= 256 << sequence;
+        }
+    }
+
+    pub(crate) fn remove_card(&mut self, card: CardId) {
+        let current = self.cards[card].current;
+        if current.controler == PLAYER_NONE || current.location == 0 {
+            return;
+        }
+        let playerid = current.controler;
+        let sequence = current.sequence as usize;
+        match current.location {
+            LOCATION_MZONE | LOCATION_SZONE => {
+                if let Some(slot) = self.player[playerid].zone_mut(current.location, current.sequence) {
+                    *slot = None;
+                }
+            }
+            location => {
+                if let Some(list) = self.list_mut(playerid, location).filter(|list| sequence < list.len()) {
+                    list.remove(sequence);
+                }
+                self.reset_sequence(playerid, location);
+                if location == LOCATION_DECK && !self.core.shuffle_check_disabled {
+                    self.core.shuffle_deck_check[playerid] = true;
+                }
+                if location == LOCATION_EXTRA && self.cards[card].data.card_type & TYPE_PENDULUM != 0 && current.position & POS_FACEUP != 0
+                {
+                    self.player[playerid].extra_p_count = self.player[playerid].extra_p_count.wrapping_sub(1);
+                }
+            }
+        }
+        self.cancel_field_effect(card);
+        if current.location == LOCATION_MZONE {
+            self.player[playerid].used_location &= !(1 << current.sequence);
+        }
+        if current.location == LOCATION_SZONE {
+            self.player[playerid].used_location &= !(256 << current.sequence);
+        }
+        if !self.core.current_chain.is_empty() {
+            self.core.just_sent_cards.insert(card);
+        }
+        let target = &mut self.cards[card];
+        target.previous.controler = current.controler;
+        target.previous.location = current.location;
+        target.previous.sequence = current.sequence;
+        target.previous.position = current.position;
+        target.previous.pzone = current.pzone;
+        target.current.controler = PLAYER_NONE;
+        target.current.location = 0;
+        target.current.sequence = 0;
+    }
+
+    // Moving cards: draw(), discard_deck(), swap_control(), control_adjust() and this; checks the rule redirection
+    // of Fusion/Synchro/Xyz/Link monsters.
+    pub(crate) fn move_card(&mut self, playerid: u8, card: CardId, location: u8, sequence: u8, pzone: bool) -> bool {
+        if !self.is_location_useable(playerid, u16::from(location), u32::from(sequence)) {
+            return false;
+        }
+        let mut location = location;
+        let current = self.cards[card].current;
+        let (preplayer, presequence) = (current.controler, current.sequence);
+        if self.is_extra_deck_monster(card) && location & (LOCATION_HAND | LOCATION_DECK) != 0 {
+            location = LOCATION_EXTRA;
+            self.cards[card].sendto_param.position = POS_FACEDOWN_DEFENSE as u8;
+        }
+        if current.location != 0 {
+            if current.location == location && current.pzone == pzone {
+                if current.location == LOCATION_DECK {
+                    if preplayer != playerid {
+                        self.remove_card(card);
+                        self.add_card(playerid, card, location, sequence, pzone);
+                        return true;
+                    }
+                    let from = self.cards.get_info_location(card);
+                    let list = &mut self.player[preplayer].list_main;
+                    if (presequence as usize) < list.len() {
+                        list.remove(presequence as usize);
+                    }
+                    if sequence == 1 {
+                        list.insert(0, card);
+                    } else {
+                        list.push(card);
+                        if sequence != 0 && !self.core.shuffle_check_disabled {
+                            self.core.shuffle_deck_check[playerid] = true;
+                        }
+                    }
+                    self.reset_sequence(playerid, LOCATION_DECK);
+                    self.cards[card].previous.controler = preplayer;
+                    self.cards[card].current.controler = playerid;
+                    self.write_move(card, from);
+                    return true;
+                }
+                if location & LOCATION_ONFIELD != 0 {
+                    if playerid == preplayer && u32::from(sequence) == presequence {
+                        return false;
+                    }
+                    if self.player[playerid]
+                        .zone_mut(location, u32::from(sequence))
+                        .is_none_or(|slot| slot.is_some())
+                    {
+                        return false;
+                    }
+                    let from = (preplayer == playerid).then(|| self.cards.get_info_location(card));
+                    if !self.core.current_chain.is_empty() {
+                        self.core.just_sent_cards.insert(card);
+                    }
+                    let target = &mut self.cards[card];
+                    target.previous.controler = current.controler;
+                    target.previous.location = current.location;
+                    target.previous.sequence = current.sequence;
+                    target.previous.position = current.position;
+                    target.previous.pzone = current.pzone;
+                    let shift = if location == LOCATION_MZONE { 0 } else { 8 };
+                    if let Some(slot) = self.player[preplayer].zone_mut(location, presequence) {
+                        *slot = None;
+                    }
+                    self.player[preplayer].used_location &= !(1 << (presequence + shift));
+                    if let Some(slot) = self.player[playerid].zone_mut(location, u32::from(sequence)) {
+                        *slot = Some(card);
+                    }
+                    self.player[playerid].used_location |= 1 << (u32::from(sequence) + shift);
+                    self.cards[card].current.controler = playerid;
+                    self.cards[card].current.sequence = u32::from(sequence);
+                    match from {
+                        Some(from) => self.write_move(card, from),
+                        None => {
+                            self.cards[card].fieldid = self.next_field_id();
+                            let current = self.cards[card].current;
+                            unported!(self, self.check_unique_onfield(card, current.controler, current.location));
+                        }
+                    }
+                    return true;
+                }
+                if location == LOCATION_HAND {
+                    if preplayer == playerid {
+                        return false;
+                    }
+                    self.remove_card(card);
+                } else {
+                    let length = self.list_mut(preplayer, location).map_or(0, |list| list.len());
+                    if location != LOCATION_EXTRA && presequence as usize + 1 == length {
+                        return false;
+                    }
+                    let from = self.cards.get_info_location(card);
+                    if let Some(list) = self.list_mut(preplayer, location) {
+                        if (presequence as usize) < list.len() {
+                            list.remove(presequence as usize);
+                        }
+                        list.push(card);
+                    }
+                    self.reset_sequence(preplayer, location);
+                    self.write_move(card, from);
+                    return true;
+                }
+            } else {
+                let from_field = (current.location == LOCATION_MZONE && !self.cards[card].is_status(STATUS_SUMMON_DISABLED))
+                    || (current.location == LOCATION_SZONE && !self.cards[card].is_status(STATUS_ACTIVATE_DISABLED));
+                if self.cards[card].data.card_type & TYPE_PENDULUM != 0
+                    && location == LOCATION_GRAVE
+                    && self.is_capable_send_to_extra(card, playerid)
+                    && from_field
+                {
+                    location = LOCATION_EXTRA;
+                    self.cards[card].sendto_param.position = POS_FACEUP_DEFENSE as u8;
+                }
+                self.remove_card(card);
+            }
+        }
+        self.add_card(playerid, card, location, sequence, pzone);
+        true
+    }
+
+    // field::swap_card(pcard1, pcard2): two cards of one zone kind swap places (Duel.SwapSequence checks the kind).
+    pub(crate) fn swap_card(&mut self, card1: CardId, card2: CardId) {
+        let (current1, current2) = (self.cards[card1].current, self.cards[card2].current);
+        let (p1, p2, location) = (current1.controler, current2.controler, current1.location);
+        let (s1, s2) = (current1.sequence, current2.sequence);
+        let (info1, info2) = (self.cards.get_info_location(card1), self.cards.get_info_location(card2));
+        if location & LOCATION_ONFIELD == 0 || current2.location != location || (p1 == p2 && s1 == s2) {
+            return;
+        }
+        for (card, current, controler, sequence) in [(card1, current1, p2, s2), (card2, current2, p1, s1)] {
+            let target = &mut self.cards[card];
+            target.previous.controler = current.controler;
+            target.previous.location = current.location;
+            target.previous.sequence = current.sequence;
+            target.previous.position = current.position;
+            target.previous.pzone = current.pzone;
+            target.current.controler = controler;
+            target.current.sequence = sequence;
+        }
+        if p1 != p2 {
+            for card in [card1, card2] {
+                self.cards[card].fieldid = self.next_field_id();
+                let current = self.cards[card].current;
+                unported!(self, self.check_unique_onfield(card, current.controler, current.location));
+            }
+        }
+        let shift = if location == LOCATION_MZONE { 0 } else { 8 };
+        for (p, sequence) in [(p1, s1), (p2, s2)] {
+            if let Some(slot) = self.player[p].zone_mut(location, sequence) {
+                *slot = None;
+            }
+            self.player[p].used_location &= !(1 << (sequence + shift));
+        }
+        for (p, sequence, card) in [(p2, s2, card1), (p1, s1, card2)] {
+            if let Some(slot) = self.player[p].zone_mut(location, sequence) {
+                *slot = Some(card);
+            }
+            self.player[p].used_location |= 1 << (sequence + shift);
+        }
+        let (code1, code2) = (self.cards[card1].data.code, self.cards[card2].data.code);
+        self.trace.message(MSG_SWAP).u32(code1).loc(info1).u32(code2).loc(info2);
+    }
+
+    // The MSG_MOVE that move_card writes when a card changes place within one location.
+    fn write_move(&mut self, card: CardId, from: LocInfo) {
+        let (code, to, reason) = (
+            self.cards[card].data.code,
+            self.cards.get_info_location(card),
+            self.cards[card].current.reason,
+        );
+        self.trace.message(MSG_MOVE).u32(code).loc(from).loc(to).u32(reason);
+    }
+
+    // Whether the zone (or any non-zone location) is free and not disabled.
+    pub(crate) fn is_location_useable(&self, playerid: u8, location: u16, sequence: u32) -> bool {
+        self.zone_useable(
+            |p| self.player[p].disabled_location | self.player[p].used_location,
+            playerid,
+            location,
+            sequence,
+        )
+    }
+
+    pub(crate) fn zones(&self) -> Zones {
+        let player = |p: u8| &self.player[p];
+        Zones {
+            used: PerPlayer([0, 1].map(|p| player(p).used_location)),
+            disabled: PerPlayer([0, 1].map(|p| player(p).disabled_location)),
+            mzone: PerPlayer([0, 1].map(|p| player(p).list_mzone)),
+            placed: None,
+        }
+    }
+
+    pub(crate) fn zones_without(&self, excluded: CardSet) -> Zones {
+        let mut zones = self.zones();
+        for p in 0..2 {
+            for (sequence, card) in zones.mzone[p].iter_mut().enumerate() {
+                if card.is_some_and(|card| excluded.contains(card)) {
+                    zones.used[p] &= !(1 << sequence);
+                    *card = None;
+                }
+            }
+        }
+        zones
+    }
+
+    pub(crate) fn is_location_useable_in(&self, zones: &Zones, playerid: u8, location: u16, sequence: u32) -> bool {
+        self.zone_useable(|p| zones.disabled[p] | zones.used[p], playerid, location, sequence)
+    }
+
+    fn zone_useable(&self, blocked: impl Fn(u8) -> u32, playerid: u8, location: u16, sequence: u32) -> bool {
+        let flag = blocked(playerid);
+        let three_columns = u32::from(self.is_flag(DUEL_3_COLUMNS_FIELD));
+        let (location, sequence) = match location {
+            LOCATION_EMZONE => (u16::from(LOCATION_MZONE), sequence + 5),
+            LOCATION_MMZONE => (u16::from(LOCATION_MZONE), sequence + three_columns),
+            LOCATION_STZONE => (u16::from(LOCATION_SZONE), sequence + three_columns),
+            _ => (location, sequence),
+        };
+        let bit = |shift: u32| 1u32.checked_shl(shift).unwrap_or(0);
+        if location == u16::from(LOCATION_MZONE) {
+            if flag & bit(sequence) != 0 {
+                return false;
+            }
+            if sequence >= 5 {
+                let opponent = blocked(1 - playerid);
+                if opponent & bit(11u32.wrapping_sub(sequence)) != 0 {
+                    return false;
+                }
+            }
+        } else if location == u16::from(LOCATION_SZONE) {
+            return flag & bit(8 + sequence) == 0;
+        } else if location == LOCATION_FZONE {
+            return flag & bit(8 + 5 + sequence) == 0;
+        } else if location == LOCATION_PZONE {
+            return self.is_flag(DUEL_PZONE) && flag & bit(8 + self.get_pzone_index(sequence)) == 0;
+        }
+        true
+    }
+
+    // Usable LOCATION_MZONE or LOCATION_SZONE count of playerid requested by uplayer (may be negative), and the
+    // flag of blocked zones; uplayer PLAYER_NONE ignores EFFECT_MAX_MZONE and EFFECT_MAX_SZONE.
+    pub(crate) fn get_useable_count(
+        &self,
+        card: Option<CardId>,
+        playerid: u8,
+        location: u8,
+        uplayer: u8,
+        reason: u32,
+        zone: u32,
+    ) -> (i32, u32) {
+        if location == LOCATION_MZONE && card.is_some_and(|card| self.cards[card].current.location == LOCATION_EXTRA) {
+            return self.get_useable_count_fromex(card, playerid, uplayer, zone);
+        }
+        self.get_useable_count_other(card, playerid, location, uplayer, reason, zone)
+    }
+
+    pub(crate) fn get_useable_count_fromex(&self, card: Option<CardId>, playerid: u8, uplayer: u8, zone: u32) -> (i32, u32) {
+        self.get_useable_count_fromex_in(&self.zones(), FromEx::card(self, card), playerid, uplayer, zone)
+    }
+
+    pub(crate) fn get_useable_count_fromex_in(&self, zones: &Zones, summoned: FromEx, playerid: u8, uplayer: u8, zone: u32) -> (i32, u32) {
+        if !self.is_flag(DUEL_EMZONE) {
+            let card = summoned.card;
+            return self.get_useable_count_other_in(zones, card, playerid, LOCATION_MZONE, uplayer, LOCATION_REASON_TOFIELD, zone);
+        }
+        let (count, flag) = self.get_spsummonable_count_fromex_in(zones, summoned, playerid, uplayer, zone);
+        (
+            count.min(self.get_mzone_limit_in(zones, playerid, uplayer, LOCATION_REASON_TOFIELD)),
+            flag,
+        )
+    }
+
+    pub(crate) fn get_spsummonable_count_fromex(&self, card: Option<CardId>, playerid: u8, uplayer: u8, zone: u32) -> (i32, u32) {
+        self.get_spsummonable_count_fromex_in(&self.zones(), FromEx::card(self, card), playerid, uplayer, zone)
+    }
+
+    fn get_spsummonable_count_fromex_in(&self, zones: &Zones, summoned: FromEx, playerid: u8, uplayer: u8, zone: u32) -> (i32, u32) {
+        let card = summoned.card;
+        if !self.is_flag(DUEL_EMZONE) {
+            return self.get_tofield_count_in(zones, card, playerid, LOCATION_MZONE, uplayer, LOCATION_REASON_TOFIELD, zone);
+        }
+        let mut flag = zones.disabled[playerid] | zones.used[playerid];
+        flag |= !self.get_forced_zones(card, playerid, LOCATION_MZONE, uplayer, LOCATION_REASON_TOFIELD);
+        let [extra5, extra6] = [5, 6].map(|sequence| zones.mzone[playerid].get(sequence).is_some_and(Option::is_some));
+        let mzone = u16::from(LOCATION_MZONE);
+        if extra5 && self.is_location_useable_in(zones, playerid, mzone, 6) && self.check_extra_link(zones, playerid, summoned, 6) {
+            flag |= 1 << 5;
+        } else if extra6 && self.is_location_useable_in(zones, playerid, mzone, 5) && self.check_extra_link(zones, playerid, summoned, 5) {
+            flag |= 1 << 6;
+        } else if extra5 || extra6 {
+            flag |= (1 << 5) | (1 << 6);
+        } else {
+            for sequence in [5, 6] {
+                if !self.is_location_useable_in(zones, playerid, mzone, sequence) {
+                    flag |= 1 << sequence;
+                }
+            }
+        }
+        flag = flag | !zone | !self.get_rule_zone_fromex(zones, playerid, summoned);
+        let mut count = 5 - field_used_count(flag & 0x1f);
+        if !flag & ((1 << 5) | (1 << 6)) != 0 {
+            count += 1;
+        }
+        (count, flag & 0x7f)
+    }
+
+    fn get_rule_zone_fromex(&self, zones: &Zones, playerid: u8, summoned: FromEx) -> u32 {
+        if !self.is_flag(DUEL_EMZONE) {
+            return 0x1f;
+        }
+        let fsx = summoned.card_type & (self.get_extra_deck_types() & !TYPE_LINK) != 0;
+        if self.is_flag(DUEL_FSX_MMZONE) && summoned.facedown && fsx {
+            0x7f
+        } else {
+            self.get_linked_zone(zones, playerid) | (1 << 5) | (1 << 6)
+        }
+    }
+
+    // field::get_linked_zone without `free` or `actually_linked`: the zones the player's and the opponent's Link
+    // monsters point to, the opponent's mirrored into the high half.
+    pub(crate) fn get_linked_zone(&self, zones: &Zones, playerid: u8) -> u32 {
+        let pointed = |p: u8| {
+            let mzone = zones.mzone[p].into_iter().flatten();
+            mzone
+                .chain(self.player[p].list_szone.into_iter().flatten())
+                .fold(0, |pointed, card| pointed | self.card_linked_zone(zones, card))
+        };
+        let opponent = pointed(1 - playerid);
+        unported!(self, self.filter_field_effect(EFFECT_BECOME_LINKED_ZONE));
+        pointed(playerid) | ((opponent & 0xffff) << 16) | (opponent >> 16)
+    }
+
+    // A card's controller, location, sequence and position, or where the core places it for check_extra_link.
+    fn link_state(&self, zones: &Zones, card: CardId) -> (u8, u8, u32, u32) {
+        match zones.placed {
+            Some((placed, controler, sequence)) if placed == card => (controler, LOCATION_MZONE, sequence, POS_FACEUP_ATTACK),
+            _ => {
+                let current = self.cards[card].current;
+                (current.controler, current.location, current.sequence, current.position)
+            }
+        }
+    }
+
+    // The type card::get_link_marker reads; a card the core places for a check keeps the type of its location.
+    fn link_type(&self, zones: &Zones, card: CardId) -> u32 {
+        if zones.placed.is_some_and(|(placed, _, _)| placed == card) {
+            unported!(
+                self,
+                self.filter_effects(card, &[EFFECT_ADD_TYPE, EFFECT_REMOVE_TYPE, EFFECT_CHANGE_TYPE])
+            );
+            return self.cards[card].data.card_type;
+        }
+        self.get_type(card)
+    }
+
+    // card::get_link_marker: rotated a quarter turn in defense position.
+    pub(crate) fn get_link_marker(&self, zones: &Zones, card: CardId) -> u32 {
+        let (_, location, _, position) = self.link_state(zones, card);
+        let on_field = location & LOCATION_ONFIELD != 0;
+        if (position & POS_FACEDOWN != 0 && on_field) || self.link_type(zones, card) & TYPE_LINK == 0 {
+            return 0;
+        }
+        unported!(
+            self,
+            self.filter_effects(card, &[EFFECT_ADD_LINKMARKER, EFFECT_REMOVE_LINKMARKER, EFFECT_CHANGE_LINKMARKER])
+        );
+        let marker = self.cards[card].data.link_marker;
+        if position & POS_ATTACK != 0 || !on_field {
+            return marker;
+        }
+        [
+            (LINK_MARKER_BOTTOM_LEFT, LINK_MARKER_BOTTOM_RIGHT),
+            (LINK_MARKER_BOTTOM, LINK_MARKER_RIGHT),
+            (LINK_MARKER_BOTTOM_RIGHT, LINK_MARKER_TOP_RIGHT),
+            (LINK_MARKER_RIGHT, LINK_MARKER_TOP),
+            (LINK_MARKER_TOP_RIGHT, LINK_MARKER_TOP_LEFT),
+            (LINK_MARKER_TOP, LINK_MARKER_LEFT),
+            (LINK_MARKER_TOP_LEFT, LINK_MARKER_BOTTOM_LEFT),
+            (LINK_MARKER_LEFT, LINK_MARKER_BOTTOM),
+        ]
+        .into_iter()
+        .filter(|&(from, _)| marker & from != 0)
+        .fold(0, |rotated, (_, to)| rotated | to)
+    }
+
+    // card::get_linked_zone without `free`: bit s is the controller's monster zone s, 8 + s their spell zone, 16 and
+    // up the opponent's.
+    pub(crate) fn card_linked_zone(&self, zones: &Zones, card: CardId) -> u32 {
+        let (_, location, s, _) = self.link_state(zones, card);
+        if self.link_type(zones, card) & TYPE_LINK == 0
+            || location & LOCATION_ONFIELD == 0
+            || self.cards[card].get_status(STATUS_SUMMONING | STATUS_SPSUMMON_STEP)
+        {
+            return 0;
+        }
+        let marker = self.get_link_marker(zones, card);
+        let has = |direction: u32| marker & direction != 0;
+        let mut linked = 0u32;
+        if location == LOCATION_MZONE {
+            if (1..=4).contains(&s) && has(LINK_MARKER_LEFT) {
+                linked |= 1 << (s - 1);
+            }
+            if s <= 3 && has(LINK_MARKER_RIGHT) {
+                linked |= 1 << (s + 1);
+            }
+            if s < 5 {
+                if s > 0 && has(LINK_MARKER_BOTTOM_LEFT) {
+                    linked |= 1 << (s + 7);
+                }
+                if s < 4 && has(LINK_MARKER_BOTTOM_RIGHT) {
+                    linked |= 1 << (s + 9);
+                }
+                if has(LINK_MARKER_BOTTOM) {
+                    linked |= 1 << (s + 8);
+                }
+            }
+            if self.is_flag(DUEL_EMZONE) {
+                if (s == 0 && has(LINK_MARKER_TOP_RIGHT)) || (s == 1 && has(LINK_MARKER_TOP)) || (s == 2 && has(LINK_MARKER_TOP_LEFT)) {
+                    linked |= (1 << 5) | (1 << (16 + 6));
+                }
+                if (s == 2 && has(LINK_MARKER_TOP_RIGHT)) || (s == 3 && has(LINK_MARKER_TOP)) || (s == 4 && has(LINK_MARKER_TOP_LEFT)) {
+                    linked |= (1 << 6) | (1 << (16 + 5));
+                }
+                let extra = match s {
+                    5 => [0, 1, 2, 16 + 4, 16 + 3, 16 + 2],
+                    6 => [2, 3, 4, 16 + 2, 16 + 1, 16],
+                    _ => [32; 6],
+                };
+                let directions = [
+                    LINK_MARKER_BOTTOM_LEFT,
+                    LINK_MARKER_BOTTOM,
+                    LINK_MARKER_BOTTOM_RIGHT,
+                    LINK_MARKER_TOP_LEFT,
+                    LINK_MARKER_TOP,
+                    LINK_MARKER_TOP_RIGHT,
+                ];
+                for (direction, bit) in directions.into_iter().zip(extra) {
+                    if has(direction) {
+                        linked |= 1u32.checked_shl(bit).unwrap_or(0);
+                    }
+                }
+            }
+        } else if location == LOCATION_SZONE {
+            if s > 4 {
+                return 0;
+            }
+            if s > 0 {
+                if has(LINK_MARKER_LEFT) {
+                    linked |= 1 << (s + 7);
+                }
+                if has(LINK_MARKER_TOP_LEFT) {
+                    linked |= 1 << (s - 1);
+                }
+            }
+            if s < 4 {
+                if has(LINK_MARKER_RIGHT) {
+                    linked |= 1 << (s + 9);
+                }
+                if has(LINK_MARKER_TOP_RIGHT) {
+                    linked |= 1 << (s + 1);
+                }
+            }
+            if has(LINK_MARKER_TOP) {
+                linked |= 1 << s;
+            }
+        }
+        linked
+    }
+
+    // The card in a zone bit of card_linked_zone, seen from `controler`.
+    fn card_in_zone(&self, zones: &Zones, controler: u8, bit: u32) -> Option<CardId> {
+        let (player, bit) = if bit < 16 { (controler, bit) } else { (1 - controler, bit - 16) };
+        let index = bit as usize;
+        if index < 8 {
+            zones.mzone[player].get(index).copied().flatten()
+        } else {
+            self.player[player].list_szone.get(index - 8).copied().flatten()
+        }
+    }
+
+    // card::get_mutual_linked_zone: the linked cards (Link monsters only in the spell zones) that point back.
+    fn mutual_linked_zone(&self, zones: &Zones, card: CardId) -> u32 {
+        let linked = self.card_linked_zone(zones, card);
+        if linked == 0 {
+            return 0;
+        }
+        let (controler, location, sequence, _) = self.link_state(zones, card);
+        let mut mutual = 0;
+        for bit in (0..32).filter(|bit| linked & (1 << bit) != 0) {
+            let Some(other) = self.card_in_zone(zones, controler, bit) else {
+                continue;
+            };
+            let (other_controler, other_location, _, _) = self.link_state(zones, other);
+            if other_location == LOCATION_SZONE && self.get_type(other) & TYPE_LINK == 0 {
+                continue;
+            }
+            let is_szone = if location == LOCATION_SZONE { 8 } else { 0 };
+            let is_player = if controler == other_controler { 0 } else { 16 };
+            if self.card_linked_zone(zones, other) & (1 << (sequence + is_szone + is_player)) != 0 {
+                mutual |= 1 << bit;
+            }
+        }
+        mutual
+    }
+
+    // card::is_extra_link_state: whether a chain of mutual links joins the two Extra Monster Zones.
+    fn is_extra_link_state(&self, zones: &Zones, card: CardId) -> bool {
+        let (controler, location, sequence, _) = self.link_state(zones, card);
+        if location != LOCATION_MZONE {
+            return false;
+        }
+        let mut checked = 1u32 << sequence;
+        let mut linked = self.mutual_linked_zone(zones, card);
+        loop {
+            if ((linked >> 5) | (linked >> (16 + 6))) & ((linked >> 6) | (linked >> (16 + 5))) & 1 != 0 {
+                return true;
+            }
+            let checking = linked & !checked;
+            if checking == 0 {
+                return false;
+            }
+            let rightmost = checking.isolate_lowest_one();
+            checked |= rightmost;
+            let bit = rightmost.trailing_zeros();
+            let Some(other) = self.card_in_zone(zones, controler, bit) else {
+                continue;
+            };
+            let zone = self.mutual_linked_zone(zones, other);
+            linked |= if bit < 16 { zone } else { ((zone & 0xffff) << 16) | (zone >> 16) };
+        }
+    }
+
+    // field::check_extra_link: whether the summoned monster, placed in the free Extra Monster Zone `sequence`, would
+    // link both.
+    fn check_extra_link(&self, zones: &Zones, playerid: u8, summoned: FromEx, sequence: usize) -> bool {
+        let Some(card) = summoned.card else { return false };
+        if zones.mzone[playerid].get(sequence).copied().flatten().is_some() {
+            return false;
+        }
+        let mut placed = *zones;
+        if let Some(slot) = placed.mzone[playerid].get_mut(sequence) {
+            *slot = Some(card);
+        }
+        placed.placed = Some((card, playerid, sequence as u32));
+        self.is_extra_link_state(&placed, card)
+    }
+
+    pub(crate) fn field_card(&self, playerid: u8, location: u16, sequence: u32) -> Option<CardId> {
+        let player = &self.player[playerid];
+        let sequence = sequence as usize;
+        let slot = match location {
+            LOCATION_MMZONE if sequence < 5 => player.list_mzone.get(sequence),
+            LOCATION_EMZONE => player.list_mzone.get(sequence + 5),
+            LOCATION_STZONE if sequence < 5 => player.list_szone.get(sequence),
+            LOCATION_FZONE if sequence == 0 => player.list_szone.get(5),
+            LOCATION_PZONE if sequence < 2 => {
+                let card = player
+                    .list_szone
+                    .get(self.get_pzone_index(sequence as u32) as usize)
+                    .copied()
+                    .flatten();
+                return card.filter(|&card| self.cards[card].current.pzone);
+            }
+            location if location == u16::from(LOCATION_MZONE) => player.list_mzone.get(sequence),
+            location if location == u16::from(LOCATION_SZONE) => player.list_szone.get(sequence),
+            location => {
+                let list = match location as u8 {
+                    LOCATION_DECK => &player.list_main,
+                    LOCATION_HAND => &player.list_hand,
+                    LOCATION_GRAVE => &player.list_grave,
+                    LOCATION_REMOVED => &player.list_remove,
+                    LOCATION_EXTRA => &player.list_extra,
+                    _ => return None,
+                };
+                return list.get(sequence).copied();
+            }
+        };
+        slot.copied().flatten()
+    }
+
+    // filter_field_card: the cards of Duel.GetFieldGroup.
+    pub(crate) fn filter_field_card(&self, own: u8, location1: u32, location2: u32) -> CardSet {
+        let mut group = CardSet::default();
+        if own > 1 {
+            return group;
+        }
+        let mut player = own;
+        for location in [location1, location2] {
+            let info = &self.player[player];
+            let zones = location as u16;
+            let mut add = |cards: &[Option<CardId>]| cards.iter().flatten().for_each(|&card| group.insert(card));
+            if zones & u16::from(LOCATION_MZONE) != 0 {
+                let summoning = |card: CardId| self.cards[card].get_status(STATUS_SUMMONING | STATUS_SPSUMMON_STEP);
+                add(&info.list_mzone.map(|card| card.filter(|&card| !summoning(card))));
+            } else {
+                if zones & LOCATION_MMZONE != 0 {
+                    add(info.list_mzone.get(..5).unwrap_or_default());
+                }
+                if zones & LOCATION_EMZONE != 0 {
+                    add(info.list_mzone.get(5..).unwrap_or_default());
+                }
+            }
+            if zones & u16::from(LOCATION_SZONE) != 0 {
+                add(&info.list_szone);
+            } else {
+                if zones & LOCATION_STZONE != 0 {
+                    add(info.list_szone.get(..5).unwrap_or_default());
+                }
+                if zones & LOCATION_FZONE != 0 {
+                    add(info.list_szone.get(5..6).unwrap_or_default());
+                }
+                if zones & LOCATION_PZONE != 0 {
+                    let pzones = [0, 1].map(|index| info.list_szone.get(self.get_pzone_index(index) as usize).copied().flatten());
+                    add(&pzones.map(|card| card.filter(|&card| self.cards[card].current.pzone)));
+                }
+            }
+            for (bit, list) in [
+                (LOCATION_HAND, &info.list_hand),
+                (LOCATION_DECK, &info.list_main),
+                (LOCATION_EXTRA, &info.list_extra),
+                (LOCATION_GRAVE, &info.list_grave),
+                (LOCATION_REMOVED, &info.list_remove),
+            ] {
+                if location & u32::from(bit) != 0 {
+                    list.iter().for_each(|&card| group.insert(card));
+                }
+            }
+            player = 1 - player;
+        }
+        group
+    }
+
+    fn get_useable_count_other(&self, card: Option<CardId>, playerid: u8, location: u8, uplayer: u8, reason: u32, zone: u32) -> (i32, u32) {
+        self.get_useable_count_other_in(&self.zones(), card, playerid, location, uplayer, reason, zone)
+    }
+
+    pub(crate) fn get_useable_count_other_in(
+        &self,
+        zones: &Zones,
+        card: Option<CardId>,
+        playerid: u8,
+        location: u8,
+        uplayer: u8,
+        reason: u32,
+        zone: u32,
+    ) -> (i32, u32) {
+        let (count, flag) = self.get_tofield_count_in(zones, card, playerid, location, uplayer, reason, zone);
+        let limit = if location == LOCATION_MZONE {
+            self.get_mzone_limit_in(zones, playerid, uplayer, reason)
+        } else {
+            self.get_szone_limit(playerid, uplayer, reason)
+        };
+        (count.min(limit), flag)
+    }
+
+    pub(crate) fn get_tofield_count(
+        &self,
+        card: Option<CardId>,
+        playerid: u8,
+        location: u8,
+        uplayer: u8,
+        reason: u32,
+        zone: u32,
+    ) -> (i32, u32) {
+        self.get_tofield_count_in(&self.zones(), card, playerid, location, uplayer, reason, zone)
+    }
+
+    pub(crate) fn get_tofield_count_in(
+        &self,
+        zones: &Zones,
+        card: Option<CardId>,
+        playerid: u8,
+        location: u8,
+        uplayer: u8,
+        reason: u32,
+        zone: u32,
+    ) -> (i32, u32) {
+        if location != LOCATION_MZONE && location != LOCATION_SZONE {
+            return (0, 0);
+        }
+        let mut flag = zones.disabled[playerid] | zones.used[playerid];
+        if location == LOCATION_MZONE {
+            flag |= !self.get_forced_zones(card, playerid, location, uplayer, reason);
+            flag = (flag | !zone) & 0x1f;
+        } else {
+            flag = ((flag >> 8) | !zone) & 0x1f;
+        }
+        let count = 5 - field_used_count(flag);
+        if location == LOCATION_MZONE {
+            flag |= (1 << 5) | (1 << 6);
+        }
+        (count, flag)
+    }
+
+    pub(crate) fn get_mzone_limit(&self, playerid: u8, uplayer: u8, reason: u32) -> i32 {
+        self.get_mzone_limit_in(&self.zones(), playerid, uplayer, reason)
+    }
+
+    pub(crate) fn get_mzone_limit_in(&self, zones: &Zones, playerid: u8, uplayer: u8, _reason: u32) -> i32 {
+        let mut max = 5;
+        let mut used_count = field_used_count(zones.used[playerid]);
+        if self.is_flag(DUEL_EMZONE) {
+            max = 7;
+            used_count += [5, 6]
+                .into_iter()
+                .filter(|&sequence| zones.mzone[playerid].get(sequence).is_some_and(Option::is_some))
+                .count() as i32;
+        }
+        if uplayer < 2 {
+            unported!(self, self.filter_player_effect(playerid, EFFECT_MAX_MZONE, true));
+        }
+        max - used_count
+    }
+
+    pub(crate) fn get_szone_limit(&self, playerid: u8, uplayer: u8, _reason: u32) -> i32 {
+        if uplayer < 2 {
+            unported!(self, self.filter_player_effect(playerid, EFFECT_MAX_SZONE, true));
+        }
+        5 - field_used_count(self.player[playerid].used_location >> 8)
+    }
+
+    pub(crate) fn get_forced_zones(&self, card: Option<CardId>, playerid: u8, location: u8, uplayer: u8, _reason: u32) -> u32 {
+        if location != LOCATION_MZONE {
+            return 0xff;
+        }
+        if uplayer < 2 {
+            unported!(self, self.filter_player_effect(uplayer, EFFECT_MUST_USE_MZONE, true));
+        }
+        unported!(
+            self,
+            card.map(|card| self.filter_effect(card, EFFECT_MUST_USE_MZONE, true))
+                .unwrap_or_default()
+        );
+        let zones: u32 = 0xff7f_ff7f;
+        if uplayer == playerid || uplayer > 1 {
+            zones & 0xff
+        } else {
+            (zones >> 16) & 0xff
+        }
+    }
+
+    pub(crate) fn shuffle(&mut self, playerid: u8, location: u8) {
+        if location & (LOCATION_HAND | LOCATION_DECK | LOCATION_EXTRA) == 0 {
+            return;
+        }
+        let Some(mut list) = self.list_mut(playerid, location).map(std::mem::take) else {
+            return;
+        };
+        let all_faceup = list.iter().all(|&card| self.cards[card].is_position(POS_FACEUP));
+        let mut reordered = false;
+        if !list.is_empty()
+            && !(location == LOCATION_HAND && all_faceup)
+            && (location == LOCATION_HAND || !self.is_flag(DUEL_PSEUDO_SHUFFLE))
+        {
+            let mut upper_bound = list.len() as i32;
+            if location == LOCATION_EXTRA {
+                upper_bound -= self.player[playerid].extra_p_count as i32;
+            }
+            for index in 0..upper_bound - 1 {
+                let other = self.random.get_next_integer(index, upper_bound - 1);
+                list.swap(index as usize, other as usize);
+                reordered = true;
+            }
+        }
+        let count = list.len();
+        if let Some(slot) = self.list_mut(playerid, location) {
+            *slot = list;
+        }
+        if count == 0 {
+            return;
+        }
+        if location == LOCATION_HAND && all_faceup {
+            self.core.shuffle_hand_check[playerid] = false;
+            return;
+        }
+        if reordered {
+            self.reset_sequence(playerid, location);
+        }
+        if location == LOCATION_DECK {
+            self.trace.message(MSG_SHUFFLE_DECK).u8(playerid);
+            self.core.shuffle_deck_check[playerid] = false;
+            if self.core.global_flag & GLOBALFLAG_DECK_REVERSE_CHECK != 0
+                && let Some(&top) = self.player[playerid].list_main.last()
+            {
+                let (code, position) = (self.cards[top].data.code, self.cards[top].current.position);
+                if self.core.deck_reversed || position == POS_FACEUP_DEFENSE {
+                    self.trace.message(MSG_DECK_TOP).u8(playerid).u32(0).u32(code).u32(position);
+                }
+            }
+            return;
+        }
+        let list = if location == LOCATION_HAND {
+            &self.player[playerid].list_hand
+        } else {
+            &self.player[playerid].list_extra
+        };
+        let mut message = self.trace.message(if location == LOCATION_HAND {
+            MSG_SHUFFLE_HAND
+        } else {
+            MSG_SHUFFLE_EXTRA
+        });
+        message.u8(playerid).u32(list.len() as u32);
+        for &card in list {
+            message.u32(self.cards[card].data.code);
+        }
+        drop(message);
+        if location == LOCATION_HAND {
+            self.core.shuffle_hand_check[playerid] = false;
+            // The hint effects of the shuffled cards are shown again. The core walks each card's indexer in address
+            // order; a card in the hand carries at most one such hint here.
+            for card in self.player[playerid].list_hand.clone() {
+                for effect in self.card_effects(card) {
+                    let peffect = &self.effects[effect];
+                    if peffect.is_flag(EFFECT_FLAG_CLIENT_HINT) && !peffect.is_flag(EFFECT_FLAG_PLAYER_TARGET) {
+                        let (location, description) = (self.cards.get_info_location(card), peffect.description);
+                        self.trace.message(MSG_CARD_HINT).loc(location).u8(CHINT_DESC_ADD).u64(description);
+                    }
+                }
+            }
+        }
+    }
+
+    pub(crate) fn reset_sequence(&mut self, playerid: u8, location: u8) {
+        if location & LOCATION_ONFIELD != 0 {
+            return;
+        }
+        let Some(list) = self.list_mut(playerid, location).map(std::mem::take) else {
+            return;
+        };
+        for (sequence, &card) in list.iter().enumerate() {
+            self.cards[card].current.sequence = sequence as u32;
+        }
+        if let Some(slot) = self.list_mut(playerid, location) {
+            *slot = list;
+        }
+    }
+
+    // field::add_effect: an effect without a handler is a global (field only) effect of `owner_player`.
+    pub(crate) fn add_effect(&mut self, effect: EffectId, owner_player: u8) {
+        if self.effects[effect].handler.is_none() {
+            let id = self.next_field_id();
+            self.effects.set_id(effect, id);
+            let peffect = &mut self.effects[effect];
+            peffect.flag[0] |= EFFECT_FLAG_FIELD_ONLY;
+            peffect.handler = Some(peffect.owner);
+            peffect.effect_owner = owner_player;
+            peffect.initial_id = id;
+        }
+        let owner_type = self.cards[self.effects[effect].owner].data.card_type;
+        let peffect = &mut self.effects[effect];
+        peffect.card_type = owner_type;
+        let (effect_type, code) = (peffect.effect_type, peffect.code);
+        let container = if effect_type & EFFECT_TYPE_ACTIONS == 0 {
+            if code == EFFECT_SELF_TOGRAVE {
+                self.core.global_flag |= GLOBALFLAG_SELF_TOGRAVE;
+            } else if code == EFFECT_SPSUMMON_COUNT_LIMIT {
+                self.field_effects.spsummon_count_eff.push(effect);
+            } else if code == EFFECT_REMOVE_BRAINWASHING {
+                self.core.global_flag |= GLOBALFLAG_BRAINWASHING_CHECK;
+            } else if code == EFFECT_REVERSE_DECK {
+                self.core.global_flag |= GLOBALFLAG_DECK_REVERSE_CHECK;
+            }
+            Some(Container::Aura)
+        } else if effect_type & EFFECT_TYPE_IGNITION != 0 {
+            Some(Container::Ignition)
+        } else if effect_type & EFFECT_TYPE_TRIGGER_O != 0 && effect_type & EFFECT_TYPE_FIELD != 0 {
+            Some(Container::TriggerO)
+        } else if effect_type & EFFECT_TYPE_TRIGGER_F != 0 && effect_type & EFFECT_TYPE_FIELD != 0 {
+            Some(Container::TriggerF)
+        } else if effect_type & EFFECT_TYPE_QUICK_O != 0 {
+            Some(Container::QuickO)
+        } else if effect_type & EFFECT_TYPE_QUICK_F != 0 {
+            Some(Container::QuickF)
+        } else if effect_type & EFFECT_TYPE_ACTIVATE != 0 {
+            Some(Container::Activate)
+        } else if effect_type & EFFECT_TYPE_CONTINUOUS != 0 {
+            Some(Container::Continuous)
+        } else {
+            None
+        };
+        if let Some(container) = container {
+            let key = container_key(container, None, code);
+            self.field_effects.registry.insert(key, effect);
+            self.effects[effect].field_key = NonZeroU64::new(key);
+        }
+        if code == EVENT_DETACH_MATERIAL {
+            self.core.global_flag |= GLOBALFLAG_DETACH_EVENT;
+        }
+        let peffect = &self.effects[effect];
+        if !peffect.is_flag(EFFECT_FLAG_FIELD_ONLY) {
+            return;
+        }
+        let (flag, reset_flag) = (peffect.flag[0], peffect.reset_flag);
+        if peffect.is_disable_related() {
+            self.update_disable_check_list(effect);
+        }
+        if flag & EFFECT_FLAG_OATH != 0 {
+            let reason_effect = self.core.reason_effect.get();
+            self.field_effects.oath.push((effect, reason_effect));
+        }
+        if reset_flag & RESET_PHASE != 0 {
+            self.field_effects.pheff.push(effect);
+        }
+        if reset_flag & RESET_CHAIN != 0 {
+            self.field_effects.cheff.push(effect);
+        }
+        if flag & EFFECT_FLAG_COUNT_LIMIT != 0 {
+            self.field_effects.rechargeable.push(effect);
+        }
+        if flag & EFFECT_FLAG_PLAYER_TARGET != 0 && flag & EFFECT_FLAG_CLIENT_HINT != 0 {
+            self.player_hint(effect, owner_player, PHINT_DESC_ADD);
+        }
+    }
+
+    // MSG_PLAYER_HINT for the players a client hint player effect targets.
+    fn player_hint(&mut self, effect: EffectId, owner_player: u8, hint: u8) {
+        let peffect = &self.effects[effect];
+        let ranges = [(owner_player & 1, peffect.s_range), ((1 - owner_player) & 1, peffect.o_range)];
+        let description = peffect.description;
+        for player in 0..2 {
+            if ranges.iter().any(|&(targeted, range)| targeted == player && range != 0) {
+                self.trace.message(MSG_PLAYER_HINT).u8(player).u8(hint).u64(description);
+            }
+        }
+    }
+
+    pub(crate) fn remove_effect(&mut self, effect: EffectId) {
+        let Some(key) = self.effects[effect].field_key.take().map(NonZeroU64::get) else {
+            return;
+        };
+        self.field_effects.registry.remove(key, effect);
+        let peffect = &self.effects[effect];
+        if peffect.effect_type & EFFECT_TYPE_ACTIONS == 0 {
+            if peffect.code == EFFECT_SPSUMMON_COUNT_LIMIT {
+                remove_item(&mut self.field_effects.spsummon_count_eff, &effect);
+            }
+            unported!(self, (peffect.effect_type & EFFECT_TYPE_GRANT != 0).then_some(effect));
+        }
+        let peffect = &self.effects[effect];
+        if !peffect.is_flag(EFFECT_FLAG_FIELD_ONLY) {
+            return;
+        }
+        let (flag, reset_flag, owner) = (peffect.flag[0], peffect.reset_flag, peffect.effect_owner);
+        if peffect.is_disable_related() {
+            self.update_disable_check_list(effect);
+        }
+        if flag & EFFECT_FLAG_OATH != 0 {
+            self.field_effects.oath.retain(|&(oath, _)| oath != effect);
+        }
+        if reset_flag & RESET_PHASE != 0 {
+            remove_item(&mut self.field_effects.pheff, &effect);
+        }
+        if reset_flag & RESET_CHAIN != 0 {
+            remove_item(&mut self.field_effects.cheff, &effect);
+        }
+        if flag & EFFECT_FLAG_COUNT_LIMIT != 0 {
+            remove_item(&mut self.field_effects.rechargeable, &effect);
+        }
+        self.mark_reseted(effect);
+        if flag & EFFECT_FLAG_PLAYER_TARGET != 0 && flag & EFFECT_FLAG_CLIENT_HINT != 0 {
+            self.player_hint(effect, owner, PHINT_DESC_REMOVE);
+        }
+    }
+
+    // card::refresh_control_status: the controller the newest EFFECT_SET_CONTROL gives, else the owner.
+    // EFFECT_REMOVE_BRAINWASHING comes with the cards that register it.
+    pub(crate) fn refresh_control_status(&self, card: CardId) -> (u8, Option<EffectId>) {
+        match self.filter_effect(card, EFFECT_SET_CONTROL, true).last() {
+            Some(&effect) => (self.effects[effect].int_value() as u8, Some(effect)),
+            None => (self.cards[card].owner, None),
+        }
+    }
+
+    pub(crate) fn set_control(&mut self, card: CardId, playerid: u8, reset_phase: u16, reset_count: u16) {
+        if self.refresh_control_status(card).0 == playerid {
+            return;
+        }
+        let owner = self.core.reason_effect.get().map_or(card, |effect| self.get_handler(effect));
+        let effect = self.new_effect(owner);
+        let peffect = &mut self.effects[effect];
+        peffect.effect_type = EFFECT_TYPE_SINGLE;
+        peffect.code = EFFECT_SET_CONTROL;
+        peffect.value = crate::effect::Value::Int(i32::from(playerid));
+        peffect.flag[0] = EFFECT_FLAG_CANNOT_DISABLE;
+        peffect.reset_flag = RESET_EVENT | 0xc6c_0000;
+        if reset_count != 0 {
+            peffect.reset_flag |= RESET_PHASE | u32::from(reset_phase);
+            if peffect.reset_flag & (RESET_SELF_TURN | RESET_OPPO_TURN) == 0 {
+                peffect.reset_flag |= RESET_SELF_TURN | RESET_OPPO_TURN;
+            }
+            peffect.reset_count = reset_count;
+        }
+        self.card_add_effect(card, effect);
+        self.cards[card].current.controler = playerid;
+    }
+
+    // core.reseted_effects is a set: the effects removed this turn, deleted at the start of the next.
+    pub(crate) fn mark_reseted(&mut self, effect: EffectId) {
+        if !self.core.reseted_effects.contains(&effect) {
+            self.core.reseted_effects.push(effect);
+        }
+    }
+
+    // Removes an effect from wherever it is registered, as Effect.Reset and the resets do.
+    pub(crate) fn remove_registered_effect(&mut self, effect: EffectId) {
+        if self.effects[effect].is_flag(EFFECT_FLAG_FIELD_ONLY) {
+            self.remove_effect(effect);
+        } else if let Some(handler) = self.effects[effect].handler {
+            self.card_remove_effect(handler, effect);
+        }
+    }
+
+    pub(crate) fn remove_oath_effect(&mut self, reason_effect: EffectId) {
+        let oaths: Vec<EffectId> = self
+            .field_effects
+            .oath
+            .iter()
+            .filter(|&&(_, reason)| reason == Some(reason_effect))
+            .map(|&(oath, _)| oath)
+            .collect();
+        for effect in oaths {
+            self.field_effects.oath.retain(|&(oath, _)| oath != effect);
+            self.remove_registered_effect(effect);
+        }
+    }
+
+    pub(crate) fn release_oath_relation(&mut self, reason_effect: EffectId) {
+        for (_, reason) in self.field_effects.oath.iter_mut() {
+            if *reason == Some(reason_effect) {
+                *reason = None;
+            }
+        }
+    }
+
+    pub(crate) fn reset_phase(&mut self, phase: u16) {
+        for effect in self.field_effects.pheff.clone() {
+            if self.effect_reset(effect, u32::from(phase), RESET_PHASE) {
+                self.remove_registered_effect(effect);
+            }
+        }
+    }
+
+    pub(crate) fn reset_chain(&mut self) {
+        self.core.effect_count_code_chain.clear();
+        for effect in self.field_effects.cheff.clone() {
+            self.remove_registered_effect(effect);
+        }
+    }
+
+    fn count_map(&mut self, flag: u8) -> &mut Vec<(u64, u32)> {
+        if flag & EFFECT_COUNT_CODE_DUEL != 0 {
+            &mut self.core.effect_count_code_duel
+        } else if flag & EFFECT_COUNT_CODE_CHAIN != 0 {
+            &mut self.core.effect_count_code_chain
+        } else {
+            &mut self.core.effect_count_code
+        }
+    }
+
+    // The core builds the key with hopt_index and flag in swapped places; kept, as only equality matters.
+    pub(crate) fn add_effect_code(&mut self, code: u32, flag: u8, hopt_index: u8, playerid: u8) {
+        let key = count_map_key(code, hopt_index, flag, playerid);
+        let map = self.count_map(flag);
+        match map.iter_mut().find(|(other, _)| *other == key) {
+            Some((_, count)) => *count += 1,
+            None => map.push((key, 1)),
+        }
+    }
+
+    pub(crate) fn get_effect_code(&self, code: u32, flag: u8, hopt_index: u8, playerid: u8) -> u32 {
+        let key = count_map_key(code, hopt_index, flag, playerid);
+        let map = if flag & EFFECT_COUNT_CODE_DUEL != 0 {
+            &self.core.effect_count_code_duel
+        } else if flag & EFFECT_COUNT_CODE_CHAIN != 0 {
+            &self.core.effect_count_code_chain
+        } else {
+            &self.core.effect_count_code
+        };
+        map.iter().find(|(other, _)| *other == key).map_or(0, |&(_, count)| count)
+    }
+
+    pub(crate) fn dec_effect_code(&mut self, code: u32, flag: u8, hopt_index: u8, playerid: u8) {
+        let key = count_map_key(code, hopt_index, flag, playerid);
+        if let Some((_, count)) = self.count_map(flag).iter_mut().find(|(other, _)| *other == key) {
+            *count = count.saturating_sub(1);
+        }
+    }
+
+    #[inline(always)]
+    pub(crate) fn filter_field_effect(&self, code: u32) -> EffectSet {
+        self.filter_field_effect_list(code)
+    }
+
+    // filter_field_effect into a list of any inline size: the summon procedures of both Extra Decks outgrow an EffectSet.
+    #[inline(always)]
+    pub(crate) fn filter_field_effect_list<const N: usize>(&self, code: u32) -> List<EffectId, N> {
+        if !self.field_effects.registry.has_code(code) {
+            return List::default();
+        }
+        self.filter_field_effect_lookup(code)
+    }
+
+    fn filter_field_effect_lookup<const N: usize>(&self, code: u32) -> List<EffectId, N> {
+        let mut effects: List<EffectId, N> = self
+            .field_effects
+            .registry
+            .equal_range(Container::Aura, None, code)
+            .filter(|&effect| self.is_available(effect))
+            .collect();
+        effects.sort_by_key(|&effect| self.effects.id(effect));
+        effects
+    }
+
+    // The cards a field effect applies to (filter_affected_cards).
+    fn filter_affected_cards(&self, effect: EffectId) -> CardSet {
+        let peffect = &self.effects[effect];
+        let mut cards = CardSet::default();
+        if peffect.effect_type & EFFECT_TYPE_ACTIONS != 0
+            || peffect.effect_type & EFFECT_TYPE_FIELD == 0
+            || peffect.is_flag(EFFECT_FLAG_PLAYER_TARGET | EFFECT_FLAG_SPSUM_PARAM)
+        {
+            return cards;
+        }
+        let mut own = self.get_handler_player(effect);
+        if own == PLAYER_NONE {
+            return cards;
+        }
+        for range in [peffect.s_range, peffect.o_range] {
+            let player = &self.player[own];
+            let mut add = |card: CardId| {
+                if self.effect_is_target(effect, card) {
+                    cards.insert(card);
+                }
+            };
+            let range = range as u8;
+            if range & LOCATION_MZONE != 0 {
+                player.list_mzone.iter().flatten().for_each(|&card| add(card));
+            }
+            if range & LOCATION_SZONE != 0 {
+                player.list_szone.iter().flatten().for_each(|&card| add(card));
+            }
+            for (location, list) in [
+                (LOCATION_GRAVE, &player.list_grave),
+                (LOCATION_REMOVED, &player.list_remove),
+                (LOCATION_HAND, &player.list_hand),
+                (LOCATION_DECK, &player.list_main),
+                (LOCATION_EXTRA, &player.list_extra),
+            ] {
+                if range & location != 0 {
+                    list.iter().for_each(|&card| add(card));
+                }
+            }
+            own = 1 - own;
+        }
+        cards
+    }
+
+    #[inline(always)]
+    pub(crate) fn filter_player_effect(&self, playerid: u8, code: u32, sort: bool) -> EffectSet {
+        if !self.field_effects.registry.has_code(code) {
+            return EffectSet::default();
+        }
+        self.filter_player_effect_lookup(playerid, code, sort)
+    }
+
+    fn filter_player_effect_lookup(&self, playerid: u8, code: u32, sort: bool) -> EffectSet {
+        let mut effects: EffectSet = self
+            .field_effects
+            .registry
+            .equal_range(Container::Aura, None, code)
+            .filter(|&effect| self.is_target_player(effect, playerid) && self.is_available(effect))
+            .collect();
+        if sort {
+            effects.sort_by_key(|&effect| self.effects.id(effect));
+        }
+        effects
+    }
+
+    #[inline(always)]
+    pub fn is_player_affected_by_effect(&self, playerid: u8, code: u32) -> Option<EffectId> {
+        if !self.field_effects.registry.has_code(code) {
+            return None;
+        }
+        self.is_player_affected_by_effect_lookup(playerid, code)
+    }
+
+    fn is_player_affected_by_effect_lookup(&self, playerid: u8, code: u32) -> Option<EffectId> {
+        self.field_effects
+            .registry
+            .equal_range(Container::Aura, None, code)
+            .find(|&effect| self.is_target_player(effect, playerid) && self.is_available(effect))
+    }
+
+    // filter_matching_card: the cards of locations `location1` (own side) and `location2` that pass the filter, in
+    // zone order, into `group`; with `count` it stops as soon as that many pass. Returns whether it stopped early.
+    pub(crate) fn filter_matching_card(
+        &self,
+        filter: &mut dyn FnMut(&Duel, CardId) -> bool,
+        own: u8,
+        location1: u32,
+        location2: u32,
+        group: &mut CardSet,
+        exception: &CardSet,
+        count: usize,
+        is_target: bool,
+    ) -> bool {
+        if own > 1 {
+            return false;
+        }
+        let mut found = 0;
+        let mut check = |duel: &Duel, card: CardId, extra: bool| {
+            if !extra
+                || exception.contains(card)
+                || !filter(duel, card)
+                || (is_target
+                    && !duel
+                        .core
+                        .reason_effect
+                        .get()
+                        .is_some_and(|effect| duel.is_capable_be_effect_target(card, effect, duel.core.reason_player.get())))
+            {
+                return false;
+            }
+            found += 1;
+            if count != 0 && found >= count {
+                return true;
+            }
+            group.insert(card);
+            false
+        };
+        let mut player = own;
+        for location in [location1, location2] {
+            let info = &self.player[player];
+            let monster = |card: CardId| !self.cards[card].get_status(STATUS_SUMMONING | STATUS_SUMMON_DISABLED | STATUS_SPSUMMON_STEP);
+            let spell = |card: CardId| !self.cards[card].is_status(STATUS_ACTIVATE_DISABLED);
+            let location = location as u16;
+            let mut zones =
+                |list: &[Option<CardId>], extra: &dyn Fn(CardId) -> bool| list.iter().flatten().any(|&card| check(self, card, extra(card)));
+            let (mzone, szone) = (&info.list_mzone, &info.list_szone);
+            if location & u16::from(LOCATION_MZONE) != 0 {
+                if zones(mzone, &monster) {
+                    return true;
+                }
+            } else {
+                if location & LOCATION_MMZONE != 0 && zones(mzone.get(..5).unwrap_or_default(), &monster) {
+                    return true;
+                }
+                if location & LOCATION_EMZONE != 0 && zones(mzone.get(5..).unwrap_or_default(), &monster) {
+                    return true;
+                }
+            }
+            if location & u16::from(LOCATION_SZONE) != 0 {
+                if zones(szone, &spell) {
+                    return true;
+                }
+            } else {
+                if location & LOCATION_STZONE != 0 && zones(szone.get(..5).unwrap_or_default(), &spell) {
+                    return true;
+                }
+                if location & LOCATION_FZONE != 0 && zones(szone.get(5..6).unwrap_or_default(), &spell) {
+                    return true;
+                }
+                let pzone = |card: CardId| self.cards[card].current.pzone && spell(card);
+                let pzones = [self.get_pzone_index(0), self.get_pzone_index(1)].map(|index| szone.get(index as usize).copied().flatten());
+                if location & LOCATION_PZONE != 0 && zones(&pzones, &pzone) {
+                    return true;
+                }
+            }
+            let location = u32::from(location);
+            for (bit, list) in [
+                (LOCATION_DECK, &info.list_main),
+                (LOCATION_EXTRA, &info.list_extra),
+                (LOCATION_HAND, &info.list_hand),
+                (LOCATION_GRAVE, &info.list_grave),
+                (LOCATION_REMOVED, &info.list_remove),
+            ] {
+                if location & u32::from(bit) != 0 && list.iter().any(|&card| check(self, card, true)) {
+                    return true;
+                }
+            }
+            player = 1 - player;
+        }
+        false
+    }
+
+    pub(crate) fn update_disable_check_list(&mut self, effect: EffectId) {
+        for card in self.filter_affected_cards(effect) {
+            self.add_to_disable_check_list(card);
+        }
+    }
+
+    // Fills direct_attackable and returns the monsters the card can attack, with the core's atype 3 for monsters that
+    // must attack a monster and 4 otherwise; one attack per turn.
+    pub(crate) fn get_attack_target(&mut self, card: CardId, chain_attack: bool, select_target: bool) -> Cards16 {
+        self.cards[card].direct_attackable = 0;
+        let p = self.cards[card].current.controler;
+        let opponent = self.player[1 - p].list_mzone;
+        let mut must_attack = Cards8::default();
+        let mut must_effects = EffectSet::default();
+        for target in opponent.into_iter().flatten() {
+            unported!(self, self.is_affected_by_effect(target, EFFECT_ONLY_BE_ATTACKED));
+            unported!(self, self.is_affected_by_effect_target(card, EFFECT_ONLY_ATTACK_MONSTER, target));
+            if let Some(effect) = self.is_affected_by_effect_target(card, EFFECT_MUST_ATTACK_MONSTER, target) {
+                must_attack.push(target);
+                if !must_effects.contains(&effect) {
+                    must_effects.push(effect);
+                }
+            }
+        }
+        unported!(self, self.is_affected_by_effect(card, EFFECT_ONLY_ATTACK_MONSTER));
+        let must = self.is_affected_by_effect(card, EFFECT_MUST_ATTACK_MONSTER).is_some();
+        if must {
+            // Several effects that each make it attack its own monsters let the opponent choose (BattleCommand step 4).
+            unported!(self, (must_effects.len() > 1).then_some(card));
+            if must_attack.is_empty() {
+                return Cards16::default();
+            }
+        }
+        let attack_tg: Cards8 = if must {
+            must_attack
+        } else {
+            opponent
+                .into_iter()
+                .flatten()
+                .filter(|&target| Some(target) != self.core.attacker)
+                .collect()
+        };
+        unported!(self, self.is_player_affected_by_effect(p, EFFECT_SELF_ATTACK).filter(|_| !must));
+        unported!(
+            self,
+            self.filter_effect(card, EFFECT_EXTRA_ATTACK, true)
+                .into_iter()
+                .chain(self.filter_effect(card, EFFECT_EXTRA_ATTACK_MONSTER, true))
+        );
+        if !chain_attack && self.cards[card].announce_count > 0 {
+            unported!(
+                self,
+                self.is_affected_by_effect(card, EFFECT_ATTACK_ALL)
+                    .filter(|_| self.cards[card].attack_all_target != 0)
+            );
+            return Cards16::default();
+        }
+        let mut mcount = 0;
+        let mut targets = Cards16::default();
+        for target in attack_tg {
+            unported!(self, self.is_affected_by_effect_target(target, EFFECT_IGNORE_BATTLE_TARGET, card));
+            if self.cards[target].current.controler != p {
+                mcount += 1;
+            }
+            if chain_attack && self.core.chain_attack_target.is_some_and(|chain_target| chain_target != target) {
+                continue;
+            }
+            if select_target && !must {
+                unported!(
+                    self,
+                    self.is_affected_by_effect_target(target, EFFECT_CANNOT_BE_BATTLE_TARGET, card)
+                );
+                unported!(
+                    self,
+                    self.is_affected_by_effect_target(card, EFFECT_CANNOT_SELECT_BATTLE_TARGET, target)
+                );
+            }
+            targets.push(target);
+        }
+        if must {
+            return targets;
+        }
+        if (mcount == 0 || self.is_affected_by_effect(card, EFFECT_DIRECT_ATTACK).is_some() || self.core.attack_player)
+            && self.is_affected_by_effect(card, EFFECT_CANNOT_DIRECT_ATTACK).is_none()
+            && !(chain_attack && self.core.chain_attack_target.is_some())
+        {
+            self.cards[card].direct_attackable = 1;
+        }
+        targets
+    }
+
+    pub(crate) fn confirm_attack_target(&mut self) -> bool {
+        let Some(attacker) = self.core.attacker else { return false };
+        let targets = self.get_attack_target(attacker, self.core.chain_attack, false);
+        match self.core.attack_target {
+            Some(target) => targets.contains(&target),
+            None => self.cards[attacker].direct_attackable != 0,
+        }
+    }
+
+    pub(crate) fn attack_all_target_check(&mut self) {
+        let Some(attacker) = self.core.attacker else { return };
+        if self.core.attack_target.is_none() {
+            self.cards[attacker].attack_all_target = 0;
+            return;
+        }
+        unported!(self, self.is_affected_by_effect(attacker, EFFECT_ATTACK_ALL));
+    }
+
+    // The fieldid_r of the opponent's monsters, compared as core.opp_mzone.
+    pub(crate) fn opponent_field_ids(&self) -> FieldIds {
+        let opponent = self.player[1 - self.infos.turn_player].list_mzone;
+        let mut ids: FieldIds = opponent.into_iter().flatten().map(|card| self.cards[card].fieldid_r).collect();
+        ids.sort_unstable();
+        ids
+    }
+
+    // Uniqueness comes from SetUniqueOnField in card scripts that call it.
+    pub(crate) fn check_unique_onfield(&self, _card: CardId, _controler: u8, _location: u8) -> Option<EffectId> {
+        None
+    }
+
+    // Puts the cards the target may tribute into the sets and returns their total release count.
+    pub(crate) fn get_summon_release_list(
+        &mut self,
+        target: CardId,
+        release_list: &mut CardSet,
+        ex_list: &mut CardSet,
+        ex: bool,
+        releasable: u32,
+    ) -> u32 {
+        let p = self.cards[target].current.controler;
+        unported!(self, self.filter_effect(target, EFFECT_ADD_EXTRA_TRIBUTE, true));
+        let release_param = |duel: &Self, card: CardId| {
+            if duel.is_affected_by_effect_target(card, EFFECT_TRIPLE_TRIBUTE, target).is_some() {
+                3
+            } else if duel.is_affected_by_effect_target(card, EFFECT_DOUBLE_TRIBUTE, target).is_some() {
+                2
+            } else {
+                1
+            }
+        };
+        let mut rcount = 0;
+        for card in self.player[p].list_mzone.into_iter().flatten() {
+            if (releasable >> self.cards[card].current.sequence) & 1 != 0 && self.is_releasable_by_summon(card, p, target) {
+                release_list.insert(card);
+                self.cards[card].release_param = release_param(self, card);
+                rcount += self.cards[card].release_param;
+            }
+        }
+        for card in self.player[1 - p].list_mzone.into_iter().flatten() {
+            if (releasable >> (self.cards[card].current.sequence + 16)) & 1 == 0 || !self.is_releasable_by_summon(card, p, target) {
+                continue;
+            }
+            self.cards[card].release_param = release_param(self, card);
+            if self.is_affected_by_effect(card, EFFECT_EXTRA_RELEASE).is_some() {
+                ex_list.insert(card);
+                rcount += self.cards[card].release_param;
+            } else if ex {
+                release_list.insert(card);
+                rcount += self.cards[card].release_param;
+            } else {
+                unported!(self, self.is_affected_by_effect(card, EFFECT_EXTRA_RELEASE_SUM));
+            }
+        }
+        rcount
+    }
+
+    pub(crate) fn get_summon_count_limit(&self, playerid: u8) -> i32 {
+        if self.is_flag(DUEL_UNLIMITED_SUMMONS) {
+            return i32::MAX - 100;
+        }
+        unported!(self, self.filter_player_effect(playerid, EFFECT_SET_SUMMON_COUNT_LIMIT, true));
+        1
+    }
+
+    pub(crate) fn get_draw_count(&self, playerid: u8) -> i32 {
+        unported!(self, self.filter_player_effect(playerid, EFFECT_DRAW_COUNT, true));
+        self.player[playerid].draw_count
+    }
+
+    // The EFFECT_ADD_EXTRA_TRIBUTE position filter (`pos`) comes with the cards that register it.
+    pub(crate) fn check_tribute(&mut self, card: CardId, min: i32, max: i32, toplayer: u8, zone: u32, releasable: u32) -> bool {
+        let sumplayer = self.cards[card].current.controler;
+        let ex = toplayer == 1 - sumplayer;
+        let (mut release_list, mut ex_list) = (CardSet::default(), CardSet::default());
+        let m = self.get_summon_release_list(card, &mut release_list, &mut ex_list, ex, releasable) as i32;
+        let mut max = max.min(m);
+        if min > max {
+            return false;
+        }
+        let zone = zone & (0x1f & self.get_forced_zones(Some(card), toplayer, LOCATION_MZONE, sumplayer, LOCATION_REASON_TOFIELD));
+        let mut s = 0;
+        let (mut ct, _) = self.get_tofield_count(Some(card), toplayer, LOCATION_MZONE, sumplayer, LOCATION_REASON_TOFIELD, zone);
+        if ct <= 0 && max <= 0 {
+            return false;
+        }
+        let to_check = if !ex_list.is_empty() && ex_list.len() as i32 >= min {
+            ex_list
+        } else {
+            release_list
+        };
+        for tribute in to_check.iter() {
+            let current = self.cards[tribute].current;
+            if current.location == LOCATION_MZONE && current.controler == toplayer {
+                s += 1;
+                if (zone >> current.sequence) & 1 != 0 {
+                    ct += 1;
+                }
+            }
+        }
+        if ct <= 0 {
+            return false;
+        }
+        max -= ex_list.len() as i32;
+        let fcount = self.get_mzone_limit(toplayer, sumplayer, LOCATION_REASON_TOFIELD);
+        s > -fcount && max.max(0) > -fcount
+    }
+
+    // The shared shape of the is_player_can_* checks: a matching player effect without a target forbids it, one with
+    // a target forbids it for the cards its target takes (further parameters the core passes come with the cards whose
+    // targets read them).
+    #[inline(always)]
+    fn is_player_can(&self, playerid: u8, code: u32, card: CardId) -> bool {
+        if !self.field_effects.registry.has_code(code) {
+            return true;
+        }
+        self.is_player_can_lookup(playerid, code, card)
+    }
+
+    fn is_player_can_lookup(&self, playerid: u8, code: u32, card: CardId) -> bool {
+        !self
+            .filter_player_effect(playerid, code, true)
+            .into_iter()
+            .any(|effect| match self.effects[effect].target {
+                Target::Card(target) => target(self, effect, card),
+                _ => true,
+            })
+    }
+
+    pub(crate) fn is_player_can_summon(&self, _sumtype: u32, playerid: u8, card: CardId, _toplayer: u8) -> bool {
+        unported!(self, self.filter_player_effect(playerid, EFFECT_FORCE_NORMAL_SUMMON_POSITION, true));
+        self.is_player_can(playerid, EFFECT_CANNOT_SUMMON, card)
+    }
+
+    pub(crate) fn is_player_can_flipsummon(&self, playerid: u8, card: CardId) -> bool {
+        self.is_player_can(playerid, EFFECT_CANNOT_FLIP_SUMMON, card)
+    }
+
+    pub(crate) fn is_player_can_mset(&self, _sumtype: u32, playerid: u8, card: CardId, _toplayer: u8) -> bool {
+        self.is_player_can(playerid, EFFECT_CANNOT_MSET, card)
+    }
+
+    pub(crate) fn is_player_can_sset(&self, playerid: u8, card: CardId) -> bool {
+        self.is_player_can(playerid, EFFECT_CANNOT_SSET, card)
+    }
+
+    pub(crate) fn is_player_can_release(&self, playerid: u8, card: CardId, _reason: u32) -> bool {
+        self.is_player_can(playerid, EFFECT_CANNOT_RELEASE, card)
+    }
+
+    pub(crate) fn is_player_can_send_to_grave(&self, playerid: u8, card: CardId, _reason: u32) -> bool {
+        self.is_player_can(playerid, EFFECT_CANNOT_TO_GRAVE, card)
+    }
+
+    pub(crate) fn is_player_can_send_to_hand(&self, playerid: u8, card: CardId) -> bool {
+        self.is_player_can(playerid, EFFECT_CANNOT_TO_HAND, card)
+            && !(self.is_extra_deck_monster(card) && !self.is_player_can_send_to_deck(playerid, card))
+    }
+
+    pub(crate) fn is_player_can_send_to_deck(&self, playerid: u8, card: CardId) -> bool {
+        self.is_player_can(playerid, EFFECT_CANNOT_TO_DECK, card)
+    }
+
+    pub(crate) fn is_player_can_remove(&self, playerid: u8, card: CardId, _reason: u32) -> bool {
+        self.is_player_can(playerid, EFFECT_CANNOT_REMOVE, card)
+    }
+
+    pub(crate) fn is_player_can_discard_hand(&self, playerid: u8, card: CardId) -> bool {
+        self.cards[card].current.location == LOCATION_HAND && self.is_player_can(playerid, EFFECT_CANNOT_DISCARD_HAND, card)
+    }
+
+    // field::is_player_can_spsummon(peffect, ...): EFFECT_FORCE_SPSUMMON_POSITION, the special summon counters and
+    // the once-per-turn summons come with the cards and libraries that use them.
+    pub(crate) fn is_player_can_spsummon(
+        &self,
+        _effect: Option<EffectId>,
+        sumtype: u32,
+        sumpos: u8,
+        playerid: u8,
+        _toplayer: u8,
+        card: CardId,
+    ) -> bool {
+        let target = &self.cards[card];
+        if self.is_affected_by_effect(card, EFFECT_CANNOT_SPECIAL_SUMMON).is_some() || target.is_status(STATUS_FORBIDDEN) {
+            return false;
+        }
+        if target.data.card_type & TYPE_TOKEN != 0 && target.current.location & LOCATION_ONFIELD != 0 {
+            return false;
+        }
+        let mut sumpos = sumpos;
+        if target.data.card_type & TYPE_LINK != 0 && target.data.card_type & TYPE_MONSTER != 0 {
+            sumpos &= POS_FACEUP_ATTACK as u8;
+        }
+        if sumpos == 0 || !self.check_cost_condition(card, EFFECT_SPSUMMON_COST, playerid) {
+            return false;
+        }
+        let _ = sumtype;
+        if !self.is_player_can(playerid, EFFECT_CANNOT_SPECIAL_SUMMON, card) {
+            return false;
+        }
+        unported!(self, self.filter_player_effect(playerid, EFFECT_FORCE_SPSUMMON_POSITION, true));
+        unported!(self, self.field_effects.spsummon_count_eff.iter().copied());
+        true
+    }
+
+    pub(crate) fn field_is_player_can_draw(&self, playerid: u8) -> bool {
+        self.is_player_affected_by_effect(playerid, EFFECT_CANNOT_DRAW).is_none()
+    }
+
+    pub(crate) fn adjust_instant(&mut self) {
+        self.infos.event_id += 1;
+        self.adjust_disable_check_list();
+        self.adjust_self_destroy_set();
+    }
+
+    pub(crate) fn adjust_all(&mut self) {
+        self.infos.event_id += 1;
+        self.emplace_process(Adjust::default());
+    }
+
+    pub(crate) fn add_to_disable_check_list(&mut self, card: CardId) {
+        self.field_effects.disable_check_set.insert(card);
+    }
+
+    pub(crate) fn adjust_disable_check_list(&mut self) {
+        let cards = std::mem::take(&mut self.field_effects.disable_check_set);
+        for card in cards.iter() {
+            if !self.cards[card].is_status(STATUS_TO_ENABLE | STATUS_TO_DISABLE) {
+                let pre_disable = self.cards[card].get_status(STATUS_DISABLED | STATUS_FORBIDDEN);
+                self.refresh_disable_status(card);
+                let new_disable = self.cards[card].get_status(STATUS_DISABLED | STATUS_FORBIDDEN);
+                if pre_disable != new_disable && self.cards[card].is_status(STATUS_EFFECT_ENABLED) {
+                    self.filter_disable_related_cards(card);
+                    self.cards[card].set_status(if pre_disable { STATUS_TO_ENABLE } else { STATUS_TO_DISABLE }, true);
+                }
+            }
+            let target = &self.cards[card];
+            if target.is_status(STATUS_DISABLED) && target.is_status(STATUS_TO_DISABLE) && !target.is_status(STATUS_TO_ENABLE) {
+                self.reset(card, RESET_DISABLE, RESET_EVENT);
+            }
+            self.cards[card].set_status(STATUS_TO_ENABLE | STATUS_TO_DISABLE, false);
+        }
+    }
+
+    // SetUniqueOnField(), EFFECT_SELF_DESTROY and EFFECT_SELF_TOGRAVE come with the cards that use them.
+    pub(crate) fn adjust_self_destroy_set(&mut self) {
+        let registry = &self.field_effects.registry;
+        if self.core.selfdes_disabled || !(registry.has_code(EFFECT_SELF_DESTROY) || registry.has_code(EFFECT_SELF_TOGRAVE)) {
+            return;
+        }
+        let mut cards = CardSet::default();
+        for p in 0..2 {
+            for card in self.player[p].list_mzone.into_iter().flatten() {
+                if self.cards[card].is_position(POS_FACEUP) && !self.cards[card].is_status(STATUS_BATTLE_DESTROYED) {
+                    cards.insert(card);
+                }
+            }
+            for card in self.player[p].list_szone.into_iter().flatten() {
+                if self.cards[card].is_position(POS_FACEUP) {
+                    cards.insert(card);
+                }
+            }
+        }
+        for card in cards.iter() {
+            unported!(self, self.is_affected_by_effect(card, EFFECT_SELF_DESTROY));
+        }
+        if self.core.global_flag & GLOBALFLAG_SELF_TOGRAVE != 0 {
+            for card in cards.iter() {
+                unported!(self, self.is_affected_by_effect(card, EFFECT_SELF_TOGRAVE));
+            }
+        }
+    }
+
+    pub(crate) fn field_is_chain_negatable(&self, chaincount: u8) -> bool {
+        let Some(chain) = self.chain_at(chaincount) else { return false };
+        if self.effects[chain.triggering_effect].is_flag(EFFECT_FLAG_CANNOT_INACTIVATE) {
+            return false;
+        }
+        unported!(self, self.filter_field_effect(EFFECT_CANNOT_INACTIVATE));
+        true
+    }
+
+    pub(crate) fn field_is_chain_disablable(&self, chaincount: u8) -> bool {
+        let Some(chain) = self.chain_at(chaincount) else { return false };
+        let effect = chain.triggering_effect;
+        if !self.cards[self.get_handler(effect)].get_status(STATUS_FORBIDDEN) {
+            if self.effects[effect].is_flag(EFFECT_FLAG_CANNOT_DISABLE) {
+                return false;
+            }
+            unported!(self, self.filter_field_effect(EFFECT_CANNOT_DISEFFECT));
+        }
+        true
+    }
+
+    pub(crate) fn is_chain_disabled(&mut self, chaincount: u8) -> bool {
+        let Some(chain) = self.chain_at(chaincount) else { return false };
+        if chain.flag & CHAIN_DISABLE_EFFECT != 0 {
+            return true;
+        }
+        let card = self.get_handler(chain.triggering_effect);
+        let chain_id = i32::from(chain.chain_id);
+        let disabled: EffectSet = self
+            .field_effects
+            .registry
+            .equal_range(Container::Single, Some(card), EFFECT_DISABLE_CHAIN)
+            .collect();
+        for effect in disabled {
+            if self.get_value(effect, card) == chain_id {
+                self.effects[effect].reset_flag |= RESET_CHAIN;
+                return true;
+            }
+        }
+        false
+    }
+
+    // The chain link `chaincount` (1-based), or the newest for 0; None past the chain.
+    pub(crate) fn chain_at(&self, chaincount: u8) -> Option<&Chain> {
+        if usize::from(chaincount) > self.core.current_chain.len() {
+            return None;
+        }
+        if chaincount == 0 {
+            self.core.current_chain.last()
+        } else {
+            self.core.current_chain.get(usize::from(chaincount) - 1)
+        }
+    }
+
+    // field::get_chain: the solving continuous effect's chain for 0 while one runs, else as chain_at but clamping
+    // counts past the chain to the newest link.
+    pub(crate) fn get_chain(&mut self, chaincount: u8) -> Option<&mut Chain> {
+        match self.chain_slot(chaincount)? {
+            (true, _) => self.core.continuous_chain.last_mut(),
+            (false, index) => self.core.current_chain.get_mut(index),
+        }
+    }
+
+    pub(crate) fn get_chain_ref(&self, chaincount: u8) -> Option<&Chain> {
+        match self.chain_slot(chaincount)? {
+            (true, _) => self.core.continuous_chain.last(),
+            (false, index) => self.core.current_chain.get(index),
+        }
+    }
+
+    // Whether get_chain reads the continuous chain, else the index into the current chain.
+    fn chain_slot(&self, chaincount: u8) -> Option<(bool, usize)> {
+        let continuous = self
+            .core
+            .reason_effect
+            .get()
+            .is_some_and(|effect| self.effects[effect].effect_type & EFFECT_TYPE_CONTINUOUS != 0);
+        if chaincount == 0 && continuous && !self.core.continuous_chain.is_empty() {
+            return Some((true, 0));
+        }
+        let len = self.core.current_chain.len();
+        let index = if chaincount == 0 || usize::from(chaincount) > len {
+            len
+        } else {
+            usize::from(chaincount)
+        };
+        Some((false, index.checked_sub(1)?))
+    }
+
+    // field::get_cteffect: whether activating a face-down continuous trap with a plain activation could also apply one
+    // of its trigger or quick effects; `store` collects them as the choices.
+    pub(crate) fn get_cteffect(&mut self, effect: EffectId, playerid: u8, store: bool) -> bool {
+        if !self.is_plain_continuous_trap_activation(effect) {
+            return false;
+        }
+        if store {
+            self.core.select_chains.clear();
+            self.core.select_options.clear();
+        }
+        for (code, feffect) in self.cteffect_candidates(effect) {
+            for event in self.cteffect_events(code) {
+                if self.get_cteffect_evt(feffect, playerid, event, store) && !store {
+                    return true;
+                }
+            }
+        }
+        store && !self.core.select_chains.is_empty()
+    }
+
+    fn is_plain_continuous_trap_activation(&self, effect: EffectId) -> bool {
+        let peffect = &self.effects[effect];
+        self.cards[self.get_handler(effect)].data.card_type == TYPE_TRAP | TYPE_CONTINUOUS
+            && peffect.effect_type & EFFECT_TYPE_ACTIVATE != 0
+            && peffect.code == EVENT_FREE_CHAIN
+            && peffect.cost.is_none()
+            && matches!(peffect.target, Target::None)
+            && peffect.operation.is_none()
+    }
+
+    // The trigger and quick effects of the trap's field container that are in range, with their codes.
+    fn cteffect_candidates(&self, effect: EffectId) -> List<(u32, EffectId), 4> {
+        let handler = self.get_handler(effect);
+        let actions = EFFECT_TYPE_TRIGGER_F | EFFECT_TYPE_TRIGGER_O | EFFECT_TYPE_QUICK_O;
+        self.field_effects
+            .registry
+            .all(Container::Field, Some(handler))
+            .filter(|&(_, feffect)| self.effects[feffect].effect_type & actions != 0 && self.in_range(feffect, handler))
+            .collect()
+    }
+
+    // The events a candidate of `code` is checked against: the free chain or the current phase, else the pending ones.
+    fn cteffect_events(&mut self, code: u32) -> List<Event, 4> {
+        if code == EVENT_FREE_CHAIN || code == EVENT_PHASE + u32::from(self.infos.phase) {
+            self.nil_event.event_code = code;
+            return List::from_iter([self.nil_event]);
+        }
+        let core = &self.core;
+        core.point_event
+            .iter()
+            .chain(&core.instant_event)
+            .filter(|event| event.event_code == code)
+            .copied()
+            .collect()
+    }
+
+    fn get_cteffect_evt(&mut self, feffect: EffectId, playerid: u8, event: Event, store: bool) -> bool {
+        if !self.is_activateable(feffect, playerid, &event, false, false, false, false, true) {
+            return false;
+        }
+        if store {
+            let mut chain = Chain::new(feffect);
+            chain.evt = event;
+            self.core.select_chains.push(chain);
+            let description = self.effects[feffect].description;
+            self.core.select_options.push(description);
+        }
+        true
+    }
+
+    pub(crate) fn check_cteffect_hint(&mut self, effect: EffectId, playerid: u8) -> bool {
+        if !self.is_plain_continuous_trap_activation(effect) {
+            return false;
+        }
+        for (code, feffect) in self.cteffect_candidates(effect) {
+            for event in self.cteffect_events(code) {
+                if self.get_cteffect_evt(feffect, playerid, event, false) && (code != EVENT_FREE_CHAIN || self.check_hint_timing(feffect)) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    pub(crate) fn check_hint_timing(&self, effect: EffectId) -> bool {
+        let peffect = &self.effects[effect];
+        let p = self.get_handler_player(effect);
+        let (own, other) = if p == 0 {
+            (self.core.hint_timing[0], self.core.hint_timing[1])
+        } else {
+            (self.core.hint_timing[1], self.core.hint_timing[0])
+        };
+        peffect.hint_timing[0] & own != 0 || peffect.hint_timing[1] & other != 0
+    }
+
+    pub(crate) fn check_nonpublic_trigger(&mut self, chain: &mut Chain) -> bool {
+        let effect = chain.triggering_effect;
+        let phandler = self.get_handler(effect);
+        let peffect = &self.effects[effect];
+        let hand_or_deck = u16::from(LOCATION_HAND | LOCATION_DECK);
+        if !peffect.is_flag(EFFECT_FLAG_FIELD_ONLY)
+            && ((peffect.effect_type & EFFECT_TYPE_SINGLE != 0
+                && !peffect.is_flag(EFFECT_FLAG_SINGLE_RANGE)
+                && self.is_has_relation(phandler, effect, chain.chain_id)
+                && chain.triggering_location & hand_or_deck != 0)
+                || peffect.range & hand_or_deck != 0)
+        {
+            chain.flag |= CHAIN_HAND_TRIGGER;
+            self.core.new_ochain_h.push(*chain);
+            let range = peffect.range;
+            if !self.is_flag(DUEL_TCG_SEGOC_NONPUBLIC)
+                && ((chain.triggering_location == u16::from(LOCATION_HAND) && self.cards[phandler].is_position(POS_FACEDOWN))
+                    || chain.triggering_location == u16::from(LOCATION_DECK)
+                    || (range != 0 && !self.in_range_chain(effect, chain)))
+            {
+                return false;
+            }
+        }
+        true
+    }
+
+    pub(crate) fn check_trigger_effect(&self, chain: &Chain) -> bool {
+        let effect = chain.triggering_effect;
+        let phandler = self.get_handler(effect);
+        let has_relation = self.is_has_relation(phandler, effect, chain.chain_id);
+        if self.is_flag(DUEL_TRIGGER_ONLY_IN_LOCATION) {
+            return has_relation;
+        }
+        let peffect = &self.effects[effect];
+        if peffect.effect_type & EFFECT_TYPE_FIELD != 0 && !has_relation {
+            return false;
+        }
+        if peffect.code == EVENT_FLIP && self.infos.phase == PHASE_DAMAGE {
+            return true;
+        }
+        if self.is_flag(DUEL_TRIGGER_WHEN_PRIVATE_KNOWLEDGE) {
+            return true;
+        }
+        let card = &self.cards[phandler];
+        let hidden = u16::from(LOCATION_DECK | LOCATION_HAND | LOCATION_EXTRA);
+        if card.current.location & LOCATION_DECK != 0 && chain.triggering_location != u16::from(LOCATION_DECK) {
+            return false;
+        }
+        if chain.triggering_location & hidden != 0 && u32::from(chain.triggering_position) & POS_FACEDOWN != 0 {
+            return true;
+        }
+        u16::from(card.current.location) & hidden == 0 || card.is_position(POS_FACEUP)
+    }
+
+    pub(crate) fn check_spself_from_hand_trigger(&self, chain: &Chain) -> bool {
+        if self.effects.status(chain.triggering_effect) & EFFECT_STATUS_SUMMON_SELF != 0 && chain.flag & CHAIN_HAND_TRIGGER != 0 {
+            let tp = chain.triggering_player;
+            return !self.core.current_chain.iter().any(|other| {
+                other.triggering_player == tp
+                    && self.effects.status(other.triggering_effect) & EFFECT_STATUS_SUMMON_SELF != 0
+                    && other.flag & CHAIN_HAND_TRIGGER != 0
+            });
+        }
+        true
+    }
+}

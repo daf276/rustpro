@@ -1,0 +1,131 @@
+use std::collections::HashMap;
+
+use rand::Rng;
+use rand::seq::{IndexedRandom, SliceRandom};
+
+use crate::cards::{Card, CardDatabase, TYPE_EXTRA, TYPE_TOKEN};
+
+const OT_TCG: u32 = 0x2;
+const MAIN_SIZE: usize = 40;
+const EXTRA_MAX: usize = 15;
+const COPIES_MAX: u8 = 3;
+
+// lflist.conf: the first `!name` line opens the current list; entries are `<id> <limit> --name`.
+pub fn banlist_limits(banlist: &str) -> HashMap<u32, u8> {
+    banlist
+        .lines()
+        .skip_while(|line| !line.starts_with('!'))
+        .skip(1)
+        .take_while(|line| !line.starts_with('!'))
+        .filter_map(|line| {
+            let mut fields = line.split_whitespace();
+            Some((fields.next()?.parse().ok()?, fields.next()?.parse().ok()?))
+        })
+        .collect()
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Deck {
+    pub main: Vec<u32>,
+    pub extra: Vec<u32>,
+}
+
+impl Deck {
+    // Lines `main`, `extra` and `side` followed by comma-separated codes; alternate arts become their original, as the
+    // pool has no alternate arts. The side deck is left out.
+    pub fn parse(text: &str, cards: &CardDatabase) -> Self {
+        let section = |name: &str| -> Vec<u32> {
+            let codes = text.lines().find_map(|line| line.strip_prefix(name)?.strip_prefix(' '));
+            codes
+                .unwrap_or_default()
+                .split(',')
+                .filter_map(|code| code.trim().parse().ok())
+                .map(|code| match cards.get(code) {
+                    Some(card) if card.is_alternate_art() => card.alias,
+                    _ => code,
+                })
+                .collect()
+        };
+        Self {
+            main: section("main"),
+            extra: section("extra"),
+        }
+    }
+
+    pub fn shuffled(&self, rng: &mut impl Rng) -> Self {
+        let mut deck = self.clone();
+        deck.main.shuffle(rng);
+        deck
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Pool {
+    pub main: Vec<u32>,
+    pub extra: Vec<u32>,
+    limits: HashMap<u32, u8>,
+}
+
+impl Pool {
+    pub fn advanced(cards: &CardDatabase, limits: HashMap<u32, u8>) -> Self {
+        let (extra, main): (Vec<&Card>, Vec<&Card>) = cards
+            .cards()
+            .filter(|card| card.ot & OT_TCG != 0 && card.card_type & TYPE_TOKEN == 0 && !card.is_alternate_art())
+            .filter(|card| limits.get(&card.code) != Some(&0))
+            .partition(|card| card.card_type & TYPE_EXTRA != 0);
+        let codes = |cards: Vec<&Card>| cards.iter().map(|card| card.code).collect();
+        Self {
+            main: codes(main),
+            extra: codes(extra),
+            limits,
+        }
+    }
+
+    pub fn retain(&mut self, mut keep: impl FnMut(u32) -> bool) {
+        self.main.retain(|&code| keep(code));
+        self.extra.retain(|&code| keep(code));
+    }
+
+    pub fn limit(&self, code: u32) -> u8 {
+        self.limits.get(&code).copied().unwrap_or(COPIES_MAX)
+    }
+
+    pub fn random_deck(&self, rng: &mut impl Rng) -> Deck {
+        let mut main = self.random_cards(&self.main, MAIN_SIZE, rng);
+        main.shuffle(rng);
+        let extra_size = rng.random_range(0..=EXTRA_MAX);
+        Deck {
+            main,
+            extra: self.random_cards(&self.extra, extra_size, rng),
+        }
+    }
+
+    // A random deck whose main deck holds zero to two copies of each of `cards`, filled up with the pool's cards.
+    pub fn random_deck_with(&self, cards: &[u32], rng: &mut impl Rng) -> Deck {
+        let mut deck = self.random_deck(rng);
+        if cards.is_empty() {
+            return deck;
+        }
+        let mut main: Vec<u32> = cards
+            .iter()
+            .flat_map(|&code| std::iter::repeat_n(code, rng.random_range(0..=2)))
+            .collect();
+        main.extend(deck.main.iter().take(MAIN_SIZE.saturating_sub(main.len())));
+        main.shuffle(rng);
+        deck.main = main;
+        deck
+    }
+
+    // Distinct cards, each with a random legal number of copies.
+    fn random_cards(&self, candidates: &[u32], size: usize, rng: &mut impl Rng) -> Vec<u32> {
+        let mut cards = Vec::with_capacity(size);
+        for &code in candidates.choose_multiple(rng, size) {
+            if cards.len() == size {
+                break;
+            }
+            let copies = rng.random_range(1..=usize::from(self.limit(code)).min(size - cards.len()));
+            cards.extend(std::iter::repeat_n(code, copies));
+        }
+        cards
+    }
+}

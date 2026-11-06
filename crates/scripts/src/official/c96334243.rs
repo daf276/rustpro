@@ -1,0 +1,16 @@
+// Sea Monster of Theseus
+use crate::prelude::*;
+
+struct Materials;
+
+impl FusionMix for Materials {
+    const SUB: bool = true;
+    const INSF: bool = true;
+    const MATERIALS: &'static [FusionMaterial] =
+        &[FusionMaterial::Filter(|c, duel, fc, sumtype, tp| c.is_type_full(duel, TYPE_TUNER, Some(fc), sumtype, tp)); 2];
+}
+
+pub fn initial_effect(duel: &mut Duel, c: CardId) {
+    c.enable_revive_limit(duel);
+    Fusion::add_proc_mix_n::<Materials>(duel, c);
+}

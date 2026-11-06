@@ -1,0 +1,724 @@
+// Port of utility.lua and cards_specific_functions.lua: the Auxiliary and Cost helpers and the Card, Effect and Duel
+// methods they add.
+use engine::{Args, CardId, CardSet, CostFn, Duel, EffectId, Script, Value};
+
+use crate::chain::EffectChain;
+use crate::constant::*;
+use crate::proc_workaround::CardWorkaround;
+
+// The chain data slots of cd.cost_detached_materials and cd.cost_discarded_cards, above those card ports use.
+const COST_DETACHED_MATERIALS: u8 = u8::MAX;
+const COST_DISCARDED_CARDS: u8 = u8::MAX - 1;
+
+pub mod aux {
+    use engine::{Args, CardId, CardSet, Duel, EffectId, Script};
+
+    use crate::chain::DuelChain;
+    use crate::constant::*;
+    use crate::proc_workaround::CardWorkaround;
+    use crate::utility::CardUtility;
+
+    pub const TRUE: fn(CardId, &Duel) -> bool = |_, _| true;
+
+    // The group check (sg, mg, c) of SelectUnselectGroup, whose e and tp are captures; returns (res, stop).
+    pub type GroupCheck<'a> = &'a dyn Fn(&Duel, CardSet, CardSet, Option<CardId>) -> (bool, bool);
+
+    pub const fn stringid(code: u32, id: u64) -> u64 {
+        (id & 0xfffff) | ((code as u64) << 20)
+    }
+
+    pub fn exccon(duel: &Duel, a: &Args) -> bool {
+        let c = a.e.get_handler(duel);
+        duel.get_turn_count() != c.get_turn_id(duel) || c.is_reason(duel, REASON_RETURN)
+    }
+
+    pub fn faceup_filter(filter: impl Fn(CardId, &Duel) -> bool) -> impl Fn(CardId, &Duel) -> bool {
+        move |c, duel| c.is_faceup(duel) && filter(c, duel)
+    }
+
+    pub fn nvfilter(c: CardId, duel: &Duel) -> bool {
+        c.is_has_effect(duel, EFFECT_NECRO_VALLEY).is_none()
+    }
+
+    pub fn necro_valley_filter(filter: impl Fn(CardId, &Duel) -> bool) -> impl Fn(CardId, &Duel) -> bool {
+        move |c, duel| filter(c, duel) && !(c.is_has_effect(duel, EFFECT_NECRO_VALLEY).is_some() && duel.is_chain_disablable(0))
+    }
+
+    pub fn sp_elim_filter(c: CardId, duel: &Duel, mustbefaceup: bool, includemzone: bool) -> bool {
+        if !c.is_monster(duel) {
+            return includemzone || c.is_location(duel, LOCATION_GRAVE);
+        }
+        if mustbefaceup && c.is_location(duel, LOCATION_MZONE) && c.is_facedown(duel) {
+            return false;
+        }
+        let spirit_elimination = duel.is_player_affected_by_effect(c.get_controler(duel), 69832741).is_some();
+        if includemzone {
+            return c.is_location(duel, LOCATION_MZONE) || !spirit_elimination;
+        }
+        c.is_location(duel, if spirit_elimination { LOCATION_MZONE } else { LOCATION_GRAVE })
+    }
+
+    pub fn register_client_hint(
+        duel: &mut Duel,
+        card: CardId,
+        property: u32,
+        tp: u8,
+        player1: u32,
+        player2: u32,
+        description: Option<u64>,
+    ) -> EffectId {
+        register_client_hint_full(duel, card, property, tp, player1, player2, description, 0)
+    }
+
+    // `description` None takes the card's second string.
+    pub fn register_client_hint_full(
+        duel: &mut Duel,
+        card: CardId,
+        property: u32,
+        tp: u8,
+        player1: u32,
+        player2: u32,
+        description: Option<u64>,
+        reset: u32,
+    ) -> EffectId {
+        let eff = duel.create_effect(card);
+        eff.set_property(duel, (EFFECT_FLAG_PLAYER_TARGET + EFFECT_FLAG_CLIENT_HINT) | property);
+        eff.set_target_range(duel, player1, player2);
+        let description = description.unwrap_or_else(|| stringid(card.get_original_code(duel), 1));
+        eff.set_description(duel, description);
+        eff.set_reset(duel, (RESET_PHASE + PHASE_END) | reset);
+        duel.register_effect(eff, tp);
+        eff
+    }
+
+    // Auxiliary.ToHandOrElse for one card: to the hand, or else `oper` where `check` allows it (`str` its option).
+    pub fn to_hand_or_else(
+        duel: &mut Duel,
+        card: CardId,
+        player: u8,
+        check: impl Fn(CardId, &Duel) -> bool,
+        oper: impl FnOnce(&mut Duel) -> Script<()>,
+        str: u64,
+    ) -> Script<()> {
+        let b1 = card.is_able_to_hand(duel);
+        let b2 = check(card, duel);
+        let opt = if b1 && b2 {
+            duel.select_option(player, &[573, str])?
+        } else if b1 {
+            duel.select_option(player, &[573])?
+        } else {
+            duel.select_option(player, &[str])? + 1
+        };
+        if opt != 0 {
+            return oper(duel);
+        }
+        if duel.send_to_hand(card, PLAYER_NONE, REASON_EFFECT)? > 0 {
+            let og = duel
+                .get_operated_group()
+                .filter(duel, |c, duel| c.is_previous_location(duel, LOCATION_DECK), None);
+            if !og.is_empty() {
+                duel.confirm_cards(1 - player, og)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn select_unselect_loop(duel: &Duel, c: CardId, sg: CardSet, mg: CardSet, minc: usize, maxc: usize, rescon: GroupCheck) -> bool {
+        if sg.len() >= maxc {
+            return false;
+        }
+        let mut sg = sg;
+        sg.insert(c);
+        let (mut res, stop) = rescon(duel, sg, mg, Some(c));
+        if stop {
+            return false;
+        }
+        if sg.len() < minc || (sg.len() < maxc && !res) {
+            res = mg.is_exists(
+                duel,
+                |other, duel| select_unselect_loop(duel, other, sg, mg, minc, maxc, rescon),
+                1,
+                Some(sg),
+            );
+        }
+        res
+    }
+
+    // Auxiliary.SelectUnselectGroup with chk=0: whether `rescon` accepts some group of `minc` to `maxc` cards of g.
+    pub fn select_unselect_group_check(duel: &Duel, g: CardSet, minc: usize, maxc: usize, rescon: GroupCheck) -> bool {
+        if g.len() < minc {
+            return false;
+        }
+        let mut eg = g;
+        for c in g {
+            if select_unselect_loop(duel, c, CardSet::default(), eg, minc, maxc, rescon) {
+                return true;
+            }
+            eg.remove(c);
+        }
+        false
+    }
+
+    pub fn select_unselect_group(
+        duel: &mut Duel,
+        g: CardSet,
+        minc: usize,
+        maxc: usize,
+        rescon: GroupCheck,
+        seltp: u8,
+        hintmsg: u64,
+    ) -> Script<CardSet> {
+        select_unselect_group_full(duel, g, minc, maxc, rescon, seltp, hintmsg, None, false)
+    }
+
+    // Auxiliary.SelectUnselectGroup with chk=1: `seltp` picks or drops one card at a time.
+    pub fn select_unselect_group_full(
+        duel: &mut Duel,
+        g: CardSet,
+        minc: usize,
+        maxc: usize,
+        rescon: GroupCheck,
+        seltp: u8,
+        hintmsg: u64,
+        finishcon: Option<GroupCheck>,
+        cancelable: bool,
+    ) -> Script<CardSet> {
+        let mut sg = CardSet::default();
+        loop {
+            let finishable = sg.len() >= minc && finishcon.is_none_or(|finishcon| finishcon(duel, sg, g, None).0);
+            let mg = g.filter(duel, |c, duel| select_unselect_loop(duel, c, sg, g, minc, maxc, rescon), Some(sg));
+            if mg.is_empty() || sg.len() >= maxc {
+                break;
+            }
+            duel.hint(HINT_SELECTMSG, seltp, hintmsg);
+            let cancel = finishable || (cancelable && sg.is_empty());
+            let Some(tc) = mg.select_unselect(duel, Some(sg), seltp, finishable, cancel, minc as u8, maxc as u8)? else {
+                break;
+            };
+            if sg.is_contains(tc) {
+                sg.remove(tc);
+            } else {
+                sg.insert(tc);
+            }
+        }
+        Ok(sg)
+    }
+
+    // Clock Lizard's check, which nothing ported reads; the effects are registered all the same.
+    fn create_lizard_check(duel: &mut Duel, c: CardId, filter: fn(&Duel, EffectId, CardId) -> bool) -> EffectId {
+        let e1 = duel.create_effect(c);
+        e1.set_type(duel, EFFECT_TYPE_FIELD);
+        e1.set_code(duel, CARD_CLOCK_LIZARD);
+        e1.set_target_range(duel, 0xff, 0);
+        e1.set_target_card(duel, filter);
+        e1.set_value(duel, 1);
+        e1
+    }
+
+    pub fn add_lizard_check(duel: &mut Duel, c: CardId) -> EffectId {
+        let e1 = duel.create_effect(c);
+        e1.set_type(duel, EFFECT_TYPE_SINGLE);
+        e1.set_code(duel, CARD_CLOCK_LIZARD);
+        e1.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
+        e1.set_value(duel, 1);
+        c.register_effect(duel, e1);
+        e1
+    }
+
+    pub fn add_temp_lizard_check(duel: &mut Duel, c: CardId, tp: u8) -> EffectId {
+        let e1 = create_lizard_check(duel, c, |_, _, _| true);
+        e1.set_reset(duel, RESET_PHASE | PHASE_END);
+        duel.register_effect(e1, tp);
+        e1
+    }
+
+    pub fn add_continuous_lizard_check(duel: &mut Duel, c: CardId, location: u32, filter: fn(&Duel, EffectId, CardId) -> bool) -> EffectId {
+        let e1 = create_lizard_check(duel, c, filter);
+        e1.set_range(duel, location);
+        c.register_effect(duel, e1);
+        e1
+    }
+
+    // The oper of DelayedOperation and RemoveUntil, as a type because effect operations cannot capture it.
+    pub trait DelayedOperation {
+        fn operate(duel: &mut Duel, rg: CardSet, a: &Args) -> Script<()>;
+    }
+
+    // delayed_operation_id, the global counter of utility.lua.
+    const DELAYED_OPERATION_ID: u64 = 3;
+
+    // The delayed effect keeps the flag beside the fid in its label, where the Lua closures capture it.
+    fn affected_group(duel: &Duel, e: EffectId) -> CardSet {
+        let &[fid, flag] = e.get_labels(duel) else {
+            return CardSet::default();
+        };
+        let g = e.get_label_object_group(duel).unwrap_or_default();
+        g.filter(duel, |c, duel| c.get_flag_effect_label(duel, flag as u32) == Some(fid), None)
+    }
+
+    pub fn delayed_operation<O: DelayedOperation>(
+        duel: &mut Duel,
+        g: CardSet,
+        phase: u32,
+        flag: u32,
+        e: EffectId,
+        tp: u8,
+    ) -> Option<EffectId> {
+        if g.is_empty() {
+            return None;
+        }
+        let fid = duel.get_script_state(DELAYED_OPERATION_ID) + 1;
+        duel.set_script_state(DELAYED_OPERATION_ID, fid);
+        let e1 = duel.create_effect(e.get_handler(duel));
+        e1.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
+        e1.set_property(duel, EFFECT_FLAG_IGNORE_IMMUNE);
+        e1.set_code(duel, EVENT_PHASE | phase);
+        e1.set_reset(duel, RESET_PHASE | phase);
+        e1.set_count_limit(duel, 1, 0);
+        e1.set_labels(duel, &[fid, flag.into()]);
+        e1.set_label_object_group(duel, Some(g));
+        e1.set_condition(duel, |duel, a| !affected_group(duel, a.e).is_empty());
+        e1.set_operation(duel, |duel, a| O::operate(duel, affected_group(duel, a.e), a));
+        duel.register_effect(e1, tp);
+        for tc in g {
+            let flag_effect = tc.register_flag_effect_full(duel, flag, RESET_EVENT + RESETS_STANDARD, 0, 1, fid, 0);
+            flag_effect.set_label_object(duel, Some(e1));
+            flag_effect.set_condition(duel, |duel, a| !a.e.get_label_object(duel).is_some_and(|e1| e1.is_deleted(duel)));
+        }
+        Some(e1)
+    }
+
+    pub fn remove_until<O: DelayedOperation>(
+        duel: &mut Duel,
+        g: impl Into<CardSet>,
+        position: u32,
+        reason: u32,
+        phase: u32,
+        flag: u32,
+        e: EffectId,
+        tp: u8,
+    ) -> Script<Option<EffectId>> {
+        let g = g.into();
+        if g.is_empty() || duel.remove(g, position, reason | REASON_TEMPORARY)? == 0 {
+            return Ok(None);
+        }
+        let g = g.filter(duel, |c, duel| c.is_location(duel, LOCATION_REMOVED), None);
+        Ok(if g.is_empty() {
+            None
+        } else {
+            delayed_operation::<O>(duel, g, phase, flag, e, tp)
+        })
+    }
+
+    // The lowest limit of the player's Summon Gate effects, which come with the cards that register them.
+    pub fn check_summon_gate(duel: &Duel, tp: u8) -> Option<i32> {
+        if !duel.get_player_effect(tp, CARD_SUMMON_GATE).is_empty() {
+            duel.reach_unported(concat!(file!(), ":", line!()));
+        }
+        None
+    }
+
+    // Auxiliary.GetMustBeMaterialGroup: the monsters EFFECT_MUST_BE_MATERIAL effects of the player force on a summon;
+    // those effects come with the cards that register them.
+    pub fn get_must_be_material_group(
+        duel: &Duel,
+        tp: u8,
+        _eg: Option<CardSet>,
+        _sump: u8,
+        _sc: Option<CardId>,
+        _g: Option<CardSet>,
+        _r: u32,
+    ) -> CardSet {
+        unported!(duel, !duel.get_player_effect(tp, EFFECT_MUST_BE_MATERIAL).is_empty());
+        CardSet::default()
+    }
+
+    // Auxiliary.GetExtraMaterials without the materials, as EFFECT_EXTRA_MATERIAL comes with the cards that register it.
+    pub fn get_extra_materials(duel: &Duel, tp: u8, _mustg: CardSet, _sc: CardId, _summon_type: u32) {
+        unported!(duel, !duel.get_player_effect(tp, EFFECT_EXTRA_MATERIAL).is_empty());
+    }
+
+    // Auxiliary.dpcheck(fun): a SelectUnselectGroup check that the selected cards all differ in `fun`.
+    pub fn dpcheck(fun: impl Fn(CardId, &Duel) -> i64) -> impl Fn(&Duel, CardSet, CardSet, Option<CardId>) -> (bool, bool) {
+        move |duel, sg, _, _| {
+            let (c1, c2) = (sg.get_class_count(duel, &fun), sg.len());
+            (c1 == c2, c1 != c2)
+        }
+    }
+
+    // Auxiliary.tgoval: EFFECT_CANNOT_BE_EFFECT_TARGET for the opponent's effects.
+    pub fn tgoval(duel: &Duel, e: EffectId, _re: EffectId, rp: u8) -> bool {
+        rp != e.get_handler_player(duel)
+    }
+
+    // Auxiliary.cannotmatfilter(...) applied: whether `sumtype` is one of the summon types in `allowed`.
+    pub fn cannotmatfilter(allowed: &[u64], sumtype: u64) -> bool {
+        let tot = allowed.iter().fold(0, |tot, &value| tot | value);
+        let sum = tot & sumtype;
+        allowed.contains(&sum)
+    }
+
+    fn select_field_return_cards(duel: &mut Duel, p: u8, g: CardSet) -> Script<()> {
+        if g.is_empty() {
+            return Ok(());
+        }
+        let mut g = g;
+        let ft = duel.get_location_count(p, LOCATION_MZONE);
+        if ft > 0 && g.len() > ft as usize {
+            duel.hint(HINT_SELECTMSG, p, HINTMSG_TOFIELD);
+            let tg = g.select(duel, p, ft as u8, ft as u8, None)?;
+            for tc in tg {
+                duel.return_to_field(tc)?;
+            }
+            g = g.difference(tg);
+        }
+        for tc in g {
+            duel.return_to_field(tc)?;
+        }
+        Ok(())
+    }
+
+    // Auxiliary.DefaultFieldReturnOp: the banished cards return to the monster zones, the turn player's first.
+    pub struct DefaultFieldReturnOp;
+
+    impl DelayedOperation for DefaultFieldReturnOp {
+        fn operate(duel: &mut Duel, rg: CardSet, _: &Args) -> Script<()> {
+            if rg.is_empty() {
+                return Ok(());
+            }
+            let turn_p = duel.get_turn_player();
+            let g0 = rg.filter(duel, |c, duel| c.is_previous_controler(duel, turn_p), None);
+            let g1 = rg.difference(g0);
+            select_field_return_cards(duel, turn_p, g0)?;
+            select_field_return_cards(duel, 1 - turn_p, g1)
+        }
+    }
+}
+
+pub struct Cost;
+
+impl Cost {
+    pub fn self_discard(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        let c = args.e.get_handler(duel);
+        if chk == 0 {
+            return Ok(c.is_discardable(duel));
+        }
+        duel.send_to_grave(c, REASON_DISCARD | REASON_COST)?;
+        Ok(false)
+    }
+
+    pub fn self_banish(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        let c = args.e.get_handler(duel);
+        if chk == 0 {
+            return Ok(c.is_able_to_remove_as_cost(duel));
+        }
+        duel.remove(c, POS_FACEUP, REASON_COST)?;
+        Ok(false)
+    }
+
+    // Cost.Replaceable(base) applied: the base cost, unless one of the player's EFFECT_COST_REPLACE effects stands
+    // in for it (those come with the cards that register them).
+    pub fn replaceable(duel: &mut Duel, args: &Args, chk: i32, base: CostFn) -> Script<bool> {
+        let base_chk = base(duel, args, 0)?;
+        if !duel.get_player_effect(args.tp, EFFECT_COST_REPLACE).is_empty() {
+            duel.reach_unported(concat!(file!(), ":", line!()));
+        }
+        if chk == 0 {
+            return Ok(base_chk);
+        }
+        base(duel, args, 1)
+    }
+
+    pub fn self_tribute(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        let c = args.e.get_handler(duel);
+        if chk == 0 {
+            return Ok(c.is_releasable(duel));
+        }
+        duel.release(c, REASON_COST)?;
+        Ok(false)
+    }
+
+    // Cost.Discard() applied: one card from the hand; the discarded cards are kept as the chain data's
+    // cost_discarded_cards.
+    pub fn discard(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        let (e, tp) = (args.e, args.tp);
+        if chk == 0 {
+            return Ok(duel.is_existing_matching_card(|c, duel| c.is_discardable(duel), tp, LOCATION_HAND, 0, 1, None));
+        }
+        duel.discard_hand(tp, |c, duel| c.is_discardable(duel), 1, 1, REASON_COST | REASON_DISCARD)?;
+        let discarded = duel.get_operated_group();
+        e.set_chain_data_group(duel, COST_DISCARDED_CARDS, discarded);
+        Ok(false)
+    }
+
+    // Cost.DetachFromSelf(min, max) applied, without `op`; the detached materials are kept as the chain data's
+    // cost_detached_materials.
+    pub fn detach_from_self<const MIN: u16, const MAX: u16>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        let (e, tp) = (args.e, args.tp);
+        let c = e.get_handler(duel);
+        if chk == 0 {
+            return Ok(MIN > 0 && MAX >= MIN && c.check_remove_overlay_card(duel, tp, MIN, REASON_COST));
+        }
+        if c.remove_overlay_card(duel, tp, MIN, MAX, REASON_COST)? > 0 {
+            let detached = duel.get_operated_group();
+            e.set_chain_data_group(duel, COST_DETACHED_MATERIALS, detached);
+        }
+        Ok(false)
+    }
+
+    // Cost.RemoveCounterFromField(counter_type, count) applied.
+    pub fn remove_counter_from_field<const COUNTER_TYPE: u16, const COUNT: u16>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        if chk == 0 {
+            return Ok(duel.is_can_remove_counter(args.tp, 1, 0, COUNTER_TYPE, COUNT, REASON_COST));
+        }
+        duel.remove_counter(args.tp, 1, 0, COUNTER_TYPE, COUNT, REASON_COST)?;
+        Ok(false)
+    }
+}
+
+pub trait CardUtility: Copy {
+    fn is_monster(self, duel: &Duel) -> bool;
+    fn is_spell_trap(self, duel: &Duel) -> bool;
+    fn is_continuous_spell(self, duel: &Duel) -> bool;
+    fn is_continuous_trap(self, duel: &Duel) -> bool;
+    fn is_synchro_monster(self, duel: &Duel) -> bool;
+    fn is_non_effect_monster(self, duel: &Duel) -> bool;
+    fn is_in_main_mzone(self, duel: &Duel, tp: Option<u8>) -> bool;
+    fn is_sequence(self, duel: &Duel, sequence: u32) -> bool;
+    fn has_level(self, duel: &Duel) -> bool;
+    fn is_original_level(self, duel: &Duel, level: u32) -> bool;
+    fn lists_code(self, duel: &Duel, code: u32) -> bool;
+    fn is_negatable_monster(self, duel: &Duel) -> bool;
+    fn is_negatable_spell_trap(self, duel: &Duel) -> bool;
+    fn is_negatable(self, duel: &Duel) -> bool;
+    fn add_must_be_special_summoned(self, duel: &mut Duel) -> EffectId;
+    fn add_must_first_be_fusion_summoned(self, duel: &mut Duel) -> EffectId;
+
+    fn negate_effects(self, duel: &mut Duel, c: CardId, reset: u32, negates_cards: bool);
+    fn is_fusion_monster(self, duel: &Duel) -> bool;
+    fn is_link_monster(self, duel: &Duel) -> bool;
+    fn is_fusion_summoned(self, duel: &Duel) -> bool;
+    fn is_synchro_summoned(self, duel: &Duel) -> bool;
+    fn is_link_summoned(self, duel: &Duel) -> bool;
+    fn is_xyz_summoned(self, duel: &Duel) -> bool;
+    fn has_flag_effect(self, duel: &Duel, id: u32) -> bool;
+    fn update_level(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>) -> i32;
+}
+
+impl CardUtility for CardId {
+    fn is_fusion_monster(self, duel: &Duel) -> bool {
+        self.is_composite_type(duel, TYPE_MONSTER | TYPE_FUSION)
+    }
+
+    fn is_link_monster(self, duel: &Duel) -> bool {
+        self.is_composite_type(duel, TYPE_MONSTER | TYPE_LINK)
+    }
+
+    fn is_fusion_summoned(self, duel: &Duel) -> bool {
+        self.is_summon_type(duel, &[SUMMON_TYPE_FUSION])
+    }
+
+    fn is_synchro_summoned(self, duel: &Duel) -> bool {
+        self.is_summon_type(duel, &[SUMMON_TYPE_SYNCHRO])
+    }
+
+    fn is_link_summoned(self, duel: &Duel) -> bool {
+        self.is_summon_type(duel, &[SUMMON_TYPE_LINK])
+    }
+
+    fn is_xyz_summoned(self, duel: &Duel) -> bool {
+        self.is_summon_type(duel, &[SUMMON_TYPE_XYZ])
+    }
+
+    fn has_flag_effect(self, duel: &Duel, id: u32) -> bool {
+        self.get_flag_effect(duel, id) >= 1
+    }
+
+    // Card.UpdateLevel(c, amt, reset, rc): `reset` None is RESET_EVENT with the standard resets (and RESET_DISABLE
+    // when `rc` is the card itself, its default).
+    fn update_level(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>) -> i32 {
+        let c = self;
+        let rc = rc.unwrap_or(c);
+        let r = if c == rc { RESETS_STANDARD_DISABLE } else { RESETS_STANDARD };
+        let reset = reset.unwrap_or(RESET_EVENT + r);
+        let lv = c.get_level(duel) as i32;
+        if !c.is_level_below(duel, 2_147_483_647) {
+            return 0;
+        }
+        let amt = if lv + amt <= 0 { -(lv - 1) } else { amt };
+        let e1 = duel.create_effect(rc);
+        e1.set_type(duel, EFFECT_TYPE_SINGLE);
+        e1.set_code(duel, EFFECT_UPDATE_LEVEL);
+        e1.set_value(duel, amt);
+        e1.set_reset(duel, reset);
+        c.register_effect(duel, e1);
+        c.get_level(duel) as i32 - lv
+    }
+
+    fn is_monster(self, duel: &Duel) -> bool {
+        self.is_type(duel, TYPE_MONSTER)
+    }
+
+    fn is_spell_trap(self, duel: &Duel) -> bool {
+        self.is_type(duel, TYPE_SPELL | TYPE_TRAP)
+    }
+
+    fn is_continuous_spell(self, duel: &Duel) -> bool {
+        self.is_composite_type(duel, TYPE_SPELL | TYPE_CONTINUOUS)
+    }
+
+    fn is_continuous_trap(self, duel: &Duel) -> bool {
+        self.is_composite_type(duel, TYPE_TRAP | TYPE_CONTINUOUS)
+    }
+
+    fn is_synchro_monster(self, duel: &Duel) -> bool {
+        self.is_composite_type(duel, TYPE_MONSTER | TYPE_SYNCHRO)
+    }
+
+    fn is_non_effect_monster(self, duel: &Duel) -> bool {
+        self.is_monster(duel) && !self.is_type(duel, TYPE_EFFECT)
+    }
+
+    fn is_in_main_mzone(self, duel: &Duel, tp: Option<u8>) -> bool {
+        self.is_location(duel, LOCATION_MMZONE) && tp.is_none_or(|tp| self.is_controler(duel, tp))
+    }
+
+    fn is_sequence(self, duel: &Duel, sequence: u32) -> bool {
+        self.get_sequence(duel) == sequence
+    }
+
+    fn has_level(self, duel: &Duel) -> bool {
+        if self.is_monster(duel) {
+            let card_type = self.get_type(duel);
+            return card_type & TYPE_LINK != TYPE_LINK
+                && card_type & TYPE_XYZ != TYPE_XYZ
+                && !(self.is_has_effect(duel, EFFECT_RANK_LEVEL).is_some() || self.is_has_effect(duel, EFFECT_RANK_LEVEL_S).is_some())
+                && !self.is_status(duel, STATUS_NO_LEVEL);
+        }
+        if self.is_original_type(duel, TYPE_MONSTER) {
+            return !(self.is_original_type(duel, TYPE_XYZ + TYPE_LINK) || self.is_status(duel, STATUS_NO_LEVEL));
+        }
+        false
+    }
+
+    fn is_original_level(self, duel: &Duel, level: u32) -> bool {
+        self.has_level(duel) && self.get_original_level(duel) == level
+    }
+
+    // s.listed_names of the card's script; no ported script sets fit_monster.
+    fn lists_code(self, duel: &Duel, code: u32) -> bool {
+        crate::official::listed_names(self.get_original_code(duel)).contains(&code)
+    }
+
+    fn is_negatable_monster(self, duel: &Duel) -> bool {
+        self.is_faceup(duel)
+            && !self.is_disabled(duel)
+            && (!self.is_non_effect_monster(duel) || self.get_original_type(duel) & TYPE_EFFECT != 0)
+    }
+
+    fn is_negatable_spell_trap(self, duel: &Duel) -> bool {
+        self.is_faceup(duel) && !self.is_disabled(duel) && self.is_spell_trap(duel)
+    }
+
+    fn is_negatable(self, duel: &Duel) -> bool {
+        self.is_negatable_monster(duel) || self.is_negatable_spell_trap(duel)
+    }
+
+    fn add_must_be_special_summoned(self, duel: &mut Duel) -> EffectId {
+        let e0 = duel.create_effect(self);
+        e0.set_type(duel, EFFECT_TYPE_SINGLE);
+        e0.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
+        e0.set_code(duel, EFFECT_SPSUMMON_CONDITION);
+        self.register_effect(duel, e0);
+        e0
+    }
+
+    fn add_must_first_be_fusion_summoned(self, duel: &mut Duel) -> EffectId {
+        let e0 = duel.create_effect(self);
+        e0.set_type(duel, EFFECT_TYPE_SINGLE);
+        e0.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
+        e0.set_code(duel, EFFECT_SPSUMMON_CONDITION);
+        e0.set_value(
+            duel,
+            Value::SpSummonCondition(|duel, e, _, _, sum_type, _, _| {
+                !e.get_handler(duel).is_location(duel, LOCATION_EXTRA) || sum_type & SUMMON_TYPE_FUSION == SUMMON_TYPE_FUSION
+            }),
+        );
+        self.register_effect(duel, e0);
+        e0
+    }
+
+    // Card.NegateEffects(tc, c, reset, negates_cards) with ct 1.
+    fn negate_effects(self, duel: &mut Duel, c: CardId, reset: u32, negates_cards: bool) {
+        let tc = self;
+        let mut reset = reset | (RESET_EVENT | RESETS_STANDARD);
+        let trap_monster_chk = negates_cards && tc.is_type(duel, TYPE_TRAPMONSTER);
+        if trap_monster_chk {
+            reset &= !(RESET_TOFIELD | RESET_LEAVE | RESET_TURN_SET);
+        }
+        duel.negate_related_chain(tc, RESET_TURN_SET);
+        let e1 = duel.create_effect(c);
+        e1.set_type(duel, EFFECT_TYPE_SINGLE);
+        e1.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE);
+        e1.set_code(duel, EFFECT_DISABLE);
+        e1.set_reset(duel, reset);
+        tc.register_effect(duel, e1);
+        let e2 = e1.clone_effect(duel);
+        e2.set_code(duel, EFFECT_DISABLE_EFFECT);
+        e2.set_value(duel, RESET_TURN_SET as i32);
+        tc.register_effect(duel, e2);
+        if trap_monster_chk {
+            let e3 = e1.clone_effect(duel);
+            e3.set_code(duel, EFFECT_DISABLE_TRAPMONSTER);
+            tc.register_effect(duel, e3);
+        }
+    }
+}
+
+pub trait EffectUtility: Copy {
+    fn is_monster_effect(self, duel: &Duel) -> bool;
+    fn is_spell_trap_effect(self, duel: &Duel) -> bool;
+}
+
+impl EffectUtility for EffectId {
+    fn is_spell_trap_effect(self, duel: &Duel) -> bool {
+        self.is_active_type(duel, TYPE_SPELL | TYPE_TRAP)
+    }
+
+    fn is_monster_effect(self, duel: &Duel) -> bool {
+        self.is_active_type(duel, TYPE_MONSTER)
+    }
+}
+
+pub trait DuelUtility {
+    fn select_effect(&mut self, tp: u8, effects: &[(bool, u64)]) -> Script<Option<usize>>;
+    fn has_flag_effect(&self, tp: u8, id: u32) -> bool;
+    fn get_target_cards(&self, e: EffectId) -> Option<CardSet>;
+}
+
+impl DuelUtility for Duel {
+    // Duel.GetTargetCards: the chain link's targets still related to `e`, nil without targets.
+    fn get_target_cards(&self, e: EffectId) -> Option<CardSet> {
+        let tg = self.get_chain_info::<Option<CardSet>>(0, CHAININFO_TARGET_CARDS)?;
+        Some(tg.filter(self, |c, duel| c.is_relate_to_effect(duel, e), None))
+    }
+
+    // The 1-based index of the effect chosen among those whose condition holds, None if none does.
+    fn select_effect(&mut self, tp: u8, effects: &[(bool, u64)]) -> Script<Option<usize>> {
+        let (sel, eff): (Vec<usize>, Vec<u64>) = effects
+            .iter()
+            .enumerate()
+            .filter(|(_, (available, _))| *available)
+            .map(|(index, &(_, description))| (index + 1, description))
+            .unzip();
+        if eff.is_empty() {
+            return Ok(None);
+        }
+        let option = self.select_option(tp, &eff)?;
+        Ok(usize::try_from(option).ok().and_then(|option| sel.get(option)).copied())
+    }
+
+    fn has_flag_effect(&self, tp: u8, id: u32) -> bool {
+        self.get_flag_effect(tp, id) >= 1
+    }
+}

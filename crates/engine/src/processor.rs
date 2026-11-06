@@ -7,8 +7,8 @@ use crate::duel::Duel;
 use crate::effect::{Chain, Container, EffectId};
 use crate::field::PerPlayer;
 use crate::operations::{
-    ChangePos, Damage, Destroy, Draw, FlipSummon, MonsterSet, MoveToField, Recover, Release, RemoveCounter, RemoveOverlay, SelectTribute,
-    SendTo, SpSummon, SpSummonRule, SpSummonStep, SpellSet, SpellSetGroup, SummonRule, XyzOverlay,
+    ChangePos, Damage, Destroy, DiscardDeck, Draw, FlipSummon, MonsterSet, MoveToField, Recover, Release, RemoveCounter, RemoveOverlay,
+    SelectTribute, SendTo, SpSummon, SpSummonRule, SpSummonStep, SpellSet, SpellSetGroup, SummonRule, XyzOverlay,
 };
 use crate::script::Procedure;
 
@@ -225,6 +225,7 @@ pub enum Unit {
     RemoveOverlay(RemoveOverlay),
     XyzOverlay(XyzOverlay),
     Draw(Draw),
+    DiscardDeck(DiscardDeck),
     Damage(Damage),
     Recover(Recover),
     Execute(Execute),
@@ -294,6 +295,7 @@ units!(
     RemoveOverlay,
     XyzOverlay,
     Draw,
+    DiscardDeck,
     Damage,
     Recover,
     Execute,
@@ -357,6 +359,7 @@ impl Duel {
             Unit::RemoveOverlay(arg) => self.run_steps(arg, Self::process_remove_overlay, false),
             Unit::XyzOverlay(arg) => self.run_steps(arg, Self::process_xyz_overlay, false),
             Unit::Draw(arg) => self.run_steps(arg, Self::process_draw, false),
+            Unit::DiscardDeck(arg) => self.run_steps(arg, Self::process_discard_deck, false),
             Unit::Damage(arg) => self.run_steps(arg, Self::process_damage, false),
             Unit::Recover(arg) => self.run_steps(arg, Self::process_recover, false),
             Unit::Execute(arg) => self.run_steps(arg, Self::process_execute, false),

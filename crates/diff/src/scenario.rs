@@ -9,7 +9,7 @@ const XYZ_MATERIALS_MAX: usize = 3;
 
 // Cards an effect of the card under test needs, placed with it in the given location, or in a random zone for 0; for
 // the same player, or the opponent with OPPONENT.
-const SUPPORT: [(u32, &[(u32, u16)]); 12] = [
+const SUPPORT: [(u32, &[(u32, u16)]); 18] = [
     // Fusionist from the Extra Deck with its materials, Petit Angel and Mystical Sheep #2, and Polymerization.
     (1641882, &[(1641882, EXTRA), (24094653, HAND), (38142739, HAND), (83464209, HAND)]),
     // Polymerization's materials for Albion the Branded Dragon in the Elfnote Extra Deck: Fallen of Albaz and a LIGHT
@@ -17,10 +17,16 @@ const SUPPORT: [(u32, &[(u32, u16)]); 12] = [
     (24094653, &[(68468459, HAND), (38142739, HAND)]),
     // Extox Hydra from the Extra Deck, Fusion Summoned by Polymerization, and on the field to attack.
     (26050548, &[(26050548, EXTRA), (24094653, HAND), (26050548, MZONE)]),
+    // Gemini Lancer on the field, to be Normal Summoned again.
+    (26254876, &[(26254876, MZONE)]),
     // F.A. Dawn Dragster's level-up needs an "F.A." Spell/Trap: F.A. Downforce.
     (33158448, &[(66322203, 0)]),
     // Drill Driver Vespenato can be Xyz Summoned with a Rank 4 Xyz Monster: Tornado Dragon.
     (39317553, &[(6983839, 0)]),
+    // Formula Synchron from the Extra Deck, Synchro Summoned with Mono Synchron and a Level 4 Warrior, Kojikocy.
+    (50091196, &[(50091196, EXTRA), (56897896, MZONE), (1184620, MZONE)]),
+    // Mono Synchron on the field with a Level 4 Warrior, Kojikocy, for Formula Synchron in the Extra Deck.
+    (56897896, &[(50091196, EXTRA), (56897896, MZONE), (1184620, MZONE)]),
     // Magistus Chorozo from the Extra Deck, by its contact fusion, and on the field for its attack trigger.
     (66532962, &[(66532962, EXTRA), (66532962, MZONE)]),
     // Fallen of Albaz to Normal Summon, and the opponent's LIGHT monster for Albion the Branded Dragon: Elfnote Fortuna.
@@ -28,15 +34,21 @@ const SUPPORT: [(u32, &[(u32, u16)]); 12] = [
     // Vidolium is Special Summoned by returning a Fusion, a Synchro and an Xyz Monster: Albion the Branded Dragon,
     // Chaos Angel and Gauntlet Launcher.
     (70488851, &[(87746184, 0), (22850702, 0), (15561463, 0)]),
+    // Inaba White Rabbit in the hand, to be Normal Summoned and return in the End Phase.
+    (77084837, &[(77084837, HAND)]),
     // Ecclesia and the Dark Dragon summons a Level 4 or lower monster that lists Fallen of Albaz: Guiding Quem.
     (78397661, &[(45883110, 0)]),
     // Albion the Branded Dragon Fusion Summoned by Polymerization, as Polymerization's support does, so that its effect
     // Fusion Summons Magistus Chorozo with Albion and a Spellcaster.
     (87746184, &[(68468459, HAND), (24094653, HAND), (38142739, HAND), (66532962, EXTRA)]),
+    // Kuibelt the Blade Dragon from the Extra Deck with Revolution Synchron in the hand and a Level 4 monster, Kojikocy.
+    (87837090, &[(87837090, EXTRA), (97682931, HAND), (97682931, HAND), (1184620, MZONE)]),
     // Gaia Dragon, the Thunder Charger can be Xyz Summoned with a Rank 5 or 6 Xyz Monster: Gauntlet Launcher.
     (91949988, &[(15561463, 0)]),
     // Sea Monster of Theseus from the Extra Deck, Fusion Summoned by Polymerization.
     (96334243, &[(96334243, EXTRA), (24094653, HAND)]),
+    // Revolution Synchron in the hand, Synchro material for Kuibelt the Blade Dragon with a Level 4 monster, Kojikocy.
+    (97682931, &[(97682931, HAND), (97682931, HAND), (87837090, EXTRA), (1184620, MZONE)]),
 ];
 
 // A position built as a puzzle builds one: the LP of both players and the cards Debug.AddCard places before the duel

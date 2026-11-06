@@ -3,7 +3,7 @@
 use crate::card::{CardId, CardSet};
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{Container, EffectId};
+use crate::effect::{Container, EffectId, EffectSet};
 use crate::script::Script;
 
 impl CardId {
@@ -353,6 +353,19 @@ impl CardId {
         duel.filter_effect(self, code, true).first().copied()
     }
 
+    // Card.IsGeminiState and Card.EnableGeminiState, under the names proc_gemini.lua gives them.
+    pub fn is_gemini_status(self, duel: &Duel) -> bool {
+        duel.is_affected_by_effect(self, EFFECT_GEMINI_STATUS).is_some()
+    }
+
+    pub fn enable_gemini_status(self, duel: &mut Duel) {
+        duel.add_status_effect(self, EFFECT_GEMINI_STATUS, 64, RESET_EVENT + 0x1fe_0000);
+    }
+
+    pub fn get_card_effect(self, duel: &Duel, code: u32) -> EffectSet {
+        duel.get_card_effect(self, code)
+    }
+
     pub fn is_relate_to_battle(self, duel: &Duel) -> bool {
         let fieldid = duel.cards[self].fieldid_r;
         duel.core.pre_field.contains(&fieldid)
@@ -456,6 +469,10 @@ impl CardId {
     pub fn get_flag_effect(self, duel: &Duel, code: u32) -> usize {
         let code = (code & 0xfff_ffff) | 0x1000_0000;
         duel.field_effects.registry.equal_range(Container::Single, Some(self), code).count()
+    }
+
+    pub fn reset_flag_effect(self, duel: &mut Duel, code: u32) {
+        duel.reset(self, (code & 0xfff_ffff) | 0x1000_0000, RESET_CODE);
     }
 }
 

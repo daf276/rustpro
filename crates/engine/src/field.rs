@@ -2075,15 +2075,12 @@ impl Duel {
             if chain_attack && self.core.chain_attack_target.is_some_and(|chain_target| chain_target != target) {
                 continue;
             }
-            if select_target && !must {
-                unported!(
-                    self,
-                    self.is_affected_by_effect_target(target, EFFECT_CANNOT_BE_BATTLE_TARGET, card)
-                );
-                unported!(
-                    self,
-                    self.is_affected_by_effect_target(card, EFFECT_CANNOT_SELECT_BATTLE_TARGET, target)
-                );
+            if select_target
+                && !must
+                && (self.is_affected_by_effect_target(target, EFFECT_CANNOT_BE_BATTLE_TARGET, card).is_some()
+                    || self.is_affected_by_effect_target(card, EFFECT_CANNOT_SELECT_BATTLE_TARGET, target).is_some())
+            {
+                continue;
             }
             targets.push(target);
         }

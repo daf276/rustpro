@@ -2,7 +2,9 @@
 use crate::card::CardId;
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{ConditionFn, CostFn, EffectId, GroupOperationFn, Label, Operation, OperationFn, Target, TargetFn, Value};
+use crate::effect::{
+    ConditionFn, CostFn, EffectId, GroupOperationFn, Label, Operation, OperationFn, SynchroMaterialFn, Target, TargetFn, Value,
+};
 
 impl Duel {
     pub fn create_effect(&mut self, card: CardId) -> EffectId {
@@ -195,6 +197,23 @@ impl EffectId {
     // Effect.SetOperation for EFFECT_SPSUMMON_PROC_G, whose function fills the group it is passed.
     pub fn set_group_operation(self, duel: &mut Duel, operation: GroupOperationFn) {
         duel.effects[self].operation = Some(Operation::Group(operation));
+    }
+
+    // Effect.SetOperation for EFFECT_SYNCHRO_MATERIAL_CUSTOM, whose function proc_synchro calls with its own parameters.
+    pub fn set_synchro_material_operation(self, duel: &mut Duel, operation: SynchroMaterialFn) {
+        duel.effects[self].operation = Some(Operation::SynchroMaterial(operation));
+    }
+
+    pub fn get_value(self, duel: &Duel) -> Value {
+        duel.effects[self].value
+    }
+
+    pub fn check_count_limit(self, duel: &Duel, player: u8) -> bool {
+        duel.check_count_limit(self, player)
+    }
+
+    pub fn use_count_limit(self, duel: &mut Duel, player: u8) {
+        duel.dec_count(self, player);
     }
 
     pub fn get_label(self, duel: &Duel) -> i64 {

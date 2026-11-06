@@ -19,6 +19,15 @@ pub struct Draw {
     pub drawn_set: CardSet,
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct DiscardDeck {
+    pub step: u16,
+    pub playerid: u8,
+    pub count: u16,
+    pub reason: u32,
+    pub discarded_set: CardSet,
+}
+
 // The core shares `targets` as a group with SendToReplace; here the replace checks run inline in step 1.
 #[derive(Debug, Clone, Default)]
 pub struct SendTo {
@@ -476,6 +485,101 @@ impl Duel {
             1 => {
                 std::mem::swap(&mut self.core.operated_set, &mut arg.drawn_set);
                 self.returns.set_u32(0, u32::from(arg.count));
+                true
+            }
+            _ => true,
+        }
+    }
+
+    // Destinations other than the GY come from redirect effects, which destination_redirect keeps unported.
+    pub(crate) fn process_discard_deck(&mut self, arg: &mut DiscardDeck) -> bool {
+        let (playerid, count, reason) = (arg.playerid, usize::from(arg.count), arg.reason);
+        let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
+        match arg.step {
+            0 => {
+                if self.is_player_affected_by_effect(playerid, EFFECT_CANNOT_DISCARD_DECK).is_some() {
+                    self.core.operated_set.clear();
+                    self.returns.set_i32(0, 0);
+                    return true;
+                }
+                let top: Vec<CardId> = self.player[playerid].list_main.iter().rev().take(count).copied().collect();
+                for card in top {
+                    let target = &mut self.cards[card];
+                    target.sendto_param.location = LOCATION_GRAVE;
+                    target.current.reason_effect = reason_effect;
+                    target.current.reason_player = reason_player;
+                    target.current.reason = reason;
+                    self.destination_redirect(card, LOCATION_GRAVE);
+                }
+                let list = &self.player[playerid].list_main;
+                if self.core.global_flag & GLOBALFLAG_DECK_REVERSE_CHECK != 0
+                    && list.len() > count
+                    && let Some(&top) = list.iter().rev().nth(count)
+                {
+                    let (code, position) = (self.cards[top].data.code, self.cards[top].current.position);
+                    if self.core.deck_reversed || position == POS_FACEUP_DEFENSE {
+                        self.trace
+                            .message(MSG_DECK_TOP)
+                            .u8(playerid)
+                            .u32(count as u32)
+                            .u32(code)
+                            .u32(position);
+                    }
+                }
+                false
+            }
+            1 => {
+                arg.discarded_set.clear();
+                for _ in 0..count {
+                    let Some(&card) = self.player[playerid].list_main.last() else {
+                        break;
+                    };
+                    let destination = self.cards[card].sendto_param.location;
+                    self.reset(card, RESET_TOGRAVE, RESET_EVENT);
+                    let from = self.cards.get_info_location(card);
+                    self.enable_field_effect(card, false);
+                    self.cancel_field_effect(card);
+                    self.player[playerid].list_main.pop();
+                    if !self.core.current_chain.is_empty() {
+                        self.core.just_sent_cards.insert(card);
+                    }
+                    let target = &mut self.cards[card];
+                    target.previous.controler = target.current.controler;
+                    target.previous.location = target.current.location;
+                    target.previous.sequence = target.current.sequence;
+                    target.previous.position = target.current.position;
+                    target.previous.pzone = target.current.pzone;
+                    target.current.controler = PLAYER_NONE;
+                    target.current.location = 0;
+                    let owner = target.owner;
+                    self.add_card(owner, card, destination, 0, false);
+                    self.enable_field_effect(card, true);
+                    self.cards[card].current.position = POS_FACEUP;
+                    let (code, to, card_reason) = (
+                        self.cards[card].data.code,
+                        self.cards.get_info_location(card),
+                        self.cards[card].current.reason,
+                    );
+                    self.trace.message(MSG_MOVE).u32(code).loc(from).loc(to).u32(card_reason);
+                    let current = self.cards[card].current;
+                    for event in [EVENT_TO_GRAVE, EVENT_MOVE] {
+                        self.raise_single_event(card, event, current.reason_effect, current.reason, current.reason_player, 0, 0);
+                    }
+                    arg.discarded_set.insert(card);
+                }
+                let discarded = Some(arg.discarded_set).filter(|set| !set.is_empty());
+                if discarded.is_some() {
+                    self.raise_event(discarded, EVENT_TO_GRAVE, reason_effect, reason, reason_player, 0, 0);
+                }
+                self.raise_event(Some(arg.discarded_set), EVENT_MOVE, reason_effect, reason, reason_player, 0, 0);
+                self.process_single_event();
+                self.process_instant_event();
+                self.adjust_instant();
+                false
+            }
+            2 => {
+                self.core.operated_set = arg.discarded_set;
+                self.returns.set_i32(0, arg.discarded_set.len() as i32);
                 true
             }
             _ => true,
@@ -1222,8 +1326,14 @@ impl Duel {
 
     // An effect of code 0 that only shows a hint (`description`) on the card until it resets.
     pub(crate) fn add_hint_effect(&mut self, card: CardId, description: u64, reset_flag: u32) {
+        self.add_status_effect(card, 0, description, reset_flag);
+    }
+
+    // A single effect of `code` the core creates itself, shown as a hint on the card until it resets.
+    pub(crate) fn add_status_effect(&mut self, card: CardId, code: u32, description: u64, reset_flag: u32) {
         let effect = self.new_effect(card);
         let peffect = &mut self.effects[effect];
+        peffect.code = code;
         peffect.effect_type = EFFECT_TYPE_SINGLE;
         peffect.flag[0] = EFFECT_FLAG_CANNOT_DISABLE | EFFECT_FLAG_CLIENT_HINT;
         peffect.description = description;
@@ -1910,7 +2020,7 @@ impl Duel {
         self.core.summon_count[player] += 1;
     }
 
-    // Steps 3 (optional tributes), 4 and 7 (summon procedures), and 10 and 11 (Gemini monsters) need effects.
+    // Steps 3 (optional tributes), 4 and 7 (summon procedures) need effects.
     pub(crate) fn process_summon_rule(&mut self, arg: &mut SummonRule) -> bool {
         let (sumplayer, target, procedure) = (arg.sumplayer, arg.target, arg.summon_procedure_effect);
         unported!(self, procedure);
@@ -1923,15 +2033,25 @@ impl Duel {
                     return true;
                 }
                 if self.cards[target].current.location == LOCATION_MZONE {
-                    unported!(self, self.is_affected_by_effect(target, EFFECT_GEMINI_SUMMONABLE));
-                    return true;
+                    if self.cards[target].is_position(POS_FACEDOWN)
+                        || (!arg.ignore_count
+                            && (self.core.extra_summon[sumplayer] != 0
+                                || self.is_affected_by_effect(target, EFFECT_EXTRA_SUMMON_COUNT).is_none())
+                            && self.core.summon_count[sumplayer] >= self.get_summon_count_limit(sumplayer))
+                        || self.is_affected_by_effect(target, EFFECT_GEMINI_SUMMONABLE).is_none()
+                        || self.is_affected_by_effect(target, EFFECT_GEMINI_STATUS).is_some()
+                        || !self.is_player_can_summon(SUMMON_TYPE_GEMINI, sumplayer, target, sumplayer)
+                    {
+                        return true;
+                    }
+                } else {
+                    let (result, procedures) = self.filter_summon_procedure(target, sumplayer, arg.ignore_count, arg.min_tribute, arg.zone);
+                    unported!(self, procedures);
+                    if result <= 0 {
+                        return true;
+                    }
+                    self.returns.set_i32(0, 0);
                 }
-                let (result, procedures) = self.filter_summon_procedure(target, sumplayer, arg.ignore_count, arg.min_tribute, arg.zone);
-                unported!(self, procedures);
-                if result <= 0 {
-                    return true;
-                }
-                self.returns.set_i32(0, 0);
                 if self.core.summon_depth != 0 {
                     self.core.summon_cancelable = false;
                 }
@@ -1944,6 +2064,10 @@ impl Duel {
                 if !arg.ignore_count && self.core.extra_summon[sumplayer] == 0 {
                     unported!(self, extra);
                 }
+                if self.cards[target].current.location == LOCATION_MZONE {
+                    arg.step = 4;
+                    return false;
+                }
                 self.returns.set_i32(0, 0);
                 false
             }
@@ -1955,6 +2079,11 @@ impl Duel {
                 false
             }
             5 => {
+                if self.cards[target].current.location == LOCATION_MZONE {
+                    arg.step = 9;
+                    unported!(self, self.filter_effect(target, EFFECT_SUMMON_COST, true));
+                    return false;
+                }
                 if self.return_cards.canceled {
                     self.core.summon_depth -= 1;
                     return true;
@@ -2016,6 +2145,28 @@ impl Duel {
                     LOCATION_REASON_SUMMON,
                 );
                 arg.step = 11;
+                false
+            }
+            10 => {
+                self.core.summon_depth -= 1;
+                if self.core.summon_depth != 0 {
+                    return true;
+                }
+                self.enable_field_effect(target, false);
+                let card = &mut self.cards[target];
+                card.summon.location = LOCATION_MZONE;
+                card.summon.pzone = false;
+                card.summon.sequence = card.current.sequence;
+                card.summon.summon_type |= SUMMON_TYPE_NORMAL;
+                card.current.reason_effect = None;
+                card.current.reason_player = sumplayer;
+                self.add_status_effect(target, EFFECT_GEMINI_STATUS, 64, RESET_EVENT + 0x1fe_0000);
+                false
+            }
+            11 => {
+                if !arg.ignore_count {
+                    self.add_summon_count(arg.extra_summon_effect, sumplayer);
+                }
                 false
             }
             12 => {

@@ -36,6 +36,7 @@ const CHINT_DESC_REMOVE: u8 = 7;
 const MSG_PLAYER_HINT: u8 = 165;
 const PHINT_DESC_REMOVE: u8 = 7;
 const REASON_RELEASE: u32 = 0x2;
+const REASON_MATERIAL: u32 = 0x8;
 const REASON_BATTLE: u32 = 0x20;
 const HINT_REPLAY: u64 = 30;
 
@@ -123,6 +124,10 @@ pub struct Tally {
     pub effects: BTreeMap<(u32, u64), u32>,
     // Special Summons per card code.
     pub special_summons: BTreeMap<u32, u32>,
+    // Cards moved as material per card code and the location they left.
+    pub materials: BTreeMap<(u32, u8), u32>,
+    // Hints added to cards per description (MSG_CARD_HINT with CHINT_DESC_ADD).
+    pub card_hints: BTreeMap<u64, u32>,
     pub chain_disabled: u32,
     // The card code and effect description of the current chain's links.
     chain: [(u32, u64); 16],
@@ -164,6 +169,18 @@ impl Tally {
             *self.special_summons.entry(u32::from_ne_bytes([*a, *b, *c, *d])).or_default() += 1;
         }
         let reason = |bytes: [&u8; 4]| u32::from_ne_bytes(bytes.map(|byte| *byte));
+        if let [MSG_CARD_HINT, _, _, _, _, _, _, _, _, _, _, CHINT_DESC_ADD, description @ ..] = message
+            && let Ok(description) = <[u8; 8]>::try_from(description)
+        {
+            *self.card_hints.entry(u64::from_ne_bytes(description)).or_default() += 1;
+        }
+        // The code, the previous location_info (controller, location, sequence, position), the current one and the reason.
+        if let [MSG_MOVE, a, b, c, d, _, location, .., e, f, g, h] = message
+            && message.len() == 29
+            && reason([e, f, g, h]) & REASON_MATERIAL != 0
+        {
+            *self.materials.entry((u32::from_ne_bytes([*a, *b, *c, *d]), *location)).or_default() += 1;
+        }
         if message.first() == Some(&MSG_ATTACK) {
             self.attacks += 1;
         }
@@ -211,6 +228,17 @@ impl std::ops::Add for Tally {
                 .fold(self.special_summons, |mut summons, (code, count)| {
                     *summons.entry(code).or_default() += count;
                     summons
+                }),
+            materials: other.materials.into_iter().fold(self.materials, |mut materials, (key, count)| {
+                *materials.entry(key).or_default() += count;
+                materials
+            }),
+            card_hints: other
+                .card_hints
+                .into_iter()
+                .fold(self.card_hints, |mut hints, (description, count)| {
+                    *hints.entry(description).or_default() += count;
+                    hints
                 }),
             chain_disabled: self.chain_disabled + other.chain_disabled,
             chain: [(0, 0); 16],

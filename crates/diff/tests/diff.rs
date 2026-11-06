@@ -18,6 +18,15 @@ const ALBION_FUSION_SUMMON: (u32, u64) = (87746184, 87746184 << 20);
 // destroyed by an opponent's card effect, Fusionist and Sea Monster of Theseus have no effect, and Extox Hydra's draw
 // needs 1000 or more battle damage from it.
 const SUMMONED_ONLY: [u32; 5] = [91949988, 39317553, 1641882, 96334243, 26050548];
+const LOCATION_HAND: u8 = 0x2;
+const LOCATION_MZONE: u8 = 0x4;
+// Materials whose use exercises a procedure path of phase 3d, by card code and the location they leave: Mono Synchron
+// (EFFECT_SYNCHRO_MATERIAL_CUSTOM and EFFECT_SYNCHRO_MAT_RESTRICTION) and Revolution Synchron from the hand
+// (EFFECT_SYNCHRO_MAT_FROM_HAND).
+const MATERIAL_PATHS: [(u32, u8); 2] = [(56897896, LOCATION_MZONE), (97682931, LOCATION_HAND)];
+// Hints the core adds to a card when a procedure path of phase 3d runs, by the carrier and the description: Gemini
+// Lancer's second Normal Summon (64).
+const HINT_PATHS: [(u32, u64); 1] = [(26254876, 64)];
 
 fn load(vendor: fn(&Path) -> Result<Vendor, DiffError>) -> Result<&'static Vendor, DiffError> {
     Ok(Box::leak(Box::new(vendor(
@@ -146,13 +155,21 @@ fn assert_scenarios_clean(seeds: Range<u64>) -> Result<(), DiffError> {
         )
         .ok();
     }
+    let materials = MATERIAL_PATHS.map(|key| (key, tally.materials.get(&key).copied().unwrap_or(0)));
+    writeln!(out, "material paths: {materials:?}").ok();
+    let hints = HINT_PATHS.map(|(card, description)| ((card, description), tally.card_hints.get(&description).copied().unwrap_or(0)));
+    let exercised = |code: u32| {
+        let material = materials.iter().any(|&((card, _), count)| card == code && count > 0);
+        material || hints.iter().any(|&((card, _), count)| card == code && count > 0)
+    };
+    writeln!(out, "hint paths: {hints:?}").ok();
     let unresolved: Vec<u32> = vendor
         .scenario_cards
         .iter()
         .copied()
         .filter(|&code| match SUMMONED_ONLY.contains(&code) {
             true => !tally.special_summons.contains_key(&code),
-            false => tally.resolutions(code) == 0,
+            false => tally.resolutions(code) == 0 && !exercised(code),
         })
         .collect();
     let only_in_scenarios = [
@@ -163,7 +180,10 @@ fn assert_scenarios_clean(seeds: Range<u64>) -> Result<(), DiffError> {
     ]
     .map(|effect| tally.effects.get(&effect));
     assert!(
-        unresolved.is_empty() && only_in_scenarios.iter().all(Option::is_some),
+        unresolved.is_empty()
+            && only_in_scenarios.iter().all(Option::is_some)
+            && materials.iter().all(|&(_, count)| count > 0)
+            && hints.iter().all(|&(_, count)| count > 0),
         "{unresolved:?} {tally:?}"
     );
     Ok(())

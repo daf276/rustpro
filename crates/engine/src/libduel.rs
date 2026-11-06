@@ -120,6 +120,23 @@ impl Duel {
         player <= 1 && self.field_is_player_can_draw(player) && self.player[player].list_main.len() >= count
     }
 
+    pub fn is_player_can_discard_deck(&self, player: u8, count: usize) -> bool {
+        player <= 1
+            && self.player[player].list_main.len() >= count
+            && self.is_player_affected_by_effect(player, EFFECT_CANNOT_DISCARD_DECK).is_none()
+    }
+
+    pub fn discard_deck(&mut self, player: u8, count: u16, reason: u32) -> Script<i32> {
+        self.emplace_process(crate::operations::DiscardDeck {
+            playerid: player,
+            count,
+            reason,
+            ..Default::default()
+        });
+        self.yield_script()?;
+        Ok(self.returns.at_i32(0))
+    }
+
     pub fn get_location_count(&self, player: u8, location: u32) -> i32 {
         if player > 1 {
             return 0;

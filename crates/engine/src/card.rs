@@ -1112,6 +1112,31 @@ impl Duel {
         }));
     }
 
+    // card::get_card_effect: like filter_effect unsorted, plus the card's own field effects whether available or not.
+    pub(crate) fn get_card_effect(&self, card: CardId, code: u32) -> EffectSet {
+        let mut effects = EffectSet::default();
+        if !self.field_effects.registry.has_code(code) {
+            return effects;
+        }
+        let registry = &self.field_effects.registry;
+        effects.extend(registry.equal_range(Container::Single, Some(card), code).filter(|&effect| {
+            self.is_available(effect)
+                && (!self.effects[effect].is_flag(EFFECT_FLAG_SINGLE_RANGE) || self.is_affect_by_effect(card, Some(effect)))
+        }));
+        effects.extend(
+            registry
+                .equal_range(Container::Field, Some(card), code)
+                .filter(|&effect| self.is_affect_by_effect(card, Some(effect))),
+        );
+        effects.extend(registry.equal_range(Container::Aura, None, code).filter(|&effect| {
+            !self.effects[effect].is_flag(EFFECT_FLAG_PLAYER_TARGET)
+                && self.effect_is_target(effect, card)
+                && self.is_available(effect)
+                && self.is_affect_by_effect(card, Some(effect))
+        }));
+        effects
+    }
+
     // card::filter_single_continuous_effect: the card's single effects regardless of their state.
     pub(crate) fn filter_single_continuous_effect(&self, card: CardId, code: u32) -> EffectSet {
         let mut effects: EffectSet = self

@@ -30,8 +30,10 @@ const HINT_PATHS: [(u32, u64); 1] = [(26254876, 64)];
 // Messages only a procedure path of phase 3d writes, by the carrier and the message type: Fiendish Chain's card target
 // (MSG_CARD_TARGET), Demotion's and Salamandra's equips (MSG_EQUIP).
 const MESSAGE_PATHS: [(u32, u8); 3] = [(50078509, 96), (72575145, 93), (32268901, 93)];
-// Normal Summons by a summon procedure, by the carrier and the number of tributes: Blizzard Princess with 1.
-const SUMMON_PATHS: [(u32, u32); 1] = [(28348537, 1)];
+// Normal Summons and Sets by a procedure, by the carrier and the number of tributes: Blizzard Princess and Darklord
+// Desire with 1.
+const SUMMON_PATHS: [(u32, u32); 2] = [(28348537, 1), (55690251, 1)];
+const SET_PATHS: [(u32, u32); 1] = [(55690251, 1)];
 
 fn load(vendor: fn(&Path) -> Result<Vendor, DiffError>) -> Result<&'static Vendor, DiffError> {
     Ok(Box::leak(Box::new(vendor(
@@ -167,10 +169,13 @@ fn assert_scenarios_clean(seeds: Range<u64>) -> Result<(), DiffError> {
     writeln!(out, "message paths: {messages:?}").ok();
     let summons = SUMMON_PATHS.map(|key| (key, tally.summon_tributes.get(&key).copied().unwrap_or(0)));
     writeln!(out, "summon paths: {summons:?}").ok();
+    let sets = SET_PATHS.map(|key| (key, tally.set_tributes.get(&key).copied().unwrap_or(0)));
+    writeln!(out, "set paths: {sets:?}").ok();
     let paths: Vec<(u32, u32)> = (materials.iter().map(|&((card, _), count)| (card, count)))
         .chain(hints.iter().map(|&((card, _), count)| (card, count)))
         .chain(messages.iter().map(|&((card, _), count)| (card, count)))
         .chain(summons.iter().map(|&((card, _), count)| (card, count)))
+        .chain(sets.iter().map(|&((card, _), count)| (card, count)))
         .collect();
     let exercised = |code: u32| paths.iter().any(|&(card, count)| card == code && count > 0);
     writeln!(out, "hint paths: {hints:?}").ok();

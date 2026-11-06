@@ -131,8 +131,9 @@ pub struct Tally {
     pub card_hints: BTreeMap<u64, u32>,
     // Messages per type.
     pub messages: BTreeMap<u8, u32>,
-    // Normal Summons per card code and number of tributes released for them.
+    // Normal Summons and Sets per card code and number of tributes released for them.
     pub summon_tributes: BTreeMap<(u32, u32), u32>,
+    pub set_tributes: BTreeMap<(u32, u32), u32>,
     tributes_pending: u32,
     pub chain_disabled: u32,
     // The card code and effect description of the current chain's links.
@@ -176,9 +177,14 @@ impl Tally {
         }
         match message {
             [MSG_MOVE, .., a, b, c, d] if u32::from_ne_bytes([*a, *b, *c, *d]) & REASON_SUMMON != 0 => self.tributes_pending += 1,
-            [MSG_SUMMONING, a, b, c, d, ..] => {
+            [kind @ (MSG_SUMMONING | MSG_SET), a, b, c, d, ..] => {
                 let code = u32::from_ne_bytes([*a, *b, *c, *d]);
-                *self.summon_tributes.entry((code, self.tributes_pending)).or_default() += 1;
+                let tributes = if *kind == MSG_SET {
+                    &mut self.set_tributes
+                } else {
+                    &mut self.summon_tributes
+                };
+                *tributes.entry((code, self.tributes_pending)).or_default() += 1;
                 self.tributes_pending = 0;
             }
             _ => {}
@@ -269,6 +275,10 @@ impl std::ops::Add for Tally {
                     *summons.entry(key).or_default() += count;
                     summons
                 }),
+            set_tributes: other.set_tributes.into_iter().fold(self.set_tributes, |mut sets, (key, count)| {
+                *sets.entry(key).or_default() += count;
+                sets
+            }),
             tributes_pending: 0,
             chain_disabled: self.chain_disabled + other.chain_disabled,
             chain: [(0, 0); 16],

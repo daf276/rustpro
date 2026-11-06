@@ -514,6 +514,7 @@ pub trait CardUtility: Copy {
     fn is_xyz_summoned(self, duel: &Duel) -> bool;
     fn has_flag_effect(self, duel: &Duel, id: u32) -> bool;
     fn update_level(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>) -> i32;
+    fn update_attack(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>, reset_count: Option<u16>) -> i32;
 }
 
 impl CardUtility for CardId {
@@ -564,6 +565,21 @@ impl CardUtility for CardId {
         e1.set_reset(duel, reset);
         c.register_effect(duel, e1);
         c.get_level(duel) as i32 - lv
+    }
+
+    fn update_attack(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>, reset_count: Option<u16>) -> i32 {
+        let c = self;
+        let rc = rc.unwrap_or(c);
+        let r = if c == rc { RESETS_STANDARD_DISABLE } else { RESETS_STANDARD };
+        let reset = reset.unwrap_or(RESET_EVENT + r);
+        let atk = c.get_attack(duel);
+        let e1 = duel.create_effect(rc);
+        e1.set_type(duel, EFFECT_TYPE_SINGLE);
+        e1.set_code(duel, EFFECT_UPDATE_ATTACK);
+        e1.set_value(duel, amt);
+        e1.set_reset_full(duel, reset, reset_count.unwrap_or(1));
+        c.register_effect(duel, e1);
+        c.get_attack(duel) - atk
     }
 
     fn is_monster(self, duel: &Duel) -> bool {

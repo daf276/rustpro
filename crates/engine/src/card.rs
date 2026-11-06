@@ -1488,10 +1488,19 @@ impl Duel {
         min_tribute: u8,
         zone: u32,
     ) -> (i32, EffectSet) {
-        unported!(self, self.filter_effect(card, EFFECT_LIMIT_SET_PROC, true));
-        unported!(self, self.filter_effect(card, EFFECT_SET_PROC, true));
+        let check = |duel: &Self, effect| duel.check_set_procedure(card, effect, playerid, ignore_count, min_tribute, zone);
+        let limits = self.filter_effect(card, EFFECT_LIMIT_SET_PROC, true);
+        if !limits.is_empty() {
+            let procedures: EffectSet = limits.into_iter().filter(|&effect| check(self, effect)).collect();
+            return (if procedures.is_empty() { -2 } else { -1 }, procedures);
+        }
+        let procedures: EffectSet = self
+            .filter_effect(card, EFFECT_SET_PROC, true)
+            .into_iter()
+            .filter(|&effect| check(self, effect))
+            .collect();
         if !self.is_player_can_mset(SUMMON_TYPE_NORMAL, playerid, card, playerid) {
-            return (0, EffectSet::default());
+            return (0, procedures);
         }
         let rcount = self.get_set_tribute_count(card);
         let mut min = rcount & 0xffff;
@@ -1501,20 +1510,52 @@ impl Duel {
         }
         min = min.max(i32::from(min_tribute));
         if max < min {
-            return (0, EffectSet::default());
+            return (0, procedures);
         }
         if !ignore_count
             && self.core.extra_summon[playerid] == 0
             && self.core.summon_count[playerid] >= self.get_summon_count_limit(playerid)
         {
             unported!(self, self.filter_effect(card, EFFECT_EXTRA_SET_COUNT, true));
-            return (0, EffectSet::default());
+            return (0, procedures);
         }
         let controler = self.cards[card].current.controler;
         (
             i32::from(self.field_check_tribute(card, min, max, None, controler, zone, 0xff00ff)),
-            EffectSet::default(),
+            procedures,
         )
+    }
+
+    // card::check_set_procedure.
+    pub(crate) fn check_set_procedure(
+        &self,
+        card: CardId,
+        effect: EffectId,
+        playerid: u8,
+        ignore_count: bool,
+        min_tribute: u8,
+        zone: u32,
+    ) -> bool {
+        if !self.check_count_limit(effect, playerid) {
+            return false;
+        }
+        let peffect = &self.effects[effect];
+        let toplayer = if peffect.is_flag(EFFECT_FLAG_SPSUM_PARAM) && peffect.o_range != 0 {
+            1 - playerid
+        } else {
+            playerid
+        };
+        if !self.is_player_can_mset(self.get_value(effect, card) as u32, playerid, card, toplayer) {
+            return false;
+        }
+        if !ignore_count
+            && self.core.extra_summon[playerid] == 0
+            && self.core.summon_count[playerid] >= self.get_summon_count_limit(playerid)
+        {
+            unported!(self, self.filter_effect(card, EFFECT_EXTRA_SET_COUNT, true));
+            return false;
+        }
+        self.is_summonable(card, effect, min_tribute, zone, 0xff00ff)
     }
 
     // Whether playerid can normal summon the card; `procedure` restricts to one summon procedure (c80921533).

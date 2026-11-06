@@ -308,3 +308,5 @@ pub const EFFECT_UNION_STATUS: u32 = 347;
 pub const EFFECT_OLDUNION_STATUS: u32 = 348;
 pub const REASON_BATTLE: u32 = 0x20;
 pub const REASON_RULE: u32 = 0x400;
+pub const EFFECT_SET_PROC: u32 = 36;
+pub const EFFECT_LIMIT_SET_PROC: u32 = 37;

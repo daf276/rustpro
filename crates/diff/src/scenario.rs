@@ -9,7 +9,7 @@ const XYZ_MATERIALS_MAX: usize = 3;
 
 // Cards an effect of the card under test needs, placed with it in the given location, or in a random zone for 0; for
 // the same player, or the opponent with OPPONENT.
-const SUPPORT: [(u32, &[(u32, u16)]); 23] = [
+const SUPPORT: [(u32, &[(u32, u16)]); 24] = [
     // Fusionist from the Extra Deck with its materials, Petit Angel and Mystical Sheep #2, and Polymerization.
     (1641882, &[(1641882, EXTRA), (24094653, HAND), (38142739, HAND), (83464209, HAND)]),
     // Metallizing Parasite - Lunatite on the field with a monster to equip: Elfnote Lucina.
@@ -34,6 +34,8 @@ const SUPPORT: [(u32, &[(u32, u16)]); 23] = [
     (50078509, &[(50078509, SZONE), (85976588, MZONE | OPPONENT)]),
     // Formula Synchron from the Extra Deck, Synchro Summoned with Mono Synchron and a Level 4 Warrior, Kojikocy.
     (50091196, &[(50091196, EXTRA), (56897896, MZONE), (1184620, MZONE)]),
+    // Darklord Desire in the hand twice, to be Tribute Summoned or Set with a Fairy on the field: Medius the Pure.
+    (55690251, &[(55690251, HAND), (55690251, HAND), (97556336, MZONE)]),
     // Mono Synchron on the field with a Level 4 Warrior, Kojikocy, for Formula Synchron in the Extra Deck.
     (56897896, &[(50091196, EXTRA), (56897896, MZONE), (1184620, MZONE)]),
     // Magistus Chorozo from the Extra Deck, by its contact fusion, and on the field for its attack trigger.

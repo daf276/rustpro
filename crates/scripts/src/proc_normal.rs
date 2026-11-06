@@ -1,13 +1,13 @@
-// Port of proc_normal.lua: aux.AddNormalSummonProcedure, a Normal Summon by other tributes than the level asks for, or
-// the only way to Normal Summon the card. aux.AddNormalSetProcedure needs the Set procedures of MonsterSet, which come
-// with the first card that registers one; the metatable's min_tribute_req/max_tribute_req have no reader yet.
-use engine::{Args, CardId, CardSet, Duel, EffectId, Script};
+// Port of proc_normal.lua: aux.AddNormalSummonProcedure and aux.AddNormalSetProcedure, a Normal Summon or Set by other
+// tributes than the level asks for, or the only way to Normal Summon or Set the card. The metatable's
+// min_tribute_req/max_tribute_req have no reader yet.
+use engine::{Args, CardId, CardSet, ConditionFn, Duel, EffectId, Script};
 
 use crate::constant::*;
 use crate::utility::aux;
 
-// The parameters of aux.AddNormalSummonProcedure (ns, opt, min, max, val, desc, f, sumop): `f` and `sumop` left nil
-// pass every card and do nothing.
+// The parameters of aux.AddNormalSummonProcedure and aux.AddNormalSetProcedure (ns, opt, min, max, val, desc, f, sumop):
+// `f` and `sumop` left nil pass every card and do nothing.
 pub trait NormalProcedure {
     const NS: bool;
     const OPT: bool;
@@ -29,24 +29,31 @@ pub struct Normal;
 
 impl Normal {
     pub fn add_summon_procedure<P: NormalProcedure>(duel: &mut Duel, c: CardId) -> EffectId {
+        let code = if P::NS && P::OPT {
+            EFFECT_SUMMON_PROC
+        } else {
+            EFFECT_LIMIT_SUMMON_PROC
+        };
+        Normal::add_procedure::<P>(duel, c, code, Normal::summon_condition::<P>)
+    }
+
+    pub fn add_set_procedure<P: NormalProcedure>(duel: &mut Duel, c: CardId) -> EffectId {
+        let code = if P::NS && P::OPT { EFFECT_SET_PROC } else { EFFECT_LIMIT_SET_PROC };
+        Normal::add_procedure::<P>(duel, c, code, Normal::set_condition::<P>)
+    }
+
+    fn add_procedure<P: NormalProcedure>(duel: &mut Duel, c: CardId, code: u32, condition: ConditionFn) -> EffectId {
         let e1 = duel.create_effect(c);
         if let Some(desc) = P::DESC {
             e1.set_description(duel, desc);
         }
         e1.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
         e1.set_type(duel, EFFECT_TYPE_SINGLE);
-        e1.set_code(
-            duel,
-            if P::NS && P::OPT {
-                EFFECT_SUMMON_PROC
-            } else {
-                EFFECT_LIMIT_SUMMON_PROC
-            },
-        );
+        e1.set_code(duel, code);
         if P::NS {
-            e1.set_condition(duel, Normal::summon_condition::<P>);
-            e1.set_target(duel, Normal::summon_target::<P>);
-            e1.set_operation(duel, Normal::summon_operation::<P>);
+            e1.set_condition(duel, condition);
+            e1.set_target(duel, Normal::target::<P>);
+            e1.set_operation(duel, Normal::operation::<P>);
         } else {
             e1.set_condition(duel, |_, a| a.c.is_none());
         }
@@ -71,16 +78,25 @@ impl Normal {
     }
 
     fn summon_condition<P: NormalProcedure>(duel: &Duel, a: &Args) -> bool {
+        Normal::condition::<P>(duel, a, P::OPT)
+    }
+
+    // AddNormalSetProcedure passes no opt to NormalSetCondition1.
+    fn set_condition<P: NormalProcedure>(duel: &Duel, a: &Args) -> bool {
+        Normal::condition::<P>(duel, a, false)
+    }
+
+    fn condition<P: NormalProcedure>(duel: &Duel, a: &Args, opt: bool) -> bool {
         let Some(c) = a.c else { return true };
         let tp = c.get_controler(duel);
         let mg = Normal::tributes::<P>(duel, c, a, tp);
         let tributes = Normal::maplevel(c.get_level(duel));
-        (!P::OPT || (tributes > 0 && tributes != P::MAX))
+        (!opt || (tributes > 0 && tributes != P::MAX))
             && i32::from(a.min) <= P::MIN
             && duel.check_tribute(c, P::MIN, P::MAX, Some(mg), tp, a.zone)
     }
 
-    fn summon_target<P: NormalProcedure>(duel: &mut Duel, a: &Args, _: i32, _: Option<CardId>) -> Script<bool> {
+    fn target<P: NormalProcedure>(duel: &mut Duel, a: &Args, _: i32, _: Option<CardId>) -> Script<bool> {
         let Some(c) = a.c else { return Ok(false) };
         let mg = Normal::tributes::<P>(duel, c, a, a.tp);
         let cancelable = duel.is_summon_cancelable();
@@ -92,7 +108,7 @@ impl Normal {
         Ok(true)
     }
 
-    fn summon_operation<P: NormalProcedure>(duel: &mut Duel, a: &Args) -> Script<()> {
+    fn operation<P: NormalProcedure>(duel: &mut Duel, a: &Args) -> Script<()> {
         let Some(c) = a.c else { return Ok(()) };
         let g = a.e.get_label_object_group(duel).unwrap_or_default();
         c.set_material(duel, Some(g));

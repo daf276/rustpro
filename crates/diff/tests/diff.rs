@@ -34,6 +34,9 @@ const MESSAGE_PATHS: [(u32, u8); 3] = [(50078509, 96), (72575145, 93), (32268901
 // Desire with 1.
 const SUMMON_PATHS: [(u32, u32); 2] = [(28348537, 1), (55690251, 1)];
 const SET_PATHS: [(u32, u32); 1] = [(55690251, 1)];
+// Union monsters destroyed in place of the monster they equip (EFFECT_DESTROY_SUBSTITUTE): Metallizing Parasite -
+// Lunatite (by battle only) and Heavy Mech Support Armor. Written out only: too rare to assert in 1000 scenarios.
+const REPLACE_PATHS: [u32; 2] = [7369217, 39890958];
 
 fn load(vendor: fn(&Path) -> Result<Vendor, DiffError>) -> Result<&'static Vendor, DiffError> {
     Ok(Box::leak(Box::new(vendor(
@@ -171,6 +174,8 @@ fn assert_scenarios_clean(seeds: Range<u64>) -> Result<(), DiffError> {
     writeln!(out, "summon paths: {summons:?}").ok();
     let sets = SET_PATHS.map(|key| (key, tally.set_tributes.get(&key).copied().unwrap_or(0)));
     writeln!(out, "set paths: {sets:?}").ok();
+    let replaced = REPLACE_PATHS.map(|card| (card, tally.replaced.get(&card).copied().unwrap_or(0)));
+    writeln!(out, "replace paths: {replaced:?}").ok();
     let paths: Vec<(u32, u32)> = (materials.iter().map(|&((card, _), count)| (card, count)))
         .chain(hints.iter().map(|&((card, _), count)| (card, count)))
         .chain(messages.iter().map(|&((card, _), count)| (card, count)))

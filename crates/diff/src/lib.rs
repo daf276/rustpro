@@ -38,6 +38,7 @@ const PHINT_DESC_REMOVE: u8 = 7;
 const REASON_RELEASE: u32 = 0x2;
 const REASON_MATERIAL: u32 = 0x8;
 const REASON_SUMMON: u32 = 0x10;
+const REASON_REPLACE: u32 = 0x100_0000;
 const REASON_BATTLE: u32 = 0x20;
 const HINT_REPLAY: u64 = 30;
 
@@ -134,6 +135,8 @@ pub struct Tally {
     // Normal Summons and Sets per card code and number of tributes released for them.
     pub summon_tributes: BTreeMap<(u32, u32), u32>,
     pub set_tributes: BTreeMap<(u32, u32), u32>,
+    // Cards destroyed in place of others (MSG_MOVE with REASON_REPLACE) per card code.
+    pub replaced: BTreeMap<u32, u32>,
     tributes_pending: u32,
     pub chain_disabled: u32,
     // The card code and effect description of the current chain's links.
@@ -174,6 +177,11 @@ impl Tally {
         self.count_chain(message);
         if let Some(&kind) = message.first() {
             *self.messages.entry(kind).or_default() += 1;
+        }
+        if let [MSG_MOVE, a, b, c, d, .., e, f, g, h] = message
+            && u32::from_ne_bytes([*e, *f, *g, *h]) & REASON_REPLACE != 0
+        {
+            *self.replaced.entry(u32::from_ne_bytes([*a, *b, *c, *d])).or_default() += 1;
         }
         match message {
             [MSG_MOVE, .., a, b, c, d] if u32::from_ne_bytes([*a, *b, *c, *d]) & REASON_SUMMON != 0 => self.tributes_pending += 1,
@@ -278,6 +286,10 @@ impl std::ops::Add for Tally {
             set_tributes: other.set_tributes.into_iter().fold(self.set_tributes, |mut sets, (key, count)| {
                 *sets.entry(key).or_default() += count;
                 sets
+            }),
+            replaced: other.replaced.into_iter().fold(self.replaced, |mut replaced, (code, count)| {
+                *replaced.entry(code).or_default() += count;
+                replaced
             }),
             tributes_pending: 0,
             chain_disabled: self.chain_disabled + other.chain_disabled,

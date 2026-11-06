@@ -310,3 +310,4 @@ pub const REASON_BATTLE: u32 = 0x20;
 pub const REASON_RULE: u32 = 0x400;
 pub const EFFECT_SET_PROC: u32 = 36;
 pub const EFFECT_LIMIT_SET_PROC: u32 = 37;
+pub const TYPE_UNION: u32 = 0x400;

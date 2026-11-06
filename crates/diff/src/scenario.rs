@@ -9,7 +9,7 @@ const XYZ_MATERIALS_MAX: usize = 3;
 
 // Cards an effect of the card under test needs, placed with it in the given location, or in a random zone for 0; for
 // the same player, or the opponent with OPPONENT.
-const SUPPORT: [(u32, &[(u32, u16)]); 24] = [
+const SUPPORT: [(u32, &[(u32, u16)]); 25] = [
     // Fusionist from the Extra Deck with its materials, Petit Angel and Mystical Sheep #2, and Polymerization.
     (1641882, &[(1641882, EXTRA), (24094653, HAND), (38142739, HAND), (83464209, HAND)]),
     // Metallizing Parasite - Lunatite on the field with a monster to equip: Elfnote Lucina.
@@ -30,6 +30,8 @@ const SUPPORT: [(u32, &[(u32, u16)]); 24] = [
     // Drill Driver Vespenato from the Extra Deck can be Xyz Summoned with a Rank 4 Xyz Monster on the field: Tornado
     // Dragon.
     (39317553, &[(39317553, EXTRA), (6983839, MZONE)]),
+    // Heavy Mech Support Armor on the field with a Machine monster to equip: Mechanicalchaser.
+    (39890958, &[(39890958, MZONE), (7359741, MZONE)]),
     // Fiendish Chain set to be activated on the opponent's Effect Monster, Elfnote Fortuna.
     (50078509, &[(50078509, SZONE), (85976588, MZONE | OPPONENT)]),
     // Formula Synchron from the Extra Deck, Synchro Summoned with Mono Synchron and a Level 4 Warrior, Kojikocy.

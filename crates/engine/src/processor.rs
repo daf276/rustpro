@@ -7,8 +7,8 @@ use crate::duel::Duel;
 use crate::effect::{Chain, Container, EffectId};
 use crate::field::PerPlayer;
 use crate::operations::{
-    ChangePos, Damage, Destroy, Draw, FlipSummon, MonsterSet, MoveToField, Recover, Release, RemoveCounter, RemoveOverlay, SelectTribute,
-    SendTo, SpSummon, SpSummonRule, SpSummonStep, SpellSet, SpellSetGroup, SummonRule, XyzOverlay,
+    ChangePos, Damage, Destroy, DiscardDeck, Draw, Equip, FlipSummon, MonsterSet, MoveToField, Recover, Release, RemoveCounter,
+    RemoveOverlay, SelectTribute, SendTo, SpSummon, SpSummonRule, SpSummonStep, SpellSet, SpellSetGroup, SummonRule, XyzOverlay,
 };
 use crate::script::Procedure;
 
@@ -237,6 +237,8 @@ pub enum Unit {
     RemoveOverlay(RemoveOverlay),
     XyzOverlay(XyzOverlay),
     Draw(Draw),
+    DiscardDeck(DiscardDeck),
+    Equip(Equip),
     Damage(Damage),
     Recover(Recover),
     Execute(Execute),
@@ -307,6 +309,8 @@ units!(
     RemoveOverlay,
     XyzOverlay,
     Draw,
+    DiscardDeck,
+    Equip,
     Damage,
     Recover,
     Execute,
@@ -371,6 +375,8 @@ impl Duel {
             Unit::RemoveOverlay(arg) => self.run_steps(arg, Self::process_remove_overlay, false),
             Unit::XyzOverlay(arg) => self.run_steps(arg, Self::process_xyz_overlay, false),
             Unit::Draw(arg) => self.run_steps(arg, Self::process_draw, false),
+            Unit::DiscardDeck(arg) => self.run_steps(arg, Self::process_discard_deck, false),
+            Unit::Equip(arg) => self.run_steps(arg, Self::process_equip, false),
             Unit::Damage(arg) => self.run_steps(arg, Self::process_damage, false),
             Unit::Recover(arg) => self.run_steps(arg, Self::process_recover, false),
             Unit::Execute(arg) => self.run_steps(arg, Self::process_execute, false),
@@ -2000,6 +2006,7 @@ impl Duel {
                 for card in [Some(attacker), attack_target].into_iter().flatten() {
                     self.cards[card].set_status(STATUS_BATTLE_RESULT, false);
                 }
+                self.core.battle_destroy_rep.clear();
                 if !destroyed.is_empty() {
                     let (targets, reason) = (destroyed, REASON_BATTLE);
                     self.emplace_process(Destroy {
@@ -2014,8 +2021,22 @@ impl Duel {
                 false
             }
             29 => {
-                // The core also destroys core.battle_destroy_rep and runs core.desrep_chain here, which only
-                // EFFECT_DESTROY_SUBSTITUTE and EFFECT_DESTROY_REPLACE fill.
+                if let Some(destroyed) = &mut arg.cards_destroyed_by_battle {
+                    *destroyed = self.core.battle_destroyed;
+                }
+                if !self.core.battle_destroy_rep.is_empty() {
+                    let rep = self.core.battle_destroy_rep;
+                    self.field_destroy(
+                        rep,
+                        None,
+                        REASON_EFFECT | REASON_REPLACE,
+                        PLAYER_NONE,
+                        PLAYER_NONE,
+                        LOCATION_GRAVE,
+                        0,
+                    );
+                }
+                // The core also runs core.desrep_chain here, which only EFFECT_DESTROY_REPLACE fills.
                 self.adjust_all();
                 false
             }
@@ -2632,8 +2653,8 @@ impl Duel {
         self.core.win_reason = 0;
     }
 
-    // Steps 3-5, 8, 10 and 13 adjust trap monsters, control, brainwashing, granted effects, equips and deck reversal,
-    // which come with the cards that cause them.
+    // Steps 3-5, 8 and 13 adjust trap monsters, control, brainwashing, granted effects and deck reversal, which come
+    // with the cards that cause them.
     fn process_adjust(&mut self, arg: &mut Adjust) -> bool {
         match arg.step {
             0 => {
@@ -2669,6 +2690,25 @@ impl Duel {
                     return false;
                 }
                 self.adjust_self_destroy_set();
+                false
+            }
+            10 => {
+                let mut destroy_set = CardSet::default();
+                let mut turn_player = self.infos.turn_player;
+                for _ in 0..2 {
+                    for card in self.player[turn_player].list_szone.into_iter().take(5).flatten() {
+                        if let Some(target) = self.cards[card].equiping_target
+                            && self.is_affected_by_effect_target(card, EFFECT_EQUIP_LIMIT, target).is_none()
+                        {
+                            destroy_set.insert(card);
+                        }
+                    }
+                    turn_player = 1 - turn_player;
+                }
+                if !destroy_set.is_empty() {
+                    self.core.re_adjust = true;
+                    self.field_destroy(destroy_set, None, REASON_RULE, PLAYER_NONE, PLAYER_NONE, LOCATION_GRAVE, 0);
+                }
                 false
             }
             11 => {
@@ -2743,7 +2783,7 @@ impl Duel {
                 );
                 false
             }
-            3 | 8 | 10 | 13 => false,
+            3 | 8 | 13 => false,
             _ => true,
         }
     }

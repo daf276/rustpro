@@ -14,11 +14,17 @@ macro_rules! unported {
 pub mod chain;
 mod constant;
 mod official;
+mod proc_equip;
 mod proc_fusion;
+mod proc_gemini;
 mod proc_link;
+mod proc_normal;
 mod proc_pendulum;
+mod proc_persistent;
 mod proc_ritual;
+mod proc_spirit;
 mod proc_synchro;
+mod proc_union;
 mod proc_workaround;
 mod proc_xyz;
 mod utility;
@@ -32,11 +38,17 @@ pub mod prelude {
 
     pub use crate::chain::{self, DuelChain, EffectChain};
     pub use crate::constant::*;
+    pub use crate::proc_equip::{Equip, EquipProcedure};
     pub use crate::proc_fusion::{ContactFusion, DuelFusion, Fusion, FusionMaterial, FusionMix, FusionMixRep, FusionSummonParams};
+    pub use crate::proc_gemini::Gemini;
     pub use crate::proc_link::{Link, LinkProcedure};
+    pub use crate::proc_normal::{Normal, NormalProcedure};
     pub use crate::proc_pendulum::Pendulum;
+    pub use crate::proc_persistent::{Persistent, PersistentProcedure};
     pub use crate::proc_ritual::{ForcedSelection, Ritual, RitualCode, RitualParams, WholeLevelTribute};
+    pub use crate::proc_spirit::Spirit;
     pub use crate::proc_synchro::{Synchro, SynchroProcedure};
+    pub use crate::proc_union::{Union, UnionProcedure};
     pub use crate::proc_workaround::{CardWorkaround, DuelWorkaround};
     pub use crate::proc_xyz::{AlterFilter, Xyz, XyzFilter, XyzProcedure};
     pub use crate::utility::{CardUtility, Cost, DuelUtility, EffectUtility, aux};

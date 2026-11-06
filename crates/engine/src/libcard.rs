@@ -3,7 +3,7 @@
 use crate::card::{CardId, CardSet};
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{Container, EffectId};
+use crate::effect::{Container, EffectId, EffectSet};
 use crate::script::Script;
 
 impl CardId {
@@ -353,6 +353,70 @@ impl CardId {
         duel.filter_effect(self, code, true).first().copied()
     }
 
+    pub fn get_equip_target(self, duel: &Duel) -> Option<CardId> {
+        duel.cards[self].equiping_target
+    }
+
+    pub fn get_equip_group(self, duel: &Duel) -> CardSet {
+        duel.equiping_cards(self)
+    }
+
+    // The counts of equipped Union monsters in their union state and in the old union state.
+    pub fn get_union_count(self, duel: &Duel) -> (usize, usize) {
+        let unions = |code| {
+            duel.equiping_cards(self)
+                .iter()
+                .filter(|&equip| duel.cards[equip].data.card_type & TYPE_UNION != 0 && duel.is_affected_by_effect(equip, code).is_some())
+                .count()
+        };
+        (unions(EFFECT_UNION_STATUS), unions(EFFECT_OLDUNION_STATUS))
+    }
+
+    pub fn set_card_target(self, duel: &mut Duel, target: CardId) {
+        duel.add_card_target(self, target);
+    }
+
+    pub fn get_card_target(self, duel: &Duel) -> CardSet {
+        duel.card_targets(self)
+    }
+
+    pub fn get_first_card_target(self, duel: &Duel) -> Option<CardId> {
+        duel.card_targets(self).get_first()
+    }
+
+    pub fn is_has_card_target(self, duel: &Duel, target: CardId) -> bool {
+        duel.card_targets.contains(&(self, target))
+    }
+
+    pub fn create_relation(self, duel: &mut Duel, target: CardId, reset: u32) {
+        if !duel
+            .card_relations
+            .iter()
+            .any(|&(card, related, _)| card == self && related == target)
+        {
+            duel.card_relations.push((self, target, reset));
+        }
+    }
+
+    pub fn is_relate_to_card(self, duel: &Duel, target: CardId) -> bool {
+        duel.card_relations
+            .iter()
+            .any(|&(card, related, _)| card == self && related == target)
+    }
+
+    // Card.IsGeminiState and Card.EnableGeminiState, under the names proc_gemini.lua gives them.
+    pub fn is_gemini_status(self, duel: &Duel) -> bool {
+        duel.is_affected_by_effect(self, EFFECT_GEMINI_STATUS).is_some()
+    }
+
+    pub fn enable_gemini_status(self, duel: &mut Duel) {
+        duel.add_status_effect(self, EFFECT_GEMINI_STATUS, 64, RESET_EVENT + 0x1fe_0000);
+    }
+
+    pub fn get_card_effect(self, duel: &Duel, code: u32) -> EffectSet {
+        duel.get_card_effect(self, code)
+    }
+
     pub fn is_relate_to_battle(self, duel: &Duel) -> bool {
         let fieldid = duel.cards[self].fieldid_r;
         duel.core.pre_field.contains(&fieldid)
@@ -456,6 +520,10 @@ impl CardId {
     pub fn get_flag_effect(self, duel: &Duel, code: u32) -> usize {
         let code = (code & 0xfff_ffff) | 0x1000_0000;
         duel.field_effects.registry.equal_range(Container::Single, Some(self), code).count()
+    }
+
+    pub fn reset_flag_effect(self, duel: &mut Duel, code: u32) {
+        duel.reset(self, (code & 0xfff_ffff) | 0x1000_0000, RESET_CODE);
     }
 }
 

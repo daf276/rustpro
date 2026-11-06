@@ -19,6 +19,25 @@ pub struct Draw {
     pub drawn_set: CardSet,
 }
 
+#[derive(Debug, Clone)]
+pub struct Equip {
+    pub step: u16,
+    pub equip_player: u8,
+    pub equip_card: CardId,
+    pub target: CardId,
+    pub faceup: bool,
+    pub is_step: bool,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct DiscardDeck {
+    pub step: u16,
+    pub playerid: u8,
+    pub count: u16,
+    pub reason: u32,
+    pub discarded_set: CardSet,
+}
+
 // The core shares `targets` as a group with SendToReplace; here the replace checks run inline in step 1.
 #[derive(Debug, Clone, Default)]
 pub struct SendTo {
@@ -147,6 +166,8 @@ pub struct SummonRule {
     pub summon_procedure_effect: Option<EffectId>,
     pub extra_summon_effect: Option<EffectId>,
     pub tributes: CardSet,
+    // Whether the ordinary summon comes first among the options, before core.select_effects.
+    pub ordinary: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -160,6 +181,7 @@ pub struct MonsterSet {
     pub summon_procedure_effect: Option<EffectId>,
     pub extra_summon_effect: Option<EffectId>,
     pub tributes: CardSet,
+    pub ordinary: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -178,7 +200,7 @@ pub struct SelectTribute {
     pub cancelable: bool,
     pub toplayer: u8,
     pub zone: u8,
-    pub target: CardId,
+    pub target: Option<CardId>,
     pub extra_release_effect: Option<EffectId>,
     pub must_choose_one: CardSet,
 }
@@ -482,6 +504,243 @@ impl Duel {
         }
     }
 
+    // field::refresh_location_info_instant: the zones EFFECT_DISABLE_FIELD and EFFECT_USE_EXTRA_*ZONE take away, which
+    // come with the cards that register them.
+    pub(crate) fn refresh_location_info_instant(&self) {
+        for code in [EFFECT_DISABLE_FIELD, EFFECT_USE_EXTRA_MZONE, EFFECT_USE_EXTRA_SZONE] {
+            unported!(self, self.filter_field_effect(code));
+        }
+    }
+
+    // Equipping with is_step (Duel.Equip(..., true) and Duel.EquipComplete) comes with the cards that call it.
+    pub(crate) fn process_equip(&mut self, arg: &mut Equip) -> bool {
+        let (equip_player, equip_card, target) = (arg.equip_player, arg.equip_card, arg.target);
+        match arg.step {
+            0 => {
+                self.returns.set_i32(0, 0);
+                if !self.is_affect_by_effect(equip_card, self.core.reason_effect.get()) || equip_card == target {
+                    return true;
+                }
+                let mut to_grave = false;
+                let current = self.cards[target].current;
+                if current.location != LOCATION_MZONE || current.position & POS_FACEDOWN != 0 {
+                    if self.is_flag(DUEL_EQUIP_NOT_SENT_IF_MISSING_TARGET) && self.cards[equip_card].current.location == LOCATION_MZONE {
+                        return true;
+                    }
+                    to_grave = true;
+                }
+                if self.cards[equip_card].current.location != LOCATION_SZONE {
+                    self.refresh_location_info_instant();
+                    let count = self.get_useable_count(
+                        Some(equip_card),
+                        equip_player,
+                        LOCATION_SZONE,
+                        equip_player,
+                        LOCATION_REASON_TOFIELD,
+                        0xff,
+                    );
+                    if count.0 <= 0 {
+                        to_grave = true;
+                    }
+                }
+                if to_grave {
+                    if self.cards[equip_card].current.location != LOCATION_GRAVE {
+                        let reason = REASON_RULE;
+                        self.send_to(
+                            equip_card.into(),
+                            None,
+                            reason,
+                            PLAYER_NONE,
+                            PLAYER_NONE,
+                            LOCATION_GRAVE,
+                            0,
+                            POS_FACEUP as u8,
+                            false,
+                        );
+                    }
+                    arg.step = 2;
+                    return false;
+                }
+                if let Some(previous) = self.cards[equip_card].equiping_target {
+                    self.card_targets.retain(|&link| link != (equip_card, previous));
+                    self.card_unequip(equip_card);
+                    self.enable_field_effect(equip_card, false);
+                    return false;
+                }
+                if self.cards[equip_card].current.location == LOCATION_SZONE {
+                    if arg.faceup && self.cards[equip_card].is_position(POS_FACEDOWN) {
+                        self.change_position(equip_card, None, equip_player, POS_FACEUP, 0, false);
+                    }
+                    return false;
+                }
+                self.enable_field_effect(equip_card, false);
+                self.cards[equip_card].current.reason_player = equip_player;
+                let faceup = arg.faceup || self.cards[equip_card].is_position(POS_FACEUP);
+                let position = (if faceup { POS_FACEUP } else { POS_FACEDOWN }) as u8;
+                let destination = LOCATION_SZONE.into();
+                self.field_move_to_field(
+                    equip_card,
+                    equip_player,
+                    equip_player,
+                    destination,
+                    position,
+                    false,
+                    0xff,
+                    false,
+                    LOCATION_REASON_TOFIELD,
+                );
+                false
+            }
+            1 => {
+                self.card_equip(equip_card, target);
+                let data_type = self.cards[equip_card].data.card_type;
+                if data_type & TYPE_EQUIP == 0 {
+                    let (code, value) = if self.get_type(equip_card) & TYPE_TRAP != 0 {
+                        (EFFECT_ADD_TYPE, TYPE_EQUIP)
+                    } else if data_type & TYPE_UNION != 0 {
+                        (EFFECT_CHANGE_TYPE, TYPE_EQUIP + TYPE_SPELL + TYPE_UNION)
+                    } else if data_type & TYPE_TOKEN != 0 {
+                        (EFFECT_CHANGE_TYPE, TYPE_EQUIP + TYPE_SPELL + TYPE_TOKEN)
+                    } else {
+                        (EFFECT_CHANGE_TYPE, TYPE_EQUIP + TYPE_SPELL)
+                    };
+                    let effect = self.new_effect(equip_card);
+                    let peffect = &mut self.effects[effect];
+                    peffect.handler = Some(equip_card);
+                    peffect.effect_type = EFFECT_TYPE_SINGLE;
+                    peffect.code = code;
+                    peffect.value = Value::Int(value as i32);
+                    peffect.flag[0] = EFFECT_FLAG_CANNOT_DISABLE;
+                    peffect.reset_flag = RESET_EVENT + 0x17e_0000;
+                    self.card_add_effect(equip_card, effect);
+                }
+                if !self.card_targets.contains(&(equip_card, target)) {
+                    self.card_targets.push((equip_card, target));
+                }
+                unported!(self, arg.is_step.then_some(equip_card));
+                if self.cards[equip_card].is_position(POS_FACEUP) {
+                    self.enable_field_effect(equip_card, true);
+                }
+                self.adjust_disable_check_list();
+                let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
+                let equips = Some(CardSet::from(equip_card));
+                self.raise_single_event_with(target, equips, EVENT_EQUIP, reason_effect, 0, reason_player, PLAYER_NONE, 0);
+                self.raise_event(equips, EVENT_EQUIP, reason_effect, 0, reason_player, PLAYER_NONE, 0);
+                let card = &self.cards[target];
+                let controler = card
+                    .overlay_target
+                    .map_or(card.current.controler, |overlay| self.cards[overlay].current.controler);
+                self.core.hint_timing[controler] |= TIMING_EQUIP;
+                self.process_single_event();
+                self.process_instant_event();
+                false
+            }
+            2 => {
+                self.returns.set_i32(0, 1);
+                true
+            }
+            _ => {
+                self.returns.set_i32(0, 0);
+                true
+            }
+        }
+    }
+
+    // Destinations other than the GY come from redirect effects, which destination_redirect keeps unported.
+    pub(crate) fn process_discard_deck(&mut self, arg: &mut DiscardDeck) -> bool {
+        let (playerid, count, reason) = (arg.playerid, usize::from(arg.count), arg.reason);
+        let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
+        match arg.step {
+            0 => {
+                if self.is_player_affected_by_effect(playerid, EFFECT_CANNOT_DISCARD_DECK).is_some() {
+                    self.core.operated_set.clear();
+                    self.returns.set_i32(0, 0);
+                    return true;
+                }
+                let top: Vec<CardId> = self.player[playerid].list_main.iter().rev().take(count).copied().collect();
+                for card in top {
+                    let target = &mut self.cards[card];
+                    target.sendto_param.location = LOCATION_GRAVE;
+                    target.current.reason_effect = reason_effect;
+                    target.current.reason_player = reason_player;
+                    target.current.reason = reason;
+                    self.destination_redirect(card, LOCATION_GRAVE);
+                }
+                let list = &self.player[playerid].list_main;
+                if self.core.global_flag & GLOBALFLAG_DECK_REVERSE_CHECK != 0
+                    && list.len() > count
+                    && let Some(&top) = list.iter().rev().nth(count)
+                {
+                    let (code, position) = (self.cards[top].data.code, self.cards[top].current.position);
+                    if self.core.deck_reversed || position == POS_FACEUP_DEFENSE {
+                        self.trace
+                            .message(MSG_DECK_TOP)
+                            .u8(playerid)
+                            .u32(count as u32)
+                            .u32(code)
+                            .u32(position);
+                    }
+                }
+                false
+            }
+            1 => {
+                arg.discarded_set.clear();
+                for _ in 0..count {
+                    let Some(&card) = self.player[playerid].list_main.last() else {
+                        break;
+                    };
+                    let destination = self.cards[card].sendto_param.location;
+                    self.reset(card, RESET_TOGRAVE, RESET_EVENT);
+                    let from = self.cards.get_info_location(card);
+                    self.enable_field_effect(card, false);
+                    self.cancel_field_effect(card);
+                    self.player[playerid].list_main.pop();
+                    if !self.core.current_chain.is_empty() {
+                        self.core.just_sent_cards.insert(card);
+                    }
+                    let target = &mut self.cards[card];
+                    target.previous.controler = target.current.controler;
+                    target.previous.location = target.current.location;
+                    target.previous.sequence = target.current.sequence;
+                    target.previous.position = target.current.position;
+                    target.previous.pzone = target.current.pzone;
+                    target.current.controler = PLAYER_NONE;
+                    target.current.location = 0;
+                    let owner = target.owner;
+                    self.add_card(owner, card, destination, 0, false);
+                    self.enable_field_effect(card, true);
+                    self.cards[card].current.position = POS_FACEUP;
+                    let (code, to, card_reason) = (
+                        self.cards[card].data.code,
+                        self.cards.get_info_location(card),
+                        self.cards[card].current.reason,
+                    );
+                    self.trace.message(MSG_MOVE).u32(code).loc(from).loc(to).u32(card_reason);
+                    let current = self.cards[card].current;
+                    for event in [EVENT_TO_GRAVE, EVENT_MOVE] {
+                        self.raise_single_event(card, event, current.reason_effect, current.reason, current.reason_player, 0, 0);
+                    }
+                    arg.discarded_set.insert(card);
+                }
+                let discarded = Some(arg.discarded_set).filter(|set| !set.is_empty());
+                if discarded.is_some() {
+                    self.raise_event(discarded, EVENT_TO_GRAVE, reason_effect, reason, reason_player, 0, 0);
+                }
+                self.raise_event(Some(arg.discarded_set), EVENT_MOVE, reason_effect, reason, reason_player, 0, 0);
+                self.process_single_event();
+                self.process_instant_event();
+                self.adjust_instant();
+                false
+            }
+            2 => {
+                self.core.operated_set = arg.discarded_set;
+                self.returns.set_i32(0, arg.discarded_set.len() as i32);
+                true
+            }
+            _ => true,
+        }
+    }
+
     pub(crate) fn process_damage(&mut self, arg: &mut Damage) -> bool {
         let (playerid, amount, reason, reason_card) = (arg.playerid, arg.amount, arg.reason, arg.reason_card);
         let reason_player = arg.reason_player;
@@ -638,7 +897,7 @@ impl Duel {
         let (reason_effect, reason, reason_player) = (arg.reason_effect, arg.reason, arg.reason_player);
         match arg.step {
             0 => {
-                let mut indestructable = CardSet::default();
+                let (mut indestructable, mut extra) = (CardSet::default(), CardSet::default());
                 let mut indestructable_effects = EffectSet::default();
                 for card in arg.targets {
                     if !self.is_destructable(card) {
@@ -664,13 +923,39 @@ impl Duel {
                             continue;
                         }
                     }
-                    let codes = [EFFECT_INDESTRUCTABLE, EFFECT_INDESTRUCTABLE_COUNT, EFFECT_DESTROY_SUBSTITUTE];
+                    let codes = [EFFECT_INDESTRUCTABLE, EFFECT_INDESTRUCTABLE_COUNT];
                     unported!(self, codes.into_iter().flat_map(|code| self.filter_effect(card, code, true)));
+                    let substitutes = self.destroy_substitutes(card);
+                    if !substitutes.is_empty() {
+                        extra.merge(substitutes);
+                        self.restore_reason(card);
+                        self.core.destroy_canceled.insert(card);
+                        arg.targets.remove(card);
+                    }
                 }
                 for card in indestructable {
                     self.restore_reason(card);
                     self.cards[card].set_status(STATUS_DESTROY_CONFIRMED, false);
                     arg.targets.remove(card);
+                }
+                for rep in extra {
+                    if arg.targets.contains(rep) {
+                        continue;
+                    }
+                    let target = &mut self.cards[rep];
+                    target.temp.reason = target.current.reason;
+                    target.temp.reason_effect = target.current.reason_effect;
+                    target.temp.reason_player = target.current.reason_player;
+                    target.current.reason = REASON_EFFECT | REASON_DESTROY | REASON_REPLACE;
+                    target.current.reason_effect = None;
+                    target.current.reason_player = target.current.controler;
+                    target.sendto_param = SendtoParam {
+                        playerid: target.owner,
+                        position: POS_FACEUP as u8,
+                        location: LOCATION_GRAVE,
+                        sequence: 0,
+                    };
+                    arg.targets.insert(rep);
                 }
                 // The core keeps them in a set ordered by id.
                 indestructable_effects.sort_by_key(|&effect| self.effects.id(effect));
@@ -786,8 +1071,15 @@ impl Duel {
                         arg.targets.remove(card);
                         continue;
                     }
-                    let codes = [EFFECT_INDESTRUCTABLE, EFFECT_INDESTRUCTABLE_COUNT, EFFECT_DESTROY_SUBSTITUTE];
+                    let codes = [EFFECT_INDESTRUCTABLE, EFFECT_INDESTRUCTABLE_COUNT];
                     unported!(self, codes.into_iter().flat_map(|code| self.filter_effect(card, code, true)));
+                    let substitutes = self.destroy_substitutes(card);
+                    if !substitutes.is_empty() {
+                        self.core.battle_destroy_rep.merge(substitutes);
+                        self.restore_reason(card);
+                        self.core.destroy_canceled.insert(card);
+                        arg.targets.remove(card);
+                    }
                 }
                 if !arg.targets.is_empty() {
                     // operation_replace(EFFECT_DESTROY_REPLACE, 12, targets)
@@ -812,7 +1104,13 @@ impl Duel {
                             .equal_range(Container::Single, Some(card), EFFECT_DESTROY_REPLACE)
                     );
                 }
-                // Step 12 only clears core.destroy_canceled, which holds EFFECT_DESTROY_SUBSTITUTE cards.
+                self.core.battle_destroyed = arg.targets;
+                false
+            }
+            12 => {
+                for card in std::mem::take(&mut self.core.destroy_canceled) {
+                    self.cards[card].set_status(STATUS_DESTROY_CONFIRMED, false);
+                }
                 true
             }
             _ => true,
@@ -1113,9 +1411,16 @@ impl Duel {
             10 => {
                 let mut sets = [CardSet::default(); 7];
                 let [to_hand, to_deck, to_grave, removed, discarded, released, destroyed] = &mut sets;
-                let mut overlays = CardSet::default();
+                let (mut overlays, mut equipings) = (CardSet::default(), CardSet::default());
                 for card in arg.targets.iter() {
-                    // Equips are detached here and later destroyed; they come with the cards that make them.
+                    self.card_unequip(card);
+                    for equip in self.equiping_cards(card) {
+                        self.card_unequip(equip);
+                        if self.cards[equip].current.location == LOCATION_SZONE {
+                            equipings.insert(equip);
+                        }
+                    }
+                    self.clear_card_target(card);
                     let target = &self.cards[card];
                     let (current, data_type, destination) = (target.current, target.data.card_type, target.sendto_param.location);
                     let raise = |set: &mut CardSet, event: u32, duel: &mut Self| {
@@ -1180,6 +1485,10 @@ impl Duel {
                 self.raise_event(Some(arg.targets), EVENT_MOVE, reason_effect, reason, reason_player, 0, 0);
                 self.process_single_event();
                 self.process_instant_event();
+                if !equipings.is_empty() {
+                    let reason = REASON_RULE + REASON_LOST_TARGET;
+                    self.field_destroy(equipings, None, reason, PLAYER_NONE, PLAYER_NONE, LOCATION_GRAVE, 0);
+                }
                 if !overlays.is_empty() {
                     let reason = REASON_RULE + REASON_LOST_TARGET;
                     self.send_to(
@@ -1213,6 +1522,23 @@ impl Duel {
             && !target.is_status(STATUS_ACTIVATE_DISABLED)
     }
 
+    // The handlers of the card's EFFECT_DESTROY_SUBSTITUTE effects whose value (e, re, r, rp) accepts its destruction.
+    fn destroy_substitutes(&self, card: CardId) -> CardSet {
+        let current = self.cards[card].current;
+        self.filter_effect(card, EFFECT_DESTROY_SUBSTITUTE, true)
+            .into_iter()
+            .filter(|&effect| match self.effects[effect].value {
+                Value::Int(value) => value != 0,
+                Value::Reason(value) => value(self, effect, current.reason_effect, current.reason, current.reason_player),
+                _ => {
+                    debug_assert!(false, "a value read with the wrong parameters");
+                    false
+                }
+            })
+            .map(|effect| self.get_handler(effect))
+            .collect()
+    }
+
     fn restore_reason(&mut self, card: CardId) {
         let target = &mut self.cards[card];
         target.current.reason = target.temp.reason;
@@ -1222,8 +1548,14 @@ impl Duel {
 
     // An effect of code 0 that only shows a hint (`description`) on the card until it resets.
     pub(crate) fn add_hint_effect(&mut self, card: CardId, description: u64, reset_flag: u32) {
+        self.add_status_effect(card, 0, description, reset_flag);
+    }
+
+    // A single effect of `code` the core creates itself, shown as a hint on the card until it resets.
+    pub(crate) fn add_status_effect(&mut self, card: CardId, code: u32, description: u64, reset_flag: u32) {
         let effect = self.new_effect(card);
         let peffect = &mut self.effects[effect];
+        peffect.code = code;
         peffect.effect_type = EFFECT_TYPE_SINGLE;
         peffect.flag[0] = EFFECT_FLAG_CANNOT_DISABLE | EFFECT_FLAG_CLIENT_HINT;
         peffect.description = description;
@@ -1719,6 +2051,7 @@ impl Duel {
             summon_procedure_effect,
             extra_summon_effect: None,
             tributes,
+            ordinary: false,
         });
     }
 
@@ -1742,6 +2075,7 @@ impl Duel {
             summon_procedure_effect,
             extra_summon_effect: None,
             tributes,
+            ordinary: false,
         });
     }
 
@@ -1845,7 +2179,16 @@ impl Duel {
         });
     }
 
-    fn select_tribute_cards(&mut self, target: CardId, playerid: u8, cancelable: bool, min: i32, max: i32, toplayer: u8, zone: u32) {
+    pub(crate) fn select_tribute_cards(
+        &mut self,
+        target: Option<CardId>,
+        playerid: u8,
+        cancelable: bool,
+        min: i32,
+        max: i32,
+        toplayer: u8,
+        zone: u32,
+    ) {
         let (min, max, zone, must_choose_one) = (min as u16, max as u16, zone as u8, CardSet::default());
         self.emplace_process(SelectTribute {
             step: 0,
@@ -1870,7 +2213,7 @@ impl Duel {
             return;
         }
         let (mut release_cards, mut release_cards_ex) = (CardSet::default(), CardSet::default());
-        let rcount = self.get_summon_release_list(target, &mut release_cards, &mut release_cards_ex, false, 0xff00ff);
+        let rcount = self.get_summon_release_list(target, &mut release_cards, &mut release_cards_ex, None, false, 0xff00ff);
         self.core.release_cards = release_cards;
         self.core.release_cards_ex = release_cards_ex;
         self.core.release_cards_ex_oneof.clear();
@@ -1882,7 +2225,7 @@ impl Duel {
         // (hint 90, then step 3) cannot come up before phase 2.
         let fcount = self.get_mzone_limit(player, player, LOCATION_REASON_TOFIELD);
         let cancelable = self.core.summon_cancelable;
-        self.select_tribute_cards(target, player, cancelable, min.max(1 - fcount), max, player, zone);
+        self.select_tribute_cards(Some(target), player, cancelable, min.max(1 - fcount), max, player, zone);
     }
 
     fn release_tributes(&mut self, target: CardId, tributes: CardSet, player: u8) {
@@ -1910,10 +2253,16 @@ impl Duel {
         self.core.summon_count[player] += 1;
     }
 
-    // Steps 3 (optional tributes), 4 and 7 (summon procedures), and 10 and 11 (Gemini monsters) need effects.
+    // Step 3 (optional tributes) needs EFFECT_DECREASE_TRIBUTE.
     pub(crate) fn process_summon_rule(&mut self, arg: &mut SummonRule) -> bool {
         let (sumplayer, target, procedure) = (arg.sumplayer, arg.target, arg.summon_procedure_effect);
-        unported!(self, procedure);
+        let procedure_args = Procedure {
+            card: target,
+            min: u16::from(arg.min_tribute),
+            zone: arg.zone,
+            releasable: 0xff00ff,
+            ..Procedure::default()
+        };
         match arg.step {
             0 => {
                 if !self.is_summonable_card(target)
@@ -1923,15 +2272,37 @@ impl Duel {
                     return true;
                 }
                 if self.cards[target].current.location == LOCATION_MZONE {
-                    unported!(self, self.is_affected_by_effect(target, EFFECT_GEMINI_SUMMONABLE));
-                    return true;
+                    if self.cards[target].is_position(POS_FACEDOWN)
+                        || (!arg.ignore_count
+                            && (self.core.extra_summon[sumplayer] != 0
+                                || self.is_affected_by_effect(target, EFFECT_EXTRA_SUMMON_COUNT).is_none())
+                            && self.core.summon_count[sumplayer] >= self.get_summon_count_limit(sumplayer))
+                        || self.is_affected_by_effect(target, EFFECT_GEMINI_SUMMONABLE).is_none()
+                        || self.is_affected_by_effect(target, EFFECT_GEMINI_STATUS).is_some()
+                        || !self.is_player_can_summon(SUMMON_TYPE_GEMINI, sumplayer, target, sumplayer)
+                    {
+                        return true;
+                    }
+                } else {
+                    let (result, procedures) = self.filter_summon_procedure(target, sumplayer, arg.ignore_count, arg.min_tribute, arg.zone);
+                    // Duel.Summon with a given procedure (c80921533) comes with the cards that pass one.
+                    unported!(self, procedure);
+                    if result == -2 {
+                        return true;
+                    }
+                    arg.ordinary = result > 0;
+                    let descriptions = procedures.iter().map(|&effect| self.effects[effect].description);
+                    self.core.select_options = arg.ordinary.then_some(1).into_iter().chain(descriptions).collect();
+                    self.core.select_effects = procedures.iter().copied().collect();
+                    match self.core.select_options.len() {
+                        0 => return true,
+                        1 => self.returns.set_i32(0, 0),
+                        _ => self.emplace_process(SelectOption {
+                            playerid: sumplayer,
+                            ..SelectOption::default()
+                        }),
+                    }
                 }
-                let (result, procedures) = self.filter_summon_procedure(target, sumplayer, arg.ignore_count, arg.min_tribute, arg.zone);
-                unported!(self, procedures);
-                if result <= 0 {
-                    return true;
-                }
-                self.returns.set_i32(0, 0);
                 if self.core.summon_depth != 0 {
                     self.core.summon_cancelable = false;
                 }
@@ -1944,22 +2315,55 @@ impl Duel {
                 if !arg.ignore_count && self.core.extra_summon[sumplayer] == 0 {
                     unported!(self, extra);
                 }
+                if self.cards[target].current.location == LOCATION_MZONE {
+                    arg.step = 4;
+                    return false;
+                }
+                if arg.summon_procedure_effect.is_none() {
+                    let index = usize::try_from(self.returns.at_i32(0)).unwrap_or(0);
+                    let index = if arg.ordinary { index.checked_sub(1) } else { Some(index) };
+                    arg.summon_procedure_effect = index.and_then(|index| self.core.select_effects.get(index)).copied();
+                }
                 self.returns.set_i32(0, 0);
                 false
             }
             2 => {
+                if procedure.is_some() {
+                    arg.step = 3;
+                    return false;
+                }
                 let required = self.get_summon_tribute_count(target);
                 let advance = self.is_player_can_summon(SUMMON_TYPE_ADVANCE, sumplayer, target, sumplayer);
                 self.select_summon_tributes(target, sumplayer, required, arg.min_tribute, advance, arg.zone);
                 arg.step = 4;
                 false
             }
-            5 => {
-                if self.return_cards.canceled {
-                    self.core.summon_depth -= 1;
-                    return true;
+            4 => {
+                self.returns.set_i32(0, 1);
+                if let Some(procedure) = procedure
+                    && matches!(self.effects[procedure].target, Target::Action(_))
+                {
+                    let nil_event = self.nil_event;
+                    self.execute_procedure(ExecuteKind::Target, procedure, sumplayer, nil_event, Some(procedure_args));
                 }
-                arg.tributes = self.return_cards.list.iter().copied().collect();
+                false
+            }
+            5 => {
+                if self.cards[target].current.location == LOCATION_MZONE {
+                    arg.step = 9;
+                } else if procedure.is_some() {
+                    if self.returns.at_i32(0) == 0 {
+                        self.core.summon_depth -= 1;
+                        return true;
+                    }
+                    arg.step = 6;
+                } else {
+                    if self.return_cards.canceled {
+                        self.core.summon_depth -= 1;
+                        return true;
+                    }
+                    arg.tributes = self.return_cards.list.iter().copied().collect();
+                }
                 unported!(self, self.filter_effect(target, EFFECT_SUMMON_COST, true));
                 false
             }
@@ -1980,6 +2384,21 @@ impl Duel {
                 arg.step = 7;
                 false
             }
+            7 => {
+                let Some(procedure) = procedure else { return false };
+                let summon_type = (self.get_value(procedure, target) as u32 & 0xfff_ffff) | SUMMON_TYPE_NORMAL;
+                let card = &mut self.cards[target];
+                (card.summon.location, card.summon.pzone, card.summon.summon_type) = (LOCATION_HAND, false, summon_type);
+                card.current.reason_effect = Some(procedure);
+                card.current.reason_player = sumplayer;
+                self.returns.set_i32(0, 1);
+                if self.effects[procedure].operation.is_some() {
+                    let nil_event = self.nil_event;
+                    self.execute_procedure(ExecuteKind::Operation, procedure, sumplayer, nil_event, Some(procedure_args));
+                }
+                self.dec_count(procedure, sumplayer);
+                false
+            }
             8 => {
                 self.core.summon_depth -= 1;
                 if self.core.summon_depth != 0 {
@@ -1997,7 +2416,16 @@ impl Duel {
                         .is_player_affected_by_effect(sumplayer, EFFECT_NORMAL_SUMMON_FACEUP_DEFENSE)
                         .is_some()
                     || self.is_player_affected_by_effect(sumplayer, EFFECT_DEVINE_LIGHT).is_some();
-                let positions = (if faceup_defense { POS_FACEUP } else { POS_FACEUP_ATTACK }) as u8;
+                let mut positions = (if faceup_defense { POS_FACEUP } else { POS_FACEUP_ATTACK }) as u8;
+                let mut targetplayer = sumplayer;
+                if let Some(procedure) = procedure
+                    && self.effects[procedure].is_flag(EFFECT_FLAG_SPSUM_PARAM)
+                {
+                    positions = self.effects[procedure].s_range as u8 & POS_FACEUP as u8;
+                    if self.effects[procedure].o_range != 0 {
+                        targetplayer = 1 - sumplayer;
+                    }
+                }
                 unported!(
                     self,
                     self.filter_player_effect(sumplayer, EFFECT_FORCE_NORMAL_SUMMON_POSITION, true)
@@ -2007,7 +2435,7 @@ impl Duel {
                 self.field_move_to_field(
                     target,
                     sumplayer,
-                    sumplayer,
+                    targetplayer,
                     destination,
                     positions,
                     false,
@@ -2016,6 +2444,28 @@ impl Duel {
                     LOCATION_REASON_SUMMON,
                 );
                 arg.step = 11;
+                false
+            }
+            10 => {
+                self.core.summon_depth -= 1;
+                if self.core.summon_depth != 0 {
+                    return true;
+                }
+                self.enable_field_effect(target, false);
+                let card = &mut self.cards[target];
+                card.summon.location = LOCATION_MZONE;
+                card.summon.pzone = false;
+                card.summon.sequence = card.current.sequence;
+                card.summon.summon_type |= SUMMON_TYPE_NORMAL;
+                card.current.reason_effect = None;
+                card.current.reason_player = sumplayer;
+                self.add_status_effect(target, EFFECT_GEMINI_STATUS, 64, RESET_EVENT + 0x1fe_0000);
+                false
+            }
+            11 => {
+                if !arg.ignore_count {
+                    self.add_summon_count(arg.extra_summon_effect, sumplayer);
+                }
                 false
             }
             12 => {
@@ -2188,10 +2638,16 @@ impl Duel {
         }
     }
 
-    // Steps 3 (optional tributes), 6 and 7 (set procedures) need effects.
+    // Step 3 (optional tributes) needs EFFECT_DECREASE_TRIBUTE_SET.
     pub(crate) fn process_monster_set(&mut self, arg: &mut MonsterSet) -> bool {
         let (setplayer, target, procedure) = (arg.setplayer, arg.target, arg.summon_procedure_effect);
-        unported!(self, procedure);
+        let procedure_args = Procedure {
+            card: target,
+            min: u16::from(arg.min_tribute),
+            zone: arg.zone,
+            releasable: 0xff00ff,
+            ..Procedure::default()
+        };
         match arg.step {
             0 => {
                 let card = &self.cards[target];
@@ -2203,16 +2659,33 @@ impl Duel {
                     return true;
                 }
                 let (result, procedures) = self.filter_set_procedure(target, setplayer, arg.ignore_count, arg.min_tribute, arg.zone);
-                unported!(self, procedures);
-                if result <= 0 {
+                // Duel.MSet with a given procedure comes with the cards that pass one.
+                unported!(self, procedure);
+                if result == -2 {
                     return true;
                 }
-                self.returns.set_i32(0, 0);
+                arg.ordinary = result > 0;
+                let descriptions = procedures.iter().map(|&effect| self.effects[effect].description);
+                self.core.select_options = arg.ordinary.then_some(1).into_iter().chain(descriptions).collect();
+                self.core.select_effects = procedures.iter().copied().collect();
+                match self.core.select_options.len() {
+                    0 => return true,
+                    1 => self.returns.set_i32(0, 0),
+                    _ => self.emplace_process(SelectOption {
+                        playerid: setplayer,
+                        ..SelectOption::default()
+                    }),
+                }
                 self.set_material_cards(target, CardSet::default());
                 false
             }
             1 => {
                 let extra = self.filter_effect(target, EFFECT_EXTRA_SET_COUNT, true);
+                if arg.summon_procedure_effect.is_none() {
+                    let index = usize::try_from(self.returns.at_i32(0)).unwrap_or(0);
+                    let index = if arg.ordinary { index.checked_sub(1) } else { Some(index) };
+                    arg.summon_procedure_effect = index.and_then(|index| self.core.select_effects.get(index)).copied();
+                }
                 if !arg.ignore_count && self.core.extra_summon[setplayer] == 0 {
                     unported!(self, extra);
                 }
@@ -2220,6 +2693,10 @@ impl Duel {
                 false
             }
             2 => {
+                if procedure.is_some() {
+                    arg.step = 3;
+                    return false;
+                }
                 let required = self.get_set_tribute_count(target);
                 let advance = self.is_player_can_mset(SUMMON_TYPE_ADVANCE, setplayer, target, setplayer);
                 self.select_summon_tributes(target, setplayer, required, arg.min_tribute, advance, arg.zone);
@@ -2227,11 +2704,15 @@ impl Duel {
                 false
             }
             4 => {
-                if self.return_cards.canceled {
-                    return true;
-                }
-                if !self.return_cards.list.is_empty() {
-                    arg.tributes = self.return_cards.list.iter().copied().collect();
+                if procedure.is_some() {
+                    arg.step = 5;
+                } else {
+                    if self.return_cards.canceled {
+                        return true;
+                    }
+                    if !self.return_cards.list.is_empty() {
+                        arg.tributes = self.return_cards.list.iter().copied().collect();
+                    }
                 }
                 unported!(self, self.filter_effect(target, EFFECT_MSET_COST, true));
                 false
@@ -2246,6 +2727,34 @@ impl Duel {
                 arg.step = 7;
                 false
             }
+            6 => {
+                self.returns.set_i32(0, 1);
+                if let Some(procedure) = procedure
+                    && matches!(self.effects[procedure].target, Target::Action(_))
+                {
+                    let nil_event = self.nil_event;
+                    self.execute_procedure(ExecuteKind::Target, procedure, setplayer, nil_event, Some(procedure_args));
+                }
+                false
+            }
+            7 => {
+                let Some(procedure) = procedure else { return false };
+                if self.returns.at_i32(0) == 0 {
+                    return true;
+                }
+                let summon_type = (self.get_value(procedure, target) as u32 & 0xfff_ffff) | SUMMON_TYPE_NORMAL;
+                let card = &mut self.cards[target];
+                (card.summon.summon_type, card.summon.location, card.summon.pzone) = (summon_type, LOCATION_HAND, false);
+                card.summon.player = setplayer;
+                card.current.reason_effect = Some(procedure);
+                card.current.reason_player = setplayer;
+                if self.effects[procedure].operation.is_some() {
+                    let nil_event = self.nil_event;
+                    self.execute_procedure(ExecuteKind::Operation, procedure, setplayer, nil_event, Some(procedure_args));
+                }
+                self.dec_count(procedure, setplayer);
+                false
+            }
             8 => {
                 self.field_break_effect(true);
                 if !arg.ignore_count {
@@ -2254,12 +2763,21 @@ impl Duel {
                 false
             }
             9 => {
+                let (mut positions, mut targetplayer) = (POS_FACEDOWN_DEFENSE as u8, setplayer);
+                if let Some(procedure) = procedure
+                    && self.effects[procedure].is_flag(EFFECT_FLAG_SPSUM_PARAM)
+                {
+                    positions = self.effects[procedure].s_range as u8 & POS_FACEDOWN as u8;
+                    if self.effects[procedure].o_range != 0 {
+                        targetplayer = 1 - setplayer;
+                    }
+                }
                 self.enable_field_effect(target, false);
-                let (destination, positions, zone) = (LOCATION_MZONE.into(), POS_FACEDOWN_DEFENSE as u8, arg.zone as u8);
+                let (destination, zone) = (LOCATION_MZONE.into(), arg.zone as u8);
                 self.field_move_to_field(
                     target,
                     setplayer,
-                    setplayer,
+                    targetplayer,
                     destination,
                     positions,
                     false,
@@ -2519,6 +3037,7 @@ impl Duel {
                         resetflag |= RESET_MSCHANGE;
                     }
                     self.reset(target, resetflag, RESET_EVENT);
+                    self.clear_card_target(target);
                 }
                 if current.location & LOCATION_ONFIELD == 0 {
                     self.clear_relate_effect(target);
@@ -2578,6 +3097,17 @@ impl Duel {
                 let card = &self.cards[target];
                 let (code, to, card_reason) = (card.data.code, self.cards.get_info_location(target), card.current.reason);
                 self.trace.message(MSG_MOVE).u32(code).loc(from).loc(to).u32(card_reason);
+                let equips = self.equiping_cards(target);
+                if self.cards[target].current.location != LOCATION_MZONE && !equips.is_empty() {
+                    let reason = REASON_LOST_TARGET + REASON_RULE;
+                    self.field_destroy(equips, None, reason, PLAYER_NONE, PLAYER_NONE, LOCATION_GRAVE, 0);
+                    for equip in equips {
+                        self.card_unequip(equip);
+                    }
+                }
+                if self.cards[target].previous.location == LOCATION_SZONE {
+                    self.card_unequip(target);
+                }
                 let materials = self.xyz_materials(target);
                 if self.cards[target].current.location != LOCATION_MZONE && !materials.is_empty() {
                     let reason = REASON_LOST_TARGET + REASON_RULE;
@@ -2694,7 +3224,7 @@ impl Duel {
             4 => {
                 let mut cv: Cards16 = arg.targets.iter().collect();
                 cv.sort_by(|&c1, &c2| self.card_operation_sort(c1, c2));
-                let (mut flips, mut pos_changed) = (CardSet::default(), CardSet::default());
+                let (mut flips, mut pos_changed, mut equipings) = (CardSet::default(), CardSet::default(), CardSet::default());
                 for card in cv {
                     let target = &mut self.cards[card];
                     let (mut npos, opos, flag) = (target.position_param & 0xff, target.current.position, target.position_param >> 16);
@@ -2738,10 +3268,11 @@ impl Duel {
                         self.raise_single_event(card, EVENT_CHANGE_POS, reason_effect, 0, reason_player, 0, 0);
                         pos_changed.insert(card);
                     }
-                    // Phase 2: trap monsters turned face-down move back to the spell zone, and equips are destroyed.
+                    // Phase 2: trap monsters turned face-down move back to the spell zone.
                     if opos & POS_FACEUP != 0 && npos & POS_FACEDOWN != 0 {
                         self.cards[card].set_status(STATUS_SUMMON_DISABLED | STATUS_ACTIVATE_DISABLED, false);
                         self.reset(card, RESET_TURN_SET, RESET_EVENT);
+                        self.clear_card_target(card);
                         self.cards[card].set_status(STATUS_SET_TURN, true);
                         self.enable_field_effect(card, false);
                         let target = &mut self.cards[card];
@@ -2750,6 +3281,13 @@ impl Duel {
                         if target.summon.summon_type & SUMMON_TYPE_PENDULUM == SUMMON_TYPE_PENDULUM {
                             target.summon.summon_type &= 0xf000_ffff;
                         }
+                    }
+                    if npos & POS_FACEDOWN != 0 {
+                        for equip in self.equiping_cards(card) {
+                            equipings.insert(equip);
+                            self.card_unequip(equip);
+                        }
+                        self.card_unequip(card);
                     }
                 }
                 self.adjust_instant();
@@ -2760,6 +3298,10 @@ impl Duel {
                     }
                 }
                 self.process_instant_event();
+                if !equipings.is_empty() {
+                    let reason = REASON_LOST_TARGET + REASON_RULE;
+                    self.field_destroy(equipings, None, reason, PLAYER_NONE, PLAYER_NONE, LOCATION_GRAVE, 0);
+                }
                 if !arg.to_grave_set.is_empty() {
                     let to_grave_set = std::mem::take(&mut arg.to_grave_set);
                     self.send_to(
@@ -2789,9 +3331,9 @@ impl Duel {
     // among the tributes.
     pub(crate) fn process_select_tribute(&mut self, arg: &mut SelectTribute) -> bool {
         let (target, playerid, toplayer) = (arg.target, arg.playerid, arg.toplayer);
-        let forced_zones = self.get_forced_zones(Some(target), toplayer, LOCATION_MZONE, playerid, LOCATION_REASON_TOFIELD);
+        let forced_zones = self.get_forced_zones(target, toplayer, LOCATION_MZONE, playerid, LOCATION_REASON_TOFIELD);
         let zone = u32::from(arg.zone) & 0x1f & forced_zones;
-        let (ct, _) = self.get_tofield_count(Some(target), toplayer, LOCATION_MZONE, playerid, LOCATION_REASON_TOFIELD, zone);
+        let (ct, _) = self.get_tofield_count(target, toplayer, LOCATION_MZONE, playerid, LOCATION_REASON_TOFIELD, zone);
         let (release_cards, release_cards_ex) = (self.core.release_cards, self.core.release_cards_ex);
         let (cancelable, min, max) = (arg.cancelable, arg.min as u8, arg.max as u8);
         let tribute_p = SelectTributeP {
@@ -3676,10 +4218,16 @@ impl Duel {
                 cv.extend(others);
                 unported!(self, (self.core.global_flag & GLOBALFLAG_DECK_REVERSE_CHECK != 0).then_some(()));
                 let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
-                let mut from_grave = CardSet::default();
+                let (mut from_grave, mut des) = (CardSet::default(), CardSet::default());
                 for card in cv {
                     self.cards[card].current.reason = REASON_XYZ + REASON_MATERIAL;
                     self.reset(card, RESET_LEAVE + RESET_OVERLAY, RESET_EVENT);
+                    self.card_unequip(card);
+                    for equip in self.equiping_cards(card) {
+                        des.insert(equip);
+                        self.card_unequip(equip);
+                    }
+                    self.clear_card_target(card);
                     let from = self.cards.get_info_location(card);
                     if let Some(overlay_target) = self.cards[card].overlay_target {
                         self.xyz_remove(overlay_target, card);
@@ -3701,7 +4249,19 @@ impl Duel {
                     self.process_single_event();
                     self.process_instant_event();
                 }
-                self.adjust_instant();
+                if des.is_empty() {
+                    self.adjust_instant();
+                } else {
+                    self.field_destroy(
+                        des,
+                        None,
+                        REASON_LOST_TARGET + REASON_RULE,
+                        PLAYER_NONE,
+                        PLAYER_NONE,
+                        LOCATION_GRAVE,
+                        0,
+                    );
+                }
                 if self.cards[target].current.location & LOCATION_ONFIELD != 0 {
                     self.adjust_all();
                 }

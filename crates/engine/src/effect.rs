@@ -65,7 +65,11 @@ pub enum Operation {
     // A library function that never reaches a prompt, so it runs without the snapshot a rerun would need.
     Promptless(OperationFn),
     Group(GroupOperationFn),
+    // op(e, tsg, ntsg, sg, lv, sc, tp) -> (ok, lvchk): EFFECT_SYNCHRO_MATERIAL_CUSTOM, read only by proc_synchro.
+    SynchroMaterial(SynchroMaterialFn),
 }
+
+pub type SynchroMaterialFn = fn(&Duel, EffectId, CardSet, CardSet, CardSet, u32, CardId, u8) -> (bool, bool);
 
 // effect::value: an integer, or a Lua function whose parameters depend on the effect code reading it.
 #[derive(Debug, Clone, Copy)]
@@ -85,6 +89,10 @@ pub enum Value {
     Material(fn(&Duel, EffectId, Option<CardId>, u64, u8) -> bool),
     // value(e, se, sp, st, pos, tp): EFFECT_SPSUMMON_CONDITION.
     SpSummonCondition(fn(&Duel, EffectId, Option<EffectId>, u8, u32, u8, u8) -> bool),
+    // value(e, c, sc): EFFECT_SYNCHRO_MAT_FROM_HAND.
+    MaterialFor(fn(&Duel, EffectId, CardId, CardId) -> bool),
+    // value(e, re, r, rp): EFFECT_DESTROY_SUBSTITUTE.
+    Reason(fn(&Duel, EffectId, Option<EffectId>, u32, u8) -> bool),
 }
 
 impl Default for Value {
@@ -1092,7 +1100,13 @@ impl Duel {
             Value::Int(value) => value,
             Value::Values(values) => values.first().copied().unwrap_or(0),
             Value::Card(value) => value(self, effect, card),
-            Value::EffectPlayer(_) | Value::Effect(_) | Value::MaterialCheck(_) | Value::Material(_) | Value::SpSummonCondition(_) => {
+            Value::EffectPlayer(_)
+            | Value::Effect(_)
+            | Value::MaterialCheck(_)
+            | Value::Material(_)
+            | Value::SpSummonCondition(_)
+            | Value::MaterialFor(_)
+            | Value::Reason(_) => {
                 debug_assert!(false, "a value read with the wrong parameters");
                 0
             }

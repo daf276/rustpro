@@ -20,6 +20,25 @@ const ALBION_FUSION_SUMMON: (u32, u64) = (87746184, 87746184 << 20);
 const SUMMONED_ONLY: [u32; 6] = [91949988, 39317553, 1641882, 96334243, 26050548, 30208479];
 // Ritual Raven has only its Ritual level, checked by its use as a Ritual Summon material.
 const RITUAL_MATERIAL_ONLY: [u32; 1] = [34334692];
+const LOCATION_HAND: u8 = 0x2;
+const LOCATION_MZONE: u8 = 0x4;
+// Materials whose use exercises a procedure path of phase 3d, by card code and the location they leave: Mono Synchron
+// (EFFECT_SYNCHRO_MATERIAL_CUSTOM and EFFECT_SYNCHRO_MAT_RESTRICTION) and Revolution Synchron from the hand
+// (EFFECT_SYNCHRO_MAT_FROM_HAND).
+const MATERIAL_PATHS: [(u32, u8); 2] = [(56897896, LOCATION_MZONE), (97682931, LOCATION_HAND)];
+// Hints the core adds to a card when a procedure path of phase 3d runs, by the carrier and the description: Gemini
+// Lancer's second Normal Summon (64).
+const HINT_PATHS: [(u32, u64); 1] = [(26254876, 64)];
+// Messages only a procedure path of phase 3d writes, by the carrier and the message type: Fiendish Chain's card target
+// (MSG_CARD_TARGET), Demotion's and Salamandra's equips (MSG_EQUIP).
+const MESSAGE_PATHS: [(u32, u8); 3] = [(50078509, 96), (72575145, 93), (32268901, 93)];
+// Normal Summons and Sets by a procedure, by the carrier and the number of tributes: Blizzard Princess and Darklord
+// Desire with 1.
+const SUMMON_PATHS: [(u32, u32); 2] = [(28348537, 1), (55690251, 1)];
+const SET_PATHS: [(u32, u32); 1] = [(55690251, 1)];
+// Union monsters destroyed in place of the monster they equip (EFFECT_DESTROY_SUBSTITUTE): Metallizing Parasite -
+// Lunatite (by battle only) and Heavy Mech Support Armor. Written out only: too rare to assert in 1000 scenarios.
+const REPLACE_PATHS: [u32; 2] = [7369217, 39890958];
 
 fn load(vendor: fn(&Path) -> Result<Vendor, DiffError>) -> Result<&'static Vendor, DiffError> {
     Ok(Box::leak(Box::new(vendor(
@@ -151,15 +170,36 @@ fn assert_scenarios_clean(seeds: Range<u64>) -> Result<(), DiffError> {
         )
         .ok();
     }
+    let materials = MATERIAL_PATHS.map(|key| (key, tally.materials.get(&key).copied().unwrap_or(0)));
+    writeln!(out, "material paths: {materials:?}").ok();
+    let hints = HINT_PATHS.map(|(card, description)| ((card, description), tally.card_hints.get(&description).copied().unwrap_or(0)));
+    let messages = MESSAGE_PATHS.map(|(card, kind)| ((card, kind), tally.messages.get(&kind).copied().unwrap_or(0)));
+    writeln!(out, "message paths: {messages:?}").ok();
+    let summons = SUMMON_PATHS.map(|key| (key, tally.summon_tributes.get(&key).copied().unwrap_or(0)));
+    writeln!(out, "summon paths: {summons:?}").ok();
+    let sets = SET_PATHS.map(|key| (key, tally.set_tributes.get(&key).copied().unwrap_or(0)));
+    writeln!(out, "set paths: {sets:?}").ok();
+    let replaced = REPLACE_PATHS.map(|card| (card, tally.replaced.get(&card).copied().unwrap_or(0)));
+    writeln!(out, "replace paths: {replaced:?}").ok();
+    let paths: Vec<(u32, u32)> = (materials.iter().map(|&((card, _), count)| (card, count)))
+        .chain(hints.iter().map(|&((card, _), count)| (card, count)))
+        .chain(messages.iter().map(|&((card, _), count)| (card, count)))
+        .chain(summons.iter().map(|&((card, _), count)| (card, count)))
+        .chain(sets.iter().map(|&((card, _), count)| (card, count)))
+        .collect();
+    let exercised = |code: u32| paths.iter().any(|&(card, count)| card == code && count > 0);
+    writeln!(out, "hint paths: {hints:?}").ok();
     let unresolved: Vec<u32> = vendor
         .scenario_cards
         .iter()
         .copied()
-        .filter(|code| match (SUMMONED_ONLY.contains(code), RITUAL_MATERIAL_ONLY.contains(code)) {
-            (true, _) => !tally.special_summons.contains_key(code),
-            (_, true) => !tally.ritual_materials.contains_key(code),
-            _ => tally.resolutions(*code) == 0,
-        })
+        .filter(
+            |&code| match (SUMMONED_ONLY.contains(&code), RITUAL_MATERIAL_ONLY.contains(&code)) {
+                (true, _) => !tally.special_summons.contains_key(&code),
+                (_, true) => !tally.ritual_materials.contains_key(&code),
+                _ => tally.resolutions(code) == 0 && !exercised(code),
+            },
+        )
         .collect();
     let only_in_scenarios = [
         ECCLESIA_DARK_DRAGON_SUMMON,
@@ -169,7 +209,10 @@ fn assert_scenarios_clean(seeds: Range<u64>) -> Result<(), DiffError> {
     ]
     .map(|effect| tally.effects.get(&effect));
     assert!(
-        unresolved.is_empty() && only_in_scenarios.iter().all(Option::is_some) && tally.sum_prompts.iter().all(|&count| count > 0),
+        unresolved.is_empty()
+            && only_in_scenarios.iter().all(Option::is_some)
+            && tally.sum_prompts.iter().all(|&count| count > 0)
+            && paths.iter().all(|&(_, count)| count > 0),
         "{unresolved:?} {tally:?}"
     );
     Ok(())

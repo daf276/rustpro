@@ -97,6 +97,12 @@ pub struct Duel {
     pub(crate) overlay_cards: CardSet,
     // card::counters: card, counter type, the permanent count and the count a negation removes.
     pub(crate) counters: Vec<(CardId, u16, [u16; 2])>,
+    // card::effect_target_cards as (owner, target) pairs; effect_target_owner is the same pairs read the other way.
+    pub(crate) card_targets: Vec<(CardId, CardId)>,
+    // card::relations: the card, the card it relates to and the reset flags that end it.
+    pub(crate) card_relations: Vec<(CardId, CardId, u32)>,
+    // The cards equipped to a monster; card::equiping_cards of a card are those whose equiping_target it is.
+    pub(crate) equip_cards: CardSet,
     // The first unported call site an effect reached, set in checks that only read.
     pub(crate) unported: std::cell::Cell<Option<&'static str>>,
 }
@@ -141,6 +147,9 @@ impl Duel {
             material_cards: Vec::new(),
             overlay_cards: CardSet::default(),
             counters: Vec::new(),
+            card_targets: Vec::new(),
+            card_relations: Vec::new(),
+            equip_cards: CardSet::default(),
             unported: std::cell::Cell::new(None),
         })
     }

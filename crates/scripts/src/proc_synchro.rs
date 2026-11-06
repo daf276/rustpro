@@ -1,8 +1,8 @@
 // Port of proc_synchro.lua: Synchro.AddProcedure with its condition, target and operation. The paths for materials
-// with EFFECT_SYNCHRO_CHECK, EFFECT_HAND_SYNCHRO, EFFECT_SYNCHRO_MAT_FROM_HAND, EFFECT_SYNCHRO_MAT_RESTRICTION or
-// EFFECT_SYNCHRO_MATERIAL_CUSTOM, the Majestic and Dark Synchro procedures and Synchro.Send come with the cards that
-// use them.
-use engine::{Args, CardId, CardSet, Duel, EffectId, Script};
+// with EFFECT_SYNCHRO_CHECK or EFFECT_HAND_SYNCHRO (whose checks register and reset effects or assume properties), a
+// Synchro Monster's EFFECT_MATERIAL_CHECK operation, the Majestic and Dark Synchro procedures and Synchro.Send come with
+// the cards that use them.
+use engine::{Args, CardId, CardSet, Duel, EffectId, Operation, Script, Value};
 
 use crate::constant::*;
 use crate::utility::aux;
@@ -125,10 +125,13 @@ impl Synchro {
             None => {
                 let synchmatfilter = |mc: CardId, duel: &Duel| {
                     let handmatfilter = mc.is_has_effect(duel, EFFECT_SYNCHRO_MAT_FROM_HAND);
-                    unported!(duel, handmatfilter.is_some());
-                    mc.is_location(duel, LOCATION_MZONE)
+                    (mc.is_location(duel, LOCATION_MZONE)
                         && mc.is_faceup(duel)
-                        && (mc.is_controler(duel, tp) || mc.is_can_be_synchro_material(duel, c))
+                        && (mc.is_controler(duel, tp) || mc.is_can_be_synchro_material(duel, c)))
+                        || handmatfilter.is_some_and(|te| {
+                            te.check_count_limit(duel, tp)
+                                && matches!(te.get_value(duel), Value::MaterialFor(value) if value(duel, te, mc, c))
+                        })
                 };
                 let dg = duel.get_matching_group(synchmatfilter, tp, LOCATION_MZONE | LOCATION_HAND, LOCATION_MZONE, Some(c.into()));
                 (dg, dg.filter(duel, can_be_material, None), false)
@@ -238,13 +241,36 @@ impl Synchro {
         s.plain && sg.iter().map(|c| least(s.levels.get(duel, c, s.sc))).sum::<u32>() > s.lv
     }
 
-    // The restrictions EFFECT_SYNCHRO_MAT_RESTRICTION puts on the card and on those already chosen, and the checks of
-    // hand materials.
-    fn unported_restrictions(duel: &Duel, c: CardId, sg: CardSet, mgchk: bool) {
-        let restricted = |c: CardId, duel: &Duel| c.is_has_effect(duel, EFFECT_SYNCHRO_MAT_RESTRICTION).is_some();
-        unported!(duel, restricted(c, duel) || sg.is_exists(duel, restricted, 1, None));
+    // The restrictions EFFECT_SYNCHRO_MAT_RESTRICTION puts on c and on the cards already chosen: false if one rules out
+    // adding c to sg, else the cards the restrictions of c rule out are taken out of tg and ntg. Then the checks of hand
+    // materials.
+    fn restrictions(duel: &Duel, c: CardId, sg: CardSet, tg: &mut CardSet, ntg: &mut CardSet, mgchk: bool) -> bool {
+        // Auxiliary.HarmonizingMagFilter(c, f, f:GetValue()).
+        let rejects = |f: EffectId| move |c: CardId, duel: &Duel| matches!(f.get_value(duel), Value::Card(value) if value(duel, f, c) == 0);
+        // Not in the Lua: the lookups are skipped while no effect has the code, as they would find nothing.
+        if duel.may_have_effect(EFFECT_SYNCHRO_MAT_RESTRICTION) {
+            let (mut trg, mut ntrg) = (CardSet::default(), CardSet::default());
+            for f in c.get_card_effect(duel, EFFECT_SYNCHRO_MAT_RESTRICTION) {
+                if sg.is_exists(duel, rejects(f), 1, Some(c.into())) {
+                    return false;
+                }
+                trg.merge(tg.filter(duel, rejects(f), None));
+                ntrg.merge(ntg.filter(duel, rejects(f), None));
+            }
+            for tc in sg {
+                if tc
+                    .get_card_effect(duel, EFFECT_SYNCHRO_MAT_RESTRICTION)
+                    .iter()
+                    .any(|&f| rejects(f)(c, duel))
+                {
+                    return false;
+                }
+            }
+            (*tg, *ntg) = (tg.difference(trg), ntg.difference(ntrg));
+        }
         let hand = |c: CardId, duel: &Duel| c.is_has_effect(duel, EFFECT_HAND_SYNCHRO + EFFECT_SYNCHRO_CHECK).is_some();
         unported!(duel, !mgchk && (hand(c, duel) || sg.is_exists(duel, hand, 1, None)));
+        true
     }
 
     fn check_p41<P: SynchroProcedure>(
@@ -257,7 +283,10 @@ impl Synchro {
         sg: CardSet,
         s: &Search,
     ) -> bool {
-        Synchro::unported_restrictions(duel, c, sg, s.mgchk);
+        let (mut tg, mut ntg) = (tg, ntg);
+        if !Synchro::restrictions(duel, c, sg, &mut tg, &mut ntg, s.mgchk) {
+            return false;
+        }
         let (tsg, sg) = (tsg.union(c.into()), sg.union(c.into()));
         let tsg_count = tsg.len();
         let p41 = |tc, duel: &Duel| Synchro::check_p41::<P>(duel, tc, tg, ntg, tsg, ntsg, sg, s);
@@ -276,7 +305,10 @@ impl Synchro {
     }
 
     fn check_p42<P: SynchroProcedure>(duel: &Duel, c: CardId, ntg: CardSet, tsg: CardSet, ntsg: CardSet, sg: CardSet, s: &Search) -> bool {
-        Synchro::unported_restrictions(duel, c, sg, s.mgchk);
+        let mut ntg = ntg;
+        if !Synchro::restrictions(duel, c, sg, &mut CardSet::default(), &mut ntg, s.mgchk) {
+            return false;
+        }
         let (ntsg, sg) = (ntsg.union(c.into()), sg.union(c.into()));
         if Synchro::level_exceeded(duel, sg, s) {
             return false;
@@ -301,7 +333,7 @@ impl Synchro {
         }
     }
 
-    fn check_p43(duel: &Duel, _tsg: CardSet, _ntsg: CardSet, sg: CardSet, s: &Search) -> bool {
+    fn check_p43(duel: &Duel, tsg: CardSet, ntsg: CardSet, sg: CardSet, s: &Search) -> bool {
         let (lv, sc, tp) = (s.lv, s.sc, s.tp);
         unported!(
             duel,
@@ -312,16 +344,25 @@ impl Synchro {
                 None
             )
         );
-        unported!(
-            duel,
-            sg.is_exists(
-                duel,
-                |c, duel| c.is_has_effect(duel, EFFECT_SYNCHRO_MATERIAL_CUSTOM).is_some(),
-                1,
-                None
-            )
-        );
-        sg.check_with_sum_equal(duel, |c, duel| s.levels.get(duel, c, sc), lv, sg.len(), sg.len())
+        let mut lvchk = false;
+        let custom = if duel.may_have_effect(EFFECT_SYNCHRO_MATERIAL_CUSTOM) {
+            sg
+        } else {
+            CardSet::default()
+        };
+        for tc in custom {
+            for te in tc.get_card_effect(duel, EFFECT_SYNCHRO_MATERIAL_CUSTOM) {
+                let Some(Operation::SynchroMaterial(op)) = te.get_operation(duel) else {
+                    continue;
+                };
+                let (ok, tlvchk) = op(duel, te, tsg, ntsg, sg, lv, sc, tp);
+                if !ok {
+                    return false;
+                }
+                lvchk |= tlvchk;
+            }
+        }
+        (lvchk || sg.check_with_sum_equal(duel, |c, duel| s.levels.get(duel, c, sc), lv, sg.len(), sg.len()))
             && ((sc.is_location(duel, LOCATION_EXTRA) && duel.get_location_count_from_ex(tp, tp, Some(sg), sc) > 0)
                 || (!sc.is_location(duel, LOCATION_EXTRA) && duel.get_mzone_count(tp, Some(sg)) > 0))
     }
@@ -462,15 +503,12 @@ impl Synchro {
         c.set_material(duel, Some(g));
         let mat_check_eff = c.is_has_effect(duel, EFFECT_MATERIAL_CHECK);
         unported!(duel, mat_check_eff.is_some_and(|eff| eff.get_operation(duel).is_some()));
-        unported!(
-            duel,
-            g.is_exists(
-                duel,
-                |mc, duel| mc.is_has_effect(duel, EFFECT_SYNCHRO_MAT_FROM_HAND).is_some(),
-                1,
-                None
-            )
-        );
+        // GetValue with arguments returns the function itself, so every hand material uses up its count.
+        for mc in g {
+            if let Some(handmatfilter) = mc.is_has_effect(duel, EFFECT_SYNCHRO_MAT_FROM_HAND) {
+                handmatfilter.use_count_limit(duel, a.tp);
+            }
+        }
         unported!(duel, g.is_exists(duel, |mc, duel| mc.get_flag_effect(duel, 3096468) != 0, 1, None));
         duel.send_to_grave(g, REASON_MATERIAL + REASON_SYNCHRO)?;
         Ok(())

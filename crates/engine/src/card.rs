@@ -1035,6 +1035,8 @@ impl Duel {
                 self.reset_effect_count(card);
             }
             self.reset_counters(card, id);
+            self.card_relations
+                .retain(|&(owner, _, reset)| owner != card || reset & 0xffff_0000 & id == 0);
         }
         for effect in self.card_effects(card) {
             if self.effect_reset(effect, id, reset_type) {
@@ -1067,6 +1069,69 @@ impl Duel {
             .position(|&relation| relation == Relation { card, effect, chain_id })
         {
             self.relations.remove(at);
+        }
+    }
+
+    // card::effect_target_cards: ordered by card id, as the core's card_set.
+    pub(crate) fn card_targets(&self, card: CardId) -> CardSet {
+        self.card_targets
+            .iter()
+            .filter(|&&(owner, _)| owner == card)
+            .map(|&(_, target)| target)
+            .collect()
+    }
+
+    fn target_effects_disable_related(&self, card: CardId) -> bool {
+        self.field_effects
+            .registry
+            .all(Container::Target, Some(card))
+            .any(|(_, effect)| self.effects[effect].is_disable_related())
+    }
+
+    pub(crate) fn add_card_target(&mut self, card: CardId, target: CardId) {
+        if !self.card_targets.contains(&(card, target)) {
+            self.card_targets.push((card, target));
+        }
+        if self.target_effects_disable_related(card) {
+            self.add_to_disable_check_list(target);
+        }
+        let (from, to) = (self.cards.get_info_location(card), self.cards.get_info_location(target));
+        self.trace.message(MSG_CARD_TARGET).loc(from).loc(to);
+    }
+
+    pub(crate) fn clear_card_target(&mut self, card: CardId) {
+        let links: Vec<(CardId, CardId)> = self
+            .card_targets
+            .iter()
+            .copied()
+            .filter(|&(owner, target)| owner == card || target == card)
+            .collect();
+        if links.is_empty() {
+            return;
+        }
+        self.card_targets.retain(|&(owner, target)| owner != card && target != card);
+        let owners = links.iter().filter(|&&(_, target)| target == card).map(|&(owner, _)| owner);
+        for owner in owners.collect::<CardSet>() {
+            if self.target_effects_disable_related(owner) {
+                self.add_to_disable_check_list(card);
+            }
+        }
+        let targets = links.iter().filter(|&&(owner, _)| owner == card).map(|&(_, target)| target);
+        for target in targets.collect::<CardSet>() {
+            if self.target_effects_disable_related(card) {
+                self.add_to_disable_check_list(target);
+            }
+            let related = self
+                .field_effects
+                .registry
+                .all(Container::Single, Some(target))
+                .map(|(_, effect)| effect);
+            let related: List<EffectId, 8> = related
+                .filter(|&effect| self.effects[effect].owner == card && self.effects[effect].is_flag(EFFECT_FLAG_OWNER_RELATE))
+                .collect();
+            for effect in related {
+                self.card_remove_effect(target, effect);
+            }
         }
     }
 
@@ -1104,12 +1169,92 @@ impl Duel {
             self.is_available(effect)
                 && (!self.effects[effect].is_flag(EFFECT_FLAG_SINGLE_RANGE) || self.is_affect_by_effect(card, Some(effect)))
         }));
+        if !self.equip_cards.is_empty() {
+            effects.extend(
+                self.equip_effects(card, code)
+                    .filter(|&effect| self.is_available(effect) && self.is_affect_by_effect(card, Some(effect))),
+            );
+        }
         effects.extend(registry.equal_range(Container::Aura, None, code).filter(|&effect| {
             !self.effects[effect].is_flag(EFFECT_FLAG_PLAYER_TARGET)
                 && self.is_available(effect)
                 && self.effect_is_target(effect, card)
                 && self.is_affect_by_effect(card, Some(effect))
         }));
+    }
+
+    // The effects of `code` of the cards equipped to the card (equip_effect of its equiping_cards, by card id). Hot
+    // lookups test `equip_cards` first, as nothing is equipped in most duels.
+    fn equip_effects(&self, card: CardId, code: u32) -> impl Iterator<Item = EffectId> + '_ {
+        self.equiping_cards(card)
+            .into_iter()
+            .flat_map(move |equip| self.field_effects.registry.equal_range(Container::Equip, Some(equip), code))
+    }
+
+    pub(crate) fn equiping_cards(&self, card: CardId) -> CardSet {
+        self.equip_cards
+            .iter()
+            .filter(|&equip| self.cards[equip].equiping_target == Some(card))
+            .collect()
+    }
+
+    fn equip_effects_disable_related(&self, card: CardId) -> bool {
+        self.field_effects
+            .registry
+            .all(Container::Equip, Some(card))
+            .any(|(_, effect)| self.effects[effect].is_disable_related())
+    }
+
+    // card::equip, which also writes MSG_EQUIP.
+    pub(crate) fn card_equip(&mut self, card: CardId, target: CardId) {
+        if self.cards[card].equiping_target.is_some() {
+            return;
+        }
+        self.cards[card].equiping_target = Some(target);
+        self.equip_cards.insert(card);
+        if self.equip_effects_disable_related(card) {
+            self.add_to_disable_check_list(target);
+        }
+        let (from, to) = (self.cards.get_info_location(card), self.cards.get_info_location(target));
+        self.trace.message(MSG_EQUIP).loc(from).loc(to);
+    }
+
+    pub(crate) fn card_unequip(&mut self, card: CardId) {
+        let Some(target) = self.cards[card].equiping_target else { return };
+        if self.equip_effects_disable_related(card) {
+            self.add_to_disable_check_list(target);
+        }
+        self.cards[card].equiping_target = None;
+        self.equip_cards.remove(card);
+    }
+
+    // card::get_card_effect: like filter_effect unsorted, plus the card's own field effects whether available or not.
+    pub(crate) fn get_card_effect(&self, card: CardId, code: u32) -> EffectSet {
+        let mut effects = EffectSet::default();
+        if !self.field_effects.registry.has_code(code) {
+            return effects;
+        }
+        let registry = &self.field_effects.registry;
+        effects.extend(registry.equal_range(Container::Single, Some(card), code).filter(|&effect| {
+            self.is_available(effect)
+                && (!self.effects[effect].is_flag(EFFECT_FLAG_SINGLE_RANGE) || self.is_affect_by_effect(card, Some(effect)))
+        }));
+        effects.extend(
+            registry
+                .equal_range(Container::Field, Some(card), code)
+                .filter(|&effect| self.is_affect_by_effect(card, Some(effect))),
+        );
+        effects.extend(
+            self.equip_effects(card, code)
+                .filter(|&effect| self.is_available(effect) && self.is_affect_by_effect(card, Some(effect))),
+        );
+        effects.extend(registry.equal_range(Container::Aura, None, code).filter(|&effect| {
+            !self.effects[effect].is_flag(EFFECT_FLAG_PLAYER_TARGET)
+                && self.effect_is_target(effect, card)
+                && self.is_available(effect)
+                && self.is_affect_by_effect(card, Some(effect))
+        }));
+        effects
     }
 
     // card::filter_single_continuous_effect: the card's single effects regardless of their state.
@@ -1119,6 +1264,9 @@ impl Duel {
             .registry
             .equal_range(Container::Single, Some(card), code)
             .collect();
+        if !self.equip_cards.is_empty() {
+            effects.extend(self.equip_effects(card, code));
+        }
         effects.sort_by_key(|&effect| self.effects.id(effect));
         effects
     }
@@ -1127,6 +1275,9 @@ impl Duel {
     pub(crate) fn filter_immune_effect(&self, card: CardId) -> EffectSet {
         let registry = &self.field_effects.registry;
         let mut effects: EffectSet = registry.equal_range(Container::Single, Some(card), EFFECT_IMMUNE_EFFECT).collect();
+        if !self.equip_cards.is_empty() {
+            effects.extend(self.equip_effects(card, EFFECT_IMMUNE_EFFECT));
+        }
         effects.extend(
             registry
                 .equal_range(Container::Aura, None, EFFECT_IMMUNE_EFFECT)
@@ -1150,6 +1301,13 @@ impl Duel {
             .find(|&effect| {
                 self.is_available(effect)
                     && (!self.effects[effect].is_flag(EFFECT_FLAG_SINGLE_RANGE) || self.is_affect_by_effect(card, Some(effect)))
+            })
+            .or_else(|| {
+                if self.equip_cards.is_empty() {
+                    return None;
+                }
+                self.equip_effects(card, code)
+                    .find(|&effect| self.is_available(effect) && self.is_affect_by_effect(card, Some(effect)))
             })
             .or_else(|| {
                 registry.equal_range(Container::Aura, None, code).find(|&effect| {
@@ -1178,6 +1336,15 @@ impl Duel {
                 self.is_available(effect)
                     && (!self.effects[effect].is_flag(EFFECT_FLAG_SINGLE_RANGE) || self.is_affect_by_effect(card, Some(effect)))
                     && self.get_value(effect, target) != 0
+            })
+            .or_else(|| {
+                if self.equip_cards.is_empty() {
+                    return None;
+                }
+                // The core runs this loop a second time skipping field effects, which finds nothing new.
+                self.equip_effects(card, code).find(|&effect| {
+                    self.is_available(effect) && self.is_affect_by_effect(card, Some(effect)) && self.get_value(effect, target) != 0
+                })
             })
             .or_else(|| {
                 registry.equal_range(Container::Aura, None, code).find(|&effect| {
@@ -1232,13 +1399,22 @@ impl Duel {
         min_tribute: u8,
         zone: u32,
     ) -> (i32, EffectSet) {
-        unported!(self, self.filter_effect(card, EFFECT_LIMIT_SUMMON_PROC, true));
-        unported!(self, self.filter_effect(card, EFFECT_SUMMON_PROC, true));
+        let check = |duel: &Self, effect| duel.check_summon_procedure(card, effect, playerid, ignore_count, min_tribute, zone);
+        let limits = self.filter_effect(card, EFFECT_LIMIT_SUMMON_PROC, true);
+        if !limits.is_empty() {
+            let procedures: EffectSet = limits.into_iter().filter(|&effect| check(self, effect)).collect();
+            return (if procedures.is_empty() { -2 } else { -1 }, procedures);
+        }
+        let procedures: EffectSet = self
+            .filter_effect(card, EFFECT_SUMMON_PROC, true)
+            .into_iter()
+            .filter(|&effect| check(self, effect))
+            .collect();
         if !self.is_player_can_summon(SUMMON_TYPE_NORMAL, playerid, card, playerid) {
-            return (0, EffectSet::default());
+            return (0, procedures);
         }
         if self.check_unique_onfield(card, playerid, LOCATION_MZONE).is_some() {
-            return (0, EffectSet::default());
+            return (0, procedures);
         }
         let rcount = self.get_summon_tribute_count(card);
         let mut min = (rcount & 0xffff) as u8;
@@ -1248,20 +1424,67 @@ impl Duel {
         }
         min = min.max(min_tribute);
         if max < min {
-            return (0, EffectSet::default());
+            return (0, procedures);
         }
         if !ignore_count
             && self.core.extra_summon[playerid] == 0
             && self.core.summon_count[playerid] >= self.get_summon_count_limit(playerid)
         {
             unported!(self, self.filter_effect(card, EFFECT_EXTRA_SUMMON_COUNT, true));
-            return (0, EffectSet::default());
+            return (0, procedures);
         }
         let controler = self.cards[card].current.controler;
         (
-            i32::from(self.check_tribute(card, i32::from(min), i32::from(max), controler, zone, 0xff00ff)),
-            EffectSet::default(),
+            i32::from(self.field_check_tribute(card, i32::from(min), i32::from(max), None, controler, zone, 0xff00ff)),
+            procedures,
         )
+    }
+
+    // card::check_summon_procedure; the script checks min_tribute with Duel.CheckTribute.
+    pub(crate) fn check_summon_procedure(
+        &self,
+        card: CardId,
+        effect: EffectId,
+        playerid: u8,
+        ignore_count: bool,
+        min_tribute: u8,
+        zone: u32,
+    ) -> bool {
+        if !self.check_count_limit(effect, playerid) {
+            return false;
+        }
+        let peffect = &self.effects[effect];
+        let toplayer = if peffect.is_flag(EFFECT_FLAG_SPSUM_PARAM) && peffect.o_range != 0 {
+            1 - playerid
+        } else {
+            playerid
+        };
+        if !self.is_player_can_summon(self.get_value(effect, card) as u32, playerid, card, toplayer)
+            || self.check_unique_onfield(card, toplayer, LOCATION_MZONE).is_some()
+        {
+            return false;
+        }
+        if !ignore_count
+            && self.core.extra_summon[playerid] == 0
+            && self.core.summon_count[playerid] >= self.get_summon_count_limit(playerid)
+        {
+            unported!(self, self.filter_effect(card, EFFECT_EXTRA_SUMMON_COUNT, true));
+            return false;
+        }
+        self.is_summonable(card, effect, min_tribute, zone, 0xff00ff)
+    }
+
+    // card::is_summonable: the procedure's condition (e, c, minc, zone, relzone, exeff) with exeff nil.
+    pub(crate) fn is_summonable(&self, card: CardId, effect: EffectId, min_tribute: u8, zone: u32, releasable: u32) -> bool {
+        let args = Args {
+            e: effect,
+            c: Some(card),
+            min: u16::from(min_tribute),
+            zone,
+            releasable,
+            ..Args::default()
+        };
+        self.check_procedure_condition_with(card, effect, &args)
     }
 
     // Same as filter_summon_procedure for setting.
@@ -1273,10 +1496,19 @@ impl Duel {
         min_tribute: u8,
         zone: u32,
     ) -> (i32, EffectSet) {
-        unported!(self, self.filter_effect(card, EFFECT_LIMIT_SET_PROC, true));
-        unported!(self, self.filter_effect(card, EFFECT_SET_PROC, true));
+        let check = |duel: &Self, effect| duel.check_set_procedure(card, effect, playerid, ignore_count, min_tribute, zone);
+        let limits = self.filter_effect(card, EFFECT_LIMIT_SET_PROC, true);
+        if !limits.is_empty() {
+            let procedures: EffectSet = limits.into_iter().filter(|&effect| check(self, effect)).collect();
+            return (if procedures.is_empty() { -2 } else { -1 }, procedures);
+        }
+        let procedures: EffectSet = self
+            .filter_effect(card, EFFECT_SET_PROC, true)
+            .into_iter()
+            .filter(|&effect| check(self, effect))
+            .collect();
         if !self.is_player_can_mset(SUMMON_TYPE_NORMAL, playerid, card, playerid) {
-            return (0, EffectSet::default());
+            return (0, procedures);
         }
         let rcount = self.get_set_tribute_count(card);
         let mut min = rcount & 0xffff;
@@ -1286,20 +1518,52 @@ impl Duel {
         }
         min = min.max(i32::from(min_tribute));
         if max < min {
-            return (0, EffectSet::default());
+            return (0, procedures);
         }
         if !ignore_count
             && self.core.extra_summon[playerid] == 0
             && self.core.summon_count[playerid] >= self.get_summon_count_limit(playerid)
         {
             unported!(self, self.filter_effect(card, EFFECT_EXTRA_SET_COUNT, true));
-            return (0, EffectSet::default());
+            return (0, procedures);
         }
         let controler = self.cards[card].current.controler;
         (
-            i32::from(self.check_tribute(card, min, max, controler, zone, 0xff00ff)),
-            EffectSet::default(),
+            i32::from(self.field_check_tribute(card, min, max, None, controler, zone, 0xff00ff)),
+            procedures,
         )
+    }
+
+    // card::check_set_procedure.
+    pub(crate) fn check_set_procedure(
+        &self,
+        card: CardId,
+        effect: EffectId,
+        playerid: u8,
+        ignore_count: bool,
+        min_tribute: u8,
+        zone: u32,
+    ) -> bool {
+        if !self.check_count_limit(effect, playerid) {
+            return false;
+        }
+        let peffect = &self.effects[effect];
+        let toplayer = if peffect.is_flag(EFFECT_FLAG_SPSUM_PARAM) && peffect.o_range != 0 {
+            1 - playerid
+        } else {
+            playerid
+        };
+        if !self.is_player_can_mset(self.get_value(effect, card) as u32, playerid, card, toplayer) {
+            return false;
+        }
+        if !ignore_count
+            && self.core.extra_summon[playerid] == 0
+            && self.core.summon_count[playerid] >= self.get_summon_count_limit(playerid)
+        {
+            unported!(self, self.filter_effect(card, EFFECT_EXTRA_SET_COUNT, true));
+            return false;
+        }
+        self.is_summonable(card, effect, min_tribute, zone, 0xff00ff)
     }
 
     // Whether playerid can normal summon the card; `procedure` restricts to one summon procedure (c80921533).

@@ -120,6 +120,79 @@ impl Duel {
         player <= 1 && self.field_is_player_can_draw(player) && self.player[player].list_main.len() >= count
     }
 
+    pub fn equip(&mut self, player: u8, card: CardId, target: CardId) -> Script<bool> {
+        self.equip_full(player, card, target, true, false)
+    }
+
+    pub fn equip_full(&mut self, player: u8, card: CardId, target: CardId, up: bool, step: bool) -> Script<bool> {
+        if player > 1 {
+            return Ok(false);
+        }
+        self.emplace_process(crate::operations::Equip {
+            step: 0,
+            equip_player: player,
+            equip_card: card,
+            target,
+            faceup: up,
+            is_step: step,
+        });
+        self.yield_script()?;
+        Ok(self.returns.at_i32(0) != 0)
+    }
+
+    pub fn get_tribute_group(&self, card: CardId) -> CardSet {
+        let mut group = CardSet::default();
+        let mut ex_list = CardSet::default();
+        self.summon_release_list(card, &mut group, &mut ex_list, None, false, 0xff00ff);
+        group.union(ex_list)
+    }
+
+    // Duel.CheckTribute with every argument; toplayer is the card's controller where Lua leaves it out.
+    pub fn check_tribute(&self, card: CardId, min: i32, max: i32, mg: Option<CardSet>, toplayer: u8, zone: u32) -> bool {
+        self.field_check_tribute(card, min, max, mg, toplayer, zone, 0xff00ff)
+    }
+
+    pub fn select_tribute(
+        &mut self,
+        player: u8,
+        card: CardId,
+        min: i32,
+        max: i32,
+        mg: Option<CardSet>,
+        toplayer: u8,
+        zone: u32,
+        cancelable: bool,
+    ) -> Script<CardSet> {
+        if player > 1 || toplayer > 1 {
+            return Ok(CardSet::default());
+        }
+        let (mut release_cards, mut release_cards_ex) = (CardSet::default(), CardSet::default());
+        self.get_summon_release_list(card, &mut release_cards, &mut release_cards_ex, mg, toplayer != player, 0xff00ff);
+        self.core.release_cards = release_cards;
+        self.core.release_cards_ex = release_cards_ex;
+        self.core.release_cards_ex_oneof.clear();
+        self.select_tribute_cards(None, player, cancelable, min, max, toplayer, zone);
+        self.yield_script()?;
+        Ok(self.returned_cards())
+    }
+
+    pub fn is_player_can_discard_deck(&self, player: u8, count: usize) -> bool {
+        player <= 1
+            && self.player[player].list_main.len() >= count
+            && self.is_player_affected_by_effect(player, EFFECT_CANNOT_DISCARD_DECK).is_none()
+    }
+
+    pub fn discard_deck(&mut self, player: u8, count: u16, reason: u32) -> Script<i32> {
+        self.emplace_process(crate::operations::DiscardDeck {
+            playerid: player,
+            count,
+            reason,
+            ..Default::default()
+        });
+        self.yield_script()?;
+        Ok(self.returns.at_i32(0))
+    }
+
     pub fn get_location_count(&self, player: u8, location: u32) -> i32 {
         if player > 1 {
             return 0;
@@ -1088,7 +1161,7 @@ impl Duel {
             materials,
             min,
             max,
-            chkf: 0,
+            ..Procedure::default()
         };
         self.special_summon_rule(player, card, summon_type, Some(procedure));
         if !self.core.current_chain.is_empty() {
@@ -1119,7 +1192,7 @@ impl Duel {
             materials,
             min,
             max: if min != 0 { max } else { 0 },
-            chkf: 0,
+            ..Procedure::default()
         };
 
         self.is_special_summonable(card, self.core.reason_player.get(), summon_type, procedure)

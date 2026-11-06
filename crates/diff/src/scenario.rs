@@ -9,16 +9,24 @@ const XYZ_MATERIALS_MAX: usize = 3;
 
 // Cards an effect of the card under test needs, placed with it in the given location, or in a random zone for 0; for
 // the same player, or the opponent with OPPONENT.
-const SUPPORT: [(u32, &[(u32, u16)]); 18] = [
+const SUPPORT: [(u32, &[(u32, u16)]); 31] = [
     // Fusionist from the Extra Deck with its materials, Petit Angel and Mystical Sheep #2, and Polymerization.
     (1641882, &[(1641882, EXTRA), (24094653, HAND), (38142739, HAND), (83464209, HAND)]),
+    // Metallizing Parasite - Lunatite on the field with a monster to equip: Elfnote Lucina.
+    (7369217, &[(7369217, MZONE), (13597785, MZONE)]),
     // Polymerization's materials for Albion the Branded Dragon in the Elfnote Extra Deck: Fallen of Albaz and a LIGHT
     // monster, Petit Angel.
     (24094653, &[(68468459, HAND), (38142739, HAND)]),
     // Extox Hydra from the Extra Deck, Fusion Summoned by Polymerization, and on the field to attack.
     (26050548, &[(26050548, EXTRA), (24094653, HAND), (26050548, MZONE)]),
+    // Gemini Lancer on the field twice, to be Normal Summoned again.
+    (26254876, &[(26254876, MZONE), (26254876, MZONE)]),
+    // Blizzard Princess in the hand twice, to be Tribute Summoned with a Spellcaster on the field: Elfnote Lucina.
+    (28348537, &[(28348537, HAND), (28348537, HAND), (13597785, MZONE)]),
     // Magician of Black Chaos Ritual Summoned by Black Magic Ritual.
     (30208479, &[(76792184, HAND)]),
+    // Salamandra in the hand, to be activated on a FIRE monster: Elfnote Lucina.
+    (32268901, &[(32268901, HAND), (13597785, MZONE)]),
     // F.A. Dawn Dragster's level-up needs an "F.A." Spell/Trap: F.A. Downforce.
     (33158448, &[(66322203, 0)]),
     // Ritual Raven as the whole tribute for Magician of Black Chaos (DARK), by Contract with the Abyss.
@@ -27,6 +35,8 @@ const SUPPORT: [(u32, &[(u32, u16)]); 18] = [
     (36849933, &[(36849933, MZONE), (36849933, HAND)]),
     // Drill Driver Vespenato from the Extra Deck, Xyz Summoned with a Rank 4 Xyz Monster on the field: Tornado Dragon.
     (39317553, &[(39317553, EXTRA), (6983839, MZONE)]),
+    // Heavy Mech Support Armor on the field with a Machine monster to equip: Mechanicalchaser.
+    (39890958, &[(39890958, MZONE), (7359741, MZONE)]),
     // Advanced Ritual Art in the hand Ritual Summons Magician of Black Chaos with Normal Monsters from the Deck: Mystical
     // Elf and Gene-Warped Warwolf (Level 4), Petit Angel (Level 3).
     (
@@ -39,6 +49,14 @@ const SUPPORT: [(u32, &[(u32, u16)]); 18] = [
             (38142739, DECK),
         ],
     ),
+    // Fiendish Chain set to be activated on the opponent's Effect Monster, Elfnote Fortuna.
+    (50078509, &[(50078509, SZONE), (85976588, MZONE | OPPONENT)]),
+    // Formula Synchron from the Extra Deck, Synchro Summoned with Mono Synchron and a Level 4 Warrior, Kojikocy.
+    (50091196, &[(50091196, EXTRA), (56897896, MZONE), (1184620, MZONE)]),
+    // Darklord Desire in the hand twice, to be Tribute Summoned or Set with a Fairy on the field: Medius the Pure.
+    (55690251, &[(55690251, HAND), (55690251, HAND), (97556336, MZONE)]),
+    // Mono Synchron on the field with a Level 4 Warrior, Kojikocy, for Formula Synchron in the Extra Deck.
+    (56897896, &[(50091196, EXTRA), (56897896, MZONE), (1184620, MZONE)]),
     // Magistus Chorozo from the Extra Deck, by its contact fusion, and on the field for its attack trigger.
     (66532962, &[(66532962, EXTRA), (66532962, MZONE)]),
     // Fallen of Albaz to Normal Summon, and the opponent's LIGHT monster for Albion the Branded Dragon: Elfnote Fortuna.
@@ -48,17 +66,25 @@ const SUPPORT: [(u32, &[(u32, u16)]); 18] = [
     // Vidolium is Special Summoned by returning a Fusion, a Synchro and an Xyz Monster: Albion the Branded Dragon,
     // Chaos Angel and Gauntlet Launcher.
     (70488851, &[(87746184, 0), (22850702, 0), (15561463, 0)]),
+    // Demotion in the hand, to be activated on a face-up monster.
+    (72575145, &[(72575145, HAND)]),
     // Black Magic Ritual Ritual Summons Magician of Black Chaos, with Ritual Raven as the whole tribute.
     (76792184, &[(30208479, HAND), (34334692, HAND)]),
+    // Inaba White Rabbit in the hand, to be Normal Summoned and return in the End Phase.
+    (77084837, &[(77084837, HAND)]),
     // Ecclesia and the Dark Dragon summons a Level 4 or lower monster that lists Fallen of Albaz: Guiding Quem.
     (78397661, &[(45883110, 0)]),
     // Albion the Branded Dragon Fusion Summoned by Polymerization, as Polymerization's support does, so that its effect
     // Fusion Summons Magistus Chorozo with Albion and a Spellcaster.
     (87746184, &[(68468459, HAND), (24094653, HAND), (38142739, HAND), (66532962, EXTRA)]),
+    // Kuibelt the Blade Dragon from the Extra Deck with Revolution Synchron in the hand and a Level 4 monster, Kojikocy.
+    (87837090, &[(87837090, EXTRA), (97682931, HAND), (97682931, HAND), (1184620, MZONE)]),
     // Gaia Dragon, the Thunder Charger can be Xyz Summoned with a Rank 5 or 6 Xyz Monster: Gauntlet Launcher.
     (91949988, &[(15561463, 0)]),
     // Sea Monster of Theseus from the Extra Deck, Fusion Summoned by Polymerization.
     (96334243, &[(96334243, EXTRA), (24094653, HAND)]),
+    // Revolution Synchron in the hand, Synchro material for Kuibelt the Blade Dragon with a Level 4 monster, Kojikocy.
+    (97682931, &[(97682931, HAND), (97682931, HAND), (87837090, EXTRA), (1184620, MZONE)]),
 ];
 
 // A position built as a puzzle builds one: the LP of both players and the cards Debug.AddCard places before the duel

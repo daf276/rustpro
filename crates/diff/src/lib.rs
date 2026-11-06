@@ -37,6 +37,9 @@ const CHINT_DESC_REMOVE: u8 = 7;
 const MSG_PLAYER_HINT: u8 = 165;
 const PHINT_DESC_REMOVE: u8 = 7;
 const REASON_RELEASE: u32 = 0x2;
+const REASON_MATERIAL: u32 = 0x8;
+const REASON_SUMMON: u32 = 0x10;
+const REASON_REPLACE: u32 = 0x100_0000;
 const REASON_BATTLE: u32 = 0x20;
 const REASON_RITUAL: u32 = 0x10_0000;
 const HINT_REPLAY: u64 = 30;
@@ -129,6 +132,18 @@ pub struct Tally {
     pub special_summons: BTreeMap<u32, u32>,
     // Moves of Ritual Summon materials per card code.
     pub ritual_materials: BTreeMap<u32, u32>,
+    // Cards moved as material per card code and the location they left.
+    pub materials: BTreeMap<(u32, u8), u32>,
+    // Hints added to cards per description (MSG_CARD_HINT with CHINT_DESC_ADD).
+    pub card_hints: BTreeMap<u64, u32>,
+    // Messages per type.
+    pub messages: BTreeMap<u8, u32>,
+    // Normal Summons and Sets per card code and number of tributes released for them.
+    pub summon_tributes: BTreeMap<(u32, u32), u32>,
+    pub set_tributes: BTreeMap<(u32, u32), u32>,
+    // Cards destroyed in place of others (MSG_MOVE with REASON_REPLACE) per card code.
+    pub replaced: BTreeMap<u32, u32>,
+    tributes_pending: u32,
     pub chain_disabled: u32,
     // The card code and effect description of the current chain's links.
     chain: [(u32, u64); 16],
@@ -171,6 +186,28 @@ impl Tally {
         {
             *count += 1;
         }
+        if let Some(&kind) = message.first() {
+            *self.messages.entry(kind).or_default() += 1;
+        }
+        if let [MSG_MOVE, a, b, c, d, .., e, f, g, h] = message
+            && u32::from_ne_bytes([*e, *f, *g, *h]) & REASON_REPLACE != 0
+        {
+            *self.replaced.entry(u32::from_ne_bytes([*a, *b, *c, *d])).or_default() += 1;
+        }
+        match message {
+            [MSG_MOVE, .., a, b, c, d] if u32::from_ne_bytes([*a, *b, *c, *d]) & REASON_SUMMON != 0 => self.tributes_pending += 1,
+            [kind @ (MSG_SUMMONING | MSG_SET), a, b, c, d, ..] => {
+                let code = u32::from_ne_bytes([*a, *b, *c, *d]);
+                let tributes = if *kind == MSG_SET {
+                    &mut self.set_tributes
+                } else {
+                    &mut self.summon_tributes
+                };
+                *tributes.entry((code, self.tributes_pending)).or_default() += 1;
+                self.tributes_pending = 0;
+            }
+            _ => {}
+        }
         if let [MSG_SPSUMMONING, a, b, c, d, ..] = message {
             *self.special_summons.entry(u32::from_ne_bytes([*a, *b, *c, *d])).or_default() += 1;
         }
@@ -179,6 +216,18 @@ impl Tally {
             && reason([r0, r1, r2, r3]) & REASON_RITUAL != 0
         {
             *self.ritual_materials.entry(u32::from_ne_bytes([*a, *b, *c, *d])).or_default() += 1;
+        }
+        if let [MSG_CARD_HINT, _, _, _, _, _, _, _, _, _, _, CHINT_DESC_ADD, description @ ..] = message
+            && let Ok(description) = <[u8; 8]>::try_from(description)
+        {
+            *self.card_hints.entry(u64::from_ne_bytes(description)).or_default() += 1;
+        }
+        // The code, the previous location_info (controller, location, sequence, position), the current one and the reason.
+        if let [MSG_MOVE, a, b, c, d, _, location, .., e, f, g, h] = message
+            && message.len() == 29
+            && reason([e, f, g, h]) & REASON_MATERIAL != 0
+        {
+            *self.materials.entry((u32::from_ne_bytes([*a, *b, *c, *d]), *location)).or_default() += 1;
         }
         if message.first() == Some(&MSG_ATTACK) {
             self.attacks += 1;
@@ -221,21 +270,25 @@ impl std::ops::Add for Tally {
             direct_attacks: self.direct_attacks + other.direct_attacks,
             battle_destructions: self.battle_destructions + other.battle_destructions,
             replays: self.replays + other.replays,
-            effects: other.effects.into_iter().fold(self.effects, |mut effects, (link, count)| {
-                *effects.entry(link).or_default() += count;
-                effects
-            }),
+            effects: merge_counts(self.effects, other.effects),
             special_summons: merge_counts(self.special_summons, other.special_summons),
             ritual_materials: merge_counts(self.ritual_materials, other.ritual_materials),
+            materials: merge_counts(self.materials, other.materials),
+            card_hints: merge_counts(self.card_hints, other.card_hints),
+            messages: merge_counts(self.messages, other.messages),
+            summon_tributes: merge_counts(self.summon_tributes, other.summon_tributes),
+            set_tributes: merge_counts(self.set_tributes, other.set_tributes),
+            replaced: merge_counts(self.replaced, other.replaced),
+            tributes_pending: 0,
             chain_disabled: self.chain_disabled + other.chain_disabled,
             chain: [(0, 0); 16],
         }
     }
 }
 
-fn merge_counts(counts: BTreeMap<u32, u32>, other: BTreeMap<u32, u32>) -> BTreeMap<u32, u32> {
-    other.into_iter().fold(counts, |mut counts, (code, count)| {
-        *counts.entry(code).or_default() += count;
+fn merge_counts<K: Ord>(counts: BTreeMap<K, u32>, other: BTreeMap<K, u32>) -> BTreeMap<K, u32> {
+    other.into_iter().fold(counts, |mut counts, (key, count)| {
+        *counts.entry(key).or_default() += count;
         counts
     })
 }

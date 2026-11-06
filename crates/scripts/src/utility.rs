@@ -310,6 +310,17 @@ pub mod aux {
         })
     }
 
+    // Auxiliary.IsZone: whether the card's zone, as seen from tp, is in `zone`.
+    pub fn is_zone(c: CardId, duel: &Duel, zone: u32, tp: u8) -> bool {
+        let sequence = c.get_sequence(duel);
+        let own = c.is_controler(duel, tp);
+        let mut rzone = if own { 1 << sequence } else { 1 << (16 + sequence) };
+        if c.is_sequence(duel, 5) || c.is_sequence(duel, 6) {
+            rzone |= if own { 1 << (16 + 11 - sequence) } else { 1 << (11 - sequence) };
+        }
+        rzone & zone > 0
+    }
+
     // The lowest limit of the player's Summon Gate effects, which come with the cards that register them.
     pub fn check_summon_gate(duel: &Duel, tp: u8) -> Option<i32> {
         if !duel.get_player_effect(tp, CARD_SUMMON_GATE).is_empty() {
@@ -504,6 +515,7 @@ pub trait CardUtility: Copy {
     fn is_ritual_summoned(self, duel: &Duel) -> bool;
     fn has_flag_effect(self, duel: &Duel, id: u32) -> bool;
     fn update_level(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>) -> i32;
+    fn update_attack(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>, reset_count: Option<u16>) -> i32;
 }
 
 impl CardUtility for CardId {
@@ -558,6 +570,21 @@ impl CardUtility for CardId {
         e1.set_reset(duel, reset);
         c.register_effect(duel, e1);
         c.get_level(duel) as i32 - lv
+    }
+
+    fn update_attack(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>, reset_count: Option<u16>) -> i32 {
+        let c = self;
+        let rc = rc.unwrap_or(c);
+        let r = if c == rc { RESETS_STANDARD_DISABLE } else { RESETS_STANDARD };
+        let reset = reset.unwrap_or(RESET_EVENT + r);
+        let atk = c.get_attack(duel);
+        let e1 = duel.create_effect(rc);
+        e1.set_type(duel, EFFECT_TYPE_SINGLE);
+        e1.set_code(duel, EFFECT_UPDATE_ATTACK);
+        e1.set_value(duel, amt);
+        e1.set_reset_full(duel, reset, reset_count.unwrap_or(1));
+        c.register_effect(duel, e1);
+        c.get_attack(duel) - atk
     }
 
     fn is_monster(self, duel: &Duel) -> bool {
@@ -682,6 +709,7 @@ impl CardUtility for CardId {
 
 pub trait EffectUtility: Copy {
     fn is_monster_effect(self, duel: &Duel) -> bool;
+    fn is_spell_effect(self, duel: &Duel) -> bool;
     fn is_spell_trap_effect(self, duel: &Duel) -> bool;
 }
 
@@ -692,6 +720,10 @@ impl EffectUtility for EffectId {
 
     fn is_monster_effect(self, duel: &Duel) -> bool {
         self.is_active_type(duel, TYPE_MONSTER)
+    }
+
+    fn is_spell_effect(self, duel: &Duel) -> bool {
+        self.is_active_type(duel, TYPE_SPELL)
     }
 }
 

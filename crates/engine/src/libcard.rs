@@ -353,6 +353,25 @@ impl CardId {
         duel.filter_effect(self, code, true).first().copied()
     }
 
+    pub fn get_equip_target(self, duel: &Duel) -> Option<CardId> {
+        duel.cards[self].equiping_target
+    }
+
+    pub fn get_equip_group(self, duel: &Duel) -> CardSet {
+        duel.equiping_cards(self)
+    }
+
+    // The counts of equipped Union monsters in their union state and in the old union state.
+    pub fn get_union_count(self, duel: &Duel) -> (usize, usize) {
+        let unions = |code| {
+            duel.equiping_cards(self)
+                .iter()
+                .filter(|&equip| duel.cards[equip].data.card_type & TYPE_UNION != 0 && duel.is_affected_by_effect(equip, code).is_some())
+                .count()
+        };
+        (unions(EFFECT_UNION_STATUS), unions(EFFECT_OLDUNION_STATUS))
+    }
+
     pub fn set_card_target(self, duel: &mut Duel, target: CardId) {
         duel.add_card_target(self, target);
     }

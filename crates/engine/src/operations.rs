@@ -19,6 +19,16 @@ pub struct Draw {
     pub drawn_set: CardSet,
 }
 
+#[derive(Debug, Clone)]
+pub struct Equip {
+    pub step: u16,
+    pub equip_player: u8,
+    pub equip_card: CardId,
+    pub target: CardId,
+    pub faceup: bool,
+    pub is_step: bool,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct DiscardDeck {
     pub step: u16,
@@ -490,6 +500,148 @@ impl Duel {
                 true
             }
             _ => true,
+        }
+    }
+
+    // field::refresh_location_info_instant: the zones EFFECT_DISABLE_FIELD and EFFECT_USE_EXTRA_*ZONE take away, which
+    // come with the cards that register them.
+    pub(crate) fn refresh_location_info_instant(&self) {
+        for code in [EFFECT_DISABLE_FIELD, EFFECT_USE_EXTRA_MZONE, EFFECT_USE_EXTRA_SZONE] {
+            unported!(self, self.filter_field_effect(code));
+        }
+    }
+
+    // Equipping with is_step (Duel.Equip(..., true) and Duel.EquipComplete) comes with the cards that call it.
+    pub(crate) fn process_equip(&mut self, arg: &mut Equip) -> bool {
+        let (equip_player, equip_card, target) = (arg.equip_player, arg.equip_card, arg.target);
+        match arg.step {
+            0 => {
+                self.returns.set_i32(0, 0);
+                if !self.is_affect_by_effect(equip_card, self.core.reason_effect.get()) || equip_card == target {
+                    return true;
+                }
+                let mut to_grave = false;
+                let current = self.cards[target].current;
+                if current.location != LOCATION_MZONE || current.position & POS_FACEDOWN != 0 {
+                    if self.is_flag(DUEL_EQUIP_NOT_SENT_IF_MISSING_TARGET) && self.cards[equip_card].current.location == LOCATION_MZONE {
+                        return true;
+                    }
+                    to_grave = true;
+                }
+                if self.cards[equip_card].current.location != LOCATION_SZONE {
+                    self.refresh_location_info_instant();
+                    let count = self.get_useable_count(
+                        Some(equip_card),
+                        equip_player,
+                        LOCATION_SZONE,
+                        equip_player,
+                        LOCATION_REASON_TOFIELD,
+                        0xff,
+                    );
+                    if count.0 <= 0 {
+                        to_grave = true;
+                    }
+                }
+                if to_grave {
+                    if self.cards[equip_card].current.location != LOCATION_GRAVE {
+                        let reason = REASON_RULE;
+                        self.send_to(
+                            equip_card.into(),
+                            None,
+                            reason,
+                            PLAYER_NONE,
+                            PLAYER_NONE,
+                            LOCATION_GRAVE,
+                            0,
+                            POS_FACEUP as u8,
+                            false,
+                        );
+                    }
+                    arg.step = 2;
+                    return false;
+                }
+                if let Some(previous) = self.cards[equip_card].equiping_target {
+                    self.card_targets.retain(|&link| link != (equip_card, previous));
+                    self.card_unequip(equip_card);
+                    self.enable_field_effect(equip_card, false);
+                    return false;
+                }
+                if self.cards[equip_card].current.location == LOCATION_SZONE {
+                    if arg.faceup && self.cards[equip_card].is_position(POS_FACEDOWN) {
+                        self.change_position(equip_card, None, equip_player, POS_FACEUP, 0, false);
+                    }
+                    return false;
+                }
+                self.enable_field_effect(equip_card, false);
+                self.cards[equip_card].current.reason_player = equip_player;
+                let faceup = arg.faceup || self.cards[equip_card].is_position(POS_FACEUP);
+                let position = (if faceup { POS_FACEUP } else { POS_FACEDOWN }) as u8;
+                let destination = LOCATION_SZONE.into();
+                self.field_move_to_field(
+                    equip_card,
+                    equip_player,
+                    equip_player,
+                    destination,
+                    position,
+                    false,
+                    0xff,
+                    false,
+                    LOCATION_REASON_TOFIELD,
+                );
+                false
+            }
+            1 => {
+                self.card_equip(equip_card, target);
+                let data_type = self.cards[equip_card].data.card_type;
+                if data_type & TYPE_EQUIP == 0 {
+                    let (code, value) = if self.get_type(equip_card) & TYPE_TRAP != 0 {
+                        (EFFECT_ADD_TYPE, TYPE_EQUIP)
+                    } else if data_type & TYPE_UNION != 0 {
+                        (EFFECT_CHANGE_TYPE, TYPE_EQUIP + TYPE_SPELL + TYPE_UNION)
+                    } else if data_type & TYPE_TOKEN != 0 {
+                        (EFFECT_CHANGE_TYPE, TYPE_EQUIP + TYPE_SPELL + TYPE_TOKEN)
+                    } else {
+                        (EFFECT_CHANGE_TYPE, TYPE_EQUIP + TYPE_SPELL)
+                    };
+                    let effect = self.new_effect(equip_card);
+                    let peffect = &mut self.effects[effect];
+                    peffect.handler = Some(equip_card);
+                    peffect.effect_type = EFFECT_TYPE_SINGLE;
+                    peffect.code = code;
+                    peffect.value = Value::Int(value as i32);
+                    peffect.flag[0] = EFFECT_FLAG_CANNOT_DISABLE;
+                    peffect.reset_flag = RESET_EVENT + 0x17e_0000;
+                    self.card_add_effect(equip_card, effect);
+                }
+                if !self.card_targets.contains(&(equip_card, target)) {
+                    self.card_targets.push((equip_card, target));
+                }
+                unported!(self, arg.is_step.then_some(equip_card));
+                if self.cards[equip_card].is_position(POS_FACEUP) {
+                    self.enable_field_effect(equip_card, true);
+                }
+                self.adjust_disable_check_list();
+                let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
+                let equips = Some(CardSet::from(equip_card));
+                self.raise_single_event_with(target, equips, EVENT_EQUIP, reason_effect, 0, reason_player, PLAYER_NONE, 0);
+                self.raise_event(equips, EVENT_EQUIP, reason_effect, 0, reason_player, PLAYER_NONE, 0);
+                let card = &self.cards[target];
+                let controler = card
+                    .overlay_target
+                    .map_or(card.current.controler, |overlay| self.cards[overlay].current.controler);
+                self.core.hint_timing[controler] |= TIMING_EQUIP;
+                self.process_single_event();
+                self.process_instant_event();
+                false
+            }
+            2 => {
+                self.returns.set_i32(0, 1);
+                true
+            }
+            _ => {
+                self.returns.set_i32(0, 0);
+                true
+            }
         }
     }
 
@@ -1219,9 +1371,15 @@ impl Duel {
             10 => {
                 let mut sets = [CardSet::default(); 7];
                 let [to_hand, to_deck, to_grave, removed, discarded, released, destroyed] = &mut sets;
-                let mut overlays = CardSet::default();
+                let (mut overlays, mut equipings) = (CardSet::default(), CardSet::default());
                 for card in arg.targets.iter() {
-                    // Equips are detached here and later destroyed; they come with the cards that make them.
+                    self.card_unequip(card);
+                    for equip in self.equiping_cards(card) {
+                        self.card_unequip(equip);
+                        if self.cards[equip].current.location == LOCATION_SZONE {
+                            equipings.insert(equip);
+                        }
+                    }
                     self.clear_card_target(card);
                     let target = &self.cards[card];
                     let (current, data_type, destination) = (target.current, target.data.card_type, target.sendto_param.location);
@@ -1287,6 +1445,10 @@ impl Duel {
                 self.raise_event(Some(arg.targets), EVENT_MOVE, reason_effect, reason, reason_player, 0, 0);
                 self.process_single_event();
                 self.process_instant_event();
+                if !equipings.is_empty() {
+                    let reason = REASON_RULE + REASON_LOST_TARGET;
+                    self.field_destroy(equipings, None, reason, PLAYER_NONE, PLAYER_NONE, LOCATION_GRAVE, 0);
+                }
                 if !overlays.is_empty() {
                     let reason = REASON_RULE + REASON_LOST_TARGET;
                     self.send_to(
@@ -2809,6 +2971,17 @@ impl Duel {
                 let card = &self.cards[target];
                 let (code, to, card_reason) = (card.data.code, self.cards.get_info_location(target), card.current.reason);
                 self.trace.message(MSG_MOVE).u32(code).loc(from).loc(to).u32(card_reason);
+                let equips = self.equiping_cards(target);
+                if self.cards[target].current.location != LOCATION_MZONE && !equips.is_empty() {
+                    let reason = REASON_LOST_TARGET + REASON_RULE;
+                    self.field_destroy(equips, None, reason, PLAYER_NONE, PLAYER_NONE, LOCATION_GRAVE, 0);
+                    for equip in equips {
+                        self.card_unequip(equip);
+                    }
+                }
+                if self.cards[target].previous.location == LOCATION_SZONE {
+                    self.card_unequip(target);
+                }
                 let materials = self.xyz_materials(target);
                 if self.cards[target].current.location != LOCATION_MZONE && !materials.is_empty() {
                     let reason = REASON_LOST_TARGET + REASON_RULE;
@@ -2925,7 +3098,7 @@ impl Duel {
             4 => {
                 let mut cv: Cards16 = arg.targets.iter().collect();
                 cv.sort_by(|&c1, &c2| self.card_operation_sort(c1, c2));
-                let (mut flips, mut pos_changed) = (CardSet::default(), CardSet::default());
+                let (mut flips, mut pos_changed, mut equipings) = (CardSet::default(), CardSet::default(), CardSet::default());
                 for card in cv {
                     let target = &mut self.cards[card];
                     let (mut npos, opos, flag) = (target.position_param & 0xff, target.current.position, target.position_param >> 16);
@@ -2969,10 +3142,11 @@ impl Duel {
                         self.raise_single_event(card, EVENT_CHANGE_POS, reason_effect, 0, reason_player, 0, 0);
                         pos_changed.insert(card);
                     }
-                    // Phase 2: trap monsters turned face-down move back to the spell zone, and equips are destroyed.
+                    // Phase 2: trap monsters turned face-down move back to the spell zone.
                     if opos & POS_FACEUP != 0 && npos & POS_FACEDOWN != 0 {
                         self.cards[card].set_status(STATUS_SUMMON_DISABLED | STATUS_ACTIVATE_DISABLED, false);
                         self.reset(card, RESET_TURN_SET, RESET_EVENT);
+                        self.clear_card_target(card);
                         self.cards[card].set_status(STATUS_SET_TURN, true);
                         self.enable_field_effect(card, false);
                         let target = &mut self.cards[card];
@@ -2981,6 +3155,13 @@ impl Duel {
                         if target.summon.summon_type & SUMMON_TYPE_PENDULUM == SUMMON_TYPE_PENDULUM {
                             target.summon.summon_type &= 0xf000_ffff;
                         }
+                    }
+                    if npos & POS_FACEDOWN != 0 {
+                        for equip in self.equiping_cards(card) {
+                            equipings.insert(equip);
+                            self.card_unequip(equip);
+                        }
+                        self.card_unequip(card);
                     }
                 }
                 self.adjust_instant();
@@ -2991,6 +3172,10 @@ impl Duel {
                     }
                 }
                 self.process_instant_event();
+                if !equipings.is_empty() {
+                    let reason = REASON_LOST_TARGET + REASON_RULE;
+                    self.field_destroy(equipings, None, reason, PLAYER_NONE, PLAYER_NONE, LOCATION_GRAVE, 0);
+                }
                 if !arg.to_grave_set.is_empty() {
                     let to_grave_set = std::mem::take(&mut arg.to_grave_set);
                     self.send_to(
@@ -3907,10 +4092,15 @@ impl Duel {
                 cv.extend(others);
                 unported!(self, (self.core.global_flag & GLOBALFLAG_DECK_REVERSE_CHECK != 0).then_some(()));
                 let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
-                let mut from_grave = CardSet::default();
+                let (mut from_grave, mut des) = (CardSet::default(), CardSet::default());
                 for card in cv {
                     self.cards[card].current.reason = REASON_XYZ + REASON_MATERIAL;
                     self.reset(card, RESET_LEAVE + RESET_OVERLAY, RESET_EVENT);
+                    self.card_unequip(card);
+                    for equip in self.equiping_cards(card) {
+                        des.insert(equip);
+                        self.card_unequip(equip);
+                    }
                     self.clear_card_target(card);
                     let from = self.cards.get_info_location(card);
                     if let Some(overlay_target) = self.cards[card].overlay_target {
@@ -3933,7 +4123,19 @@ impl Duel {
                     self.process_single_event();
                     self.process_instant_event();
                 }
-                self.adjust_instant();
+                if des.is_empty() {
+                    self.adjust_instant();
+                } else {
+                    self.field_destroy(
+                        des,
+                        None,
+                        REASON_LOST_TARGET + REASON_RULE,
+                        PLAYER_NONE,
+                        PLAYER_NONE,
+                        LOCATION_GRAVE,
+                        0,
+                    );
+                }
                 if self.cards[target].current.location & LOCATION_ONFIELD != 0 {
                     self.adjust_all();
                 }

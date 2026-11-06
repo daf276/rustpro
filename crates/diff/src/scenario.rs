@@ -9,7 +9,7 @@ const XYZ_MATERIALS_MAX: usize = 3;
 
 // Cards an effect of the card under test needs, placed with it in the given location, or in a random zone for 0; for
 // the same player, or the opponent with OPPONENT.
-const SUPPORT: [(u32, &[(u32, u16)]); 20] = [
+const SUPPORT: [(u32, &[(u32, u16)]); 22] = [
     // Fusionist from the Extra Deck with its materials, Petit Angel and Mystical Sheep #2, and Polymerization.
     (1641882, &[(1641882, EXTRA), (24094653, HAND), (38142739, HAND), (83464209, HAND)]),
     // Polymerization's materials for Albion the Branded Dragon in the Elfnote Extra Deck: Fallen of Albaz and a LIGHT
@@ -19,8 +19,10 @@ const SUPPORT: [(u32, &[(u32, u16)]); 20] = [
     (26050548, &[(26050548, EXTRA), (24094653, HAND), (26050548, MZONE)]),
     // Gemini Lancer on the field twice, to be Normal Summoned again.
     (26254876, &[(26254876, MZONE), (26254876, MZONE)]),
-    // Blizzard Princess in the hand, to be Tribute Summoned with a Spellcaster on the field: Elfnote Lucina.
-    (28348537, &[(28348537, HAND), (13597785, MZONE)]),
+    // Blizzard Princess in the hand twice, to be Tribute Summoned with a Spellcaster on the field: Elfnote Lucina.
+    (28348537, &[(28348537, HAND), (28348537, HAND), (13597785, MZONE)]),
+    // Salamandra in the hand, to be activated on a FIRE monster: Elfnote Lucina.
+    (32268901, &[(32268901, HAND), (13597785, MZONE)]),
     // F.A. Dawn Dragster's level-up needs an "F.A." Spell/Trap: F.A. Downforce.
     (33158448, &[(66322203, 0)]),
     // Drill Driver Vespenato from the Extra Deck can be Xyz Summoned with a Rank 4 Xyz Monster on the field: Tornado
@@ -39,6 +41,8 @@ const SUPPORT: [(u32, &[(u32, u16)]); 20] = [
     // Vidolium is Special Summoned by returning a Fusion, a Synchro and an Xyz Monster: Albion the Branded Dragon,
     // Chaos Angel and Gauntlet Launcher.
     (70488851, &[(87746184, 0), (22850702, 0), (15561463, 0)]),
+    // Demotion in the hand, to be activated on a face-up monster.
+    (72575145, &[(72575145, HAND)]),
     // Inaba White Rabbit in the hand, to be Normal Summoned and return in the End Phase.
     (77084837, &[(77084837, HAND)]),
     // Ecclesia and the Dark Dragon summons a Level 4 or lower monster that lists Fallen of Albaz: Guiding Quem.

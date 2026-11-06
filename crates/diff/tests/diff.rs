@@ -28,8 +28,8 @@ const MATERIAL_PATHS: [(u32, u8); 2] = [(56897896, LOCATION_MZONE), (97682931, L
 // Lancer's second Normal Summon (64).
 const HINT_PATHS: [(u32, u64); 1] = [(26254876, 64)];
 // Messages only a procedure path of phase 3d writes, by the carrier and the message type: Fiendish Chain's card target
-// (MSG_CARD_TARGET).
-const MESSAGE_PATHS: [(u32, u8); 1] = [(50078509, 96)];
+// (MSG_CARD_TARGET), Demotion's and Salamandra's equips (MSG_EQUIP).
+const MESSAGE_PATHS: [(u32, u8); 3] = [(50078509, 96), (72575145, 93), (32268901, 93)];
 // Normal Summons by a summon procedure, by the carrier and the number of tributes: Blizzard Princess with 1.
 const SUMMON_PATHS: [(u32, u32); 1] = [(28348537, 1)];
 

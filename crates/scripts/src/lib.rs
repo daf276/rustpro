@@ -14,6 +14,7 @@ macro_rules! unported {
 pub mod chain;
 mod constant;
 mod official;
+mod proc_equip;
 mod proc_fusion;
 mod proc_gemini;
 mod proc_link;
@@ -35,6 +36,7 @@ pub mod prelude {
 
     pub use crate::chain::{self, DuelChain, EffectChain};
     pub use crate::constant::*;
+    pub use crate::proc_equip::{Equip, EquipProcedure};
     pub use crate::proc_fusion::{ContactFusion, DuelFusion, Fusion, FusionMaterial, FusionMix, FusionMixRep, FusionSummonParams};
     pub use crate::proc_gemini::Gemini;
     pub use crate::proc_link::{Link, LinkProcedure};

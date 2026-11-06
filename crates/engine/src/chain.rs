@@ -82,10 +82,34 @@ impl Duel {
         event_player: u8,
         event_value: u32,
     ) {
+        self.raise_single_event_with(
+            trigger_card,
+            None,
+            event_code,
+            reason_effect,
+            reason,
+            reason_player,
+            event_player,
+            event_value,
+        );
+    }
+
+    // raise_single_event with the event's card group.
+    pub(crate) fn raise_single_event_with(
+        &mut self,
+        trigger_card: CardId,
+        event_cards: Option<CardSet>,
+        event_code: u32,
+        reason_effect: Option<EffectId>,
+        reason: u32,
+        reason_player: u8,
+        event_player: u8,
+        event_value: u32,
+    ) {
         let global_id = self.infos.event_id;
         self.core.single_event.push(Event {
             trigger_card: Some(trigger_card),
-            event_cards: None,
+            event_cards,
             reason_effect,
             event_code,
             event_value,

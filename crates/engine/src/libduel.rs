@@ -120,6 +120,26 @@ impl Duel {
         player <= 1 && self.field_is_player_can_draw(player) && self.player[player].list_main.len() >= count
     }
 
+    pub fn equip(&mut self, player: u8, card: CardId, target: CardId) -> Script<bool> {
+        self.equip_full(player, card, target, true, false)
+    }
+
+    pub fn equip_full(&mut self, player: u8, card: CardId, target: CardId, up: bool, step: bool) -> Script<bool> {
+        if player > 1 {
+            return Ok(false);
+        }
+        self.emplace_process(crate::operations::Equip {
+            step: 0,
+            equip_player: player,
+            equip_card: card,
+            target,
+            faceup: up,
+            is_step: step,
+        });
+        self.yield_script()?;
+        Ok(self.returns.at_i32(0) != 0)
+    }
+
     pub fn get_tribute_group(&self, card: CardId) -> CardSet {
         let mut group = CardSet::default();
         let mut ex_list = CardSet::default();

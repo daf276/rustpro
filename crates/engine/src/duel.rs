@@ -99,6 +99,8 @@ pub struct Duel {
     pub(crate) card_targets: Vec<(CardId, CardId)>,
     // card::relations: the card, the card it relates to and the reset flags that end it.
     pub(crate) card_relations: Vec<(CardId, CardId, u32)>,
+    // The cards equipped to a monster; card::equiping_cards of a card are those whose equiping_target it is.
+    pub(crate) equip_cards: CardSet,
     // The first unported call site an effect reached, set in checks that only read.
     pub(crate) unported: std::cell::Cell<Option<&'static str>>,
 }
@@ -144,6 +146,7 @@ impl Duel {
             counters: Vec::new(),
             card_targets: Vec::new(),
             card_relations: Vec::new(),
+            equip_cards: CardSet::default(),
             unported: std::cell::Cell::new(None),
         })
     }

@@ -66,9 +66,11 @@ Hand-port the `proc_*` summon procedures, each verified through a few carrier ca
 - [x] 3b. Full `proc_fusion` and `proc_fusion_spell` (ConditionMix/OperationMix variants, `Fusion.SummonEffTG/OP`, contact fusion) and carrier cards; unblocks Albion's Fusion Summon effect and Fallen of Albaz
 - [x] 3c. `proc_ritual` and carrier cards
 - [x] 3d. Remaining Synchro/Link/Pendulum variants guarded in 2c (hand Synchro, Synchro checks, custom materials, Link extra materials) and the small procedures (`proc_equip`, `proc_gemini`, `proc_spirit`, `proc_union`, `proc_persistent`, `proc_normal`)
+- [ ] 3f. Checks that mutate state: Lua that registers/resets effects or calls `AssumeProperty` inside a summon condition, material filter or value (hand Synchro, `EFFECT_SYNCHRO_CHECK`, Link `EFFECT_EXTRA_MATERIAL`, `EFFECT_FORMUD_SKIPPER`, about 35 cards); mirrored so effect ids advance as in the core, with carrier cards
 - [x] 3e. Decided: the rest of `utility.lua`, `cards_specific_functions.lua` and `deprecated_functions.lua` is ported on demand by the phase 4 pipeline, when the first card that needs a function is ported, so every ported line is diff-tested from the start
 
 ### 4. Porting pipeline pilot
+- [ ] 4a. Infrastructure for parallel porting: card registry generated from the files in `official/`, per-card test metadata (support cards, checks) in each card's file, fixed seeds per card (adding cards no longer reshuffles scenarios) with per-card tallies and checks, all of `constant.lua` ported up front, a single-card diff command for agents, and a porting queue of the TCG pool ordered by popularity (ygoprodeck weekly views)
 - [ ] Agent pipeline: port card, port any library functions it needs that are still missing, generate scenarios, diff, iterate
 - [ ] Pilot ~200 cards; measure pass rate, cost per card, API gaps
 

@@ -353,6 +353,38 @@ impl CardId {
         duel.filter_effect(self, code, true).first().copied()
     }
 
+    pub fn set_card_target(self, duel: &mut Duel, target: CardId) {
+        duel.add_card_target(self, target);
+    }
+
+    pub fn get_card_target(self, duel: &Duel) -> CardSet {
+        duel.card_targets(self)
+    }
+
+    pub fn get_first_card_target(self, duel: &Duel) -> Option<CardId> {
+        duel.card_targets(self).get_first()
+    }
+
+    pub fn is_has_card_target(self, duel: &Duel, target: CardId) -> bool {
+        duel.card_targets.contains(&(self, target))
+    }
+
+    pub fn create_relation(self, duel: &mut Duel, target: CardId, reset: u32) {
+        if !duel
+            .card_relations
+            .iter()
+            .any(|&(card, related, _)| card == self && related == target)
+        {
+            duel.card_relations.push((self, target, reset));
+        }
+    }
+
+    pub fn is_relate_to_card(self, duel: &Duel, target: CardId) -> bool {
+        duel.card_relations
+            .iter()
+            .any(|&(card, related, _)| card == self && related == target)
+    }
+
     // Card.IsGeminiState and Card.EnableGeminiState, under the names proc_gemini.lua gives them.
     pub fn is_gemini_status(self, duel: &Duel) -> bool {
         duel.is_affected_by_effect(self, EFFECT_GEMINI_STATUS).is_some()

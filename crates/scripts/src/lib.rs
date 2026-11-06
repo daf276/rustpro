@@ -18,6 +18,7 @@ mod proc_fusion;
 mod proc_gemini;
 mod proc_link;
 mod proc_pendulum;
+mod proc_persistent;
 mod proc_spirit;
 mod proc_synchro;
 mod proc_workaround;
@@ -37,6 +38,7 @@ pub mod prelude {
     pub use crate::proc_gemini::Gemini;
     pub use crate::proc_link::{Link, LinkProcedure};
     pub use crate::proc_pendulum::Pendulum;
+    pub use crate::proc_persistent::{Persistent, PersistentProcedure};
     pub use crate::proc_spirit::Spirit;
     pub use crate::proc_synchro::{Synchro, SynchroProcedure};
     pub use crate::proc_workaround::{CardWorkaround, DuelWorkaround};

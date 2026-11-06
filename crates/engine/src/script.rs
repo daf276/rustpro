@@ -221,6 +221,8 @@ impl Duel {
             material_cards,
             overlay_cards,
             counters,
+            card_targets,
+            card_relations,
             unported,
         } = source;
         self.cards.copy_from(cards);
@@ -244,6 +246,8 @@ impl Duel {
         self.material_cards.clone_from(material_cards);
         self.overlay_cards.clone_from(overlay_cards);
         self.counters.clone_from(counters);
+        self.card_targets.clone_from(card_targets);
+        self.card_relations.clone_from(card_relations);
         self.unported.clone_from(unported);
     }
 

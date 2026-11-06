@@ -128,6 +128,8 @@ pub struct Tally {
     pub materials: BTreeMap<(u32, u8), u32>,
     // Hints added to cards per description (MSG_CARD_HINT with CHINT_DESC_ADD).
     pub card_hints: BTreeMap<u64, u32>,
+    // Messages per type.
+    pub messages: BTreeMap<u8, u32>,
     pub chain_disabled: u32,
     // The card code and effect description of the current chain's links.
     chain: [(u32, u64); 16],
@@ -165,6 +167,9 @@ impl Tally {
 
     fn count(&mut self, message: &[u8]) {
         self.count_chain(message);
+        if let Some(&kind) = message.first() {
+            *self.messages.entry(kind).or_default() += 1;
+        }
         if let [MSG_SPSUMMONING, a, b, c, d, ..] = message {
             *self.special_summons.entry(u32::from_ne_bytes([*a, *b, *c, *d])).or_default() += 1;
         }
@@ -240,6 +245,10 @@ impl std::ops::Add for Tally {
                     *hints.entry(description).or_default() += count;
                     hints
                 }),
+            messages: other.messages.into_iter().fold(self.messages, |mut messages, (kind, count)| {
+                *messages.entry(kind).or_default() += count;
+                messages
+            }),
             chain_disabled: self.chain_disabled + other.chain_disabled,
             chain: [(0, 0); 16],
         }

@@ -30,6 +30,7 @@ mod c44095762;
 mod c45883110;
 mod c46014517;
 mod c46130346;
+mod c50078509;
 mod c50091196;
 mod c50954680;
 mod c53129443;
@@ -68,7 +69,7 @@ mod c97556336;
 mod c97682931;
 
 // Sorted by code.
-pub const CARD_SCRIPTS: [(u32, InitialEffect); 65] = [
+pub const CARD_SCRIPTS: [(u32, InitialEffect); 66] = [
     (1641882, c1641882::initial_effect),
     (4206964, c4206964::initial_effect),
     (5318639, c5318639::initial_effect),
@@ -102,6 +103,7 @@ pub const CARD_SCRIPTS: [(u32, InitialEffect); 65] = [
     (45883110, c45883110::initial_effect),
     (46014517, c46014517::initial_effect),
     (46130346, c46130346::initial_effect),
+    (50078509, c50078509::initial_effect),
     (50091196, c50091196::initial_effect),
     (50954680, c50954680::initial_effect),
     (53129443, c53129443::initial_effect),

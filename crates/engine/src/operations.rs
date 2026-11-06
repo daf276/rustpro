@@ -1220,6 +1220,7 @@ impl Duel {
                 let mut overlays = CardSet::default();
                 for card in arg.targets.iter() {
                     // Equips are detached here and later destroyed; they come with the cards that make them.
+                    self.clear_card_target(card);
                     let target = &self.cards[card];
                     let (current, data_type, destination) = (target.current, target.data.card_type, target.sendto_param.location);
                     let raise = |set: &mut CardSet, event: u32, duel: &mut Self| {
@@ -2670,6 +2671,7 @@ impl Duel {
                         resetflag |= RESET_MSCHANGE;
                     }
                     self.reset(target, resetflag, RESET_EVENT);
+                    self.clear_card_target(target);
                 }
                 if current.location & LOCATION_ONFIELD == 0 {
                     self.clear_relate_effect(target);
@@ -3831,6 +3833,7 @@ impl Duel {
                 for card in cv {
                     self.cards[card].current.reason = REASON_XYZ + REASON_MATERIAL;
                     self.reset(card, RESET_LEAVE + RESET_OVERLAY, RESET_EVENT);
+                    self.clear_card_target(card);
                     let from = self.cards.get_info_location(card);
                     if let Some(overlay_target) = self.cards[card].overlay_target {
                         self.xyz_remove(overlay_target, card);

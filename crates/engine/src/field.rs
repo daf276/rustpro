@@ -2077,8 +2077,12 @@ impl Duel {
             }
             if select_target
                 && !must
-                && (self.is_affected_by_effect_target(target, EFFECT_CANNOT_BE_BATTLE_TARGET, card).is_some()
-                    || self.is_affected_by_effect_target(card, EFFECT_CANNOT_SELECT_BATTLE_TARGET, target).is_some())
+                && (self
+                    .is_affected_by_effect_target(target, EFFECT_CANNOT_BE_BATTLE_TARGET, card)
+                    .is_some()
+                    || self
+                        .is_affected_by_effect_target(card, EFFECT_CANNOT_SELECT_BATTLE_TARGET, target)
+                        .is_some())
             {
                 continue;
             }

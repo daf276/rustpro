@@ -1035,6 +1035,8 @@ impl Duel {
                 self.reset_effect_count(card);
             }
             self.reset_counters(card, id);
+            self.card_relations
+                .retain(|&(owner, _, reset)| owner != card || reset & 0xffff_0000 & id == 0);
         }
         for effect in self.card_effects(card) {
             if self.effect_reset(effect, id, reset_type) {
@@ -1067,6 +1069,69 @@ impl Duel {
             .position(|&relation| relation == Relation { card, effect, chain_id })
         {
             self.relations.remove(at);
+        }
+    }
+
+    // card::effect_target_cards: ordered by card id, as the core's card_set.
+    pub(crate) fn card_targets(&self, card: CardId) -> CardSet {
+        self.card_targets
+            .iter()
+            .filter(|&&(owner, _)| owner == card)
+            .map(|&(_, target)| target)
+            .collect()
+    }
+
+    fn target_effects_disable_related(&self, card: CardId) -> bool {
+        self.field_effects
+            .registry
+            .all(Container::Target, Some(card))
+            .any(|(_, effect)| self.effects[effect].is_disable_related())
+    }
+
+    pub(crate) fn add_card_target(&mut self, card: CardId, target: CardId) {
+        if !self.card_targets.contains(&(card, target)) {
+            self.card_targets.push((card, target));
+        }
+        if self.target_effects_disable_related(card) {
+            self.add_to_disable_check_list(target);
+        }
+        let (from, to) = (self.cards.get_info_location(card), self.cards.get_info_location(target));
+        self.trace.message(MSG_CARD_TARGET).loc(from).loc(to);
+    }
+
+    pub(crate) fn clear_card_target(&mut self, card: CardId) {
+        let links: Vec<(CardId, CardId)> = self
+            .card_targets
+            .iter()
+            .copied()
+            .filter(|&(owner, target)| owner == card || target == card)
+            .collect();
+        if links.is_empty() {
+            return;
+        }
+        self.card_targets.retain(|&(owner, target)| owner != card && target != card);
+        let owners = links.iter().filter(|&&(_, target)| target == card).map(|&(owner, _)| owner);
+        for owner in owners.collect::<CardSet>() {
+            if self.target_effects_disable_related(owner) {
+                self.add_to_disable_check_list(card);
+            }
+        }
+        let targets = links.iter().filter(|&&(owner, _)| owner == card).map(|&(_, target)| target);
+        for target in targets.collect::<CardSet>() {
+            if self.target_effects_disable_related(card) {
+                self.add_to_disable_check_list(target);
+            }
+            let related = self
+                .field_effects
+                .registry
+                .all(Container::Single, Some(target))
+                .map(|(_, effect)| effect);
+            let related: List<EffectId, 8> = related
+                .filter(|&effect| self.effects[effect].owner == card && self.effects[effect].is_flag(EFFECT_FLAG_OWNER_RELATE))
+                .collect();
+            for effect in related {
+                self.card_remove_effect(target, effect);
+            }
         }
     }
 

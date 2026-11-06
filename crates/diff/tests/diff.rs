@@ -27,6 +27,9 @@ const MATERIAL_PATHS: [(u32, u8); 2] = [(56897896, LOCATION_MZONE), (97682931, L
 // Hints the core adds to a card when a procedure path of phase 3d runs, by the carrier and the description: Gemini
 // Lancer's second Normal Summon (64).
 const HINT_PATHS: [(u32, u64); 1] = [(26254876, 64)];
+// Messages only a procedure path of phase 3d writes, by the carrier and the message type: Fiendish Chain's card target
+// (MSG_CARD_TARGET).
+const MESSAGE_PATHS: [(u32, u8); 1] = [(50078509, 96)];
 
 fn load(vendor: fn(&Path) -> Result<Vendor, DiffError>) -> Result<&'static Vendor, DiffError> {
     Ok(Box::leak(Box::new(vendor(
@@ -158,10 +161,13 @@ fn assert_scenarios_clean(seeds: Range<u64>) -> Result<(), DiffError> {
     let materials = MATERIAL_PATHS.map(|key| (key, tally.materials.get(&key).copied().unwrap_or(0)));
     writeln!(out, "material paths: {materials:?}").ok();
     let hints = HINT_PATHS.map(|(card, description)| ((card, description), tally.card_hints.get(&description).copied().unwrap_or(0)));
-    let exercised = |code: u32| {
-        let material = materials.iter().any(|&((card, _), count)| card == code && count > 0);
-        material || hints.iter().any(|&((card, _), count)| card == code && count > 0)
-    };
+    let messages = MESSAGE_PATHS.map(|(card, kind)| ((card, kind), tally.messages.get(&kind).copied().unwrap_or(0)));
+    writeln!(out, "message paths: {messages:?}").ok();
+    let paths: Vec<(u32, u32)> = (materials.iter().map(|&((card, _), count)| (card, count)))
+        .chain(hints.iter().map(|&((card, _), count)| (card, count)))
+        .chain(messages.iter().map(|&((card, _), count)| (card, count)))
+        .collect();
+    let exercised = |code: u32| paths.iter().any(|&(card, count)| card == code && count > 0);
     writeln!(out, "hint paths: {hints:?}").ok();
     let unresolved: Vec<u32> = vendor
         .scenario_cards
@@ -180,10 +186,7 @@ fn assert_scenarios_clean(seeds: Range<u64>) -> Result<(), DiffError> {
     ]
     .map(|effect| tally.effects.get(&effect));
     assert!(
-        unresolved.is_empty()
-            && only_in_scenarios.iter().all(Option::is_some)
-            && materials.iter().all(|&(_, count)| count > 0)
-            && hints.iter().all(|&(_, count)| count > 0),
+        unresolved.is_empty() && only_in_scenarios.iter().all(Option::is_some) && paths.iter().all(|&(_, count)| count > 0),
         "{unresolved:?} {tally:?}"
     );
     Ok(())

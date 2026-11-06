@@ -1169,10 +1169,12 @@ impl Duel {
             self.is_available(effect)
                 && (!self.effects[effect].is_flag(EFFECT_FLAG_SINGLE_RANGE) || self.is_affect_by_effect(card, Some(effect)))
         }));
-        effects.extend(
-            self.equip_effects(card, code)
-                .filter(|&effect| self.is_available(effect) && self.is_affect_by_effect(card, Some(effect))),
-        );
+        if !self.equip_cards.is_empty() {
+            effects.extend(
+                self.equip_effects(card, code)
+                    .filter(|&effect| self.is_available(effect) && self.is_affect_by_effect(card, Some(effect))),
+            );
+        }
         effects.extend(registry.equal_range(Container::Aura, None, code).filter(|&effect| {
             !self.effects[effect].is_flag(EFFECT_FLAG_PLAYER_TARGET)
                 && self.is_available(effect)
@@ -1181,14 +1183,10 @@ impl Duel {
         }));
     }
 
-    // The effects of `code` of the cards equipped to the card (equip_effect of its equiping_cards, by card id).
+    // The effects of `code` of the cards equipped to the card (equip_effect of its equiping_cards, by card id). Hot
+    // lookups test `equip_cards` first, as nothing is equipped in most duels.
     fn equip_effects(&self, card: CardId, code: u32) -> impl Iterator<Item = EffectId> + '_ {
-        let equips = if self.equip_cards.is_empty() {
-            CardSet::default()
-        } else {
-            self.equiping_cards(card)
-        };
-        equips
+        self.equiping_cards(card)
             .into_iter()
             .flat_map(move |equip| self.field_effects.registry.equal_range(Container::Equip, Some(equip), code))
     }
@@ -1266,7 +1264,9 @@ impl Duel {
             .registry
             .equal_range(Container::Single, Some(card), code)
             .collect();
-        effects.extend(self.equip_effects(card, code));
+        if !self.equip_cards.is_empty() {
+            effects.extend(self.equip_effects(card, code));
+        }
         effects.sort_by_key(|&effect| self.effects.id(effect));
         effects
     }
@@ -1275,7 +1275,9 @@ impl Duel {
     pub(crate) fn filter_immune_effect(&self, card: CardId) -> EffectSet {
         let registry = &self.field_effects.registry;
         let mut effects: EffectSet = registry.equal_range(Container::Single, Some(card), EFFECT_IMMUNE_EFFECT).collect();
-        effects.extend(self.equip_effects(card, EFFECT_IMMUNE_EFFECT));
+        if !self.equip_cards.is_empty() {
+            effects.extend(self.equip_effects(card, EFFECT_IMMUNE_EFFECT));
+        }
         effects.extend(
             registry
                 .equal_range(Container::Aura, None, EFFECT_IMMUNE_EFFECT)
@@ -1301,6 +1303,9 @@ impl Duel {
                     && (!self.effects[effect].is_flag(EFFECT_FLAG_SINGLE_RANGE) || self.is_affect_by_effect(card, Some(effect)))
             })
             .or_else(|| {
+                if self.equip_cards.is_empty() {
+                    return None;
+                }
                 self.equip_effects(card, code)
                     .find(|&effect| self.is_available(effect) && self.is_affect_by_effect(card, Some(effect)))
             })
@@ -1333,6 +1338,9 @@ impl Duel {
                     && self.get_value(effect, target) != 0
             })
             .or_else(|| {
+                if self.equip_cards.is_empty() {
+                    return None;
+                }
                 // The core runs this loop a second time skipping field effects, which finds nothing new.
                 self.equip_effects(card, code).find(|&effect| {
                     self.is_available(effect) && self.is_affect_by_effect(card, Some(effect)) && self.get_value(effect, target) != 0

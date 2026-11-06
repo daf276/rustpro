@@ -241,31 +241,36 @@ impl Synchro {
         s.plain && sg.iter().map(|c| least(s.levels.get(duel, c, s.sc))).sum::<u32>() > s.lv
     }
 
-    // The restrictions EFFECT_SYNCHRO_MAT_RESTRICTION puts on c and on the cards already chosen: None if one rules out
-    // adding c to sg, else the cards of tg and ntg the restrictions of c rule out. Then the checks of hand materials.
-    fn restrictions(duel: &Duel, c: CardId, sg: CardSet, tg: CardSet, ntg: CardSet, mgchk: bool) -> Option<(CardSet, CardSet)> {
+    // The restrictions EFFECT_SYNCHRO_MAT_RESTRICTION puts on c and on the cards already chosen: false if one rules out
+    // adding c to sg, else the cards the restrictions of c rule out are taken out of tg and ntg. Then the checks of hand
+    // materials.
+    fn restrictions(duel: &Duel, c: CardId, sg: CardSet, tg: &mut CardSet, ntg: &mut CardSet, mgchk: bool) -> bool {
         // Auxiliary.HarmonizingMagFilter(c, f, f:GetValue()).
         let rejects = |f: EffectId| move |c: CardId, duel: &Duel| matches!(f.get_value(duel), Value::Card(value) if value(duel, f, c) == 0);
-        let (mut trg, mut ntrg) = (CardSet::default(), CardSet::default());
-        for f in c.get_card_effect(duel, EFFECT_SYNCHRO_MAT_RESTRICTION) {
-            if sg.is_exists(duel, rejects(f), 1, Some(c.into())) {
-                return None;
+        // Not in the Lua: the lookups are skipped while no effect has the code, as they would find nothing.
+        if duel.may_have_effect(EFFECT_SYNCHRO_MAT_RESTRICTION) {
+            let (mut trg, mut ntrg) = (CardSet::default(), CardSet::default());
+            for f in c.get_card_effect(duel, EFFECT_SYNCHRO_MAT_RESTRICTION) {
+                if sg.is_exists(duel, rejects(f), 1, Some(c.into())) {
+                    return false;
+                }
+                trg.merge(tg.filter(duel, rejects(f), None));
+                ntrg.merge(ntg.filter(duel, rejects(f), None));
             }
-            trg.merge(tg.filter(duel, rejects(f), None));
-            ntrg.merge(ntg.filter(duel, rejects(f), None));
-        }
-        for tc in sg {
-            if tc
-                .get_card_effect(duel, EFFECT_SYNCHRO_MAT_RESTRICTION)
-                .iter()
-                .any(|&f| rejects(f)(c, duel))
-            {
-                return None;
+            for tc in sg {
+                if tc
+                    .get_card_effect(duel, EFFECT_SYNCHRO_MAT_RESTRICTION)
+                    .iter()
+                    .any(|&f| rejects(f)(c, duel))
+                {
+                    return false;
+                }
             }
+            (*tg, *ntg) = (tg.difference(trg), ntg.difference(ntrg));
         }
         let hand = |c: CardId, duel: &Duel| c.is_has_effect(duel, EFFECT_HAND_SYNCHRO + EFFECT_SYNCHRO_CHECK).is_some();
         unported!(duel, !mgchk && (hand(c, duel) || sg.is_exists(duel, hand, 1, None)));
-        Some((trg, ntrg))
+        true
     }
 
     fn check_p41<P: SynchroProcedure>(
@@ -278,10 +283,10 @@ impl Synchro {
         sg: CardSet,
         s: &Search,
     ) -> bool {
-        let Some((trg, ntrg)) = Synchro::restrictions(duel, c, sg, tg, ntg, s.mgchk) else {
+        let (mut tg, mut ntg) = (tg, ntg);
+        if !Synchro::restrictions(duel, c, sg, &mut tg, &mut ntg, s.mgchk) {
             return false;
-        };
-        let (tg, ntg) = (tg.difference(trg), ntg.difference(ntrg));
+        }
         let (tsg, sg) = (tsg.union(c.into()), sg.union(c.into()));
         let tsg_count = tsg.len();
         let p41 = |tc, duel: &Duel| Synchro::check_p41::<P>(duel, tc, tg, ntg, tsg, ntsg, sg, s);
@@ -300,10 +305,10 @@ impl Synchro {
     }
 
     fn check_p42<P: SynchroProcedure>(duel: &Duel, c: CardId, ntg: CardSet, tsg: CardSet, ntsg: CardSet, sg: CardSet, s: &Search) -> bool {
-        let Some((_, ntrg)) = Synchro::restrictions(duel, c, sg, CardSet::default(), ntg, s.mgchk) else {
+        let mut ntg = ntg;
+        if !Synchro::restrictions(duel, c, sg, &mut CardSet::default(), &mut ntg, s.mgchk) {
             return false;
-        };
-        let ntg = ntg.difference(ntrg);
+        }
         let (ntsg, sg) = (ntsg.union(c.into()), sg.union(c.into()));
         if Synchro::level_exceeded(duel, sg, s) {
             return false;
@@ -340,7 +345,12 @@ impl Synchro {
             )
         );
         let mut lvchk = false;
-        for tc in sg {
+        let custom = if duel.may_have_effect(EFFECT_SYNCHRO_MATERIAL_CUSTOM) {
+            sg
+        } else {
+            CardSet::default()
+        };
+        for tc in custom {
             for te in tc.get_card_effect(duel, EFFECT_SYNCHRO_MATERIAL_CUSTOM) {
                 let Some(Operation::SynchroMaterial(op)) = te.get_operation(duel) else {
                     continue;

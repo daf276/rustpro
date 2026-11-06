@@ -1,12 +1,12 @@
 // Ports of playerop.cpp: write the prompt at step 0, then validate the response at every later step. DUEL_SIMPLE_AI
 // is unsupported.
-use crate::card::LocInfo;
+use crate::card::{CardId, LocInfo};
 use crate::constants::*;
 use crate::duel::Duel;
 use crate::list::List;
 use crate::processor::{
-    SelectBattleCmd, SelectCard, SelectChain, SelectEffectYesNo, SelectIdleCmd, SelectOption, SelectPlace, SelectPosition, SelectTributeP,
-    SelectUnselectCard, SelectYesNo,
+    SelectBattleCmd, SelectCard, SelectChain, SelectEffectYesNo, SelectIdleCmd, SelectOption, SelectPlace, SelectPosition, SelectSum,
+    SelectTributeP, SelectUnselectCard, SelectYesNo,
 };
 
 impl Duel {
@@ -268,6 +268,54 @@ impl Duel {
         true
     }
 
+    pub(crate) fn process_select_sum(&mut self, arg: &mut SelectSum) -> bool {
+        let playerid = arg.playerid;
+        let must = self.core.must_select_cards.get();
+        if arg.step == 0 {
+            self.return_cards.clear();
+            self.returns.clear();
+            if self.core.select_cards.is_empty() {
+                self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(playerid).u64(0);
+                return true;
+            }
+            let mut cards = std::mem::take(&mut self.core.select_cards);
+            cards.sort_by(|&c1, &c2| self.card_operation_sort(c1, c2));
+            self.core.select_cards = cards;
+            let entries: List<(u32, LocInfo, u32), 16> = must
+                .iter()
+                .chain(self.core.select_cards.iter().copied())
+                .map(|card| (self.cards[card].data.code, self.cards.get_info_location(card), arg.param(card)))
+                .collect();
+            let mut message = self.trace.message(MSG_SELECT_SUM);
+            message.u8(playerid).u8(u8::from(arg.max == 0)).u32((arg.acc & 0xffff) as u32);
+            message.u32(arg.min as u32).u32(arg.max.max(arg.min) as u32);
+            let (must_entries, select_entries) = entries.split_at_checked(must.len()).unwrap_or_default();
+            for list in [must_entries, select_entries] {
+                message.u32(list.len() as u32);
+                for &(code, location, param) in list {
+                    message.u32(code).loc(location).u32(param);
+                }
+            }
+            return false;
+        }
+        if !self.parse_response_cards(false) {
+            self.return_cards.clear();
+            self.trace.message(MSG_RETRY);
+            return false;
+        }
+        let params: List<u32, 16> = must
+            .iter()
+            .chain(self.return_cards.list.iter().copied())
+            .map(|card| arg.param(card))
+            .collect();
+        if !arg.accepts(&params, self.return_cards.list.len()) {
+            self.return_cards.clear();
+            self.trace.message(MSG_RETRY);
+            return false;
+        }
+        true
+    }
+
     pub(crate) fn process_select_unselect_card(&mut self, arg: &mut SelectUnselectCard) -> bool {
         let playerid = arg.playerid;
         if arg.step == 0 {
@@ -464,4 +512,46 @@ impl Duel {
         list.sort_unstable();
         !list.windows(2).any(|pair| pair.first() == pair.last())
     }
+}
+
+impl SelectSum {
+    pub(crate) fn param(&self, card: CardId) -> u32 {
+        self.params.iter().find(|&&(other, _)| other == card).map_or(0, |&(_, param)| param)
+    }
+
+    // The response check: `params` are the must cards' then the selected cards', `selected` of them. With max 0 the
+    // selection must reach acc with every card at its larger half and fall short without the smallest at its smaller.
+    pub(crate) fn accepts(&self, params: &[u32], selected: usize) -> bool {
+        if self.max != 0 {
+            let selected = selected as i32;
+            return selected >= self.min && selected <= self.max && select_sum_check1(params, self.acc);
+        }
+        let (mut sum, mut mx, mut mn) = (0, 0, i32::MAX);
+        for &param in params {
+            let (o1, o2) = sum_halves(param);
+            let ms = if o2 != 0 && o2 < o1 { o2 } else { o1 };
+            sum += ms;
+            mx += o1.max(o2);
+            mn = mn.min(ms);
+        }
+        mx >= self.acc && sum - mn < self.acc
+    }
+}
+
+pub(crate) fn sum_halves(param: u32) -> (i32, i32) {
+    ((param & 0xffff) as i32, (param >> 16) as i32)
+}
+
+fn select_sum_check1(params: &[u32], acc: i32) -> bool {
+    let Some((&param, rest)) = params.split_first() else {
+        return false;
+    };
+    if acc == 0 {
+        return false;
+    }
+    let (o1, o2) = sum_halves(param);
+    if rest.is_empty() {
+        return acc == o1 || acc == o2;
+    }
+    (acc > o1 && select_sum_check1(rest, acc - o1)) || (o2 > 0 && acc > o2 && select_sum_check1(rest, acc - o2))
 }

@@ -1637,6 +1637,16 @@ impl Duel {
             && self.is_affected_by_effect(card, EFFECT_UNRELEASABLE_NONSUM).is_none()
     }
 
+    // EFFECT_UNRELEASABLE_EFFECT comes with the cards that register it.
+    pub(crate) fn is_releasable_by_effect(&self, card: CardId, effect: Option<EffectId>) -> bool {
+        if effect.is_none() {
+            return true;
+        }
+        let limits = self.filter_effect(card, EFFECT_UNRELEASABLE_EFFECT, true);
+        unported!(self, limits.first());
+        limits.is_empty()
+    }
+
     fn is_summoned_this_turn_by_controler(&self, card: CardId) -> bool {
         let target = &self.cards[card];
         (target.is_status(STATUS_SUMMON_TURN) || target.is_status(STATUS_FLIP_SUMMON_TURN) || target.is_status(STATUS_SPSUMMON_TURN))
@@ -1997,6 +2007,23 @@ impl Duel {
         self.get_level(card)
     }
 
+    pub(crate) fn get_ritual_level(&self, card: CardId, rcard: CardId) -> u32 {
+        let data_type = self.cards[card].data.card_type;
+        if data_type & TYPE_LINK != 0 {
+            return 0;
+        }
+        if (data_type & TYPE_XYZ != 0 || self.cards[card].status & STATUS_NO_LEVEL != 0)
+            && self.is_affected_by_effect(card, EFFECT_RANK_LEVEL).is_none()
+            && self.is_affected_by_effect(card, EFFECT_RANK_LEVEL_S).is_none()
+        {
+            return 0;
+        }
+        match self.filter_effect(card, EFFECT_RITUAL_LEVEL, true).first() {
+            Some(&effect) => self.get_value(effect, rcard) as u32,
+            None => self.get_level(card),
+        }
+    }
+
     pub(crate) fn get_link(&self, card: CardId) -> u32 {
         let target = &self.cards[card];
         if target.data.card_type & TYPE_LINK == 0 || target.status & STATUS_NO_LEVEL != 0 {
@@ -2055,6 +2082,22 @@ impl Duel {
         }
         unported!(self, self.filter_effect(card, EFFECT_CANNOT_BE_SYNCHRO_MATERIAL, true));
         !self.is_forbidden_material(card, scard, SUMMON_TYPE_SYNCHRO.into(), playerid)
+    }
+
+    // EFFECT_EXTRA_RITUAL_MATERIAL, which lets a monster in the GY be a material, comes with the cards that register it.
+    pub(crate) fn is_can_be_ritual_material(&self, card: CardId, scard: Option<CardId>, playerid: u8) -> bool {
+        if Some(card) == scard || self.get_type(card) & TYPE_MONSTER == 0 {
+            return false;
+        }
+        if self.is_forbidden_material(card, scard, SUMMON_TYPE_RITUAL.into(), playerid) {
+            return false;
+        }
+        if self.cards[card].current.location == LOCATION_GRAVE {
+            let extra = self.filter_effect(card, EFFECT_EXTRA_RITUAL_MATERIAL, true);
+            unported!(self, extra.first());
+            return false;
+        }
+        true
     }
 
     pub(crate) fn is_can_be_xyz_material(&self, card: CardId, scard: Option<CardId>, playerid: u8, reason: u32) -> bool {

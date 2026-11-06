@@ -501,6 +501,7 @@ pub trait CardUtility: Copy {
     fn is_synchro_summoned(self, duel: &Duel) -> bool;
     fn is_link_summoned(self, duel: &Duel) -> bool;
     fn is_xyz_summoned(self, duel: &Duel) -> bool;
+    fn is_ritual_summoned(self, duel: &Duel) -> bool;
     fn has_flag_effect(self, duel: &Duel, id: u32) -> bool;
     fn update_level(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>) -> i32;
 }
@@ -528,6 +529,10 @@ impl CardUtility for CardId {
 
     fn is_xyz_summoned(self, duel: &Duel) -> bool {
         self.is_summon_type(duel, &[SUMMON_TYPE_XYZ])
+    }
+
+    fn is_ritual_summoned(self, duel: &Duel) -> bool {
+        self.is_summon_type(duel, &[SUMMON_TYPE_RITUAL])
     }
 
     fn has_flag_effect(self, duel: &Duel, id: u32) -> bool {

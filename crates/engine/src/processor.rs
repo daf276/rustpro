@@ -113,6 +113,17 @@ pub struct SelectTributeP {
     pub max: u8,
 }
 
+// The sum_param of the cards to choose from and of the must cards, which the core keeps on each card.
+#[derive(Debug, Clone, Default)]
+pub struct SelectSum {
+    pub step: u16,
+    pub playerid: u8,
+    pub acc: i32,
+    pub min: i32,
+    pub max: i32,
+    pub params: Vec<(CardId, u32)>,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct SelectUnselectCard {
     pub step: u16,
@@ -198,6 +209,7 @@ pub enum Unit {
     SelectOption(SelectOption),
     SelectCard(SelectCard),
     SelectUnselectCard(SelectUnselectCard),
+    SelectSum(SelectSum),
     SelectChain(SelectChain),
     SelectPlace(SelectPlace),
     SelectPosition(SelectPosition),
@@ -267,6 +279,7 @@ units!(
     SelectOption,
     SelectCard,
     SelectUnselectCard,
+    SelectSum,
     SelectChain,
     SelectPlace,
     SelectPosition,
@@ -330,6 +343,7 @@ impl Duel {
             Unit::SelectOption(arg) => self.run_steps(arg, Self::process_select_option, true),
             Unit::SelectCard(arg) => self.run_steps(arg, Self::process_select_card, true),
             Unit::SelectUnselectCard(arg) => self.run_steps(arg, Self::process_select_unselect_card, true),
+            Unit::SelectSum(arg) => self.run_steps(arg, Self::process_select_sum, true),
             Unit::SelectChain(arg) => self.run_steps(arg, Self::process_select_chain, true),
             Unit::SelectPlace(arg) => self.run_steps(arg, Self::process_select_place, true),
             Unit::SelectPosition(arg) => self.run_steps(arg, Self::process_select_position, true),

@@ -16,8 +16,10 @@ const ALBION_FUSION_SUMMON: (u32, u64) = (87746184, 87746184 << 20);
 // Ported cards whose effects scenarios do not resolve, checked by their Special Summons instead: Gaia Dragon, the
 // Thunder Charger has only a continuous effect, Drill Driver Vespenato's trigger needs it Xyz Summoned and then
 // destroyed by an opponent's card effect, Fusionist and Sea Monster of Theseus have no effect, and Extox Hydra's draw
-// needs 1000 or more battle damage from it.
-const SUMMONED_ONLY: [u32; 5] = [91949988, 39317553, 1641882, 96334243, 26050548];
+// needs 1000 or more battle damage from it; Magician of Black Chaos has no effect.
+const SUMMONED_ONLY: [u32; 6] = [91949988, 39317553, 1641882, 96334243, 26050548, 30208479];
+// Ritual Raven has only its Ritual level, checked by its use as a Ritual Summon material.
+const RITUAL_MATERIAL_ONLY: [u32; 1] = [34334692];
 
 fn load(vendor: fn(&Path) -> Result<Vendor, DiffError>) -> Result<&'static Vendor, DiffError> {
     Ok(Box::leak(Box::new(vendor(
@@ -46,6 +48,7 @@ fn write_tally(tally: &Tally) {
         writeln!(out, "{code} {description:#x}: {count}").ok();
     }
     writeln!(out, "chain links disabled: {}, replays: {}", tally.chain_disabled, tally.replays).ok();
+    writeln!(out, "sum selections (exact, reaching): {:?}", tally.sum_prompts).ok();
 }
 
 fn assert_normal_monsters_clean(seeds: Range<u64>) -> Result<(), DiffError> {
@@ -125,8 +128,9 @@ fn should_match_the_oracle_in_5000_elfnote_mirror_matches() {
     assert_elfnote_clean(0..5000).unwrap();
 }
 
-// Writes per card under test how many of its scenarios resolved one of its effects and how often it was Special
-// Summoned, and checks that every ported card resolves some effect, including the effects only scenarios reach.
+// Writes per card under test how many of its scenarios resolved one of its effects, how often it was Special Summoned
+// and used as a Ritual material, and checks that every ported card resolves some effect, including the effects only
+// scenarios reach, and that Ritual materials are selected by both kinds of sum.
 fn assert_scenarios_clean(seeds: Range<u64>) -> Result<(), DiffError> {
     let vendor = load(Vendor::scenarios)?;
     let (tally, reports) = diff_duels(vendor, seeds.clone())?;
@@ -139,9 +143,10 @@ fn assert_scenarios_clean(seeds: Range<u64>) -> Result<(), DiffError> {
             .filter(|&(seed, _)| vendor.scenario_card(seed) == Some(card));
         let resolving = own.clone().filter(|(_, report)| report.tally.resolutions(card) > 0).count();
         let summons = tally.special_summons.get(&card).copied().unwrap_or(0);
+        let materials = tally.ritual_materials.get(&card).copied().unwrap_or(0);
         writeln!(
             out,
-            "{card}: {resolving} of {} scenarios resolve its effects, {summons} Special Summons",
+            "{card}: {resolving} of {} scenarios resolve its effects, {summons} Special Summons, {materials} Ritual materials",
             own.count()
         )
         .ok();
@@ -150,9 +155,10 @@ fn assert_scenarios_clean(seeds: Range<u64>) -> Result<(), DiffError> {
         .scenario_cards
         .iter()
         .copied()
-        .filter(|&code| match SUMMONED_ONLY.contains(&code) {
-            true => !tally.special_summons.contains_key(&code),
-            false => tally.resolutions(code) == 0,
+        .filter(|code| match (SUMMONED_ONLY.contains(code), RITUAL_MATERIAL_ONLY.contains(code)) {
+            (true, _) => !tally.special_summons.contains_key(code),
+            (_, true) => !tally.ritual_materials.contains_key(code),
+            _ => tally.resolutions(*code) == 0,
         })
         .collect();
     let only_in_scenarios = [
@@ -163,7 +169,7 @@ fn assert_scenarios_clean(seeds: Range<u64>) -> Result<(), DiffError> {
     ]
     .map(|effect| tally.effects.get(&effect));
     assert!(
-        unresolved.is_empty() && only_in_scenarios.iter().all(Option::is_some),
+        unresolved.is_empty() && only_in_scenarios.iter().all(Option::is_some) && tally.sum_prompts.iter().all(|&count| count > 0),
         "{unresolved:?} {tally:?}"
     );
     Ok(())

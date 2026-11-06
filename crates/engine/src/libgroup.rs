@@ -2,7 +2,9 @@
 use crate::card::{CardId, CardSet};
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::processor::SelectUnselectCard;
+use crate::list::List;
+use crate::playerop::sum_halves;
+use crate::processor::{SelectSum, SelectUnselectCard};
 use crate::script::Script;
 
 impl CardSet {
@@ -169,16 +171,136 @@ impl CardSet {
         self.iter().fold(0, |total, card| total | value(card, duel))
     }
 
-    // Group.CheckWithSumEqual: whether `min` to `max` of the cards add up to `acc`, each counting the low or the high
-    // half of its value. Nothing sets the cards a selection must include, so every card is optional.
-    pub fn check_with_sum_equal(&self, duel: &Duel, value: impl Fn(CardId, &Duel) -> u32, acc: u32, min: usize, max: usize) -> bool {
-        let max = max.max(min);
-        if acc == 0 {
-            return min == 0;
-        }
-        let values: crate::list::List<u32, 16> = self.iter().map(|card| value(card, duel)).collect();
-        check_with_sum_limit(&values, acc as i32, 0, 1, min, max)
+    pub fn get_sum(&self, duel: &Duel, value: impl Fn(CardId, &Duel) -> i64) -> i64 {
+        self.iter().map(|card| value(card, duel)).sum()
     }
+
+    // Group.CheckWithSumEqual: whether the cards Duel.SetSelectedCard set and `min` to `max` of the others add up to
+    // `acc`, each counting the low or the high half of its value.
+    pub fn check_with_sum_equal(&self, duel: &Duel, value: impl Fn(CardId, &Duel) -> u32, acc: u32, min: usize, max: usize) -> bool {
+        let (values, must) = self.sum_values(duel, value);
+        check_with_sum_limit_m(&values, acc as i32, 0, min, max.max(min), must)
+    }
+
+    // Group.CheckWithSumGreater: whether the cards Duel.SetSelectedCard set and some of the others reach `acc`, and
+    // would fall short without their smallest value.
+    pub fn check_with_sum_greater(&self, duel: &Duel, value: impl Fn(CardId, &Duel) -> u32, acc: u32) -> bool {
+        let (values, must) = self.sum_values(duel, value);
+        check_with_sum_greater_limit_m(&values, acc as i32, 0, 0xffff, must)
+    }
+
+    // The values of the must cards, which it clears, then of the others, and how many are must cards.
+    fn sum_values(&self, duel: &Duel, value: impl Fn(CardId, &Duel) -> u32) -> (List<u32, 16>, usize) {
+        let must = duel.core.must_select_cards.take();
+        let cards = must.iter().chain(self.difference(must).iter());
+        (cards.map(|card| value(card, duel)).collect(), must.len())
+    }
+
+    // Group.SelectWithSumEqual; the empty group when no selection adds up (and for a player above 1, where Lua gets
+    // nothing).
+    pub fn select_with_sum_equal(
+        &self,
+        duel: &mut Duel,
+        player: u8,
+        value: impl Fn(CardId, &Duel) -> u32,
+        acc: u32,
+        min: i32,
+        max: i32,
+    ) -> Script<CardSet> {
+        let min = min.max(0);
+        let max = max.max(min);
+        let check = |values: &[u32], must| check_with_sum_limit_m(values, acc as i32, 0, min as usize, max as usize, must);
+        self.select_with_sum(duel, player, value, acc, min, max, check)
+    }
+
+    pub fn select_with_sum_greater(&self, duel: &mut Duel, player: u8, value: impl Fn(CardId, &Duel) -> u32, acc: u32) -> Script<CardSet> {
+        let check = |values: &[u32], must| check_with_sum_greater_limit_m(values, acc as i32, 0, 0xffff, must);
+        self.select_with_sum(duel, player, value, acc, 0, 0, check)
+    }
+
+    fn select_with_sum(
+        &self,
+        duel: &mut Duel,
+        player: u8,
+        value: impl Fn(CardId, &Duel) -> u32,
+        acc: u32,
+        min: i32,
+        max: i32,
+        check: impl Fn(&[u32], usize) -> bool,
+    ) -> Script<CardSet> {
+        if player > 1 {
+            return Ok(CardSet::default());
+        }
+        let must = duel.core.must_select_cards.get();
+        let select = self.difference(must);
+        duel.core.select_cards = select.iter().collect();
+        let params: Vec<(CardId, u32)> = must.iter().chain(select.iter()).map(|card| (card, value(card, duel))).collect();
+        let values: List<u32, 16> = params.iter().map(|&(_, param)| param).collect();
+        if !check(&values, must.len()) {
+            duel.core.must_select_cards.take();
+            return Ok(CardSet::default());
+        }
+        duel.emplace_process(SelectSum {
+            playerid: player,
+            acc: acc as i32,
+            min,
+            max,
+            params,
+            ..SelectSum::default()
+        });
+        duel.yield_script()?;
+        duel.core.must_select_cards.take();
+        Ok(duel.return_cards.list.iter().copied().collect())
+    }
+}
+
+// field::check_with_sum_limit_m: the first `must_count` values are taken, then check_with_sum_limit for the others.
+fn check_with_sum_limit_m(values: &[u32], acc: i32, index: usize, min: usize, max: usize, must_count: usize) -> bool {
+    if acc == 0 {
+        return index == must_count && min == 0;
+    }
+    if index == must_count {
+        return check_with_sum_limit(values, acc, index, 1, min, max);
+    }
+    let Some(&value) = values.get(index) else {
+        return false;
+    };
+    let (op1, op2) = sum_halves(value);
+    (acc >= op1 && check_with_sum_limit_m(values, acc - op1, index + 1, min, max, must_count))
+        || (op2 != 0 && acc >= op2 && check_with_sum_limit_m(values, acc - op2, index + 1, min, max, must_count))
+}
+
+fn check_with_sum_greater_limit_m(values: &[u32], acc: i32, index: usize, opmin: i32, must_count: usize) -> bool {
+    if acc <= 0 {
+        return index == must_count && acc + opmin > 0;
+    }
+    if index == must_count {
+        return check_with_sum_greater_limit(values, acc, index, opmin);
+    }
+    let Some(&value) = values.get(index) else {
+        return false;
+    };
+    let (op1, op2) = sum_halves(value);
+    check_with_sum_greater_limit_m(values, acc - op1, index + 1, opmin.min(op1), must_count)
+        || (op2 != 0 && check_with_sum_greater_limit_m(values, acc - op2, index + 1, opmin.min(op2), must_count))
+}
+
+fn check_with_sum_greater_limit(values: &[u32], acc: i32, index: usize, opmin: i32) -> bool {
+    let mut index = index;
+    while let Some(&value) = values.get(index) {
+        let (op1, op2) = sum_halves(value);
+        if (acc <= op1 && acc + opmin > op1) || (op2 != 0 && acc <= op2 && acc + opmin > op2) {
+            return true;
+        }
+        index += 1;
+        if check_with_sum_greater_limit(values, acc - op1, index, opmin.min(op1)) {
+            return true;
+        }
+        if op2 != 0 && check_with_sum_greater_limit(values, acc - op2, index, opmin.min(op2)) {
+            return true;
+        }
+    }
+    false
 }
 
 // field::check_with_sum_limit.
@@ -188,7 +310,7 @@ fn check_with_sum_limit(values: &[u32], acc: i32, index: usize, count: usize, mi
     }
     let mut index = index;
     while let Some(&value) = values.get(index) {
-        let (op1, op2) = ((value & 0xffff) as i32, ((value >> 16) & 0xffff) as i32);
+        let (op1, op2) = sum_halves(value);
         if (op1 == acc || op2 == acc) && count >= min {
             return true;
         }

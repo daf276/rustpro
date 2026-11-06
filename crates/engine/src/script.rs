@@ -218,6 +218,7 @@ impl Duel {
             script_state,
             script_groups,
             fusion_check_additional,
+            ritual_summoning_level,
             material_cards,
             overlay_cards,
             counters,
@@ -241,6 +242,7 @@ impl Duel {
         self.script_state.clone_from(script_state);
         self.script_groups.clone_from(script_groups);
         self.fusion_check_additional = *fusion_check_additional;
+        self.ritual_summoning_level.clone_from(ritual_summoning_level);
         self.material_cards.clone_from(material_cards);
         self.overlay_cards.clone_from(overlay_cards);
         self.counters.clone_from(counters);

@@ -1,7 +1,10 @@
 use crate::buffer::ProgressiveBuffer;
+use crate::card::CardSet;
 use crate::constants::*;
 use crate::duel::{Duel, Status};
-use crate::processor::Unit;
+use crate::list::List;
+use crate::playerop::sum_halves;
+use crate::processor::{SelectSum, Unit};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Prompt {
@@ -17,6 +20,9 @@ pub enum Prompt {
     Card { player: u8, cancelable: bool, min: u8, max: u8 },
     // Like Card, but min counts release units (a double tribute counts 2) while max counts cards.
     Tribute { player: u8, cancelable: bool, min: u8, max: u8 },
+    // Picked one card at a time, each one some accepted selection includes along with the earlier picks; Finish once the
+    // picks add up (to the target exactly, or reaching it and falling short without the smallest).
+    Sum { player: u8 },
     // One card per answer, picking or dropping it; ending the selection is a Cancel or else a Finish.
     UnselectCard { player: u8, cancelable: bool, finishable: bool },
     // `blocked` has a bit set per unavailable zone, as Action::Place numbers them.
@@ -170,6 +176,7 @@ impl Duel {
                 min: arg.min,
                 max: arg.max,
             }),
+            Unit::SelectSum(arg) if arg.step > 0 => Some(Prompt::Sum { player: arg.playerid }),
             Unit::SelectUnselectCard(arg) if arg.step > 0 => Some(Prompt::UnselectCard {
                 player: arg.playerid,
                 cancelable: arg.cancelable,
@@ -245,6 +252,10 @@ impl Duel {
                 let ends = [Action::Finish, Action::Cancel];
                 actions.extend(picks.chain(ends).filter(|&action| self.is_legal_pick(prompt, action)));
             }
+            Prompt::Sum { .. } => {
+                let picks = indices(self.core.select_cards.len()).map(Action::Card);
+                actions.extend(picks.chain([Action::Finish]).filter(|&action| self.is_legal_sum_pick(action)));
+            }
             Prompt::UnselectCard {
                 cancelable, finishable, ..
             } => {
@@ -296,6 +307,7 @@ impl Duel {
             (Prompt::Chain { forced, .. }, Action::Chain(None)) => !forced,
             (Prompt::Chain { .. }, Action::Chain(Some(index))) => below(index, core.select_chains.len()),
             (Prompt::Card { .. } | Prompt::Tribute { .. }, _) => self.is_legal_pick(prompt, action),
+            (Prompt::Sum { .. }, _) => self.is_legal_sum_pick(action),
             (Prompt::UnselectCard { .. }, Action::Card(index)) => below(index, core.select_cards.len() + core.unselect_cards.len()),
             (Prompt::UnselectCard { cancelable, .. }, Action::Cancel) => cancelable,
             (
@@ -343,6 +355,35 @@ impl Duel {
         }
     }
 
+    fn is_legal_sum_pick(&self, action: Action) -> bool {
+        let Some(Unit::SelectSum(arg)) = self.core.units.last() else {
+            return false;
+        };
+        let select_cards = &self.core.select_cards;
+        let picked: CardSet = self
+            .picked_cards()
+            .filter_map(|index| select_cards.get(usize::from(index)).copied())
+            .collect();
+        let must = self.core.must_select_cards.get();
+        let mut chosen: List<u32, 16> = must.iter().chain(picked.iter()).map(|card| arg.param(card)).collect();
+        match action {
+            Action::Finish => arg.accepts(&chosen, picked.len()),
+            Action::Card(index) => {
+                let Some(&card) = select_cards.get(usize::from(index)).filter(|&&card| !picked.contains(card)) else {
+                    return false;
+                };
+                chosen.push(arg.param(card));
+                let rest: List<u32, 16> = select_cards
+                    .iter()
+                    .filter(|&&other| other != card && !picked.contains(other))
+                    .map(|&other| arg.param(other))
+                    .collect();
+                sum_completable(arg, &mut chosen, picked.len() + 1, &rest)
+            }
+            _ => false,
+        }
+    }
+
     // The zones picked so far, kept in the response buffer as the SelectPlace response, as a mask of Place numbers.
     fn picked_zones(&self, player: u8) -> u32 {
         self.returns
@@ -386,7 +427,9 @@ impl Duel {
                 self.returns.set_i32(0, 0);
                 self.returns.set_u32(count as usize + 2, u32::from(index));
                 self.returns.set_u32(1, count + 1);
-                if matches!(prompt, Prompt::Card { max, .. } | Prompt::Tribute { max, .. } if count + 1 < u32::from(max)) {
+                if matches!(prompt, Prompt::Sum { .. })
+                    || matches!(prompt, Prompt::Card { max, .. } | Prompt::Tribute { max, .. } if count + 1 < u32::from(max))
+                {
                     return Ok(Status::Awaiting);
                 }
             }
@@ -439,7 +482,7 @@ impl Duel {
                     Some(u16::try_from(value).map_err(|_| undecodable())?)
                 })]
             }
-            Prompt::Card { max, .. } | Prompt::Tribute { max, .. } => {
+            Prompt::Card { .. } | Prompt::Tribute { .. } | Prompt::Sum { .. } => {
                 let picks: Vec<u16> = match value {
                     -1 => return Ok(vec![Action::Cancel]),
                     0 => (0..buffer.at_u32(1) as usize).map(|pick| buffer.at_u32(pick + 2) as u16).collect(),
@@ -452,7 +495,11 @@ impl Duel {
                         .collect(),
                     _ => return Err(undecodable()),
                 };
-                let finish = (picks.len() < usize::from(max)).then_some(Action::Finish);
+                let finish = match prompt {
+                    Prompt::Card { max, .. } | Prompt::Tribute { max, .. } => picks.len() < usize::from(max),
+                    _ => true,
+                };
+                let finish = finish.then_some(Action::Finish);
                 picks.into_iter().map(Action::Card).chain(finish).collect()
             }
             Prompt::UnselectCard { cancelable, .. } => match value {
@@ -470,4 +517,36 @@ impl Duel {
             Prompt::Position { .. } => vec![Action::Position(u8::try_from(value).map_err(|_| undecodable())?)],
         })
     }
+}
+
+// Whether the selection whose sum params are `chosen` (the must cards' first, `selected` picked), or that selection with
+// some of `rest` added, is one the prompt accepts. Values are positive, so once the smallest values pass the target
+// (exactly) or the selection without its smallest value reaches it (overflow), adding cards cannot help.
+fn sum_completable(arg: &SelectSum, chosen: &mut List<u32, 16>, selected: usize, rest: &[u32]) -> bool {
+    if arg.accepts(chosen, selected) {
+        return true;
+    }
+    let (sum, smallest) = chosen.iter().fold((0, i32::MAX), |(sum, smallest), &param| {
+        let (o1, o2) = sum_halves(param);
+        let low = if o2 != 0 && o2 < o1 { o2 } else { o1 };
+        (sum + low, smallest.min(low))
+    });
+    let hopeless = match arg.max {
+        0 => sum - smallest >= arg.acc,
+        max => selected as i32 >= max || sum > arg.acc,
+    };
+    if hopeless {
+        return false;
+    }
+    let mut rest = rest;
+    while let Some((&param, tail)) = rest.split_first() {
+        chosen.push(param);
+        let found = sum_completable(arg, chosen, selected + 1, tail);
+        chosen.pop();
+        if found {
+            return true;
+        }
+        rest = tail;
+    }
+    false
 }

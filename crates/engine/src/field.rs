@@ -287,6 +287,8 @@ pub struct Processor {
     // The group of the SpSummon running, which its failed steps leave.
     pub spsummon_group: CardSet,
     pub fusion_materials: CardSet,
+    // Set and cleared by scripts from checks that only read.
+    pub must_select_cards: std::cell::Cell<CardSet>,
 }
 
 clone_by_field!(Processor {
@@ -408,7 +410,8 @@ clone_by_field!(Processor {
     reserved,
     summoning_card,
     spsummon_group,
-    fusion_materials
+    fusion_materials,
+    must_select_cards
 });
 
 impl Processor {
@@ -533,6 +536,7 @@ impl Processor {
             summoning_card: None,
             spsummon_group: CardSet::default(),
             fusion_materials: CardSet::default(),
+            must_select_cards: Default::default(),
         }
     }
 }

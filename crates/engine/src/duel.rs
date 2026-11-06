@@ -89,6 +89,8 @@ pub struct Duel {
     pub(crate) script_groups: Vec<(u64, CardSet)>,
     // proc_fusion.lua's Fusion.CheckAdditional, a function value the scripts set around a Fusion Summon.
     pub(crate) fusion_check_additional: Option<FusionCheck>,
+    // proc_ritual.lua's Ritual.SummoningLevel, which Ritual.Filter sets while a check runs.
+    pub(crate) ritual_summoning_level: std::cell::Cell<Option<u32>>,
     // card::material_cards of the cards that have materials.
     pub(crate) material_cards: Vec<(CardId, CardSet)>,
     // The cards attached as Xyz materials; card::xyz_materials of a card are those whose overlay_target it is.
@@ -135,6 +137,7 @@ impl Duel {
             script_state: List::default(),
             script_groups: Vec::new(),
             fusion_check_additional: None,
+            ritual_summoning_level: Default::default(),
             material_cards: Vec::new(),
             overlay_cards: CardSet::default(),
             counters: Vec::new(),

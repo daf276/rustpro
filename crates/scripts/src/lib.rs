@@ -17,6 +17,7 @@ mod official;
 mod proc_fusion;
 mod proc_link;
 mod proc_pendulum;
+mod proc_ritual;
 mod proc_synchro;
 mod proc_workaround;
 mod proc_xyz;
@@ -34,6 +35,7 @@ pub mod prelude {
     pub use crate::proc_fusion::{ContactFusion, DuelFusion, Fusion, FusionMaterial, FusionMix, FusionMixRep, FusionSummonParams};
     pub use crate::proc_link::{Link, LinkProcedure};
     pub use crate::proc_pendulum::Pendulum;
+    pub use crate::proc_ritual::{ForcedSelection, Ritual, RitualCode, RitualParams, WholeLevelTribute};
     pub use crate::proc_synchro::{Synchro, SynchroProcedure};
     pub use crate::proc_workaround::{CardWorkaround, DuelWorkaround};
     pub use crate::proc_xyz::{AlterFilter, Xyz, XyzFilter, XyzProcedure};

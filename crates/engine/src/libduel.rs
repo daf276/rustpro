@@ -877,13 +877,20 @@ impl Duel {
     }
 
     pub fn get_mzone_count(&self, player: u8, excluded: Option<CardSet>) -> i32 {
+        self.get_mzone_count_full(player, excluded, self.core.reason_player.get(), LOCATION_REASON_TOFIELD, 0xff)
+    }
+
+    pub fn get_mzone_count_full(&self, player: u8, excluded: Option<CardSet>, uplayer: u8, reason: u32, zone: u32) -> i32 {
         if player > 1 {
             return 0;
         }
         let zones = excluded.map_or_else(|| self.zones(), |excluded| self.zones_without(excluded));
-        let uplayer = self.core.reason_player.get();
-        self.get_useable_count_other_in(&zones, None, player, LOCATION_MZONE, uplayer, LOCATION_REASON_TOFIELD, 0xff)
+        self.get_useable_count_other_in(&zones, None, player, LOCATION_MZONE, uplayer, reason, zone)
             .0
+    }
+
+    pub fn is_duel_type(&self, flag: u64) -> bool {
+        self.is_flag(flag)
     }
 
     pub fn get_location_count_from_ex(&self, player: u8, uplayer: u8, excluded: Option<CardSet>, summoned: impl Into<ExtraSummon>) -> i32 {
@@ -1288,6 +1295,85 @@ impl Duel {
         material
     }
 
+    // field::get_ritual_material for the reason effect. Monsters in the GY, Deck or Extra Deck and Xyz materials become
+    // materials through EFFECT_EXTRA_RITUAL_MATERIAL, which comes with the cards that register it.
+    pub fn get_ritual_material(&self, player: u8, check_level: bool) -> CardSet {
+        if player > 1 {
+            return CardSet::default();
+        }
+        let effect = self.core.reason_effect.get();
+        let mzonecheck = |card: CardId| {
+            (!check_level || self.get_level(card) > 0)
+                && self.is_affect_by_effect(card, effect)
+                && self.is_releasable_by_effect(card, effect)
+        };
+        let releasable = |card: CardId| self.is_releasable_by_nonsummon(card, player, REASON_EFFECT);
+        let own = self.player[player].list_mzone.iter().flatten().copied();
+        let mut material: CardSet = own.filter(|&card| mzonecheck(card) && releasable(card)).collect();
+        for card in self.player[1 - player].list_mzone.iter().flatten().copied() {
+            if self.cards[card].is_position(POS_FACEUP)
+                && mzonecheck(card)
+                && releasable(card)
+                && self.is_affected_by_effect(card, EFFECT_EXTRA_RELEASE).is_some()
+            {
+                material.insert(card);
+            }
+        }
+        let hand = self.player[player].list_hand.iter().copied();
+        material.merge(
+            hand.filter(|&card| self.cards[card].data.card_type & TYPE_MONSTER != 0 && releasable(card))
+                .collect(),
+        );
+        if self.may_have_effect(EFFECT_EXTRA_RITUAL_MATERIAL) {
+            let info = &self.player[player];
+            let overlay = info.list_mzone.iter().flatten().flat_map(|&card| self.xyz_materials(card));
+            let lists = info.list_grave.iter().chain(&info.list_main).chain(&info.list_extra).copied();
+            unported!(
+                self,
+                lists
+                    .chain(overlay)
+                    .find_map(|card| self.is_affected_by_effect(card, EFFECT_EXTRA_RITUAL_MATERIAL))
+            );
+        }
+        material
+    }
+
+    // field::ritual_release without release_deck, which no ported card passes.
+    pub fn release_ritual_material(&mut self, g: CardSet) -> Script<()> {
+        let (mut rel, mut rem, mut tograve) = (CardSet::default(), CardSet::default(), CardSet::default());
+        for card in g {
+            match self.cards[card].current.location {
+                LOCATION_GRAVE => rem.insert(card),
+                location if location & (LOCATION_OVERLAY | LOCATION_EXTRA | LOCATION_DECK) != 0 => tograve.insert(card),
+                _ => rel.insert(card),
+            }
+        }
+        let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
+        let reason = REASON_RITUAL + REASON_EFFECT + REASON_MATERIAL;
+        let send = |duel: &mut Duel, targets, destination| {
+            duel.send_to(
+                targets,
+                reason_effect,
+                reason,
+                reason_player,
+                PLAYER_NONE,
+                destination,
+                0,
+                POS_FACEUP as u8,
+                false,
+            );
+        };
+        send(self, tograve, LOCATION_GRAVE);
+        self.field_release(rel, reason_effect, reason, reason_player);
+        send(self, rem, LOCATION_REMOVED);
+        self.yield_script()
+    }
+
+    // Lua passes a card or a group.
+    pub fn set_selected_card(&self, g: impl Into<CardSet>) {
+        self.core.must_select_cards.set(g.into());
+    }
+
     // The SelectFusion unit in one: the material effects that accept the materials, then the operation of the chosen
     // one, which sets core.fusion_materials. With none, the core leaves core.fusion_materials as it was and returns
     // that; the choice between several material effects comes with the cards that have more than one.
@@ -1327,6 +1413,14 @@ impl Duel {
 
     pub fn set_fusion_check_additional(&mut self, check: Option<FusionCheck>) {
         self.fusion_check_additional = check;
+    }
+
+    pub fn get_ritual_summoning_level(&self) -> Option<u32> {
+        self.ritual_summoning_level.get()
+    }
+
+    pub fn set_ritual_summoning_level(&self, level: Option<u32>) {
+        self.ritual_summoning_level.set(level);
     }
 
     pub fn special_summon_step(

@@ -18,6 +18,7 @@ const CONTEXT: usize = 5;
 const MSG_WIN: u8 = 5;
 const MSG_SELECT_YESNO: u8 = 13;
 const MSG_SELECT_TRIBUTE: u8 = 20;
+const MSG_SELECT_SUM: u8 = 23;
 const MSG_SELECT_UNSELECT_CARD: u8 = 26;
 const MSG_MOVE: u8 = 50;
 const MSG_POS_CHANGE: u8 = 53;
@@ -37,6 +38,7 @@ const MSG_PLAYER_HINT: u8 = 165;
 const PHINT_DESC_REMOVE: u8 = 7;
 const REASON_RELEASE: u32 = 0x2;
 const REASON_BATTLE: u32 = 0x20;
+const REASON_RITUAL: u32 = 0x10_0000;
 const HINT_REPLAY: u64 = 30;
 
 #[derive(Debug, thiserror::Error)]
@@ -116,6 +118,8 @@ pub struct Tally {
     pub tributes: u32,
     pub tribute_prompts: u32,
     pub unselect_prompts: u32,
+    // MSG_SELECT_SUM prompts for an exact sum and for one reaching the target.
+    pub sum_prompts: [u32; 2],
     pub attacks: u32,
     pub direct_attacks: u32,
     pub battle_destructions: u32,
@@ -123,6 +127,8 @@ pub struct Tally {
     pub effects: BTreeMap<(u32, u64), u32>,
     // Special Summons per card code.
     pub special_summons: BTreeMap<u32, u32>,
+    // Moves of Ritual Summon materials per card code.
+    pub ritual_materials: BTreeMap<u32, u32>,
     pub chain_disabled: u32,
     // The card code and effect description of the current chain's links.
     chain: [(u32, u64); 16],
@@ -160,10 +166,20 @@ impl Tally {
 
     fn count(&mut self, message: &[u8]) {
         self.count_chain(message);
+        if let [MSG_SELECT_SUM, _, overflow, ..] = message
+            && let Some(count) = self.sum_prompts.get_mut(usize::from(*overflow))
+        {
+            *count += 1;
+        }
         if let [MSG_SPSUMMONING, a, b, c, d, ..] = message {
             *self.special_summons.entry(u32::from_ne_bytes([*a, *b, *c, *d])).or_default() += 1;
         }
         let reason = |bytes: [&u8; 4]| u32::from_ne_bytes(bytes.map(|byte| *byte));
+        if let [MSG_MOVE, a, b, c, d, .., r0, r1, r2, r3] = message
+            && reason([r0, r1, r2, r3]) & REASON_RITUAL != 0
+        {
+            *self.ritual_materials.entry(u32::from_ne_bytes([*a, *b, *c, *d])).or_default() += 1;
+        }
         if message.first() == Some(&MSG_ATTACK) {
             self.attacks += 1;
         }
@@ -197,6 +213,10 @@ impl std::ops::Add for Tally {
             tributes: self.tributes + other.tributes,
             tribute_prompts: self.tribute_prompts + other.tribute_prompts,
             unselect_prompts: self.unselect_prompts + other.unselect_prompts,
+            sum_prompts: {
+                let ([exact, overflow], [other_exact, other_overflow]) = (self.sum_prompts, other.sum_prompts);
+                [exact + other_exact, overflow + other_overflow]
+            },
             attacks: self.attacks + other.attacks,
             direct_attacks: self.direct_attacks + other.direct_attacks,
             battle_destructions: self.battle_destructions + other.battle_destructions,
@@ -205,17 +225,19 @@ impl std::ops::Add for Tally {
                 *effects.entry(link).or_default() += count;
                 effects
             }),
-            special_summons: other
-                .special_summons
-                .into_iter()
-                .fold(self.special_summons, |mut summons, (code, count)| {
-                    *summons.entry(code).or_default() += count;
-                    summons
-                }),
+            special_summons: merge_counts(self.special_summons, other.special_summons),
+            ritual_materials: merge_counts(self.ritual_materials, other.ritual_materials),
             chain_disabled: self.chain_disabled + other.chain_disabled,
             chain: [(0, 0); 16],
         }
     }
+}
+
+fn merge_counts(counts: BTreeMap<u32, u32>, other: BTreeMap<u32, u32>) -> BTreeMap<u32, u32> {
+    other.into_iter().fold(counts, |mut counts, (code, count)| {
+        *counts.entry(code).or_default() += count;
+        counts
+    })
 }
 
 pub struct Vendor {

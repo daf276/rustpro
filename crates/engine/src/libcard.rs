@@ -487,6 +487,15 @@ impl CardId {
         duel.get_link(self)
     }
 
+    pub fn get_ritual_level(self, duel: &Duel, rc: CardId) -> u32 {
+        duel.get_ritual_level(self, rc)
+    }
+
+    // The player is the reason player.
+    pub fn is_can_be_ritual_material(self, duel: &Duel, sc: Option<CardId>) -> bool {
+        duel.is_can_be_ritual_material(self, sc, duel.core.reason_player.get())
+    }
+
     pub fn get_material(self, duel: &Duel) -> CardSet {
         duel.material_cards(self)
     }

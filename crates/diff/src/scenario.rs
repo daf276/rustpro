@@ -9,7 +9,7 @@ const XYZ_MATERIALS_MAX: usize = 3;
 
 // Cards an effect of the card under test needs, placed with it in the given location, or in a random zone for 0; for
 // the same player, or the opponent with OPPONENT.
-const SUPPORT: [(u32, &[(u32, u16)]); 12] = [
+const SUPPORT: [(u32, &[(u32, u16)]); 18] = [
     // Fusionist from the Extra Deck with its materials, Petit Angel and Mystical Sheep #2, and Polymerization.
     (1641882, &[(1641882, EXTRA), (24094653, HAND), (38142739, HAND), (83464209, HAND)]),
     // Polymerization's materials for Albion the Branded Dragon in the Elfnote Extra Deck: Fallen of Albaz and a LIGHT
@@ -17,17 +17,39 @@ const SUPPORT: [(u32, &[(u32, u16)]); 12] = [
     (24094653, &[(68468459, HAND), (38142739, HAND)]),
     // Extox Hydra from the Extra Deck, Fusion Summoned by Polymerization, and on the field to attack.
     (26050548, &[(26050548, EXTRA), (24094653, HAND), (26050548, MZONE)]),
+    // Magician of Black Chaos Ritual Summoned by Black Magic Ritual.
+    (30208479, &[(76792184, HAND)]),
     // F.A. Dawn Dragster's level-up needs an "F.A." Spell/Trap: F.A. Downforce.
     (33158448, &[(66322203, 0)]),
-    // Drill Driver Vespenato can be Xyz Summoned with a Rank 4 Xyz Monster: Tornado Dragon.
-    (39317553, &[(6983839, 0)]),
+    // Ritual Raven as the whole tribute for Magician of Black Chaos (DARK), by Contract with the Abyss.
+    (34334692, &[(69035382, HAND), (30208479, HAND)]),
+    // Megalith Och on the field Ritual Summons the Megalith Och in the hand with itself, which then draws.
+    (36849933, &[(36849933, MZONE), (36849933, HAND)]),
+    // Drill Driver Vespenato from the Extra Deck, Xyz Summoned with a Rank 4 Xyz Monster on the field: Tornado Dragon.
+    (39317553, &[(39317553, EXTRA), (6983839, MZONE)]),
+    // Advanced Ritual Art in the hand Ritual Summons Magician of Black Chaos with Normal Monsters from the Deck: Mystical
+    // Elf and Gene-Warped Warwolf (Level 4), Petit Angel (Level 3).
+    (
+        46052429,
+        &[
+            (46052429, HAND),
+            (30208479, HAND),
+            (15025844, DECK),
+            (69247929, DECK),
+            (38142739, DECK),
+        ],
+    ),
     // Magistus Chorozo from the Extra Deck, by its contact fusion, and on the field for its attack trigger.
     (66532962, &[(66532962, EXTRA), (66532962, MZONE)]),
     // Fallen of Albaz to Normal Summon, and the opponent's LIGHT monster for Albion the Branded Dragon: Elfnote Fortuna.
     (68468459, &[(68468459, HAND), (85976588, MZONE | OPPONENT)]),
+    // Contract with the Abyss Ritual Summons Magician of Black Chaos (DARK), with Ritual Raven as the whole tribute.
+    (69035382, &[(30208479, HAND), (34334692, HAND)]),
     // Vidolium is Special Summoned by returning a Fusion, a Synchro and an Xyz Monster: Albion the Branded Dragon,
     // Chaos Angel and Gauntlet Launcher.
     (70488851, &[(87746184, 0), (22850702, 0), (15561463, 0)]),
+    // Black Magic Ritual Ritual Summons Magician of Black Chaos, with Ritual Raven as the whole tribute.
+    (76792184, &[(30208479, HAND), (34334692, HAND)]),
     // Ecclesia and the Dark Dragon summons a Level 4 or lower monster that lists Fallen of Albaz: Guiding Quem.
     (78397661, &[(45883110, 0)]),
     // Albion the Branded Dragon Fusion Summoned by Polymerization, as Polymerization's support does, so that its effect

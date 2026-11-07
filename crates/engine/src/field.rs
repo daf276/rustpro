@@ -4,7 +4,9 @@ use std::ops::{Index, IndexMut};
 use crate::card::{CardId, CardSet, LocInfo, Relation};
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{Chain, ChainLimit, Container, CustomCounter, EffectId, EffectSet, Event, Target, container_key, remove_item};
+use crate::effect::{
+    Chain, ChainLimit, Container, CounterFilter, CustomCounter, EffectId, EffectSet, Event, Target, container_key, remove_item,
+};
 use crate::libduel::ReleaseOptions;
 use crate::list::List;
 use crate::processor::{Adjust, Unit};
@@ -2605,6 +2607,29 @@ impl Duel {
     pub(crate) fn set_spsummon_counter(&mut self, playerid: u8) {
         self.core.spsummon_state_count[playerid] += 1;
         unported!(self, self.field_effects.spsummon_count_eff.iter().copied());
+    }
+
+    // field::check_card_counter: the counters of this activity that no card has failed for the player yet count a player's
+    // summon of `cards` when its filter fails for one of them.
+    pub(crate) fn check_card_counter(&mut self, cards: CardSet, activity: u8, playerid: u8) {
+        for index in 0..self.core.custom_counters.len() {
+            let Some(counter) = self.core.custom_counters.get(index).copied() else {
+                break;
+            };
+            let CounterFilter::Card(filter) = counter.filter else { continue };
+            if counter.activity != activity || counter.amount.get(usize::from(playerid)) != Some(&0) {
+                continue;
+            }
+            if cards.iter().any(|card| !filter(self, card))
+                && let Some(amount) = self
+                    .core
+                    .custom_counters
+                    .get_mut(index)
+                    .and_then(|counter| counter.amount.get_mut(usize::from(playerid)))
+            {
+                *amount += 1;
+            }
+        }
     }
 
     // EFFECT_LEFT_SPSUMMON_COUNT values and the counters of EFFECT_SPSUMMON_COUNT_LIMIT (check_spsummon_counter) come

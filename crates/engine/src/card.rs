@@ -2198,6 +2198,21 @@ impl Duel {
             })
     }
 
+    // The first EFFECT_INDESTRUCTABLE effect whose value holds for the reason effect, reason and reason player of the card.
+    pub(crate) fn check_indestructable_value(&self, card: CardId) -> Option<EffectId> {
+        let current = self.cards[card].current;
+        self.filter_effect(card, EFFECT_INDESTRUCTABLE, true)
+            .into_iter()
+            .find(|&indestructable| match self.effects[indestructable].value {
+                Value::Int(value) => value != 0,
+                Value::Reason(value) => value(self, indestructable, current.reason_effect, current.reason, current.reason_player),
+                _ => {
+                    self.reach_unported(concat!(file!(), ":", line!()));
+                    false
+                }
+            })
+    }
+
     // check_value_condition of every EFFECT_SPSUMMON_CONDITION with (se, sp, st, pos, tp).
     pub(crate) fn is_spsummon_condition_met(&self, card: CardId, se: Option<EffectId>, sp: u8, st: u32, pos: u8, tp: u8) -> bool {
         self.filter_effect(card, EFFECT_SPSUMMON_CONDITION, true)

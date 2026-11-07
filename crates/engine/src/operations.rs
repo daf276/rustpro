@@ -1601,10 +1601,18 @@ impl Duel {
                     self.core.operated_set.clear();
                     return true;
                 }
-                // Phase 2: cards leaving the field also snapshot their previous code, type, stats and set codes here.
+                // Phase 2: cards leaving the field also snapshot their previous code, type, stats and set codes here; only
+                // the type is kept so far.
                 let mut leave_p = CardSet::default();
                 let targets = arg.targets;
                 for card in targets.iter() {
+                    if self.cards[card].current.location & LOCATION_ONFIELD != 0 {
+                        self.cards[card].previous_type = if self.cards[card].current.position & POS_FACEUP != 0 {
+                            self.get_type(card)
+                        } else {
+                            self.cards[card].data.card_type
+                        };
+                    }
                     if !self.is_leaving_field(card) {
                         continue;
                     }

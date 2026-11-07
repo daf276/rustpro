@@ -858,6 +858,27 @@ impl Cost {
         Ok(false)
     }
 
+    // Cost.PayLP(1/2) applied: half of the LP, rounded down, is paid.
+    pub fn pay_lp_half(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        if chk == 0 {
+            return Ok(true);
+        }
+        let paid = (duel.get_lp(args.tp) / 2) as u32;
+        duel.pay_lp_cost(args.tp, paid)?;
+        args.e.set_chain_data(duel, COST_LP_PAID, i64::from(paid));
+        Ok(false)
+    }
+
+    // Cost.SoftOncePerChain(flag) applied: the handler is flagged until the chain ends.
+    pub fn soft_once_per_chain<const FLAG: u32>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        let c = args.e.get_handler(duel);
+        if chk == 0 {
+            return Ok(!c.has_flag_effect(duel, FLAG));
+        }
+        c.register_flag_effect(duel, FLAG, RESET_EVENT | RESETS_STANDARD | RESET_CHAIN, 0, 1);
+        Ok(false)
+    }
+
     // Cost.AND(...) applied. A cost that returns false when executed, which stops the others, has no caller.
     pub fn and(duel: &mut Duel, args: &Args, chk: i32, costs: &[CostFn]) -> Script<bool> {
         for cost in costs {
@@ -954,6 +975,8 @@ pub trait CardUtility: Copy {
     fn is_normal_spell_trap(self, duel: &Duel) -> bool;
     fn is_continuous_spell(self, duel: &Duel) -> bool;
     fn is_continuous_trap(self, duel: &Duel) -> bool;
+    fn is_continuous_spell_trap(self, duel: &Duel) -> bool;
+    fn get_main_card_type(self, duel: &Duel) -> u32;
     fn is_quick_play_spell(self, duel: &Duel) -> bool;
     fn is_synchro_monster(self, duel: &Duel) -> bool;
     fn is_xyz_monster(self, duel: &Duel) -> bool;
@@ -1176,6 +1199,14 @@ impl CardUtility for CardId {
 
     fn is_continuous_trap(self, duel: &Duel) -> bool {
         self.is_composite_type(duel, TYPE_TRAP | TYPE_CONTINUOUS)
+    }
+
+    fn is_continuous_spell_trap(self, duel: &Duel) -> bool {
+        self.is_continuous_spell(duel) || self.is_continuous_trap(duel)
+    }
+
+    fn get_main_card_type(self, duel: &Duel) -> u32 {
+        self.get_type(duel) & (TYPE_MONSTER | TYPE_SPELL | TYPE_TRAP)
     }
 
     fn is_quick_play_spell(self, duel: &Duel) -> bool {

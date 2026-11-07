@@ -532,6 +532,10 @@ impl CardId {
         }
     }
 
+    pub fn clear_effect_relation(self, duel: &mut Duel) {
+        duel.clear_relate_effect(self);
+    }
+
     pub fn release_relation(self, duel: &mut Duel, target: CardId) {
         duel.card_relations
             .retain(|&(card, related, _)| !(card == self && related == target));
@@ -922,6 +926,11 @@ impl CardId {
 
     pub fn check_fusion_substitute(self, duel: &Duel, fc: CardId) -> bool {
         duel.check_fusion_substitute(self, fc)
+    }
+
+    // Card.GetCode(c, scard, sumtype, playerid): all the codes the card has as a material of `sc`.
+    pub fn get_codes_full(self, duel: &Duel, sc: Option<CardId>, sumtype: u64, player: u8) -> Vec<u32> {
+        duel.get_summon_codes(self, sc, sumtype, player)
     }
 
     pub fn is_summon_code(self, duel: &Duel, sc: Option<CardId>, sumtype: u64, player: u8, codes: &[u32]) -> bool {

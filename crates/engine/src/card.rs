@@ -690,13 +690,18 @@ impl Duel {
         {
             return 0;
         }
-        unported!(
-            self,
-            [EFFECT_ADD_RACE, EFFECT_REMOVE_RACE, EFFECT_CHANGE_RACE]
-                .into_iter()
-                .flat_map(|code| self.filter_effect(card, code, true))
-        );
-        self.cards[card].data.race
+        let mut race = self.cards[card].data.race;
+        for effect in self.filter_effects(card, &[EFFECT_ADD_RACE, EFFECT_REMOVE_RACE, EFFECT_CHANGE_RACE]) {
+            let peffect = &self.effects[effect];
+            unported!(self, peffect.operation.is_some().then_some(effect));
+            let value = i64::from(self.get_value(effect, card)) as u64;
+            match peffect.code {
+                EFFECT_ADD_RACE => race |= value,
+                EFFECT_REMOVE_RACE => race &= !value,
+                _ => race = value,
+            }
+        }
+        race
     }
 
     // get_lscale and get_rscale.
@@ -2819,6 +2824,39 @@ impl Duel {
         self.filter_effect(card, EFFECT_FUSION_SUBSTITUTE, true)
             .into_iter()
             .any(|effect| matches!(self.effects[effect].value, Value::Int(0)) || self.get_value(effect, fcard) != 0)
+    }
+
+    // card::get_summon_code as Card.GetCode with a summon card reads it: the codes in ascending order.
+    pub(crate) fn get_summon_codes(&self, card: CardId, scard: Option<CardId>, sumtype: u64, playerid: u8) -> Vec<u32> {
+        let mut effects = self.filter_effect(card, EFFECT_ADD_CODE, false);
+        effects.extend(self.filter_effect(card, EFFECT_REMOVE_CODE, false));
+        effects.extend(self.filter_effect(card, EFFECT_CHANGE_CODE, false));
+        effects.sort_by_key(|&effect| self.effects.id(effect));
+        let (mut codes, mut changed) = (Vec::new(), false);
+        for effect in effects {
+            let Some(Operation::CodeCondition(condition)) = self.effects[effect].operation else {
+                continue;
+            };
+            if !condition(self, scard, sumtype, playerid) {
+                continue;
+            }
+            let value = self.get_value(effect, card) as u32;
+            match self.effects[effect].code {
+                EFFECT_ADD_CODE => codes.push(value),
+                EFFECT_REMOVE_CODE => codes.retain(|&other| other != value),
+                _ => (codes, changed) = (vec![value], true),
+            }
+        }
+        if !changed {
+            codes.extend(
+                [self.get_code(card), self.get_another_code(card)]
+                    .into_iter()
+                    .filter(|&code| code != 0),
+            );
+        }
+        codes.sort_unstable();
+        codes.dedup();
+        codes
     }
 
     // card::get_summon_code as Card.IsSummonCode reads it.

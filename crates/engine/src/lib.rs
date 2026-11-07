@@ -39,6 +39,7 @@ mod libduel;
 mod libeffect;
 mod libgroup;
 mod list;
+mod observation;
 mod operations;
 mod playerop;
 mod processor;
@@ -56,4 +57,6 @@ pub use effect::{
 pub use gamestate::{DuelRecord, FormatError, PlacedCard, Position, PositionError, ReplayError};
 pub use libduel::{ChainInfo, ExtraSummon, FromChainInfo, MonsterStats, ReleaseOptions};
 pub use libeffect::CountCode;
+pub use observation::{Choice, DeterminizeError, Observation, SeenCard, SeenLink};
+pub use rng::Xoshiro256StarStar;
 pub use script::{Args, FusionCheck, InitialEffect, Interrupt, Library, Script};

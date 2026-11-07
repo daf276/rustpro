@@ -8,7 +8,7 @@ use crate::list::List;
 use crate::playerop::sum_halves;
 use crate::processor::{AnnounceNumber, SelectOption, SelectSum, Unit};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Prompt {
     IdleCommand { player: u8 },
     BattleCommand { player: u8 },
@@ -93,6 +93,29 @@ pub enum ActionError {
     Illegal(Action),
     #[error("response {0:02x?} does not answer the prompt")]
     Undecodable(Vec<u8>),
+}
+
+impl Prompt {
+    pub fn player(self) -> u8 {
+        match self {
+            Self::IdleCommand { player }
+            | Self::BattleCommand { player }
+            | Self::YesNo { player }
+            | Self::Option { player }
+            | Self::EffectYesNo { player }
+            | Self::Chain { player, .. }
+            | Self::Card { player, .. }
+            | Self::Tribute { player, .. }
+            | Self::Sum { player }
+            | Self::UnselectCard { player, .. }
+            | Self::Place { player, .. }
+            | Self::Position { player, .. }
+            | Self::AnnounceRace { player, .. }
+            | Self::AnnounceAttribute { player, .. }
+            | Self::Sort { player, .. }
+            | Self::AnnounceCard { player } => player,
+        }
+    }
 }
 
 impl IdleCommand {

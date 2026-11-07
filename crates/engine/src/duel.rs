@@ -270,7 +270,7 @@ impl Duel {
     }
 
     // interpreter::register_card: the card's script (its alias's for alternate arts) registers its initial effects.
-    fn register_card(&mut self, card: CardId) {
+    pub(crate) fn register_card(&mut self, card: CardId) {
         let data = self.cards[card].data;
         let Some(library) = self.library else { return };
         let code = if data.alias != 0 && data.alias < data.code + 10 && data.code < data.alias + 10 {

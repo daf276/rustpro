@@ -4,7 +4,7 @@ use crate::constants::*;
 use crate::duel::{Duel, Status};
 use crate::list::List;
 use crate::playerop::sum_halves;
-use crate::processor::{SelectSum, Unit};
+use crate::processor::{AnnounceNumber, SelectOption, SelectSum, Unit};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Prompt {
@@ -168,7 +168,9 @@ impl Duel {
             Unit::SelectIdleCmd(arg) if arg.step > 0 => Some(Prompt::IdleCommand { player: arg.playerid }),
             Unit::SelectBattleCmd(arg) if arg.step > 0 => Some(Prompt::BattleCommand { player: arg.playerid }),
             Unit::SelectYesNo(arg) if arg.step > 0 => Some(Prompt::YesNo { player: arg.playerid }),
-            Unit::SelectOption(arg) if arg.step > 0 => Some(Prompt::Option { player: arg.playerid }),
+            Unit::SelectOption(SelectOption { step, playerid }) | Unit::AnnounceNumber(AnnounceNumber { step, playerid }) if *step > 0 => {
+                Some(Prompt::Option { player: *playerid })
+            }
             Unit::SelectEffectYesNo(arg) if arg.step > 0 => Some(Prompt::EffectYesNo { player: arg.playerid }),
             Unit::SelectChain(arg) if arg.step > 0 => Some(Prompt::Chain {
                 player: arg.playerid,

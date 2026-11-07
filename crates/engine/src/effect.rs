@@ -68,9 +68,13 @@ pub enum Target {
     None,
     Action(TargetFn),
     Card(fn(&Duel, EffectId, CardId) -> bool),
+    // The check (e, c, tp, r) of a player effect that restricts what that player does to a card: EFFECT_CANNOT_REMOVE.
+    PlayerCard(fn(&Duel, EffectId, CardId, u8, u32) -> bool),
     // The check (e, c, sg, tg, ntg, tsg, ntsg) -> (ok, trg, ntrg) of a hand Synchro material, read only by proc_synchro.
     SynchroCheck(SynchroCheckFn),
 }
+
+pub type ChangeDamageFn = fn(&mut Duel, EffectId, Option<EffectId>, u32, u32, u8, Option<CardId>) -> u32;
 
 pub type SynchroCheckFn = fn(&Duel, EffectId, Option<CardId>, CardSet, CardSet, CardSet, CardSet, CardSet) -> (bool, CardSet, CardSet);
 
@@ -116,6 +120,8 @@ pub enum Value {
     Activation(fn(&mut Duel, EffectId, EffectId)),
     // value(e, damp, rc): EFFECT_CHANGE_BATTLE_DAMAGE.
     BattleDamage(fn(&Duel, EffectId, u8, CardId) -> i64),
+    // value(e, re, val, r, rp, rc), which may reset the effect or add hints: EFFECT_CHANGE_DAMAGE.
+    ChangeDamage(ChangeDamageFn),
     // value(e, c, sc), which may register effects on c: EFFECT_HAND_SYNCHRO.
     HandSynchro(fn(&mut Duel, EffectId, CardId, CardId) -> bool),
     // value(chk, summon_type, e, ...) of EFFECT_EXTRA_MATERIAL, which registers and resets effects.
@@ -1140,7 +1146,7 @@ impl Duel {
         match self.effects[effect].target {
             Target::None => true,
             Target::Card(target) => target(self, effect, card),
-            Target::Action(_) | Target::SynchroCheck(_) => {
+            Target::Action(_) | Target::PlayerCard(_) | Target::SynchroCheck(_) => {
                 debug_assert!(false, "a field effect has an activation target");
                 true
             }
@@ -1156,6 +1162,7 @@ impl Duel {
             Value::EffectPlayer(_)
             | Value::Effect(_)
             | Value::BattleDamage(_)
+            | Value::ChangeDamage(_)
             | Value::Activation(_)
             | Value::MaterialCheck(_)
             | Value::Material(_)
@@ -1177,6 +1184,26 @@ impl Duel {
             Value::BattleDamage(value) => value(self, effect, playerid, reason_card),
             _ => {
                 debug_assert!(false, "a battle damage value read with the wrong parameters");
+                0
+            }
+        }
+    }
+
+    // effect::get_value(5) of EFFECT_CHANGE_DAMAGE with the effect, amount, reason, player and card of the damage.
+    pub(crate) fn get_change_damage_value(
+        &mut self,
+        effect: EffectId,
+        reason_effect: Option<EffectId>,
+        amount: u32,
+        reason: u32,
+        reason_player: u8,
+        reason_card: Option<CardId>,
+    ) -> u32 {
+        match self.effects[effect].value {
+            Value::Int(value) => value as u32,
+            Value::ChangeDamage(value) => value(self, effect, reason_effect, amount, reason, reason_player, reason_card),
+            _ => {
+                debug_assert!(false, "a damage value read with the wrong parameters");
                 0
             }
         }

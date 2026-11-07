@@ -488,6 +488,11 @@ pub mod aux {
         if e.get_owner_player(duel) == target { i64::from(VALUE) } else { -1 }
     }
 
+    // Auxiliary.indoval: EFFECT_INDESTRUCTABLE_EFFECT for the opponent's effects.
+    pub fn indoval(duel: &Duel, e: EffectId, _re: EffectId, rp: u8) -> bool {
+        rp == 1 - e.get_handler_player(duel)
+    }
+
     // Auxiliary.tgoval: EFFECT_CANNOT_BE_EFFECT_TARGET for the opponent's effects.
     pub fn tgoval(duel: &Duel, e: EffectId, _re: EffectId, rp: u8) -> bool {
         rp != e.get_handler_player(duel)
@@ -618,9 +623,19 @@ impl Cost {
         Ok(false)
     }
 
-    // Cost.DetachFromSelf(min, max) applied, without `op`; the detached materials are kept as the chain data's
+    // Cost.DetachFromSelf(min, max) applied; the detached materials are kept as the chain data's
     // cost_detached_materials.
     pub fn detach_from_self<const MIN: u16, const MAX: u16>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        Cost::detach_from_self_op::<MIN, MAX>(duel, args, chk, |_, _, _| {})
+    }
+
+    // Cost.DetachFromSelf(min, max, op): `op(e, og)` runs on the detached materials.
+    pub fn detach_from_self_op<const MIN: u16, const MAX: u16>(
+        duel: &mut Duel,
+        args: &Args,
+        chk: i32,
+        op: fn(&mut Duel, EffectId, CardSet),
+    ) -> Script<bool> {
         let (e, tp) = (args.e, args.tp);
         let c = e.get_handler(duel);
         if chk == 0 {
@@ -629,6 +644,7 @@ impl Cost {
         if c.remove_overlay_card(duel, tp, MIN, MAX, REASON_COST)? > 0 {
             let detached = duel.get_operated_group();
             e.set_chain_data_group(duel, COST_DETACHED_MATERIALS, detached);
+            op(duel, e, detached);
         }
         Ok(false)
     }
@@ -1038,6 +1054,7 @@ pub trait DuelUtility {
     fn get_target_cards(&self, e: EffectId) -> Option<CardSet>;
     fn announce_another_attribute(&mut self, g: CardSet, tp: u8) -> Script<u32>;
     fn move_to_deck_bottom_count(&mut self, count: usize, tp: u8) -> Script<()>;
+    fn move_to_deck_bottom(&mut self, targets: CardSet) -> Script<()>;
     fn place_field_spell(&mut self, c: CardId, tp: u8) -> Script<bool>;
 }
 
@@ -1103,6 +1120,14 @@ impl DuelUtility for Duel {
             if let Some(top) = self.get_decktop_group(tp, 1).get_first() {
                 self.move_sequence(top, SEQ_DECKBOTTOM as u8)?;
             }
+        }
+        Ok(())
+    }
+
+    // Duel.MoveToDeckBottom(group): the cards in the Deck, in group order.
+    fn move_to_deck_bottom(&mut self, targets: CardSet) -> Script<()> {
+        for c in targets.filter(self, |c, duel| c.is_location(duel, LOCATION_DECK), None) {
+            self.move_sequence(c, SEQ_DECKBOTTOM as u8)?;
         }
         Ok(())
     }

@@ -917,7 +917,15 @@ impl Duel {
                     unported!(self, self.filter_player_effect(playerid, EFFECT_REVERSE_DAMAGE, true));
                 }
                 unported!(self, self.filter_player_effect(playerid, EFFECT_REFLECT_DAMAGE, true));
-                unported!(self, self.filter_player_effect(playerid, EFFECT_CHANGE_DAMAGE, true));
+                let mut val = amount;
+                for effect in self.filter_player_effect(playerid, EFFECT_CHANGE_DAMAGE, true) {
+                    val = self.get_change_damage_value(effect, arg.reason_effect, val, reason, reason_player, reason_card);
+                    self.returns.set_u32(0, val);
+                    if val == 0 {
+                        return true;
+                    }
+                }
+                arg.amount = val;
                 false
             }
             1 => {

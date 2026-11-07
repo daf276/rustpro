@@ -334,6 +334,11 @@ impl CardId {
         }
     }
 
+    pub fn get_original_rank(self, duel: &Duel) -> u32 {
+        let card = &duel.cards[self];
+        if card.data.card_type & TYPE_XYZ == 0 { 0 } else { card.data.level }
+    }
+
     pub fn get_type(self, duel: &Duel) -> u32 {
         duel.get_type(self)
     }
@@ -755,6 +760,15 @@ impl CardId {
     pub fn is_summonable_full(self, duel: &Duel, ignore_count: bool, procedure: Option<EffectId>, min_tribute: u16, zone: u16) -> bool {
         let player = duel.core.reason_player.get();
         duel.is_can_be_summoned(self, player, ignore_count, procedure, min_tribute as u8, u32::from(zone))
+    }
+
+    pub fn is_msetable(self, duel: &Duel, ignore_count: bool, procedure: Option<EffectId>) -> bool {
+        self.is_msetable_full(duel, ignore_count, procedure, 0, 0xff)
+    }
+
+    pub fn is_msetable_full(self, duel: &Duel, ignore_count: bool, procedure: Option<EffectId>, min_tribute: u16, zone: u32) -> bool {
+        let player = duel.core.reason_player.get();
+        duel.is_setable_mzone(self, player, ignore_count, procedure, min_tribute as u8, zone)
     }
 
     pub fn set_reason_player(self, duel: &mut Duel, player: u8) {

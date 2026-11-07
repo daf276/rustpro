@@ -1793,7 +1793,7 @@ impl Duel {
 
     // Same as filter_summon_procedure for setting.
     pub(crate) fn filter_set_procedure(
-        &mut self,
+        &self,
         card: CardId,
         playerid: u8,
         ignore_count: bool,
@@ -1942,7 +1942,7 @@ impl Duel {
     }
 
     pub(crate) fn is_setable_mzone(
-        &mut self,
+        &self,
         card: CardId,
         playerid: u8,
         ignore_count: bool,

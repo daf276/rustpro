@@ -15,7 +15,9 @@ use crate::effect::{
 
 use crate::field::FromEx;
 use crate::operations::{PayLpCost, TossCoin, TossDice};
-use crate::processor::{AnnounceAttribute, AnnounceCard, AnnounceNumber, AnnounceRace, SelectCard, SelectOption, SelectYesNo, SortDeck};
+use crate::processor::{
+    AnnounceAttribute, AnnounceCard, AnnounceNumber, AnnounceRace, SelectCard, SelectOption, SelectPosition, SelectYesNo, SortDeck,
+};
 use crate::script::{FusionCheck, Procedure, Script};
 
 // What Duel.GetChainInfo pushes for one CHAININFO flag.
@@ -530,6 +532,19 @@ impl Duel {
         exception: Option<CardSet>,
     ) -> bool {
         self.matching_cards(filter, player, location1, location2, exception, count, true).0
+    }
+
+    pub fn get_target_count(
+        &self,
+        filter: impl Fn(CardId, &Duel) -> bool,
+        player: u8,
+        location1: u32,
+        location2: u32,
+        exception: Option<CardSet>,
+    ) -> usize {
+        self.matching_cards(filter, player, location1, location2, exception, 0, true)
+            .1
+            .len()
     }
 
     pub fn get_matching_group(
@@ -1106,6 +1121,13 @@ impl Duel {
 pub enum ExtraSummon {
     Card(CardId),
     Type(u32),
+    Nil,
+}
+
+impl From<Option<CardId>> for ExtraSummon {
+    fn from(card: Option<CardId>) -> Self {
+        card.map_or(ExtraSummon::Nil, ExtraSummon::Card)
+    }
 }
 
 impl From<CardId> for ExtraSummon {
@@ -1733,6 +1755,7 @@ impl Duel {
         let summoned = match summoned.into() {
             ExtraSummon::Card(card) => FromEx::card(self, Some(card)),
             ExtraSummon::Type(card_type) => FromEx::card_type(card_type),
+            ExtraSummon::Nil => FromEx::card(self, None),
         };
         self.get_useable_count_fromex_in(&zones, summoned, player, uplayer, zone).0
     }
@@ -1776,6 +1799,23 @@ impl Duel {
             return 0;
         }
         self.filter_player_effect(player, (code & 0xfff_ffff) | 0x1000_0000, true).len()
+    }
+
+    // The label of the first flag effect of the code, as the first of the values Lua gets.
+    pub fn get_flag_effect_label(&self, player: u8, code: u32) -> Option<i64> {
+        let effect = self
+            .get_player_effect(player, (code & 0xfff_ffff) | 0x1000_0000)
+            .into_iter()
+            .next()?;
+        Some(self.effects[effect].labels().first().copied().unwrap_or(0))
+    }
+
+    pub fn set_flag_effect_label(&mut self, player: u8, code: u32, label: i32) -> bool {
+        let Some(effect) = self.get_player_effect(player, (code & 0xfff_ffff) | 0x1000_0000).into_iter().next() else {
+            return false;
+        };
+        self.effects[effect].set_labels(&[i64::from(label)]);
+        true
     }
 
     // Not in the Lua API: false when no effect of this code is registered anywhere (true may be a false alarm), for
@@ -1891,6 +1931,44 @@ impl Duel {
             self.core.summoning_card = Some(card);
         }
         self.yield_script()
+    }
+
+    pub fn mset(&mut self, player: u8, card: CardId, ignore_count: bool, procedure: Option<EffectId>) -> Script<()> {
+        self.mset_full(player, card, ignore_count, procedure, 0, 0x1f)
+    }
+
+    // During a chain the Set waits until the chain link has resolved.
+    pub fn mset_full(
+        &mut self,
+        player: u8,
+        card: CardId,
+        ignore_count: bool,
+        procedure: Option<EffectId>,
+        min_tribute: u8,
+        zone: u32,
+    ) -> Script<()> {
+        if self.core.effect_damage_step != 0 || player > 1 {
+            return Ok(());
+        }
+        self.core.summon_cancelable = false;
+        self.field_mset(player, card, procedure, ignore_count, min_tribute, zone);
+        if !self.core.current_chain.is_empty() {
+            self.core.reserved = self.core.subunits.pop().map(Box::new);
+            self.core.summoning_card = Some(card);
+        }
+        self.yield_script()
+    }
+
+    pub fn select_position(&mut self, player: u8, card: CardId, positions: u8) -> Script<u32> {
+        let code = self.cards[card].data.code;
+        self.emplace_process(SelectPosition {
+            playerid: player,
+            code,
+            positions,
+            ..SelectPosition::default()
+        });
+        self.yield_script()?;
+        Ok(self.returns.at_u32(0))
     }
 
     pub fn synchro_summon(&mut self, player: u8, card: CardId, must: Option<CardSet>, materials: Option<CardSet>) -> Script<()> {
@@ -2093,15 +2171,20 @@ impl Duel {
 
 impl Duel {
     pub fn sset(&mut self, player: u8, targets: impl Into<CardSet>) -> Script<i32> {
+        self.sset_full(player, targets, player, true)
+    }
+
+    pub fn sset_full(&mut self, player: u8, targets: impl Into<CardSet>, toplayer: u8, confirm: bool) -> Script<i32> {
         if player > 1 {
             return Ok(0);
         }
+        let toplayer = if toplayer > 1 { player } else { toplayer };
         let targets = targets.into();
         if targets.is_empty() {
             return Ok(self.returns.at_i32(0));
         }
         let reason_effect = self.core.reason_effect.get();
-        self.sset_group(player, player, targets, true, reason_effect);
+        self.sset_group(player, toplayer, targets, confirm, reason_effect);
         self.yield_script()?;
         Ok(self.returns.at_i32(0))
     }

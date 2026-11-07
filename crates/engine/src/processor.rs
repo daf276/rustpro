@@ -1583,7 +1583,7 @@ impl Duel {
                     return true;
                 };
                 self.core.summon_cancelable = true;
-                self.mset(self.cards[target].current.controler, target, None, false, 0, 0x1f);
+                self.field_mset(self.cards[target].current.controler, target, None, false, 0, 0x1f);
                 arg.step = RESTART;
                 false
             }
@@ -2553,12 +2553,16 @@ impl Duel {
                                     self.core.battle_damage[player] = (a - d) as i32;
                                 }
                             }
-                            unported!(
-                                self,
-                                pierces
-                                    .iter()
-                                    .filter(|&&effect| self.get_value(effect, attacker) as u32 == DOUBLE_DAMAGE)
-                            );
+                            if pierces
+                                .iter()
+                                .fold(false, |double, &effect| self.get_value(effect, attacker) as u32 == DOUBLE_DAMAGE || double)
+                            {
+                                for (player, damaged) in [0, 1].into_iter().zip(players) {
+                                    if damaged {
+                                        self.core.battle_damage[player] *= 2;
+                                    }
+                                }
+                            }
                             if players != [true, true] {
                                 damp = if players[0] { 0 } else { 1 };
                                 unported!(

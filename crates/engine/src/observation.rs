@@ -5,11 +5,11 @@ use carddata::{Card as CardData, CardDatabase, Deck};
 use serde::{Deserialize, Serialize};
 
 use crate::action::{Action, BattleCommand, IdleCommand, Prompt};
-use crate::card::{Card, CardId, CardSet, CardState};
+use crate::card::{Card, CardId, CardSet, CardState, MAX_CARDS};
 use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::Event;
-use crate::field::Cards8;
+use crate::field::{Cards8, Cards16};
 use crate::processor::Unit;
 use crate::rng::Xoshiro256StarStar;
 
@@ -159,7 +159,7 @@ impl Duel {
     // Every card in a location: per player its Deck, hand, Monster Zones (an Xyz Monster followed by its materials),
     // Spell & Trap Zones, GY, banishment and Extra Deck, each in sequence order.
     pub(crate) fn located_cards(&self) -> Vec<CardId> {
-        let mut cards = Vec::new();
+        let mut cards = Vec::with_capacity(MAX_CARDS);
         for p in 0..2 {
             let player = &self.player[p];
             cards.extend(player.list_main.iter().chain(&player.list_hand));
@@ -226,7 +226,7 @@ impl Duel {
             Some(Unit::SelectEffectYesNo(arg)) => (pick(&[arg.card], 0), arg.description),
             _ => (None, 0),
         };
-        let selectable: Vec<CardId> = core.select_cards.iter().chain(&core.unselect_cards).copied().collect();
+        let selectable: Cards16 = core.select_cards.iter().chain(&core.unselect_cards).copied().collect();
         let choice = |action: Action| {
             let (card, description) = match action {
                 Action::IdleCommand(IdleCommand::Summon(index)) => (pick(&core.summonable_cards, index), 0),

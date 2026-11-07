@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 31086840;
+pub const XYZ_NUMBER: u32 = 69;
 const HERALDRY_CREST: u32 = 2407234;
 const DEMOLITION: u32 = 77571454;
 

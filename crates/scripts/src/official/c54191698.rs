@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 54191698;
+pub const XYZ_NUMBER: u32 = 29;
 
 // In the Extra Deck, Xyz Summoned with two Level 2 monsters, with the opponent's monsters in the Graveyard to Special
 // Summon for them and monsters to Special Summon for itself.

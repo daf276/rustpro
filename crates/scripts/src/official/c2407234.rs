@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 2407234;
+pub const XYZ_NUMBER: u32 = 69;
 
 // In the Extra Deck, Xyz Summoned with three Level 4 monsters, with Xyz Monsters to negate and copy.
 pub const SUPPORT: &[(u32, u16)] = &[

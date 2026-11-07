@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, MZONE};
 
 const ID: u32 = 8165596;
+pub const XYZ_NUMBER: u32 = 90;
 
 struct Procedure;
 

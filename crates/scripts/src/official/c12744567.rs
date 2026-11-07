@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::{EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 12744567;
+pub const XYZ_NUMBER: u32 = 101;
 const SILENT_HONOR_ARK: u32 = 48739166;
 
 pub const LISTED_NAMES: &[u32] = &[SILENT_HONOR_ARK];

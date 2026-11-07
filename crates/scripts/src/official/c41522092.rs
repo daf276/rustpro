@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::{EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 41522092;
+pub const XYZ_NUMBER: u32 = 0;
 
 // In the Extra Deck, Xyz Summoned with two Evilswarm Exciton Knights, and an opponent's monster to take.
 pub const SUPPORT: &[(u32, u16)] = &[

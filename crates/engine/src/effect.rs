@@ -627,6 +627,8 @@ pub struct FieldEffect {
     pub rechargeable: List<EffectId, 8>,
     pub spsummon_count_eff: List<EffectId, 2>,
     pub disable_check_set: CardSet,
+    // Per EFFECT_TYPE_GRANT effect, in initial id order, the cards it granted a copy of its label object effect to.
+    pub grant_effect: Vec<(EffectId, Vec<(CardId, EffectId)>)>,
 }
 
 clone_by_field!(FieldEffect {
@@ -636,7 +638,8 @@ clone_by_field!(FieldEffect {
     cheff,
     rechargeable,
     spsummon_count_eff,
-    disable_check_set
+    disable_check_set,
+    grant_effect
 });
 
 impl FieldEffect {
@@ -650,6 +653,7 @@ impl FieldEffect {
             rechargeable,
             spsummon_count_eff,
             disable_check_set,
+            grant_effect,
         } = source;
         self.registry.sync_from(registry);
         self.oath.clone_from(oath);
@@ -658,6 +662,7 @@ impl FieldEffect {
         self.rechargeable.clone_from(rechargeable);
         self.spsummon_count_eff.clone_from(spsummon_count_eff);
         self.disable_check_set = *disable_check_set;
+        self.grant_effect.clone_from(grant_effect);
     }
 }
 

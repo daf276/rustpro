@@ -2191,12 +2191,8 @@ impl Duel {
 }
 
 impl Duel {
-    pub fn overlay(&mut self, target: CardId, materials: impl Into<CardSet>) -> Script<()> {
-        self.overlay_full(target, materials, false)
-    }
-
     // The Lua errors of attaching to a material or a card to itself stop the oracle's script; no port does either.
-    pub fn overlay_full(&mut self, target: CardId, materials: impl Into<CardSet>, send_materials_to_grave: bool) -> Script<()> {
+    pub fn overlay_core(&mut self, target: CardId, materials: impl Into<CardSet>, send_materials_to_grave: bool) -> Script<()> {
         let materials = materials.into();
         if self.cards[target].overlay_target.is_some() || materials.contains(target) {
             self.reach_unported(concat!(file!(), ":", line!()));

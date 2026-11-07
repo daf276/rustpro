@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::{EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 80117527;
+pub const XYZ_NUMBER: u32 = 11;
 
 // In the Extra Deck, Xyz Summoned with Gaia The Fierce Knight, Seiyaryu and Ryu-Ran, and an opponent's monster to take.
 pub const SUPPORT: &[(u32, u16)] = &[

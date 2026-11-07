@@ -323,6 +323,8 @@ pub struct Processor {
     pub must_select_cards: std::cell::Cell<CardSet>,
     // temp.attack and temp.defense of a card while get_attack or get_defense evaluates it: (card, is attack, value).
     pub stat_temp: std::cell::RefCell<List<(CardId, bool, i32), 4>>,
+    // temp.type of a card while get_type evaluates it: (card, value).
+    pub type_temp: std::cell::RefCell<List<(CardId, u32), 4>>,
 }
 
 clone_by_field!(Processor {
@@ -459,7 +461,8 @@ clone_by_field!(Processor {
     copy_reset,
     copy_reset_count,
     must_select_cards,
-    stat_temp
+    stat_temp,
+    type_temp
 });
 
 impl Processor {
@@ -599,6 +602,7 @@ impl Processor {
             copy_reset_count: 0,
             must_select_cards: Default::default(),
             stat_temp: Default::default(),
+            type_temp: Default::default(),
         }
     }
 }
@@ -1651,6 +1655,14 @@ impl Duel {
             } else if code == EFFECT_REVERSE_DECK {
                 self.core.global_flag |= GLOBALFLAG_DECK_REVERSE_CHECK;
             }
+            if effect_type & EFFECT_TYPE_GRANT != 0 {
+                let grants = &mut self.field_effects.grant_effect;
+                if !grants.iter().any(|&(granting, _)| granting == effect) {
+                    let initial_id = self.effects[effect].initial_id;
+                    let at = grants.partition_point(|&(granting, _)| self.effects[granting].initial_id <= initial_id);
+                    grants.insert(at, (effect, Vec::new()));
+                }
+            }
             Some(Container::Aura)
         } else if effect_type & EFFECT_TYPE_IGNITION != 0 {
             Some(Container::Ignition)
@@ -1725,7 +1737,9 @@ impl Duel {
             if peffect.code == EFFECT_SPSUMMON_COUNT_LIMIT {
                 remove_item(&mut self.field_effects.spsummon_count_eff, &effect);
             }
-            unported!(self, (peffect.effect_type & EFFECT_TYPE_GRANT != 0).then_some(effect));
+            if peffect.effect_type & EFFECT_TYPE_GRANT != 0 {
+                self.erase_grant_effect(effect);
+            }
         }
         let peffect = &self.effects[effect];
         if !peffect.is_flag(EFFECT_FLAG_FIELD_ONLY) {
@@ -1901,6 +1915,62 @@ impl Duel {
             .collect();
         effects.sort_by_key(|&effect| self.effects.id(effect));
         effects
+    }
+
+    fn erase_grant_effect(&mut self, effect: EffectId) {
+        let Some(at) = self.field_effects.grant_effect.iter().position(|&(granting, _)| granting == effect) else {
+            return;
+        };
+        let (_, gained) = self.field_effects.grant_effect.remove(at);
+        for (card, granted) in gained {
+            self.card_remove_effect(card, granted);
+        }
+    }
+
+    // field::adjust_grant_effect: gives a copy of the label object effect to each card the granting effect affects,
+    // and takes it back from the ones it no longer does.
+    pub(crate) fn adjust_grant_effect(&mut self) -> bool {
+        let mut adjusted = false;
+        let mut at = 0;
+        while let Some((effect, gained)) = self.field_effects.grant_effect.get(at).cloned() {
+            at += 1;
+            let Some(granted) = self.effects[effect].label_object.filter(|&label| !self.effects.is_deleted(label)) else {
+                continue;
+            };
+            let affected = if self.is_available(effect) {
+                self.filter_affected_cards(effect)
+            } else {
+                CardSet::default()
+            };
+            let add: CardSet = affected
+                .iter()
+                .filter(|&card| self.is_affect_by_effect(card, Some(effect)) && !gained.iter().any(|&(gained, _)| gained == card))
+                .collect();
+            let remove: CardSet = gained
+                .iter()
+                .map(|&(card, _)| card)
+                .filter(|&card| !self.is_affect_by_effect(card, Some(effect)) || !affected.contains(card))
+                .collect();
+            for card in add {
+                let copy = self.clone_effect(granted);
+                self.effects[copy].owner = card;
+                self.card_add_effect(card, copy);
+                if let Some((_, gained)) = self.field_effects.grant_effect.get_mut(at - 1) {
+                    gained.push((card, copy));
+                }
+            }
+            for card in remove {
+                let Some((_, gained)) = self.field_effects.grant_effect.get_mut(at - 1) else {
+                    continue;
+                };
+                if let Some(position) = gained.iter().position(|&(gained, _)| gained == card) {
+                    let (_, copy) = gained.remove(position);
+                    self.card_remove_effect(card, copy);
+                }
+            }
+            adjusted |= !add.is_empty() || !remove.is_empty();
+        }
+        adjusted
     }
 
     // The cards a field effect applies to (filter_affected_cards).
@@ -2228,6 +2298,13 @@ impl Duel {
         {
             Some(entry) => entry.2 += 1,
             None => self.announced_cards.push((attacker, fieldid, 1)),
+        }
+    }
+
+    pub(crate) fn add_battled_card(&mut self, card: CardId, battled: Option<CardId>) {
+        let fieldid = battled.map_or(0, |battled| self.cards[battled].fieldid_r);
+        if !self.battled_cards.contains(&(card, fieldid)) {
+            self.battled_cards.push((card, fieldid));
         }
     }
 

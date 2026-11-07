@@ -69,6 +69,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         dark_calling.len(),
         dark_calling.join(", ")
     )?;
+    let xyz_numbers: Vec<String> = cards
+        .iter()
+        .filter_map(|(code, text, _)| Some(format!("({code}, {})", field(*code, text, &["XYZ_NUMBER"])?)))
+        .collect();
+    writeln!(
+        out,
+        "pub static XYZ_NUMBER: [(u32, u32); {}] = [{}];",
+        xyz_numbers.len(),
+        xyz_numbers.join(", ")
+    )?;
     std::fs::write(Path::new(&std::env::var("OUT_DIR")?).join("official.rs"), out)?;
     Ok(())
 }

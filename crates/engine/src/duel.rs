@@ -111,6 +111,8 @@ pub struct Duel {
     pub(crate) card_relations: Vec<(CardId, CardId, u32)>,
     // Card.announced_cards: per attacker, the fieldid_r of each target it announced an attack on (0 for a direct attack) and how often.
     pub(crate) announced_cards: Vec<(CardId, u32, u8)>,
+    // Card.battled_cards: per card, the fieldid_r of each card it battled (0 for a direct attack).
+    pub(crate) battled_cards: Vec<(CardId, u32)>,
     // The cards equipped to a monster; card::equiping_cards of a card are those whose equiping_target it is.
     pub(crate) equip_cards: CardSet,
     // card::immune_effect as (card, effect) pairs: refreshed only by refresh_disable_status, so an effect registered
@@ -166,6 +168,7 @@ impl Duel {
             card_targets: Vec::new(),
             card_relations: Vec::new(),
             announced_cards: Vec::new(),
+            battled_cards: Vec::new(),
             immune_effects: List::default(),
             equip_cards: CardSet::default(),
             unported: std::cell::Cell::new(None),

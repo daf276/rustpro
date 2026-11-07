@@ -62,6 +62,8 @@ pub trait DuelWorkaround {
     fn swap_sequence(&mut self, card1: CardId, card2: CardId) -> bool;
     fn move_to_field(&mut self, card: CardId, move_player: u8, player: u8, destination: u32, positions: u32, enable: bool) -> Script<bool>;
     fn is_damage_step(&self) -> bool;
+    fn overlay(&mut self, target: CardId, materials: impl Into<CardSet>) -> Script<()>;
+    fn overlay_full(&mut self, target: CardId, materials: impl Into<CardSet>, send_materials_to_grave: bool) -> Script<()>;
     fn get_target_group(
         &self,
         filter: impl Fn(CardId, &Duel) -> bool,
@@ -118,6 +120,33 @@ impl DuelWorkaround for Duel {
     fn is_damage_step(&self) -> bool {
         let current_phase = self.get_current_phase();
         current_phase == PHASE_DAMAGE || current_phase == PHASE_DAMAGE_CAL
+    }
+
+    fn overlay(&mut self, target: CardId, materials: impl Into<CardSet>) -> Script<()> {
+        self.overlay_full(target, materials, false)
+    }
+
+    // Duel.Overlay, which also raises EVENT_MOVE for the attached cards.
+    fn overlay_full(&mut self, target: CardId, materials: impl Into<CardSet>, send_materials_to_grave: bool) -> Script<()> {
+        let materials = materials.into();
+        let mut eg = materials;
+        let core_reason_effect = self.get_reason_effect();
+        let (re, r, rp) =
+            if self.is_chain_solving() || core_reason_effect.is_some_and(|e| !e.is_has_property(self, EFFECT_FLAG_CANNOT_DISABLE)) {
+                (core_reason_effect, REASON_EFFECT, self.get_reason_player())
+            } else {
+                (None, REASON_RULE, PLAYER_NONE)
+            };
+        if !send_materials_to_grave {
+            for material in materials {
+                eg.merge(material.get_overlay_group(self));
+            }
+        }
+        self.overlay_core(target, materials, send_materials_to_grave)?;
+        for ec in eg {
+            ec.set_reason_player(self, rp);
+        }
+        self.raise_event(eg, EVENT_MOVE, re, r, rp, 0, 0)
     }
 
     // Duel.GetTargetGroup: the matching cards the reason effect can target.

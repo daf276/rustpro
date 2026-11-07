@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 63767246;
+pub const XYZ_NUMBER: u32 = 38;
 
 // In the Extra Deck, Xyz Summoned with Black Luster Soldier and Steam Knight - Hamburk, the opponent's Spell Cards to
 // negate, and Number 39: Utopia to destroy with Raigeki and Dark Hole.

@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 31801517;
+pub const XYZ_NUMBER: u32 = 62;
 
 pub const LISTED_NAMES: &[u32] = &[CARD_GALAXYEYES_P_DRAGON];
 

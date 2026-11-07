@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::{EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 56832966;
+pub const XYZ_NUMBER: u32 = 39;
 
 // In the Extra Deck, Xyz Summoned over Number 39: Utopia, and the opponent's monsters to battle.
 pub const SUPPORT: &[(u32, u16)] = &[

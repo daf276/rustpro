@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 88177324;
+pub const XYZ_NUMBER: u32 = 107;
 
 // In the Extra Deck, Xyz Summoned with Black Luster Soldier and Steam Knight - Hamburk, and the opponent's monsters with effects and Spell/Trap Cards to chain.
 pub const SUPPORT: &[(u32, u16)] = &[

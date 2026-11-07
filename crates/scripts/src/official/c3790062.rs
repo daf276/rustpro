@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::{EXTRA, MZONE};
 
 const ID: u32 = 3790062;
+pub const XYZ_NUMBER: u32 = 65;
 
 // In the Extra Deck, Xyz Summoned with two Level 2 DARK monsters.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, EXTRA), (ID, EXTRA), (4920010, MZONE), (17238333, MZONE), (22026707, MZONE)];

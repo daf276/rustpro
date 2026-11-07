@@ -17,6 +17,8 @@ registers every `c<code>.rs` and reads its `LISTED_NAMES`, `FIT_MONSTER`, `SUPPO
    procedures). A missing core function goes into the engine's mirror (`libduel.rs`, `libcard.rs`, `libeffect.rs`,
    `libgroup.rs`), ported from ygopro-core's `lib*.cpp` and the processor code it reaches. Port only the paths ported
    cards can reach; leave the rest as `unported!(duel, <condition the Lua would take that path on>)`.
+   The scripts crate's `unported!` takes a bool, the engine's an iterator of effects. Check `proc_workaround.lua`
+   first: it overrides some core functions (`Duel.IsMainPhase(player)` also checks whose turn it is).
 4. Declare `SUPPORT` and, if the default does not fit, `CHECKS` (below).
 5. Run `cargo run --release -p diff --bin card -- <code> --threads 7` and iterate until it passes. Several codes may
    be given at once. Then run `cargo test --release -p diff -j 7` (all suites must stay clean),
@@ -46,6 +48,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   copy), with locations from `crate::testing` (`HAND`, `DECK`, `MZONE`, `SZONE`, `GRAVE`, `REMOVED`, `EXTRA`, or 0
   for a random zone), `| OPPONENT` for the other player. Only ported cards and Normal Monsters (which have no
   script); one comment line naming them.
+  An unported card in SUPPORT runs its Lua in the oracle but nothing in the engine, so the diff fails: port a
+  needed support card first (it then has its own checks).
 - `pub const CHECKS: &[Check]` (`crate::testing::Check`), each needing a count above 0 in both the first 13 and all
   64 scenarios. Without `CHECKS` the card must resolve some effect (`Check::Resolves`). Others:
   `ResolvesEffect(aux::stringid(ID, n))`, `SpecialSummoned`, `RitualMaterial`, `MaterialFrom(location)`,
@@ -81,6 +85,7 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - Every name of `constant.lua`, `card_counter_constants.lua` and `archetype_setcode_constants.lua` is in the prelude
   with its Lua name and the type the API takes (`WIN_REASON_NUMBER_iC1000` is upper-cased); never add constants.
 - Cards use `set_operation`; `set_promptless_operation` is for library code that provably cannot prompt.
+- `e:SetHintTiming(x)` with one argument sets both timings: `e.set_hint_timing(duel, x, x)`.
 - A core function a library replaces keeps a `_core` suffix in the engine; the scripts-crate trait takes the Lua name.
 - An internal engine function whose name a new Lua mirror needs is renamed with a `field_` prefix (`field_raise_event`).
 

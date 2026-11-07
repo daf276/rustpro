@@ -2279,7 +2279,7 @@ impl Duel {
         mg: Option<CardSet>,
         ex: bool,
         releasable: u32,
-    ) -> (u32, List<(CardId, u32), 8>) {
+    ) -> (u32, List<(CardId, u32), 16>) {
         let p = self.cards[target].current.controler;
         unported!(self, self.filter_effect(target, EFFECT_ADD_EXTRA_TRIBUTE, true));
         let release_param = |duel: &Self, card: CardId| {

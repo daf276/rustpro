@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::io::Write;
+use std::sync::OnceLock;
 
 use diff::{DiffError, Vendor, diff_duel, diff_scenario};
 use engine::{Action, Duel, DuelRecord, Observation, Prompt, SeenCard};
@@ -18,15 +19,20 @@ fn records(vendor: &'static Vendor, seeds: std::ops::Range<u64>) -> Result<Vec<D
         .collect::<std::result::Result<_, DiffError>>()?)
 }
 
-// Elfnote mirror records and one scenario per ported card.
-fn all_records() -> Result<Vec<(&'static Vendor, DuelRecord)>> {
-    let (elfnote, scenarios) = (Vendor::leak(Vendor::elfnote)?, Vendor::leak(Vendor::scenarios)?);
-    let scenario_records = CARD_SCRIPTS
-        .par_iter()
-        .map(|card| Ok((scenarios, diff_scenario(scenarios, card.code, 0)?.record)));
-    let mut records: Vec<_> = records(elfnote, 0..40)?.into_iter().map(|record| (elfnote, record)).collect();
-    records.extend(scenario_records.collect::<std::result::Result<Vec<_>, DiffError>>()?);
-    Ok(records)
+// Elfnote mirror records and one scenario per ported card, built once for the tests that share them.
+fn all_records() -> Result<&'static [(&'static Vendor, DuelRecord)]> {
+    static RECORDS: OnceLock<std::result::Result<Vec<(&'static Vendor, DuelRecord)>, String>> = OnceLock::new();
+    let build = || -> Result<Vec<_>> {
+        let (elfnote, scenarios) = (Vendor::leak(Vendor::elfnote)?, Vendor::leak(Vendor::scenarios)?);
+        let scenario_records = CARD_SCRIPTS
+            .par_iter()
+            .map(|card| Ok((scenarios, diff_scenario(scenarios, card.code, 0)?.record)));
+        let mut records: Vec<_> = records(elfnote, 0..40)?.into_iter().map(|record| (elfnote, record)).collect();
+        records.extend(scenario_records.collect::<std::result::Result<Vec<_>, DiffError>>()?);
+        Ok(records)
+    };
+    let records = RECORDS.get_or_init(|| build().map_err(|error| error.to_string()));
+    Ok(records.as_ref().map_err(String::clone)?)
 }
 
 // Calls `check` at every prompt of the record, before the recorded action.
@@ -154,6 +160,24 @@ fn should_encode_every_legal_action_distinctly_within_the_caps() {
         "most cards observed {cards} (cap {MAX_OBS_CARDS}), longest chain {chain} (cap {MAX_CHAIN})"
     )
     .unwrap();
+}
+
+#[test]
+fn should_encode_a_duel_straight_as_its_observation() {
+    let checked = all_records().unwrap().par_iter().map(|(vendor, record)| {
+        each_state(vendor, record, |duel, _| {
+            for player in 0..2 {
+                let (mut observed, mut straight) = (buffers(1), buffers(1));
+                tensors(&mut observed)?.write(0, Some(&duel.observe(player)))?;
+                tensors(&mut straight)?.write_duel(0, duel, player)?;
+                if observed != straight {
+                    return Err(format!("player {player}: the duel encodes differently from its observation").into());
+                }
+            }
+            Ok(())
+        })
+    });
+    checked.collect::<Result<()>>().unwrap();
 }
 
 #[test]

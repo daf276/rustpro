@@ -319,12 +319,14 @@ impl Effect {
 #[derive(Debug, Clone, Default)]
 pub struct Effects {
     list: Shared<Effect, CHUNK>,
-    cells: Vec<Cell<[(u32, u16); CHUNK]>>,
+    cells: Vec<Cell<CellChunk>>,
     free: List<EffectId, 32>,
     scratch: Effect,
 }
 
 const CHUNK: usize = 32;
+
+pub type CellChunk = [(u32, u16); CHUNK];
 
 impl Effects {
     pub fn push(&mut self, effect: Effect) -> EffectId {
@@ -381,12 +383,13 @@ impl Effects {
         }
     }
 
-    pub fn cells(&self) -> Vec<(u32, u16)> {
-        self.all_cells().map(Cell::get).collect()
+    pub fn save_cells(&self, saved: &mut Vec<CellChunk>) {
+        saved.clear();
+        saved.extend(self.cells.iter().map(Cell::get));
     }
 
-    pub fn restore_cells(&self, cells: &[(u32, u16)]) {
-        self.all_cells().zip(cells).for_each(|(cell, &value)| cell.set(value));
+    pub fn restore_cells(&self, saved: &[CellChunk]) {
+        self.cells.iter().zip(saved).for_each(|(cell, &value)| cell.set(value));
     }
 
     // The ids and statuses of a copy of these effects, for the effects both hold.
@@ -406,15 +409,15 @@ impl Effects {
 
     // duel::delete_effect: the slot is reused by the next new effect. Label objects are the only references to an
     // effect that scripts keep, so they are the ones that turn into the deleted object.
-    pub fn delete(&mut self, id: EffectId) {
+    pub fn delete(&mut self, ids: &[EffectId]) {
         let holders: EffectSet = (self.list.iter().enumerate())
-            .filter(|(_, effect)| effect.label_object == Some(id))
+            .filter(|(_, effect)| effect.label_object.is_some_and(|label| ids.contains(&label)))
             .map(|(index, _)| EffectId::new(index as u16))
             .collect();
         for holder in holders {
             self[holder].label_object = Some(EffectId::DELETED);
         }
-        self.free.push(id);
+        self.free.extend(ids.iter().copied());
     }
 
     pub fn is_deleted(&self, id: EffectId) -> bool {
@@ -432,7 +435,7 @@ mod tests {
         let holder = effects.push(Effect::new(CardId::default()));
         let deleted = effects.push(Effect::new(CardId::default()));
         effects[holder].label_object = Some(deleted);
-        effects.delete(deleted);
+        effects.delete(&[deleted]);
         let reused = effects.push(Effect::new(CardId::default()));
         let label = effects[holder].label_object;
         assert_eq!(

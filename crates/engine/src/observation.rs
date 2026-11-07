@@ -1,6 +1,7 @@
 // What a player may know of a duel, and duels resampled to agree with it. The visibility rules mirror what EDOPro's
 // server sends each player: card::get_infos's QUERY_IS_PUBLIC to both, and to the controller its cards outside the Deck.
 // Like the core, they keep no memory: a card confirmed earlier is known only while something keeps it public.
+use std::cell::Cell;
 use std::sync::{Arc, Mutex};
 
 use carddata::{Card as CardData, CardDatabase, Deck};
@@ -10,13 +11,14 @@ use crate::action::{Action, BattleCommand, IdleCommand, Prompt};
 use crate::card::{Card, CardId, CardSet, CardState, MAX_CARDS};
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::Event;
-use crate::field::{Cards8, Cards16};
+use crate::effect::{CellChunk, Event};
+use crate::field::Cards8;
+use crate::list::List;
 use crate::processor::Unit;
 use crate::rng::Xoshiro256StarStar;
 use crate::script::lock;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Observation {
     pub player: u8,
     pub turn: i16,
@@ -80,6 +82,11 @@ pub enum DeterminizeError {
 
 const RERUN_ATTEMPTS: usize = 16;
 
+thread_local! {
+    // [Duel::unchanged]'s saved effect ids and statuses, kept so that observing allocates nothing.
+    static SAVED: Cell<Vec<CellChunk>> = const { Cell::new(Vec::new()) };
+}
+
 // What a hidden card may be resampled to: a card of the Extra Deck or not, of the kind its zone holds.
 #[derive(Debug, Clone, Copy)]
 enum Kind {
@@ -128,70 +135,131 @@ fn same_place(a: &CardState, b: &CardState) -> bool {
     (a.controler, a.location, a.sequence, a.position) == (b.controler, b.location, b.sequence, b.position)
 }
 
-impl Duel {
-    pub fn observe(&self, player: u8) -> Observation {
-        self.unchanged(|_| self.observe_now(player))
+// Receives an observation piece by piece, in the order of [Observation]'s lists, each chain link (its targets left
+// out) followed by its targets: [Duel::observe_into] feeds one without building the lists.
+pub trait ObservationSink {
+    fn card(&mut self, card: SeenCard);
+    fn link(&mut self, link: &SeenLink);
+    fn target(&mut self, card: SeenCard);
+    fn choice(&mut self, choice: Choice);
+}
+
+impl ObservationSink for Observation {
+    fn card(&mut self, card: SeenCard) {
+        self.cards.push(card);
     }
 
-    // Runs `read`, then puts back the effect ids and statuses and the field id counter its effect lookups changed, here
-    // and in a waiting function's snapshot: a condition becoming available takes a new id, which orders later lookups.
-    fn unchanged<T>(&self, read: impl FnOnce(Option<&Duel>) -> T) -> T {
-        let saved = |duel: &Duel| (duel.infos.field_id.get(), duel.effects.cells());
-        let snapshot = self.core.replay.snapshot.as_ref().map(lock);
-        let snapshot = snapshot.as_deref();
-        let (own, waiting) = (saved(self), snapshot.map(saved));
-        let result = read(snapshot);
-        for (duel, (field_id, cells)) in std::iter::once((self, own)).chain(snapshot.zip(waiting)) {
-            duel.infos.field_id.set(field_id);
-            duel.effects.restore_cells(&cells);
+    fn link(&mut self, link: &SeenLink) {
+        self.chain.push(link.clone());
+    }
+
+    fn target(&mut self, card: SeenCard) {
+        if let Some(link) = self.chain.last_mut() {
+            link.targets.push(card);
         }
+    }
+
+    fn choice(&mut self, choice: Choice) {
+        self.choices.push(choice);
+    }
+}
+
+// Passes each item it is extended with to a function, so that legal actions stream without a list.
+struct Each<F>(F);
+
+impl<T, F: FnMut(T)> Extend<T> for Each<F> {
+    fn extend<I: IntoIterator<Item = T>>(&mut self, items: I) {
+        items.into_iter().for_each(&mut self.0);
+    }
+}
+
+impl Duel {
+    pub fn observe(&self, player: u8) -> Observation {
+        let mut lists = Observation {
+            cards: Vec::with_capacity(MAX_CARDS),
+            ..Observation::default()
+        };
+        let observation = self.observe_into(player, &mut lists);
+        Observation {
+            cards: lists.cards,
+            chain: lists.chain,
+            choices: lists.choices,
+            ..observation
+        }
+    }
+
+    // [Duel::observe] with the same lookups, its lists fed to `sink` instead; returns the rest, the lists left empty.
+    pub fn observe_into(&self, player: u8, sink: &mut impl ObservationSink) -> Observation {
+        self.unchanged(|| self.observe_now(player, sink))
+    }
+
+    // Runs `read`, then puts back the effect ids and statuses and the field id counter its effect lookups changed in
+    // this duel: a condition becoming available takes a new id, which orders later lookups.
+    fn unchanged<T>(&self, read: impl FnOnce() -> T) -> T {
+        let mut saved = SAVED.take();
+        self.effects.save_cells(&mut saved);
+        let field_id = self.infos.field_id.get();
+        let result = read();
+        self.infos.field_id.set(field_id);
+        self.effects.restore_cells(&saved);
+        SAVED.set(saved);
         result
     }
 
-    fn observe_now(&self, player: u8) -> Observation {
+    fn observe_now(&self, player: u8, sink: &mut impl ObservationSink) -> Observation {
         let seen = |card| self.seen(card, player, false);
-        let chain = self.core.current_chain.iter().map(|chain| {
+        self.located_cards().into_iter().for_each(|card| sink.card(seen(card)));
+        for chain in &self.core.current_chain {
             let effect = chain.triggering_effect;
-            SeenLink {
+            sink.link(&SeenLink {
                 code: self.cards[self.get_handler(effect)].data.code,
                 controller: chain.triggering_controler,
                 location: chain.triggering_location,
                 sequence: chain.triggering_sequence,
                 description: self.effects[effect].description,
-                targets: chain.target_cards.into_iter().flatten().map(seen).collect(),
-            }
-        });
+                targets: Vec::new(),
+            });
+            chain.target_cards.into_iter().flatten().for_each(|card| sink.target(seen(card)));
+        }
         let prompt = self.prompt();
         let own = prompt.filter(|prompt| prompt.player() == player);
+        if let Some(prompt) = own {
+            self.choices(prompt, player, sink);
+        }
         Observation {
             player,
             turn: self.infos.turn_id,
             turn_player: self.infos.turn_player,
             phase: self.infos.phase,
             lp: [self.player[0].lp, self.player[1].lp],
-            cards: self.located_cards().into_iter().map(seen).collect(),
-            chain: chain.collect(),
             acting: prompt.map(Prompt::player),
             prompt: own,
-            choices: own.map(|prompt| self.choices(prompt, player)).unwrap_or_default(),
             result: self.result,
+            ..Observation::default()
         }
     }
 
     // Every card in a location: per player its Deck, hand, Monster Zones (an Xyz Monster followed by its materials),
     // Spell & Trap Zones, GY, banishment and Extra Deck, each in sequence order.
-    pub(crate) fn located_cards(&self) -> Vec<CardId> {
-        let mut cards = Vec::with_capacity(MAX_CARDS);
+    pub(crate) fn located_cards(&self) -> List<CardId, MAX_CARDS> {
+        let mut cards = List::default();
         for p in 0..2 {
             let player = &self.player[p];
-            cards.extend(player.list_main.iter().chain(&player.list_hand));
+            cards.extend(player.list_main.iter().chain(&player.list_hand).copied());
             for &card in player.list_mzone.iter().chain(&player.list_szone).flatten() {
                 cards.push(card);
                 let mut materials: Cards8 = self.xyz_materials(card).iter().collect();
                 materials.sort_by_key(|&material| self.cards[material].current.sequence);
                 cards.extend(materials);
             }
-            cards.extend(player.list_grave.iter().chain(&player.list_remove).chain(&player.list_extra));
+            cards.extend(
+                player
+                    .list_grave
+                    .iter()
+                    .chain(&player.list_remove)
+                    .chain(&player.list_extra)
+                    .copied(),
+            );
         }
         cards
     }
@@ -234,7 +302,7 @@ impl Duel {
         }
     }
 
-    fn choices(&self, prompt: Prompt, player: u8) -> Vec<Choice> {
+    fn choices(&self, prompt: Prompt, player: u8, sink: &mut impl ObservationSink) {
         let core = &self.core;
         let pick = |cards: &[CardId], index: u16| cards.get(usize::from(index)).map(|&card| self.seen(card, player, true));
         let activation = |index: u16| {
@@ -248,7 +316,10 @@ impl Duel {
             Some(Unit::SelectEffectYesNo(arg)) => (pick(&[arg.card], 0), arg.description),
             _ => (None, 0),
         };
-        let selectable: Cards16 = core.select_cards.iter().chain(&core.unselect_cards).copied().collect();
+        let unselect = |index: u16| {
+            let mut selectable = core.select_cards.iter().chain(&core.unselect_cards);
+            selectable.nth(usize::from(index)).map(|&card| self.seen(card, player, true))
+        };
         let choice = |action: Action| {
             let (card, description) = match action {
                 Action::IdleCommand(IdleCommand::Summon(index)) => (pick(&core.summonable_cards, index), 0),
@@ -260,7 +331,7 @@ impl Duel {
                 | Action::BattleCommand(BattleCommand::Activate(index))
                 | Action::Chain(Some(index)) => activation(index),
                 Action::BattleCommand(BattleCommand::Attack(index)) => (pick(&core.attackable_cards, index), 0),
-                Action::Card(index) if matches!(prompt, Prompt::UnselectCard { .. }) => (pick(&selectable, index), 0),
+                Action::Card(index) if matches!(prompt, Prompt::UnselectCard { .. }) => (unselect(index), 0),
                 Action::Card(index) => (pick(&core.select_cards, index), 0),
                 Action::Option(index) => (None, core.select_options.get(usize::from(index)).copied().unwrap_or(0)),
                 Action::YesNo(_) => question,
@@ -268,7 +339,7 @@ impl Duel {
             };
             Choice { action, card, description }
         };
-        self.legal_actions().into_iter().map(choice).collect()
+        self.extend_legal_actions(&mut Each(|action| sink.choice(choice(action))));
     }
 
     // A duel agreeing with what `player` may know of this one ([Duel::observe]), its hidden cards resampled: the
@@ -289,7 +360,7 @@ impl Duel {
             return Ok(duel);
         };
         if self.core.replay.snapshot.is_none() {
-            let changes = self.unchanged(|_| self.sample(player, rng, pool, database, None))?;
+            let changes = self.unchanged(|| self.sample(player, rng, pool, database, None))?;
             let trace = std::mem::take(&mut duel.trace);
             duel.change(&changes);
             duel.trace = trace;
@@ -298,7 +369,13 @@ impl Duel {
         }
         let (observation, prompt) = (self.observe(player), self.prompt());
         for _ in 0..RERUN_ATTEMPTS {
-            let changes = self.unchanged(|running| self.sample(player, rng, pool, database, running))?;
+            let changes = {
+                let running = self.core.replay.snapshot.as_ref().map(lock);
+                self.unchanged(|| match running.as_deref() {
+                    Some(running) => running.unchanged(|| self.sample(player, rng, pool, database, Some(running))),
+                    None => self.sample(player, rng, pool, database, None),
+                })
+            }?;
             if let Some(snapshot) = &mut duel.core.replay.snapshot {
                 let mut resampled = lock(snapshot).clone();
                 resampled.change(&changes);

@@ -1,7 +1,11 @@
 // Guiding Quem, the Virtuous
 use crate::prelude::*;
+use crate::testing::{DECK, HAND};
 
 const ID: u32 = 45883110;
+
+// In the hand to Normal Summon, with Fallen of Albaz in the Deck to send.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (68468459, DECK)];
 
 pub const LISTED_NAMES: &[u32] = &[CARD_ALBAZ, ID];
 

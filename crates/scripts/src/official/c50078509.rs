@@ -1,5 +1,8 @@
 // Fiendish Chain
+use engine::constants::MSG_CARD_TARGET;
+
 use crate::prelude::*;
+use crate::testing::{Check, MZONE, OPPONENT, SZONE};
 
 struct Procedure;
 
@@ -16,6 +19,10 @@ impl PersistentProcedure for Procedure {
         Ok(())
     }
 }
+
+// Set, to be activated on the opponent's Effect Monster: Elfnote Fortuna.
+pub const SUPPORT: &[(u32, u16)] = &[(50078509, SZONE), (85976588, MZONE | OPPONENT)];
+pub const CHECKS: &[Check] = &[Check::Message(MSG_CARD_TARGET)];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     Persistent::add_procedure::<Procedure>(duel, c);

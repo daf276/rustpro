@@ -1,5 +1,11 @@
 // Code Talker
 use crate::prelude::*;
+use crate::testing::{Check, EXTRA, HAND, MZONE};
+
+// Code Generator on the field and one in the hand as extra material.
+pub const SUPPORT: &[(u32, u16)] = &[(53413628, EXTRA), (30114823, MZONE), (30114823, HAND)];
+// No activated effect.
+pub const CHECKS: &[Check] = &[Check::SpecialSummoned];
 
 struct Procedure;
 

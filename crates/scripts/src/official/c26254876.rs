@@ -1,5 +1,11 @@
 // Gemini Lancer
 use crate::prelude::*;
+use crate::testing::{Check, MZONE};
+
+// On the field twice, to be Normal Summoned again.
+pub const SUPPORT: &[(u32, u16)] = &[(26254876, MZONE), (26254876, MZONE)];
+// The second Normal Summon's hint.
+pub const CHECKS: &[Check] = &[Check::CardHint(64)];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     Gemini::add_procedure(duel, c);

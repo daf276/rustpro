@@ -1,7 +1,11 @@
 // Kewl Tune Track Maker
 use crate::prelude::*;
+use crate::testing::{EXTRA, HAND, MZONE};
 
 const ID: u32 = 42781164;
+
+// Kewl Tune Mix on the field and one in the hand.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, EXTRA), (16509007, MZONE), (16509007, HAND)];
 
 struct Procedure;
 

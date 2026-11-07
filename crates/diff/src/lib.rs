@@ -1,5 +1,6 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
+use std::fmt::Write as _;
 use std::path::Path;
 
 use carddata::{CardDatabase, CardsError, Deck, Pool, TYPE_NORMAL, TYPE_PENDULUM, banlist_limits};
@@ -7,7 +8,9 @@ use engine::{DUEL_MODE_MR5, DuelOptions, PlayerOptions};
 use oracle::{Message, Prompt, Scripts, Status, parse, respond};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
-use scripts::{CARD_SCRIPTS, CLASSIC_CARDS};
+use rayon::prelude::*;
+use scripts::CLASSIC_CARDS;
+use scripts::testing::Check;
 
 pub use scenario::Scenario;
 
@@ -23,6 +26,7 @@ const MSG_SELECT_UNSELECT_CARD: u8 = 26;
 const MSG_MOVE: u8 = 50;
 const MSG_POS_CHANGE: u8 = 53;
 const MSG_SET: u8 = 54;
+const MSG_SWAP: u8 = 55;
 const MSG_SUMMONING: u8 = 60;
 const MSG_SPSUMMONING: u8 = 62;
 const MSG_FLIPSUMMONING: u8 = 64;
@@ -31,6 +35,8 @@ const MSG_CHAINING: u8 = 70;
 const MSG_CHAIN_SOLVED: u8 = 73;
 const MSG_CHAIN_END: u8 = 74;
 const MSG_CHAIN_DISABLED: u8 = 76;
+const MSG_EQUIP: u8 = 93;
+const MSG_CARD_TARGET: u8 = 96;
 const MSG_CARD_HINT: u8 = 160;
 const CHINT_DESC_ADD: u8 = 6;
 const CHINT_DESC_REMOVE: u8 = 7;
@@ -42,9 +48,6 @@ const REASON_SUMMON: u32 = 0x10;
 const REASON_REPLACE: u32 = 0x100_0000;
 const REASON_BATTLE: u32 = 0x20;
 const REASON_RITUAL: u32 = 0x10_0000;
-const REASON_SYNCHRO: u32 = 0x8_0000;
-const MSG_NEW_TURN: u8 = 40;
-const CHINT_RACE: u8 = 3;
 const HINT_REPLAY: u64 = 30;
 
 #[derive(Debug, thiserror::Error)]
@@ -75,32 +78,57 @@ pub enum DiffError {
     Mismatch(Box<Mismatch>),
 }
 
+// The first message the engines disagree on, at `index` in the stream: the last messages both wrote, then each
+// engine's messages from the difference on.
 #[derive(Debug)]
 pub struct Mismatch {
     pub seed: u64,
     pub index: usize,
-    pub oracle: Option<Vec<u8>>,
-    pub engine: Option<Vec<u8>>,
     pub preceding: Vec<Vec<u8>>,
+    pub oracle: Vec<Vec<u8>>,
+    pub engine: Vec<Vec<u8>>,
 }
 
-fn describe(message: Option<&[u8]>) -> String {
+// Message types by number, from ocgapi_constants.h.
+const MESSAGE_NAMES: &str = concat!(
+    "1 RETRY 2 HINT 3 WAITING 4 START 5 WIN 6 UPDATE_DATA 7 UPDATE_CARD 8 REQUEST_DECK 10 SELECT_BATTLECMD 11 ",
+    "SELECT_IDLECMD 12 SELECT_EFFECTYN 13 SELECT_YESNO 14 SELECT_OPTION 15 SELECT_CARD 16 SELECT_CHAIN 18 ",
+    "SELECT_PLACE 19 SELECT_POSITION 20 SELECT_TRIBUTE 21 SORT_CHAIN 22 SELECT_COUNTER 23 SELECT_SUM 24 ",
+    "SELECT_DISFIELD 25 SORT_CARD 26 SELECT_UNSELECT_CARD 30 CONFIRM_DECKTOP 31 CONFIRM_CARDS 32 SHUFFLE_DECK 33 ",
+    "SHUFFLE_HAND 34 REFRESH_DECK 35 SWAP_GRAVE_DECK 36 SHUFFLE_SET_CARD 37 REVERSE_DECK 38 DECK_TOP 39 ",
+    "SHUFFLE_EXTRA 40 NEW_TURN 41 NEW_PHASE 42 CONFIRM_EXTRATOP 50 MOVE 53 POS_CHANGE 54 SET 55 SWAP 56 ",
+    "FIELD_DISABLED 60 SUMMONING 61 SUMMONED 62 SPSUMMONING 63 SPSUMMONED 64 FLIPSUMMONING 65 FLIPSUMMONED 70 ",
+    "CHAINING 71 CHAINED 72 CHAIN_SOLVING 73 CHAIN_SOLVED 74 CHAIN_END 75 CHAIN_NEGATED 76 CHAIN_DISABLED 80 ",
+    "CARD_SELECTED 81 RANDOM_SELECTED 83 BECOME_TARGET 90 DRAW 91 DAMAGE 92 RECOVER 93 EQUIP 94 LPUPDATE 95 ",
+    "UNEQUIP 96 CARD_TARGET 97 CANCEL_TARGET 100 PAY_LPCOST 101 ADD_COUNTER 102 REMOVE_COUNTER 110 ATTACK 111 ",
+    "BATTLE 112 ATTACK_DISABLED 113 DAMAGE_STEP_START 114 DAMAGE_STEP_END 120 MISSED_EFFECT 121 BE_CHAIN_TARGET ",
+    "122 CREATE_RELATION 123 RELEASE_RELATION 130 TOSS_COIN 131 TOSS_DICE 132 ROCK_PAPER_SCISSORS 133 HAND_RES 140 ",
+    "ANNOUNCE_RACE 141 ANNOUNCE_ATTRIB 142 ANNOUNCE_CARD 143 ANNOUNCE_NUMBER 160 CARD_HINT 161 TAG_SWAP 162 ",
+    "RELOAD_FIELD 163 AI_NAME 164 SHOW_HINT 165 PLAYER_HINT 170 MATCH_KILL 180 CUSTOM_MSG 190 REMOVE_CARDS",
+);
+
+pub fn message_name(kind: u8) -> &'static str {
+    let mut words = MESSAGE_NAMES.split(' ');
+    std::iter::from_fn(|| Some((words.next()?, words.next()?)))
+        .find(|&(number, _)| number.parse() == Ok(kind))
+        .map_or("?", |(_, name)| name)
+}
+
+fn describe(message: &[u8]) -> String {
     match message {
-        Some([id, body @ ..]) => format!("type {id}: {body:02x?}"),
-        Some([]) => "empty".to_owned(),
-        None => "none".to_owned(),
+        [kind, body @ ..] => format!("MSG_{} {body:02x?}", message_name(*kind)),
+        [] => "empty".to_owned(),
     }
 }
 
 impl fmt::Display for Mismatch {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "seed {}, message {}:", self.seed, self.index)?;
-        writeln!(f, "  oracle {}", describe(self.oracle.as_deref()))?;
-        writeln!(f, "  engine {}", describe(self.engine.as_deref()))?;
-        writeln!(f, "  preceding:")?;
-        self.preceding
-            .iter()
-            .try_for_each(|message| writeln!(f, "    {}", describe(Some(message))))
+        writeln!(f, "seed {}, message {}", self.seed, self.index)?;
+        for (label, messages) in [("both", &self.preceding), ("oracle", &self.oracle), ("engine", &self.engine)] {
+            writeln!(f, "  {label}:")?;
+            messages.iter().try_for_each(|message| writeln!(f, "    {}", describe(message)))?;
+        }
+        Ok(())
     }
 }
 
@@ -137,19 +165,17 @@ pub struct Tally {
     pub ritual_materials: BTreeMap<u32, u32>,
     // Cards moved as material per card code and the location they left.
     pub materials: BTreeMap<(u32, u8), u32>,
-    // Hints added to cards per description (MSG_CARD_HINT with CHINT_DESC_ADD).
-    pub card_hints: BTreeMap<u64, u32>,
-    // Messages per type.
-    pub messages: BTreeMap<u8, u32>,
+    // Hints added to cards (MSG_CARD_HINT with CHINT_DESC_ADD) per description and card code.
+    pub card_hints: BTreeMap<(u64, u32), u32>,
+    // Messages per type and the code of the card they are about (see `card_of`), 0 for none.
+    pub messages: BTreeMap<(u8, u32), u32>,
+    // The code last seen at each (controller, location, sequence), for messages that give a card by its place.
+    places: BTreeMap<(u8, u8, u32), u32>,
     // Normal Summons and Sets per card code and number of tributes released for them.
     pub summon_tributes: BTreeMap<(u32, u32), u32>,
     pub set_tributes: BTreeMap<(u32, u32), u32>,
     // Cards destroyed in place of others (MSG_MOVE with REASON_REPLACE) per card code.
     pub replaced: BTreeMap<u32, u32>,
-    // Synchro materials moved in a turn after a race was declared on a card (CHINT_RACE, Genomix Fighter's
-    // EFFECT_SYNCHRO_CHECK).
-    pub declared_race_materials: u32,
-    race_declared: bool,
     tributes_pending: u32,
     pub chain_disabled: u32,
     // The card code and effect description of the current chain's links.
@@ -186,6 +212,36 @@ impl Tally {
         }
     }
 
+    // Records where the messages that give a card's code put it: (offset of the code, offset of its location_info).
+    fn track(&mut self, message: &[u8]) {
+        let moves: &[(usize, usize)] = match message.first() {
+            Some(&MSG_MOVE) => &[(1, 15)],
+            Some(&(MSG_SUMMONING | MSG_SPSUMMONING | MSG_FLIPSUMMONING | MSG_SET)) => &[(1, 5)],
+            Some(&MSG_SWAP) => &[(1, 19), (15, 5)],
+            _ => &[],
+        };
+        for &(code, place) in moves {
+            if let (Some(code), Some(place)) = (read_u32(message, code), read_place(message, place)) {
+                self.places.insert(place, code);
+            }
+        }
+    }
+
+    // The code of the card a message is about: the first card of MSG_EQUIP and MSG_CARD_TARGET, the hinted card, or
+    // the card a message names by code first; 0 for none or a card in an unknown place.
+    fn card_of(&self, message: &[u8]) -> u32 {
+        let code = match message.first() {
+            Some(&(MSG_EQUIP | MSG_CARD_TARGET | MSG_CARD_HINT)) => {
+                read_place(message, 1).and_then(|place| self.places.get(&place).copied())
+            }
+            Some(
+                &(MSG_MOVE | MSG_POS_CHANGE | MSG_SET | MSG_SWAP | MSG_SUMMONING | MSG_SPSUMMONING | MSG_FLIPSUMMONING | MSG_CHAINING),
+            ) => read_u32(message, 1),
+            _ => None,
+        };
+        code.unwrap_or(0)
+    }
+
     fn count(&mut self, message: &[u8]) {
         self.count_chain(message);
         if let [MSG_SELECT_SUM, _, overflow, ..] = message
@@ -193,16 +249,9 @@ impl Tally {
         {
             *count += 1;
         }
+        self.track(message);
         if let Some(&kind) = message.first() {
-            *self.messages.entry(kind).or_default() += 1;
-        }
-        match message {
-            [MSG_NEW_TURN, ..] => self.race_declared = false,
-            [MSG_CARD_HINT, _, _, _, _, _, _, _, _, _, _, CHINT_RACE, ..] => self.race_declared = true,
-            [MSG_MOVE, .., r0, r1, r2, r3] if self.race_declared && u32::from_ne_bytes([*r0, *r1, *r2, *r3]) & REASON_SYNCHRO != 0 => {
-                self.declared_race_materials += 1;
-            }
-            _ => {}
+            *self.messages.entry((kind, self.card_of(message))).or_default() += 1;
         }
         if let [MSG_MOVE, a, b, c, d, .., e, f, g, h] = message
             && u32::from_ne_bytes([*e, *f, *g, *h]) & REASON_REPLACE != 0
@@ -235,7 +284,8 @@ impl Tally {
         if let [MSG_CARD_HINT, _, _, _, _, _, _, _, _, _, _, CHINT_DESC_ADD, description @ ..] = message
             && let Ok(description) = <[u8; 8]>::try_from(description)
         {
-            *self.card_hints.entry(u64::from_ne_bytes(description)).or_default() += 1;
+            let card = self.card_of(message);
+            *self.card_hints.entry((u64::from_ne_bytes(description), card)).or_default() += 1;
         }
         // The code, the previous location_info (controller, location, sequence, position), the current one and the reason.
         if let [MSG_MOVE, a, b, c, d, _, location, .., e, f, g, h] = message
@@ -294,13 +344,21 @@ impl std::ops::Add for Tally {
             summon_tributes: merge_counts(self.summon_tributes, other.summon_tributes),
             set_tributes: merge_counts(self.set_tributes, other.set_tributes),
             replaced: merge_counts(self.replaced, other.replaced),
-            declared_race_materials: self.declared_race_materials + other.declared_race_materials,
-            race_declared: false,
+            places: BTreeMap::new(),
             tributes_pending: 0,
             chain_disabled: self.chain_disabled + other.chain_disabled,
             chain: [(0, 0); 16],
         }
     }
+}
+
+fn read_u32(message: &[u8], at: usize) -> Option<u32> {
+    Some(u32::from_ne_bytes(message.get(at..at + 4)?.try_into().ok()?))
+}
+
+// The controller, location and sequence of the location_info at `at`.
+fn read_place(message: &[u8], at: usize) -> Option<(u8, u8, u32)> {
+    Some((*message.get(at)?, *message.get(at + 1)?, read_u32(message, at + 2)?))
 }
 
 fn merge_counts<K: Ord>(counts: BTreeMap<K, u32>, other: BTreeMap<K, u32>) -> BTreeMap<K, u32> {
@@ -317,8 +375,8 @@ pub struct Vendor {
     pub effect_cards: Vec<u32>,
     // A fixed deck both players play, shuffled per duel, in place of random pool decks.
     pub deck: Option<Deck>,
-    // If not empty, every duel is a scenario for one of these cards in turn.
-    pub scenario_cards: Vec<u32>,
+    // The cards a scenario places at random besides the card under test and its support.
+    pub scenario_others: Vec<u32>,
 }
 
 impl Vendor {
@@ -340,7 +398,7 @@ impl Vendor {
             pool,
             effect_cards: Vec::new(),
             deck: None,
-            scenario_cards: Vec::new(),
+            scenario_others: Vec::new(),
         })
     }
 
@@ -359,18 +417,16 @@ impl Vendor {
         Ok(Self { deck: Some(deck), ..base })
     }
 
-    // Elfnote mirror matches starting from a scenario for each ported card in turn.
+    // Elfnote mirror matches starting from a scenario. The other cards placed come from the Elfnote deck and the classic
+    // cards, which never change, so that new ports leave every scenario as it was.
     pub fn scenarios(vendor: &Path) -> Result<Self, DiffError> {
+        let base = Self::elfnote(vendor)?;
+        let deck = base.deck.iter().flat_map(|deck| deck.main.iter().chain(&deck.extra));
+        let others: BTreeSet<u32> = deck.chain(&CLASSIC_CARDS).copied().collect();
         Ok(Self {
-            scenario_cards: CARD_SCRIPTS.iter().map(|&(code, _)| code).collect(),
-            ..Self::elfnote(vendor)?
+            scenario_others: others.into_iter().collect(),
+            ..base
         })
-    }
-
-    // The card a seed's scenario tests.
-    pub fn scenario_card(&self, seed: u64) -> Option<u32> {
-        let index = seed.checked_rem(self.scenario_cards.len() as u64)?;
-        self.scenario_cards.get(index as usize).copied()
     }
 
     fn deck(&self, rng: &mut StdRng) -> Deck {
@@ -384,11 +440,18 @@ impl Vendor {
 // Plays one seeded duel in the oracle and the engine with the same decks and random responses and compares every
 // message up to MSG_WIN.
 pub fn diff_duel(vendor: &'static Vendor, seed: u64) -> Result<Report, DiffError> {
+    play(vendor, seed, None)
+}
+
+// Scenario `index` of `card`, seeded by both alone, so that adding ports changes no other card's scenarios.
+pub fn diff_scenario(vendor: &'static Vendor, card: u32, index: u32) -> Result<Report, DiffError> {
+    play(vendor, u64::from(card) << 32 | u64::from(index), Some(card))
+}
+
+fn play(vendor: &'static Vendor, seed: u64, card: Option<u32>) -> Result<Report, DiffError> {
     let mut rng = StdRng::seed_from_u64(seed);
     let duel_seed: [u64; 4] = rng.random();
-    let scenario = vendor
-        .scenario_card(seed)
-        .map(|card| Scenario::generate(card, &vendor.scenario_cards, &vendor.cards, &mut rng));
+    let scenario = card.map(|card| Scenario::generate(card, &vendor.scenario_others, &vendor.cards, &mut rng));
     let mut oracle = oracle::Duel::new(&vendor.cards, &vendor.scripts, duel_seed)?;
     let [team1, team2] = scenario
         .as_ref()
@@ -418,6 +481,9 @@ pub fn diff_duel(vendor: &'static Vendor, seed: u64) -> Result<Report, DiffError
     engine.start();
     engine.process();
     let (mut compared, mut decisions, mut tally): (Vec<Vec<u8>>, u32, Tally) = (Vec::new(), 0, Tally::default());
+    for (place, code) in scenario.iter().flat_map(Scenario::places) {
+        tally.places.entry(place).or_insert(code);
+    }
     loop {
         let mut expected = Vec::new();
         let status = loop {
@@ -434,20 +500,18 @@ pub fn diff_duel(vendor: &'static Vendor, seed: u64) -> Result<Report, DiffError
         let trace = engine.take_trace();
         let mut actual = frames(&trace);
         sort_hint_removals(&mut actual);
-        let mismatch = |compared: &[Vec<u8>], oracle: Option<&Vec<u8>>, engine: Option<&[u8]>| {
-            let preceding = compared.iter().skip(compared.len().saturating_sub(CONTEXT)).cloned().collect();
+        let mismatch = |compared: &[Vec<u8>], from: usize| {
             DiffError::Mismatch(Box::new(Mismatch {
                 seed,
                 index: compared.len(),
-                oracle: oracle.cloned(),
-                engine: engine.map(<[u8]>::to_vec),
-                preceding,
+                preceding: compared.iter().skip(compared.len().saturating_sub(CONTEXT)).cloned().collect(),
+                oracle: expected.iter().skip(from).take(CONTEXT).cloned().collect(),
+                engine: actual.iter().skip(from).take(CONTEXT).map(|message| message.to_vec()).collect(),
             }))
         };
         for (index, message) in expected.iter().enumerate() {
-            let engine_message = actual.get(index).copied();
-            if engine_message != Some(message.as_slice()) {
-                return Err(mismatch(&compared, Some(message), engine_message));
+            if actual.get(index).copied() != Some(message.as_slice()) {
+                return Err(mismatch(&compared, index));
             }
             compared.push(message.clone());
             tally.count(message);
@@ -461,8 +525,8 @@ pub fn diff_duel(vendor: &'static Vendor, seed: u64) -> Result<Report, DiffError
                 });
             }
         }
-        if let Some(&extra) = actual.get(expected.len()) {
-            return Err(mismatch(&compared, None, Some(extra)));
+        if actual.len() > expected.len() {
+            return Err(mismatch(&compared, expected.len()));
         }
         match status {
             Status::End => return Err(DiffError::Ended { seed }),
@@ -510,4 +574,82 @@ fn frames(mut buffer: &[u8]) -> Vec<&[u8]> {
         Some(message)
     })
     .collect()
+}
+
+// Scenarios per card in the default test (about 1000 for the 78 cards of phase 4a) and in the ignored one.
+pub const SCENARIOS: u32 = 13;
+pub const SCENARIOS_FULL: u32 = 64;
+
+// Scenarios 0..count of each card, in parallel.
+pub fn diff_cards(vendor: &'static Vendor, cards: &[u32], count: u32) -> Vec<Vec<Result<Report, DiffError>>> {
+    cards
+        .par_iter()
+        .map(|&card| (0..count).into_par_iter().map(|index| diff_scenario(vendor, card, index)).collect())
+        .collect()
+}
+
+// How often a card's scenarios show what the check asks for.
+pub fn check_count(check: Check, card: u32, tally: &Tally) -> u32 {
+    fn get<K: Ord>(counts: &BTreeMap<K, u32>, key: K) -> u32 {
+        counts.get(&key).copied().unwrap_or(0)
+    }
+    match check {
+        Check::Resolves => tally.resolutions(card),
+        Check::ResolvesEffect(description) => get(&tally.effects, (card, description)),
+        Check::SpecialSummoned => get(&tally.special_summons, card),
+        Check::RitualMaterial => get(&tally.ritual_materials, card),
+        Check::MaterialFrom(location) => get(&tally.materials, (card, location as u8)),
+        Check::CardHint(description) => get(&tally.card_hints, (description, card)),
+        Check::Message(kind) => get(&tally.messages, (kind, card)) + get(&tally.messages, (kind, 0)),
+        Check::TributeSummoned(tributes) => get(&tally.summon_tributes, (card, tributes)),
+        Check::TributeSet(tributes) => get(&tally.set_tributes, (card, tributes)),
+        Check::Replaced => get(&tally.replaced, card),
+        Check::Report(check) => check_count(*check, card, tally),
+    }
+}
+
+// A card's scenarios written out for the card command and the scenario tests, and whether every one diffs clean and
+// every check passes, both over the first SCENARIOS (the default test) and over all of them.
+pub fn summarize(card: u32, results: &[Result<Report, DiffError>]) -> (bool, String) {
+    let tally = |count: usize| {
+        let reports = results.iter().take(count).flatten();
+        reports.fold(Tally::default(), |tally, report| tally + report.tally.clone())
+    };
+    let first = results.len().min(SCENARIOS as usize);
+    let (short, full) = (tally(first), tally(results.len()));
+    let failures: Vec<(usize, &DiffError)> = results
+        .iter()
+        .enumerate()
+        .filter_map(|(index, result)| Some((index, result.as_ref().err()?)))
+        .collect();
+    let mut passed = failures.is_empty();
+    let mut out = String::new();
+    let checks = scripts::card(card).map_or(&[Check::Resolves][..], |script| script.checks);
+    for &check in checks {
+        let [in_first, in_all] = [&short, &full].map(|tally| check_count(check, card, tally));
+        let ok = matches!(check, Check::Report(_)) || (in_first > 0 && in_all > 0);
+        passed &= ok;
+        let status = if ok { "" } else { " FAIL" };
+        writeln!(out, "  {check:?}: {in_first} in {first}, {in_all} in {}{status}", results.len()).ok();
+    }
+    let resolved = full.effects.range((card, 0)..=(card, u64::MAX)).map(|(&(_, description), count)| {
+        match description.checked_sub(u64::from(card) << 20) {
+            Some(index) if index < 16 => format!("#{index} {count}"),
+            _ => format!("{description:#x} {count}"),
+        }
+    });
+    writeln!(out, "  resolved in {}: {}", results.len(), resolved.collect::<Vec<_>>().join(", ")).ok();
+    if let Some((index, error)) = failures.first() {
+        let others: Vec<String> = failures.iter().skip(1).map(|(index, _)| index.to_string()).collect();
+        writeln!(out, "  scenario {index}: {}", error.to_string().trim_end()).ok();
+        if !others.is_empty() {
+            writeln!(out, "  also failing: scenarios {}", others.join(", ")).ok();
+        }
+    }
+    let verdict = if passed { "pass" } else { "FAIL" };
+    let clean = results.len() - failures.len();
+    (
+        passed,
+        format!("{card} {verdict}: {clean} of {} scenarios clean\n{out}", results.len()),
+    )
 }

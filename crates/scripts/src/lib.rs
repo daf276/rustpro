@@ -27,11 +27,12 @@ mod proc_synchro;
 mod proc_union;
 mod proc_workaround;
 mod proc_xyz;
+pub mod testing;
 mod utility;
 
 use engine::{Duel, Library};
 
-pub use official::{CARD_SCRIPTS, CLASSIC_CARDS, card_script};
+pub use official::{CARD_SCRIPTS, CLASSIC_CARDS, CardScript, card, card_script};
 
 pub mod prelude {
     pub use engine::{Args, CardId, CardSet, CounterFilter, Duel, EffectId, ExtraMaterialCall, FusionCheck, Script, Value};

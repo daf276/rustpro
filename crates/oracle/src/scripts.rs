@@ -41,6 +41,10 @@ impl Scripts {
         Ok(Self { sources })
     }
 
+    pub fn contains(&self, name: &str) -> bool {
+        self.sources.contains_key(name)
+    }
+
     pub(crate) fn load_into(&self, duel: ocgcore_sys::Duel, name: &CStr) -> bool {
         let Some(source) = name.to_str().ok().and_then(|name| self.sources.get(name)) else {
             return false;

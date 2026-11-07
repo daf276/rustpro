@@ -1,5 +1,8 @@
 // Salamandra
+use engine::constants::MSG_EQUIP;
+
 use crate::prelude::*;
+use crate::testing::{Check, HAND, MZONE};
 
 struct Procedure;
 
@@ -8,6 +11,10 @@ impl EquipProcedure for Procedure {
         c.is_attribute(duel, ATTRIBUTE_FIRE)
     }
 }
+
+// In the hand, to be activated on a FIRE monster: Elfnote Lucina.
+pub const SUPPORT: &[(u32, u16)] = &[(32268901, HAND), (13597785, MZONE)];
+pub const CHECKS: &[Check] = &[Check::Message(MSG_EQUIP)];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     Equip::add_procedure::<Procedure>(duel, c);

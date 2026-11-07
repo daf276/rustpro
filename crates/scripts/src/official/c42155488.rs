@@ -1,7 +1,11 @@
 // Genomix Fighter
 use crate::prelude::*;
+use crate::testing::{EXTRA, HAND, MZONE};
 
 const ID: u32 = 42155488;
+
+// A Level 3 Tuner without tribute for Kuibelt the Blade Dragon with Kojikocy, and on the field to declare a race.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (1184620, MZONE), (87837090, EXTRA)];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e1 = duel.create_effect(c);

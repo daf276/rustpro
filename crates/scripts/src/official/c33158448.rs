@@ -1,5 +1,6 @@
 // F.A. Dawn Dragster
 use crate::prelude::*;
+use crate::testing::Check;
 
 const ID: u32 = 33158448;
 
@@ -13,6 +14,10 @@ impl SynchroProcedure for Procedure {
         Synchro::non_tuner(c, duel, sc, tp, aux::TRUE)
     }
 }
+
+// The level-up needs an "F.A." Spell/Trap: F.A. Downforce.
+pub const SUPPORT: &[(u32, u16)] = &[(66322203, 0)];
+pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.enable_revive_limit(duel);

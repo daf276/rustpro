@@ -1,7 +1,13 @@
 // Kewl Tune Mix
 use crate::prelude::*;
+use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 16509007;
+
+// Another in the hand is its hand Synchro material for Kewl Tune Track Maker.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, HAND), (42781164, EXTRA)];
+// EFFECT_HAND_SYNCHRO.
+pub const CHECKS: &[Check] = &[Check::MaterialFrom(HAND)];
 
 struct TunerFromHand;
 

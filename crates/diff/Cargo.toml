@@ -10,10 +10,8 @@ engine = { path = "../engine" }
 oracle = { path = "../oracle" }
 scripts = { path = "../scripts" }
 rand = { version = "0.9", default-features = false, features = ["alloc", "std_rng"] }
-thiserror = { version = "2", default-features = false }
-
-[dev-dependencies]
 rayon = { version = "1", default-features = false }
+thiserror = { version = "2", default-features = false }
 
 [lints]
 workspace = true

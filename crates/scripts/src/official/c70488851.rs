@@ -1,8 +1,13 @@
 // Vidolium the Unstable Power Patron of Unity
 use crate::prelude::*;
+use crate::testing::Check;
 
 const ID: u32 = 70488851;
 const TYPES_FSX: u32 = TYPE_FUSION | TYPE_SYNCHRO | TYPE_XYZ;
+
+// Special Summoned by returning a Fusion, a Synchro and an Xyz Monster: Albion, Chaos Angel, Gauntlet Launcher.
+pub const SUPPORT: &[(u32, u16)] = &[(87746184, 0), (22850702, 0), (15561463, 0)];
+pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 3))];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.enable_revive_limit(duel);

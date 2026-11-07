@@ -1,7 +1,13 @@
 // Code Generator
 use crate::prelude::*;
+use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 30114823;
+
+// Another in the hand is extra Link material for Code Talker.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, HAND), (53413628, EXTRA)];
+// EFFECT_EXTRA_MATERIAL.
+pub const CHECKS: &[Check] = &[Check::MaterialFrom(HAND)];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e1 = duel.create_effect(c);

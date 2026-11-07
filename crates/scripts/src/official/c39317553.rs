@@ -1,5 +1,6 @@
 // Drill Driver Vespenato
 use crate::prelude::*;
+use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 39317553;
 
@@ -20,6 +21,11 @@ impl XyzProcedure for Procedure {
         Ok(true)
     }
 }
+
+// In the Extra Deck, Xyz Summoned on a Rank 4 Xyz Monster on the field: Tornado Dragon.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, EXTRA), (6983839, MZONE)];
+// Its trigger needs it Xyz Summoned and then destroyed by an opponent's card effect.
+pub const CHECKS: &[Check] = &[Check::SpecialSummoned];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     Xyz::add_procedure::<Procedure>(duel, c);

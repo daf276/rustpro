@@ -1,5 +1,6 @@
 // Extox Hydra
 use crate::prelude::*;
+use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 26050548;
 
@@ -12,6 +13,11 @@ impl FusionMixRep for Materials {
     const MINC: i32 = 2;
     const MAXC: i32 = 99;
 }
+
+// In the Extra Deck with Polymerization, and on the field to attack.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, EXTRA), (24094653, HAND), (ID, MZONE)];
+// Its draw needs 1000 or more battle damage from it.
+pub const CHECKS: &[Check] = &[Check::SpecialSummoned];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.enable_revive_limit(duel);

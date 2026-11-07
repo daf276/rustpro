@@ -1693,6 +1693,7 @@ impl Duel {
                 }
                 self.collect_command_activations(true);
                 self.core.attackable_cards.clear();
+                let mut must_attack = false;
                 if self
                     .is_player_affected_by_effect(turn_player, EFFECT_CANNOT_ATTACK_ANNOUNCE)
                     .is_none()
@@ -1706,15 +1707,18 @@ impl Duel {
                             continue;
                         }
                         self.core.attackable_cards.push(card);
-                        // EFFECT_FIRST_ATTACK narrows the list; EFFECT_MUST_ATTACK also takes away Main Phase 2 and the End Phase.
+                        // EFFECT_FIRST_ATTACK narrows the list.
                         unported!(self, self.is_affected_by_effect(card, EFFECT_FIRST_ATTACK));
-                        unported!(self, self.is_affected_by_effect(card, EFFECT_MUST_ATTACK));
+                        must_attack |= self.is_affected_by_effect(card, EFFECT_MUST_ATTACK).is_some();
                     }
                 }
                 self.core.to_m2 = !self.is_flag(DUEL_NO_MAIN_PHASE_2);
                 self.core.to_ep = true;
-                if self.is_player_affected_by_effect(turn_player, EFFECT_CANNOT_M2).is_some() || self.core.force_turn_end {
+                if must_attack || self.is_player_affected_by_effect(turn_player, EFFECT_CANNOT_M2).is_some() || self.core.force_turn_end {
                     self.core.to_m2 = false;
+                }
+                if must_attack {
+                    self.core.to_ep = false;
                 }
                 self.core.attack_cancelable = true;
                 self.core.attack_cost_paid = 0;
@@ -1982,14 +1986,15 @@ impl Duel {
                 }
                 if self.is_flag(DUEL_STORE_ATTACK_REPLAYS) && !self.core.chain_attack {
                     self.returns.set_i32(0, 0);
-                } else {
-                    // A monster that must attack replays without asking.
-                    unported!(self, self.is_affected_by_effect(attacker, EFFECT_MUST_ATTACK));
+                } else if self.is_affected_by_effect(attacker, EFFECT_MUST_ATTACK).is_none() {
                     self.emplace_process(SelectYesNo {
                         playerid: turn_player,
                         description: 30,
                         ..SelectYesNo::default()
                     });
+                } else {
+                    self.returns.set_i32(0, 1);
+                    self.core.attack_cancelable = false;
                 }
                 false
             }

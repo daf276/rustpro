@@ -54,8 +54,15 @@ struct Search {
     max: usize,
 }
 
+// Xyz.ProcCancellable as script state, set by the target of the alternative procedure; keys 1-6 are taken.
+const PROC_CANCELLABLE: u64 = 7;
+
 impl Xyz {
     pub const INFINITE_MATS: usize = usize::MAX;
+
+    pub fn proc_cancellable(duel: &Duel) -> bool {
+        duel.get_script_state(PROC_CANCELLABLE) != 0
+    }
 
     pub fn add_procedure<P: XyzProcedure>(duel: &mut Duel, c: CardId) {
         let chk1 = duel.create_effect(c);
@@ -333,13 +340,13 @@ impl Xyz {
         }
     }
 
-    // Xyz.ProcCancellable, which the target sets, is read only by the xyzop functions of cards that are not ported.
     fn target2<P: XyzProcedure>(duel: &mut Duel, a: &Args, _: i32, _: Option<CardId>) -> Script<bool> {
         let (e, tp, must, og) = (a.e, a.tp, a.must, a.materials);
         let (Some(c), Some(alterf)) = (a.c, P::ALTERF) else {
             return Ok(false);
         };
         let cancelable = og.is_none() && duel.is_summon_cancelable();
+        duel.set_script_state(PROC_CANCELLABLE, i64::from(cancelable));
         let mg = og.unwrap_or_else(|| duel.get_field_group(tp, LOCATION_MZONE, LOCATION_MZONE));
         let mut mustg = aux::get_must_be_material_group(duel, tp, og, tp, Some(c), Some(mg), REASON_XYZ);
         if let Some(must) = must {

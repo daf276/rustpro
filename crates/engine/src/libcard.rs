@@ -202,6 +202,14 @@ impl CardId {
         self.is_set_card(duel, setcodes)
     }
 
+    pub fn get_previous_type_on_field(self, duel: &Duel) -> u32 {
+        duel.cards[self].previous_type
+    }
+
+    pub fn reset_effect(self, duel: &mut Duel, code: u32, reset_type: u32) {
+        duel.reset(self, code, reset_type);
+    }
+
     pub fn get_previous_sequence(self, duel: &Duel) -> u32 {
         duel.cards[self].previous.sequence
     }
@@ -819,6 +827,10 @@ impl CardId {
         } else {
             zone
         }
+    }
+
+    pub fn get_reason_effect(self, duel: &Duel) -> Option<EffectId> {
+        duel.cards[self].current.reason_effect
     }
 
     pub fn get_reason_card(self, duel: &Duel) -> Option<CardId> {

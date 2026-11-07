@@ -341,6 +341,7 @@ impl Deref for StaticData {
 pub struct Card {
     pub data: StaticData,
     pub previous: CardState,
+    pub previous_type: u32,
     pub temp: CardState,
     pub current: CardState,
     pub owner: u8,

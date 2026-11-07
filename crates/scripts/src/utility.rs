@@ -62,6 +62,10 @@ pub mod aux {
         move |c, duel| c.is_faceup(duel) && filter(c, duel)
     }
 
+    pub fn lnklimit(_: &Duel, _: EffectId, _: Option<EffectId>, _: u8, sum_type: u32, _: u8, _: u8) -> bool {
+        sum_type & SUMMON_TYPE_LINK == SUMMON_TYPE_LINK
+    }
+
     pub fn nvfilter(c: CardId, duel: &Duel) -> bool {
         c.is_has_effect(duel, EFFECT_NECRO_VALLEY).is_none()
     }

@@ -105,6 +105,9 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   `PLAYER_NONE` for a player.
   A nil count is the C++ default, not 1: `Duel.IsPlayerCanDraw(tp)` checks a count of 0. Some Lua helpers shift their
   arguments by type: `Duel.CheckReleaseGroupCost(tp,f,1,true,...)` passes `true` as `use_hand`, so it is min 1, max 1.
+  Port the Lua's own argument slips as the core reads them (`scriptlib.h` `lua_get`): a number in a card or group slot
+  is nil, so `GetMatchingGroup(Card.IsAbleToRemove,tp,0,LOCATION_ONFIELD,1,handler,tp,POS_FACEDOWN)` checks player
+  1 with the default position and reason `tp` (c40080312).
 - Functions that can prompt or yield return `Script<T>`; propagate with `?`. A target whose Lua takes no `chkc`
   ignores it (no early return on `chkc.is_some()`). An argument that reads the duel is computed before a call that
   takes `&mut Duel` (`let turn = duel.get_turn_count(); e1.set_label(duel, turn)`). A target or cost returns `Ok(chk0)` for

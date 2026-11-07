@@ -91,8 +91,10 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - An optimisation must never skip or add an effect lookup the Lua makes. A conditional effect gets a new id each
   time it becomes available and `filter_effect` orders effects by id, so a skipped or extra lookup renumbers effects
   later; random play rarely shows it. Skip only work that looks nothing up.
-- A Lua check that registers or resets effects or calls `AssumeProperty` (inside a summon condition, material filter
-  or value) cannot run on `&Duel` yet; stop and report such a card.
+- A Lua check that registers and resets effects inside a condition, material filter or value runs through
+  `duel.check_mut(|duel| ...)` (see its uses in `proc_synchro.rs` and `proc_link.rs`), only when the Lua would mutate.
+  `AssumeProperty` exists for race only. A check that leaves state behind (e.g. a condition setting its effect's
+  label) is not supported yet; stop and report such a card.
 
 ## Code style
 

@@ -1069,9 +1069,8 @@ impl Duel {
             check_target = None;
             Container::Target
         } else if effect_type & EFFECT_TYPE_XMATERIAL != 0 {
-            // The effects a material gives its Xyz Monster come with the cards that register them; until then every
-            // lookup of the materials' xmaterial_effect finds nothing.
-            self.reach_unported(concat!(file!(), ":", line!()));
+            // The effects an Xyz material also gives the field are applied when it is attached, which no card needs yet.
+            unported!(self, (effect_type & EFFECT_TYPE_FIELD != 0).then_some(effect));
             check_target = self.cards[card].overlay_target;
             Container::XMaterial
         } else if effect_type & EFFECT_TYPE_FIELD != 0 {
@@ -1468,6 +1467,10 @@ impl Duel {
                     .filter(|&effect| self.is_available(effect) && self.is_affect_by_effect(card, Some(effect))),
             );
         }
+        effects.extend(
+            self.xmaterial_effects(card, code)
+                .filter(|&effect| self.is_available(effect) && self.is_affect_by_effect(card, Some(effect))),
+        );
         effects.extend(registry.equal_range(Container::Aura, None, code).filter(|&effect| {
             !self.effects[effect].is_flag(EFFECT_FLAG_PLAYER_TARGET)
                 && self.is_available(effect)
@@ -1482,6 +1485,21 @@ impl Duel {
         self.equiping_cards(card)
             .into_iter()
             .flat_map(move |equip| self.field_effects.registry.equal_range(Container::Equip, Some(equip), code))
+    }
+
+    // The effects of `code` of the card's Xyz materials in overlay order (xmaterial_effect of xyz_materials), without those that also
+    // apply to the field. Nothing is attached in most duels.
+    pub(crate) fn xmaterial_effects(&self, card: CardId, code: u32) -> impl Iterator<Item = EffectId> + '_ {
+        let mut materials: Vec<CardId> = if self.overlay_cards.is_empty() {
+            Vec::new()
+        } else {
+            self.xyz_materials(card).into_iter().collect()
+        };
+        materials.sort_by_key(|&material| self.cards[material].current.sequence);
+        materials
+            .into_iter()
+            .flat_map(move |material| self.field_effects.registry.equal_range(Container::XMaterial, Some(material), code))
+            .filter(|&effect| self.effects[effect].effect_type & EFFECT_TYPE_FIELD == 0)
     }
 
     pub(crate) fn equiping_cards(&self, card: CardId) -> CardSet {
@@ -1542,6 +1560,10 @@ impl Duel {
             self.equip_effects(card, code)
                 .filter(|&effect| self.is_available(effect) && self.is_affect_by_effect(card, Some(effect))),
         );
+        effects.extend(
+            self.xmaterial_effects(card, code)
+                .filter(|&effect| self.is_available(effect) && self.is_affect_by_effect(card, Some(effect))),
+        );
         effects.extend(registry.equal_range(Container::Aura, None, code).filter(|&effect| {
             !self.effects[effect].is_flag(EFFECT_FLAG_PLAYER_TARGET)
                 && self.effect_is_target(effect, card)
@@ -1561,6 +1583,7 @@ impl Duel {
         if !self.equip_cards.is_empty() {
             effects.extend(self.equip_effects(card, code));
         }
+        effects.extend(self.xmaterial_effects(card, code));
         effects.sort_by_key(|&effect| self.effects.id(effect));
         effects
     }
@@ -1572,6 +1595,7 @@ impl Duel {
         if !self.equip_cards.is_empty() {
             effects.extend(self.equip_effects(card, EFFECT_IMMUNE_EFFECT));
         }
+        effects.extend(self.xmaterial_effects(card, EFFECT_IMMUNE_EFFECT));
         effects.extend(
             registry
                 .equal_range(Container::Aura, None, EFFECT_IMMUNE_EFFECT)
@@ -1602,6 +1626,10 @@ impl Duel {
                     return None;
                 }
                 self.equip_effects(card, code)
+                    .find(|&effect| self.is_available(effect) && self.is_affect_by_effect(card, Some(effect)))
+            })
+            .or_else(|| {
+                self.xmaterial_effects(card, code)
                     .find(|&effect| self.is_available(effect) && self.is_affect_by_effect(card, Some(effect)))
             })
             .or_else(|| {
@@ -1638,6 +1666,11 @@ impl Duel {
                 }
                 // The core runs this loop a second time skipping field effects, which finds nothing new.
                 self.equip_effects(card, code).find(|&effect| {
+                    self.is_available(effect) && self.is_affect_by_effect(card, Some(effect)) && self.get_value(effect, target) != 0
+                })
+            })
+            .or_else(|| {
+                self.xmaterial_effects(card, code).find(|&effect| {
                     self.is_available(effect) && self.is_affect_by_effect(card, Some(effect)) && self.get_value(effect, target) != 0
                 })
             })

@@ -862,12 +862,24 @@ impl Cost {
         chk: i32,
         op: fn(&mut Duel, EffectId, CardSet),
     ) -> Script<bool> {
+        Cost::detach_from_self_with(duel, args, chk, MIN, MAX, op)
+    }
+
+    // Cost.DetachFromSelf(min, max, op) for a min and max that are functions in the Lua, already called.
+    pub fn detach_from_self_with(
+        duel: &mut Duel,
+        args: &Args,
+        chk: i32,
+        min: u16,
+        max: u16,
+        op: fn(&mut Duel, EffectId, CardSet),
+    ) -> Script<bool> {
         let (e, tp) = (args.e, args.tp);
         let c = e.get_handler(duel);
         if chk == 0 {
-            return Ok(MIN > 0 && MAX >= MIN && c.check_remove_overlay_card(duel, tp, MIN, REASON_COST));
+            return Ok(min > 0 && max >= min && c.check_remove_overlay_card(duel, tp, min, REASON_COST));
         }
-        if c.remove_overlay_card(duel, tp, MIN, MAX, REASON_COST)? > 0 {
+        if c.remove_overlay_card(duel, tp, min, max, REASON_COST)? > 0 {
             let detached = duel.get_operated_group();
             e.set_chain_data_group(duel, COST_DETACHED_MATERIALS, detached);
             op(duel, e, detached);
@@ -1028,6 +1040,7 @@ pub trait CardUtility: Copy {
     fn is_quick_play_spell(self, duel: &Duel) -> bool;
     fn is_synchro_monster(self, duel: &Duel) -> bool;
     fn is_xyz_monster(self, duel: &Duel) -> bool;
+    fn is_base_attack(self, duel: &Duel, atk: i32) -> bool;
     fn is_effect_monster(self, duel: &Duel) -> bool;
     fn is_non_effect_monster(self, duel: &Duel) -> bool;
     fn is_in_main_mzone(self, duel: &Duel, tp: Option<u8>) -> bool;
@@ -1287,6 +1300,10 @@ impl CardUtility for CardId {
 
     fn is_xyz_monster(self, duel: &Duel) -> bool {
         self.is_composite_type(duel, TYPE_MONSTER | TYPE_XYZ)
+    }
+
+    fn is_base_attack(self, duel: &Duel, atk: i32) -> bool {
+        self.get_base_attack(duel) == atk
     }
 
     fn is_effect_monster(self, duel: &Duel) -> bool {

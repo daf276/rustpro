@@ -24,7 +24,7 @@ registers every `c<code>.rs` and reads its `LISTED_NAMES`, `FIT_MONSTER`, `SUPPO
    first: it overrides some core functions (`Duel.IsMainPhase(player)` also checks whose turn it is).
 4. Declare `SUPPORT` and, if the default does not fit, `CHECKS` (below).
 5. Run `cargo run --release -p diff --bin card -- <code> --threads 7` and iterate until it passes. Several codes may
-   be given at once. Then run `cargo test --release -p diff -j 7` (all suites must stay clean),
+   be given at once; cargo's own flags (`-j 7`) go before `--`. Then run `cargo test --release -p diff -j 7` (all suites must stay clean),
    `cargo clippy --workspace --all-targets -j 7`, `cargo fmt --all` and
    `rustfmt --edition 2024 crates/scripts/src/official/c<code>.rs` (`cargo fmt` does not reach card files, since
    build.rs includes them).
@@ -73,7 +73,9 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - `ResolvesEffect` and `Message` count by code or by any card: a `SUPPORT` copy of the card can satisfy them, and
   `Message(MSG_ATTACK)` counts every attack. Check that the counted path is the card's own.
 - `Report` is only for a path no `SUPPORT` can reach (say why in one comment line), never for a reachable one that
-  is merely rare.
+  is merely rare. An effect needing an empty hand is one: the opening hand is always drawn.
+- `SpecialSummoned` counts the card under test being summoned; what a card summons is `SpecialSummonedCode`.
+- `mt.material` is `Fusion::material(duel, code)`, recorded by the `Fusion.AddProcMix*` ports.
 - A rare Synchro/Xyz/Link path in the first 13 scenarios usually needs three Extra Deck copies and materials of each
   level. There are no Normal Monsters above Level 8: use ported Extra Deck monsters as higher-level materials.
   A Spell that Special Summons another card is checked by `SpecialSummonedCode(code)`.

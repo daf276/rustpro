@@ -868,11 +868,21 @@ impl Fusion {
         e1
     }
 
+    fn upvalue_key(duel: &Duel, e: EffectId, op: bool) -> u64 {
+        UPVALUE_CHKF | ((e.get_owner(duel).index() as u64) << 1) | u64::from(op)
+    }
+
+    // A card that calls Fusion.SummonEffTG or SummonEffOP itself builds a new closure each time, whose chkf starts as nil.
+    pub fn new_summon_eff_closure(duel: &mut Duel, e: EffectId, op: bool) {
+        let key = Fusion::upvalue_key(duel, e, op);
+        duel.set_script_state(key, 0);
+    }
+
     // The closures SummonEffTG and SummonEffOP return assign their chkf upvalue on every call (chkf|tp), so a closure
     // keeps the bit of every player who used it; Effect.Clone shares the closure, so it is kept per card that created
     // it.
     fn upvalue_chkf<P: FusionSummonParams>(duel: &mut Duel, e: EffectId, tp: u8, op: bool, add: u64) -> u64 {
-        let key = UPVALUE_CHKF | ((e.get_owner(duel).index() as u64) << 1) | u64::from(op);
+        let key = Fusion::upvalue_key(duel, e, op);
         let stored = duel.get_script_state(key);
         let chkf = match stored & SET {
             0 => P::CHKF,
@@ -1054,6 +1064,21 @@ impl Fusion {
 
     pub fn banish_material(duel: &mut Duel, _e: EffectId, _tc: CardId, _tp: u8, sg: &mut CardSet) -> Script<()> {
         duel.remove(*sg, POS_FACEUP, REASON_EFFECT + REASON_MATERIAL + REASON_FUSION)?;
+        sg.clear();
+        Ok(())
+    }
+
+    pub fn shuffle_material(duel: &mut Duel, _e: EffectId, _tc: CardId, tp: u8, sg: &mut CardSet) -> Script<()> {
+        let rg = sg.filter(duel, CardId::is_facedown, None);
+        let hg = sg.filter(duel, |c, duel| c.is_location(duel, LOCATION_GRAVE | LOCATION_REMOVED), None);
+        if !rg.is_empty() {
+            duel.confirm_cards(1 - tp, rg)?;
+        }
+        if !hg.is_empty() {
+            duel.hint_selection(hg);
+        }
+        // Group.AddMaximumCheck adds only Maximum monsters (proc_maximum.lua, out of scope).
+        duel.send_to_deck(*sg, PLAYER_NONE, SEQ_DECKSHUFFLE, REASON_EFFECT + REASON_MATERIAL + REASON_FUSION)?;
         sg.clear();
         Ok(())
     }

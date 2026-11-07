@@ -1,9 +1,11 @@
 // Mirrors ocgapi_constants.h, common.h, effect_constants.h, field.h and card.h; only what the port uses so far.
 
 pub use carddata::{
-    TYPE_FIELD, TYPE_FUSION, TYPE_LINK, TYPE_MONSTER, TYPE_PENDULUM, TYPE_RITUAL, TYPE_SPSUMMON, TYPE_SYNCHRO, TYPE_TOKEN,
+    TYPE_FIELD, TYPE_FUSION, TYPE_LINK, TYPE_MONSTER, TYPE_NORMAL, TYPE_PENDULUM, TYPE_RITUAL, TYPE_SPSUMMON, TYPE_SYNCHRO, TYPE_TOKEN,
     TYPE_TRAPMONSTER, TYPE_XYZ,
 };
+
+pub const TYPE_EFFECT: u32 = 0x20;
 
 pub const LOCATION_DECK: u8 = 0x01;
 pub const LOCATION_HAND: u8 = 0x02;
@@ -485,6 +487,7 @@ pub const MSG_PLAYER_HINT: u8 = 165;
 
 pub const HINT_OPSELECTED: u8 = 4;
 pub const HINT_CARD: u8 = 10;
+pub const CHINT_TURN: u8 = 1;
 pub const CHINT_DESC_ADD: u8 = 6;
 pub const CHINT_DESC_REMOVE: u8 = 7;
 pub const PHINT_DESC_ADD: u8 = 6;

@@ -49,6 +49,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         listed.len(),
         listed.join(", ")
     )?;
+    let setcodes: Vec<String> = cards
+        .iter()
+        .filter_map(|(code, text, _)| Some(format!("({code}, {})", field(*code, text, &["MATERIAL_SETCODE"])?)))
+        .collect();
+    writeln!(
+        out,
+        "pub static MATERIAL_SETCODE: [(u32, &[u16]); {}] = [{}];",
+        setcodes.len(),
+        setcodes.join(", ")
+    )?;
     std::fs::write(Path::new(&std::env::var("OUT_DIR")?).join("official.rs"), out)?;
     Ok(())
 }

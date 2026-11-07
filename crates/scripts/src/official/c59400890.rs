@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 59400890;
+pub const MATERIAL_SETCODE: &[u16] = &[SET_DARK_MAGICIAN];
 
 struct Materials;
 

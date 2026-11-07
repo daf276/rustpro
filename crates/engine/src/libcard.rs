@@ -202,6 +202,11 @@ impl CardId {
         self.is_set_card(duel, setcodes)
     }
 
+    // The first of the codes Card.GetPreviousCodeOnField returns.
+    pub fn get_previous_code_on_field(self, duel: &Duel) -> u32 {
+        duel.cards[self].previous_code
+    }
+
     pub fn get_previous_type_on_field(self, duel: &Duel) -> u32 {
         duel.cards[self].previous_type
     }
@@ -951,6 +956,48 @@ impl CardId {
 
     pub fn get_reason_player(self, duel: &Duel) -> u8 {
         duel.cards[self].current.reason_player
+    }
+
+    // Card.IsFusionSummonableCard with the summon type left out.
+    pub fn is_fusion_summonable_card(self, duel: &Duel) -> bool {
+        duel.cards[self].data.card_type & TYPE_FUSION != 0
+            && duel.is_spsummon_condition_met(
+                self,
+                duel.core.reason_effect.get(),
+                duel.core.reason_player.get(),
+                SUMMON_TYPE_FUSION,
+                0,
+                0,
+            )
+    }
+
+    pub fn set_turn_counter(self, duel: &mut Duel, count: u16) {
+        duel.cards[self].turn_counter = count;
+        let location = duel.cards.get_info_location(self);
+        duel.trace.message(MSG_CARD_HINT).loc(location).u8(CHINT_TURN).u64(u64::from(count));
+    }
+
+    pub fn copy_effect(self, duel: &mut Duel, code: u32, reset: u32, count: u8) -> i32 {
+        let count = count.max(1);
+        let both_turns = RESET_SELF_TURN | RESET_OPPO_TURN;
+        let reset = if reset & RESET_PHASE != 0 && reset & both_turns == 0 {
+            reset | both_turns
+        } else {
+            reset
+        };
+        duel.card_copy_effect(self, code, reset, count)
+    }
+
+    pub fn get_turn_counter(self, duel: &Duel) -> u16 {
+        duel.cards[self].turn_counter
+    }
+
+    pub fn get_reason(self, duel: &Duel) -> u32 {
+        duel.cards[self].current.reason
+    }
+
+    pub fn set_reason(self, duel: &mut Duel, reason: u32) {
+        duel.cards[self].current.reason = reason;
     }
 
     pub fn is_reason(self, duel: &Duel, reason: u32) -> bool {

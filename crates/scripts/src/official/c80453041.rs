@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::{DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 80453041;
+pub const MATERIAL_SETCODE: &[u16] = &[SET_YUBEL];
 
 // Copies in the hand and Deck as the "Yubel" monster for the effect, and the opponent's Effect Monster to respond to.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, HAND), (ID, DECK), (85976588, MZONE | OPPONENT)];

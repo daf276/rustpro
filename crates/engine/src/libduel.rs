@@ -478,6 +478,36 @@ impl Duel {
         (found, group)
     }
 
+    pub fn get_first_matching_card(
+        &self,
+        filter: impl Fn(CardId, &Duel) -> bool,
+        player: u8,
+        location1: u32,
+        location2: u32,
+        exception: Option<CardSet>,
+    ) -> Option<CardId> {
+        let mut first = None;
+        let mut group = CardSet::default();
+        let exception = exception.unwrap_or_default();
+        self.filter_matching_card(
+            &mut |duel, card| {
+                let passes = filter(card, duel);
+                if passes {
+                    first = Some(card);
+                }
+                passes
+            },
+            player,
+            location1,
+            location2,
+            &mut group,
+            &exception,
+            1,
+            false,
+        );
+        first
+    }
+
     pub fn is_existing_matching_card(
         &self,
         filter: impl Fn(CardId, &Duel) -> bool,

@@ -107,6 +107,9 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   ignores it (no early return on `chkc.is_some()`). An argument that reads the duel is computed before a call that
   takes `&mut Duel` (`let turn = duel.get_turn_count(); e1.set_label(duel, turn)`). A target or cost returns `Ok(chk0)` for
   chk 0 and `Ok(false)` after doing its work, where the Lua returns nothing.
+- `aux.SelectUnselectGroup` is `aux::select_unselect_group(duel, g, minc, maxc, &|duel, sg, mg, c| (res, stop),
+  seltp, hintmsg)`; `Duel.SelectTarget` returns `Option<CardSet>`; a card calling `Fusion.SummonEffTG/OP` itself builds
+  the closure first with `Fusion::new_summon_eff_closure(duel, e, op)`.
 - Filters are `Fn(CardId, &Duel) -> bool`, so `Card.IsX` methods pass directly; extra filter arguments become
   closure captures.
 - A Lua closure an effect keeps (procedure parameters, delayed operations) is a per-card type implementing the

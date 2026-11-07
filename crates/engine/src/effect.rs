@@ -92,7 +92,11 @@ pub enum Operation {
     SynchroMaterial(SynchroMaterialFn),
     // efun(c, e, tp, sg, mg, lc, og, chk): EFFECT_EXTRA_MATERIAL, read only by aux.GetExtraMaterials.
     ExtraMaterial(ExtraMaterialFn),
+    // operation(scard, sumtype, tp): when an EFFECT_ADD_CODE, EFFECT_REMOVE_CODE or EFFECT_CHANGE_CODE applies to a summon.
+    CodeCondition(CodeConditionFn),
 }
+
+pub type CodeConditionFn = fn(&Duel, Option<CardId>, u64, u8) -> bool;
 
 pub type ExtraMaterialFn = fn(&Duel, CardId, EffectId, u8, CardSet, CardSet, CardId, CardSet, i32) -> bool;
 
@@ -110,6 +114,8 @@ pub enum Value {
     Card(fn(&Duel, EffectId, CardId) -> i32),
     // value(e, te): EFFECT_IMMUNE_EFFECT.
     Effect(fn(&Duel, EffectId, EffectId) -> bool),
+    // value(e, ct): EFFECT_CANNOT_INACTIVATE.
+    Chain(fn(&Duel, EffectId, u8) -> bool),
     // value(e, c), called for what it does when a monster's materials are set: EFFECT_MATERIAL_CHECK.
     MaterialCheck(fn(&mut Duel, EffectId, CardId)),
     // value(e, sc, sumtype, tp): EFFECT_CANNOT_BE_MATERIAL.
@@ -1170,6 +1176,7 @@ impl Duel {
             Value::Card(value) => value(self, effect, card),
             Value::EffectPlayer(_)
             | Value::Effect(_)
+            | Value::Chain(_)
             | Value::BattleDamage(_)
             | Value::ChangeDamage(_)
             | Value::Activation(_)
@@ -1358,6 +1365,18 @@ impl Duel {
             Value::EffectPlayer(value) => value(self, effect, activated, playerid),
             _ => {
                 debug_assert!(false, "an activation limit read with the wrong parameters");
+                false
+            }
+        }
+    }
+
+    // check_value_condition with the parameters of EFFECT_CANNOT_INACTIVATE: value(e, ct).
+    pub(crate) fn check_value_chain(&self, effect: EffectId, chaincount: u8) -> bool {
+        match self.effects[effect].value {
+            Value::Int(value) => value != 0,
+            Value::Chain(value) => value(self, effect, chaincount),
+            _ => {
+                debug_assert!(false, "an inactivation limit read with the wrong parameters");
                 false
             }
         }

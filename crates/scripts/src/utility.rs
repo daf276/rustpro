@@ -887,6 +887,7 @@ pub trait CardUtility: Copy {
     fn is_equip_card(self, duel: &Duel) -> bool;
     fn is_spell_trap(self, duel: &Duel) -> bool;
     fn is_monster_card(self, duel: &Duel) -> bool;
+    fn has_non_zero_attack(self, duel: &Duel) -> bool;
     fn is_owner(self, duel: &Duel, player: u8) -> bool;
     fn is_field_spell(self, duel: &Duel) -> bool;
     fn is_ritual_spell(self, duel: &Duel) -> bool;
@@ -1070,6 +1071,10 @@ impl CardUtility for CardId {
 
     fn is_monster_card(self, duel: &Duel) -> bool {
         self.is_original_type(duel, TYPE_MONSTER)
+    }
+
+    fn has_non_zero_attack(self, duel: &Duel) -> bool {
+        self.is_faceup(duel) && self.get_attack(duel) > 0
     }
 
     fn is_owner(self, duel: &Duel, player: u8) -> bool {

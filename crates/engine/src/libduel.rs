@@ -1029,6 +1029,15 @@ impl Duel {
         phase == PHASE_MAIN1 || phase == PHASE_MAIN2
     }
 
+    pub fn is_able_to_enter_bp(&self) -> bool {
+        let turn_player = self.infos.turn_player;
+        (self.is_flag(DUEL_ATTACK_FIRST_TURN)
+            || self.infos.turn_id != 1
+            || self.is_player_affected_by_effect(turn_player, EFFECT_BP_FIRST_TURN).is_some())
+            && self.infos.phase < PHASE_BATTLE_START
+            && self.is_player_affected_by_effect(turn_player, EFFECT_CANNOT_BP).is_none()
+    }
+
     pub fn is_battle_phase(&self) -> bool {
         (PHASE_BATTLE_START..=PHASE_BATTLE).contains(&self.infos.phase)
     }

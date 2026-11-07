@@ -2093,12 +2093,32 @@ impl Duel {
                 .chain(self.filter_effect(card, EFFECT_EXTRA_ATTACK_MONSTER, true))
         );
         if !chain_attack && self.cards[card].announce_count > 0 {
-            unported!(
-                self,
-                self.is_affected_by_effect(card, EFFECT_ATTACK_ALL)
-                    .filter(|_| self.cards[card].attack_all_target != 0)
-            );
-            return Cards16::default();
+            let mut targets = Cards16::default();
+            if let Some(effect) = self
+                .is_affected_by_effect(card, EFFECT_ATTACK_ALL)
+                .filter(|_| self.cards[card].attack_all_target != 0)
+            {
+                for target in attack_tg {
+                    let value = self.get_value(effect, target);
+                    if value == 0 || i32::from(self.find_announced_card(card, Some(target))) >= value {
+                        continue;
+                    }
+                    unported!(self, self.is_affected_by_effect_target(target, EFFECT_IGNORE_BATTLE_TARGET, card));
+                    if select_target
+                        && !must
+                        && (self
+                            .is_affected_by_effect_target(target, EFFECT_CANNOT_BE_BATTLE_TARGET, card)
+                            .is_some()
+                            || self
+                                .is_affected_by_effect_target(card, EFFECT_CANNOT_SELECT_BATTLE_TARGET, target)
+                                .is_some())
+                    {
+                        continue;
+                    }
+                    targets.push(target);
+                }
+            }
+            return targets;
         }
         let mut mcount = 0;
         let mut targets = Cards16::default();
@@ -2150,7 +2170,32 @@ impl Duel {
             self.cards[attacker].attack_all_target = 0;
             return;
         }
-        unported!(self, self.is_affected_by_effect(attacker, EFFECT_ATTACK_ALL));
+        if self
+            .is_affected_by_effect(attacker, EFFECT_ATTACK_ALL)
+            .is_some_and(|effect| self.get_value(effect, self.core.attack_target.unwrap_or_default()) == 0)
+        {
+            self.cards[attacker].attack_all_target = 0;
+        }
+    }
+
+    pub(crate) fn add_announced_card(&mut self, attacker: CardId, target: Option<CardId>) {
+        let fieldid = target.map_or(0, |target| self.cards[target].fieldid_r);
+        match self
+            .announced_cards
+            .iter_mut()
+            .find(|entry| entry.0 == attacker && entry.1 == fieldid)
+        {
+            Some(entry) => entry.2 += 1,
+            None => self.announced_cards.push((attacker, fieldid, 1)),
+        }
+    }
+
+    pub(crate) fn find_announced_card(&self, attacker: CardId, target: Option<CardId>) -> u8 {
+        let fieldid = target.map_or(0, |target| self.cards[target].fieldid_r);
+        self.announced_cards
+            .iter()
+            .find(|entry| entry.0 == attacker && entry.1 == fieldid)
+            .map_or(0, |entry| entry.2)
     }
 
     // The fieldid_r of the opponent's monsters, compared as core.opp_mzone.
@@ -2643,8 +2688,10 @@ impl Duel {
         if self.effects[chain.triggering_effect].is_flag(EFFECT_FLAG_CANNOT_INACTIVATE) {
             return false;
         }
-        unported!(self, self.filter_field_effect(EFFECT_CANNOT_INACTIVATE));
-        true
+        !self
+            .filter_field_effect(EFFECT_CANNOT_INACTIVATE)
+            .into_iter()
+            .any(|peff| self.check_value_chain(peff, chaincount))
     }
 
     pub(crate) fn field_is_chain_disablable(&self, chaincount: u8) -> bool {

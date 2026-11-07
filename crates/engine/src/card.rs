@@ -7,7 +7,7 @@ use carddata::Card as CardData;
 
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{Container, EffectId, EffectSet, Target, Value, container_key, remove_item};
+use crate::effect::{Container, EffectId, EffectSet, Operation, Target, Value, container_key, remove_item};
 use crate::list::List;
 use crate::script::{Args, Procedure};
 
@@ -456,7 +456,8 @@ impl Duel {
         data.card_type & TYPE_MONSTER != 0 && data.card_type & self.get_extra_deck_types() != 0
     }
 
-    // card::get_code: the alias for alternate arts and the last EFFECT_CHANGE_CODE; EFFECT_ADD_CODE comes with its cards.
+    // card::get_code: the alias for alternate arts and the last EFFECT_CHANGE_CODE; an EFFECT_ADD_CODE without a summon
+    // condition comes with its cards.
     pub(crate) fn get_code(&self, card: CardId) -> u32 {
         let data = &self.cards[card].data;
         let code = self
@@ -464,7 +465,7 @@ impl Duel {
             .last()
             .map_or(data.code, |&effect| self.get_value(effect, card) as u32);
         if code == data.code {
-            unported!(self, self.filter_effect(card, EFFECT_ADD_CODE, true));
+            unported!(self, self.add_codes_without_condition(card));
             return if data.alias != 0 { data.alias } else { code };
         }
         match self.database.and_then(|database| database.get(code)) {
@@ -487,8 +488,14 @@ impl Duel {
         if code != self.cards[card].data.code {
             return Self::second_code(code);
         }
-        unported!(self, self.filter_effect(card, EFFECT_ADD_CODE, true));
+        unported!(self, self.add_codes_without_condition(card));
         0
+    }
+
+    fn add_codes_without_condition(&self, card: CardId) -> impl Iterator<Item = EffectId> + '_ {
+        self.filter_effect(card, EFFECT_ADD_CODE, true)
+            .into_iter()
+            .filter(|&effect| self.effects[effect].operation.is_none())
     }
 
     pub(crate) fn get_type(&self, card: CardId) -> u32 {
@@ -1205,6 +1212,7 @@ impl Duel {
                 self.clear_relate_effect(card);
             }
             if id & (moved | RESET_LEAVE | RESET_TOFIELD) != 0 {
+                self.announced_cards.retain(|entry| entry.0 != card);
                 let card = &mut self.cards[card];
                 card.attack_announce_count = 0;
                 card.announce_count = 0;
@@ -2456,7 +2464,28 @@ impl Duel {
             LOCATION_REMOVED => EFFECT_REMOVE_REDIRECT,
             _ => return 0,
         };
-        unported!(self, self.filter_effect(card, code, true));
+        for effect in self.filter_effect(card, code, true) {
+            let redirect = self.get_value(effect, card) as u32;
+            let player = self.get_handler_player(effect);
+            let allowed = |location: u8, cannot: u32, can_send: bool| {
+                redirect & u32::from(location) != 0 && self.is_affected_by_effect(card, cannot).is_none() && can_send
+            };
+            if allowed(LOCATION_HAND, EFFECT_CANNOT_TO_HAND, self.is_player_can_send_to_hand(player, card))
+                || allowed(LOCATION_DECK, EFFECT_CANNOT_TO_DECK, self.is_player_can_send_to_deck(player, card))
+                || allowed(
+                    LOCATION_REMOVED,
+                    EFFECT_CANNOT_REMOVE,
+                    self.field_is_player_can_remove(player, card, REASON_EFFECT),
+                )
+                || allowed(
+                    LOCATION_GRAVE,
+                    EFFECT_CANNOT_TO_GRAVE,
+                    self.is_player_can_send_to_grave(player, card, REASON_EFFECT),
+                )
+            {
+                return redirect;
+            }
+        }
         0
     }
 }
@@ -2690,16 +2719,29 @@ impl Duel {
             .any(|effect| matches!(self.effects[effect].value, Value::Int(0)) || self.get_value(effect, fcard) != 0)
     }
 
-    // card::get_summon_code as Card.IsSummonCode reads it; code effects with an operation, which apply only to such
-    // checks, come with the cards that register them.
-    pub(crate) fn is_summon_code(&self, card: CardId, codes: &[u32]) -> bool {
-        for code in [EFFECT_ADD_CODE, EFFECT_REMOVE_CODE] {
-            unported!(self, self.filter_effect(card, code, false));
-        }
-        let changes = self.filter_effect(card, EFFECT_CHANGE_CODE, true);
-        unported!(self, changes.into_iter().filter(|&effect| self.effects[effect].operation.is_some()));
+    // card::get_summon_code as Card.IsSummonCode reads it.
+    pub(crate) fn is_summon_code(&self, card: CardId, scard: Option<CardId>, sumtype: u64, playerid: u8, codes: &[u32]) -> bool {
+        let mut effects = self.filter_effect(card, EFFECT_ADD_CODE, false);
+        effects.extend(self.filter_effect(card, EFFECT_REMOVE_CODE, false));
+        effects.extend(self.filter_effect(card, EFFECT_CHANGE_CODE, false));
+        effects.sort_by_key(|&effect| self.effects.id(effect));
         let (code, another) = (self.get_code(card), self.get_another_code(card));
-        codes.iter().any(|&other| other == code || (another != 0 && other == another))
+        let mut summon_codes: Vec<u32> = [code, another].into_iter().filter(|&code| code != 0).collect();
+        for effect in effects {
+            let Some(Operation::CodeCondition(condition)) = self.effects[effect].operation else {
+                continue;
+            };
+            if !condition(self, scard, sumtype, playerid) {
+                continue;
+            }
+            let value = self.get_value(effect, card) as u32;
+            match self.effects[effect].code {
+                EFFECT_ADD_CODE => summon_codes.push(value),
+                EFFECT_REMOVE_CODE => summon_codes.retain(|&other| other != value),
+                _ => summon_codes = vec![value],
+            }
+        }
+        codes.iter().any(|other| summon_codes.contains(other))
     }
 }
 

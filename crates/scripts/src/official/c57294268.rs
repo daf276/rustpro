@@ -1,13 +1,24 @@
 // Aleister the Reminiscent
 use crate::prelude::*;
-use crate::testing::{Check, HAND};
+use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 57294268;
 
 pub const LISTED_NAMES: &[u32] = &[CARD_INVOCATION];
 
-pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND)];
-pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];
+// Two in hand to Special Summon one and Normal Summon the other, Invoked Sorath on the field to give ATK to, Invoked
+// Magellanica in the Extra Deck to banish and Invocation in the Deck to search.
+pub const SUPPORT: &[(u32, u16)] = &[
+    (ID, HAND),
+    (ID, HAND),
+    (43989315, MZONE),
+    (48791583, EXTRA),
+    (CARD_INVOCATION, DECK),
+];
+pub const CHECKS: &[Check] = &[
+    Check::ResolvesEffect(aux::stringid(ID, 0)),
+    Check::ResolvesEffect(aux::stringid(ID, 1)),
+];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e1 = duel.create_effect(c);

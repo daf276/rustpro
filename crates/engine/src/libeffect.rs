@@ -3,8 +3,8 @@ use crate::card::CardId;
 use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{
-    ConditionFn, CostConditionFn, CostFn, EffectId, ExtraMaterialFn, GroupOperationFn, Label, Operation, OperationFn, SpSummonTargetFn,
-    SynchroCheckFn, SynchroMaterialFn, Target, TargetFn, Value,
+    CodeConditionFn, ConditionFn, CostConditionFn, CostFn, EffectId, ExtraMaterialFn, GroupOperationFn, Label, Operation, OperationFn,
+    SpSummonTargetFn, SynchroCheckFn, SynchroMaterialFn, Target, TargetFn, Value,
 };
 
 impl Duel {
@@ -231,6 +231,11 @@ impl EffectId {
     // Effect.SetOperation for EFFECT_EXTRA_MATERIAL, whose function aux.GetExtraMaterials calls with its own parameters.
     pub fn set_extra_material_operation(self, duel: &mut Duel, operation: ExtraMaterialFn) {
         duel.effects[self].operation = Some(Operation::ExtraMaterial(operation));
+    }
+
+    // Effect.SetOperation for the code effects that apply only to summons, whose function is a condition.
+    pub fn set_code_condition(self, duel: &mut Duel, condition: CodeConditionFn) {
+        duel.effects[self].operation = Some(Operation::CodeCondition(condition));
     }
 
     pub fn get_value(self, duel: &Duel) -> Value {

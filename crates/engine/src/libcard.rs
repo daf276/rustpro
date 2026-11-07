@@ -168,6 +168,10 @@ impl CardId {
         duel.is_capable_turn_set(self, duel.core.reason_player.get())
     }
 
+    pub fn get_previous_controler(self, duel: &Duel) -> u8 {
+        duel.cards[self].previous.controler
+    }
+
     pub fn get_previous_location(self, duel: &Duel) -> u32 {
         u32::from(duel.cards[self].previous.location)
     }
@@ -193,6 +197,10 @@ impl CardId {
     pub fn is_code(self, duel: &Duel, code: u32) -> bool {
         let another = duel.get_another_code(self);
         duel.get_code(self) == code || (another != 0 && another == code)
+    }
+
+    pub fn get_field_id(self, duel: &Duel) -> u32 {
+        duel.cards[self].fieldid
     }
 
     pub fn get_code(self, duel: &Duel) -> u32 {
@@ -795,10 +803,8 @@ impl CardId {
         duel.check_fusion_substitute(self, fc)
     }
 
-    // Card.IsSummonCode(c, sc, sumtype, playerid, ...): sc, sumtype and playerid only reach code effects with an
-    // operation, which are not ported.
-    pub fn is_summon_code(self, duel: &Duel, _sc: Option<CardId>, _sumtype: u64, _player: u8, codes: &[u32]) -> bool {
-        duel.is_summon_code(self, codes)
+    pub fn is_summon_code(self, duel: &Duel, sc: Option<CardId>, sumtype: u64, player: u8, codes: &[u32]) -> bool {
+        duel.is_summon_code(self, sc, sumtype, player, codes)
     }
 
     pub fn is_able_to_extra_core(self, duel: &Duel) -> bool {

@@ -623,6 +623,11 @@ pub mod aux {
         dpcheck(|c, duel| i64::from(c.get_code(duel)))(duel, sg, mg, c)
     }
 
+    // Auxiliary.bdcon: the condition of EVENT_BATTLE_DESTROYING.
+    pub fn bdcon(duel: &Duel, a: &Args) -> bool {
+        a.e.get_handler(duel).is_relate_to_battle(duel)
+    }
+
     // Auxiliary.bdocon: the condition of EVENT_BATTLE_DESTROYING against an opponent's monster.
     pub fn bdocon(duel: &Duel, a: &Args) -> bool {
         let c = a.e.get_handler(duel);
@@ -907,6 +912,7 @@ pub trait CardUtility: Copy {
     fn is_field_spell(self, duel: &Duel) -> bool;
     fn is_ritual_spell(self, duel: &Duel) -> bool;
     fn is_ritual_monster(self, duel: &Duel) -> bool;
+    fn is_normal_spell(self, duel: &Duel) -> bool;
     fn is_normal_spell_trap(self, duel: &Duel) -> bool;
     fn is_continuous_spell(self, duel: &Duel) -> bool;
     fn is_continuous_trap(self, duel: &Duel) -> bool;
@@ -1114,6 +1120,10 @@ impl CardUtility for CardId {
         self.is_composite_type(duel, TYPE_MONSTER | TYPE_RITUAL)
     }
 
+    fn is_normal_spell(self, duel: &Duel) -> bool {
+        self.get_type(duel) == TYPE_SPELL
+    }
+
     fn is_normal_spell_trap(self, duel: &Duel) -> bool {
         [TYPE_SPELL, TYPE_TRAP].contains(&self.get_type(duel))
     }
@@ -1258,6 +1268,7 @@ impl CardUtility for CardId {
 pub trait EffectUtility: Copy {
     fn is_monster_effect(self, duel: &Duel) -> bool;
     fn is_spell_effect(self, duel: &Duel) -> bool;
+    fn is_trap_effect(self, duel: &Duel) -> bool;
     fn is_spell_trap_effect(self, duel: &Duel) -> bool;
 }
 
@@ -1272,6 +1283,10 @@ impl EffectUtility for EffectId {
 
     fn is_spell_effect(self, duel: &Duel) -> bool {
         self.is_active_type(duel, TYPE_SPELL)
+    }
+
+    fn is_trap_effect(self, duel: &Duel) -> bool {
+        self.is_active_type(duel, TYPE_TRAP)
     }
 }
 

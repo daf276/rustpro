@@ -118,6 +118,8 @@ const CHECK_MAX: u64 = 6;
 // The chkf upvalue of a SummonEffTG or SummonEffOP closure, per card that created it; SET marks a value.
 const UPVALUE_CHKF: u64 = 1 << 62;
 const SET: i64 = 1 << 40;
+// mt.material as script state: material codes of the card with this original code, one per key.
+const MATERIAL: u64 = 1 << 61;
 
 fn check(duel: &Duel, key: u64) -> Option<usize> {
     usize::try_from(duel.get_script_state(key)).ok().filter(|&count| count != 0)
@@ -269,10 +271,37 @@ impl Fusion {
         e1
     }
 
+    // mt.material of a Fusion Monster: the distinct codes its Fusion.AddProcMix* call named, empty for nil.
+    pub fn material(duel: &Duel, code: u32) -> Vec<u32> {
+        let key = MATERIAL | u64::from(code) << 8;
+        (0..)
+            .map_while(|i| u32::try_from(duel.get_script_state(key | i)).ok().filter(|&code| code != 0))
+            .collect()
+    }
+
+    fn set_material(duel: &mut Duel, c: CardId, materials: impl Iterator<Item = FusionMaterial>) {
+        let key = MATERIAL | u64::from(c.get_original_code(duel)) << 8;
+        if duel.get_script_state(key) != 0 {
+            return;
+        }
+        let mut codes = Vec::new();
+        for material in materials {
+            if let FusionMaterial::Code(code) = material
+                && !codes.contains(&code)
+            {
+                codes.push(code);
+            }
+        }
+        for (i, code) in codes.into_iter().enumerate() {
+            duel.set_script_state(key | i as u64, i64::from(code));
+        }
+    }
+
     pub fn add_proc_mix<M: FusionMix>(duel: &mut Duel, c: CardId) -> Option<EffectId> {
         if c.is_status(duel, STATUS_COPYING_EFFECT) {
             return None;
         }
+        Fusion::set_material(duel, c, M::MATERIALS.iter().copied());
         Some(Fusion::register_material_effect(
             duel,
             c,
@@ -289,6 +318,7 @@ impl Fusion {
         if c.is_status(duel, STATUS_COPYING_EFFECT) {
             return None;
         }
+        Fusion::set_material(duel, c, std::iter::once(M::FUN1).chain(M::MATERIALS.iter().copied()));
         Some(Fusion::register_material_effect(
             duel,
             c,

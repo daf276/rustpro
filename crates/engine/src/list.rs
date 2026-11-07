@@ -1,5 +1,6 @@
 use std::cell::Cell;
 use std::ops::{Deref, DerefMut};
+use std::sync::Arc;
 
 // A Vec that keeps up to N items inline: a short list clones as plain bytes, and only a longer one allocates.
 #[derive(Debug)]
@@ -223,62 +224,89 @@ impl<T: Copy + Default, const N: usize> IntoIterator for List<T, N> {
     }
 }
 
-// A Vec that marks the chunks of 8 items that changed (the last mark covers every item from 504 on), so that a copy of
-// it, such as a script snapshot, is brought up to date by copying only those. Items with Cells mark their changes
-// through `mark`.
+// A Vec in chunks of N items (a multiple of 8) that clones share until one of them writes to a chunk, which then copies
+// that chunk alone; the last chunk's slots past the end stay readable. It also marks the runs of 8 items that changed
+// (the last mark covers every item from 504 on), so that a copy kept in sync with it, such as a script snapshot, is
+// brought up to date by copying only those into its own chunks.
 #[derive(Debug, Clone)]
-pub struct Tracked<T> {
-    items: Vec<T>,
+pub struct Shared<T, const N: usize> {
+    chunks: Vec<Arc<[T; N]>>,
+    len: usize,
     changed: Cell<u64>,
 }
 
-impl<T> Default for Tracked<T> {
+const RUN: usize = 8;
+
+impl<T, const N: usize> Default for Shared<T, N> {
     fn default() -> Self {
         Self {
-            items: Vec::new(),
+            chunks: Vec::new(),
+            len: 0,
             changed: Cell::new(0),
         }
     }
 }
 
-impl<T: Clone> Tracked<T> {
-    pub fn mark(&self, index: usize) {
-        self.changed.set(self.changed.get() | 1 << (index / 8).min(63));
+impl<T: Copy + Default, const N: usize> Shared<T, N> {
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    pub fn get(&self, index: usize) -> Option<&T> {
+        self.chunks.get(index / N)?.get(index % N)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.chunks.iter().flat_map(|chunk| chunk.iter()).take(self.len)
     }
 
     pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
-        self.mark(index);
-        self.items.get_mut(index)
+        let chunk = self.chunks.get_mut(index / N)?;
+        self.changed.set(self.changed.get() | 1 << (index / RUN).min(63));
+        Arc::make_mut(chunk).get_mut(index % N)
     }
 
     pub fn push(&mut self, item: T) {
-        self.mark(self.items.len());
-        self.items.push(item);
-    }
-
-    // Makes this equal to `source`. The two must have been equal apart from the chunks either marked since, as a copy
-    // is to its original after either synced with the other.
-    pub fn sync_from(&mut self, source: &mut Self) {
-        self.items.truncate(source.items.len());
-        let common = self.items.len();
-        self.items.extend_from_slice(source.items.get(common..).unwrap_or_default());
-        let mut changed = self.changed.take() | source.changed.take();
-        while changed != 0 {
-            let chunk = changed.trailing_zeros() as usize;
-            changed &= changed - 1;
-            let end = if chunk == 63 { common } else { common.min(8 * chunk + 8) };
-            if let (Some(to), Some(from)) = (self.items.get_mut(8 * chunk..end), source.items.get(8 * chunk..end)) {
-                to.clone_from_slice(from);
-            }
+        if self.len.is_multiple_of(N) {
+            self.chunks.push(Arc::new([T::default(); N]));
+        }
+        self.len += 1;
+        if let Some(slot) = self.get_mut(self.len - 1) {
+            *slot = item;
         }
     }
-}
 
-impl<T> Deref for Tracked<T> {
-    type Target = [T];
+    // Makes this equal to `source`. The two must have been equal apart from the runs either marked since, as a copy is
+    // to its original after either synced with the other.
+    pub fn sync_from(&mut self, source: &Self) {
+        self.chunks.truncate(source.chunks.len());
+        let common = N * self.chunks.len();
+        self.chunks.extend(source.chunks.iter().skip(self.chunks.len()).cloned());
+        let mut changed = self.changed.take() | source.changed.take();
+        while changed != 0 {
+            let mark = changed.trailing_zeros() as usize;
+            changed &= changed - 1;
+            let end = if mark == 63 { common } else { common.min(RUN * mark + RUN) };
+            for start in (RUN * mark..end).step_by(RUN) {
+                let (chunk, run) = (start / N, start % N..start % N + RUN);
+                if let (Some(to), Some(from)) = (self.chunks.get_mut(chunk), source.chunks.get(chunk))
+                    && !Arc::ptr_eq(to, from)
+                    && let (Some(to), Some(from)) = (Arc::make_mut(to).get_mut(run.clone()), from.get(run))
+                {
+                    to.copy_from_slice(from);
+                }
+            }
+        }
+        self.len = source.len;
+    }
 
-    fn deref(&self) -> &[T] {
-        &self.items
+    // The indices of the items in chunks that `other` does not share.
+    pub fn unshared<'a>(&'a self, other: &'a Self) -> impl Iterator<Item = usize> + 'a {
+        let shared = |chunk: usize, items: &Arc<[T; N]>| other.chunks.get(chunk).is_some_and(|theirs| Arc::ptr_eq(items, theirs));
+        (self.chunks.iter().enumerate())
+            .filter(move |&(chunk, items)| !shared(chunk, items))
+            .flat_map(|(chunk, _)| N * chunk..N * chunk + N)
+            .filter(move |&index| index < self.len)
     }
 }
 
@@ -295,18 +323,19 @@ mod tests {
     }
 
     #[test]
-    fn should_sync_a_tracked_copy_in_either_direction() {
-        let mut original: Tracked<u16> = Tracked::default();
-        (0..100).for_each(|item| original.push(item));
+    fn should_copy_only_the_chunks_written() {
+        let mut original: Shared<u16, 8> = Shared::default();
+        (0..300).for_each(|item| original.push(item));
         let mut copy = original.clone();
-        original.push(100);
+        original.push(300);
         *original.get_mut(3).unwrap() = 7;
-        copy.sync_from(&mut original);
-        assert_eq!(*copy, *original);
-        *copy.get_mut(90).unwrap() = 9;
-        (0..3).for_each(|item| copy.push(item));
-        copy.sync_from(&mut original);
-        assert_eq!(*copy, *original);
+        assert_eq!(
+            original.unshared(&copy).collect::<Vec<_>>(),
+            (0..8).chain(296..301).collect::<Vec<_>>()
+        );
+        assert_eq!(copy.get(3), Some(&3));
+        copy.sync_from(&original);
+        assert!(copy.len() == 301 && (0..301).all(|index| copy.get(index) == original.get(index)));
     }
 
     #[test]

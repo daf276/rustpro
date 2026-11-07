@@ -2,6 +2,7 @@ use std::error::Error;
 use std::hint::black_box;
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use carddata::{CardDatabase, Deck, Pool, TYPE_NORMAL, TYPE_PENDULUM, banlist_limits};
@@ -10,6 +11,7 @@ use rand::rngs::StdRng;
 use rand::seq::IndexedRandom;
 use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
+use sim::{AutoAdvance, Batch, Options, indices};
 
 const MAX_ACTIONS: u64 = 100_000;
 const CLONE_DUELS: u64 = 500;
@@ -104,6 +106,46 @@ fn run(
     })
 }
 
+// The same duels set up beforehand and stepped in lockstep batches of `size` slots under a uniformly random policy;
+// returns the actions applied, policy decisions among them, and the seconds taken.
+fn run_batch(
+    threads: usize,
+    seeds: std::ops::Range<u64>,
+    cards: &'static CardDatabase,
+    decks: &Decks,
+    size: usize,
+    auto_advance: AutoAdvance,
+) -> Result<(u64, u64, f64), Box<dyn Error + Send + Sync>> {
+    let pool = rayon::ThreadPoolBuilder::new().num_threads(threads).build()?;
+    let duels: Vec<Mutex<Option<Duel>>> = seeds
+        .into_par_iter()
+        .map(|seed| Ok(Mutex::new(Some(setup(seed, cards, decks)?.0))))
+        .collect::<Result<_, DuelError>>()?;
+    let generator = |slot: usize, episode: u64| Ok(duels.get(slot + size * episode as usize).and_then(|duel| duel.lock().ok()?.take()));
+    let options = Options {
+        auto_advance,
+        max_steps: MAX_ACTIONS,
+    };
+    let mut rngs: Vec<StdRng> = (0..size as u64).map(StdRng::seed_from_u64).collect();
+    let started = Instant::now();
+    let outcomes = pool.install(|| {
+        Batch::new(size, options, generator)?.run(|batch, actions| {
+            for ((slot, action), rng) in actions.iter_mut().enumerate().zip(&mut rngs) {
+                let legal = batch.legal(slot);
+                if !legal.is_empty() {
+                    *action = indices(legal)
+                        .nth(rng.random_range(0..legal.len()))
+                        .and_then(Result::ok)
+                        .unwrap_or(0);
+                }
+            }
+        })
+    })?;
+    let steps: u64 = outcomes.iter().map(|outcome| outcome.steps).sum();
+    let skipped: u64 = outcomes.iter().map(|outcome| outcome.skipped).sum();
+    Ok((steps + skipped, steps, started.elapsed().as_secs_f64()))
+}
+
 // Mean time of a clone (and its drop) at every CLONE_EVERY-th prompt of the first CLONE_DUELS duels.
 fn clone_time(
     seeds: std::ops::Range<u64>,
@@ -129,10 +171,10 @@ fn clone_time(
 
 // Engine throughput under uniformly random legal actions in random Normal Monster duels, setup excluded: one thread,
 // then `--threads` (0 = all cores). `--effects 1` mixes the cards of phase 2a into the decks; `--elfnote 1` plays
-// Elfnote mirror matches (main and Extra Deck) instead. "Unported" counts the duels whose result cannot be trusted, since an
-// effect reached an unported call site.
+// Elfnote mirror matches (main and Extra Deck) instead; `--batch N` also plays them through the batch runner with N slots.
+// "Unported" counts the duels whose result cannot be trusted, since an effect reached an unported call site.
 fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
-    let (mut duels, mut threads, mut seed, mut effects, mut elfnote) = (5000, 0, 0, 0, 0);
+    let (mut duels, mut threads, mut seed, mut effects, mut elfnote, mut batch) = (5000, 0, 0, 0, 0, 0);
     let mut args = std::env::args().skip(1);
     while let Some(flag) = args.next() {
         let value: u64 = args.next().ok_or("missing value")?.parse()?;
@@ -142,8 +184,9 @@ fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
             "--seed" => seed = value,
             "--effects" => effects = value,
             "--elfnote" => elfnote = value,
+            "--batch" => batch = usize::try_from(value)?,
             _ => {
-                let expected = "--duels, --threads (0 = all cores), --seed, --effects or --elfnote";
+                let expected = "--duels, --threads (0 = all cores), --seed, --effects, --elfnote or --batch";
                 return Err(format!("unknown argument {flag}, expected {expected}").into());
             }
         }
@@ -192,6 +235,23 @@ fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
             duels as f64 / run.seconds,
             single.seconds / run.seconds
         )?;
+    }
+    let modes = if batch > 0 {
+        [AutoAdvance::Off, AutoAdvance::Own, AutoAdvance::Both].as_slice()
+    } else {
+        &[]
+    };
+    for &auto_advance in modes {
+        for threads in [1, parallel.threads] {
+            let (actions, decisions, seconds) = run_batch(threads, seeds.clone(), cards, &decks, batch, auto_advance)?;
+            writeln!(
+                out,
+                "batch of {batch}, auto-advance {auto_advance:?}, {threads:>2} threads: {:>10.0} actions/s, {:>10.0} decisions/s, {:.2}x one thread single",
+                actions as f64 / seconds,
+                decisions as f64 / seconds,
+                actions as f64 / seconds / (single.actions as f64 / single.seconds)
+            )?;
+        }
     }
     Ok(())
 }

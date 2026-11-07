@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/bench", "crates/carddata", "crates/diff", "crates/engine", "crates/ocgcore-sys", "crates/oracle", "crates/scripts"]
+members = ["crates/bench", "crates/carddata", "crates/diff", "crates/engine", "crates/ocgcore-sys", "crates/oracle", "crates/scripts", "crates/sim"]
 
 [workspace.package]
 edition = "2024"

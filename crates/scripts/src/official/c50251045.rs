@@ -1,12 +1,22 @@
 // Calamity of the Sacred Beasts - Hamon, Lord of Striking Thunder
 use crate::prelude::*;
-use crate::testing::{Check, MZONE, OPPONENT};
+use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 50251045;
 
-// Sangan in the opponent's monster zone to be destroyed, and Hamon on the field for the damage.
-pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (26202165, MZONE | OPPONENT)];
-pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 1))];
+// Sangan in the opponent's monster zone to be destroyed, Hamon on the field for the damage, and another in the hand to reveal
+// with a Sacred Beast Spell (Fallen Paradise of the Sacred Beasts) in the Deck to search.
+pub const SUPPORT: &[(u32, u16)] = &[
+    (ID, MZONE),
+    (ID, HAND),
+    (65861210, DECK),
+    (65861210, DECK),
+    (26202165, MZONE | OPPONENT),
+];
+pub const CHECKS: &[Check] = &[
+    Check::ResolvesEffect(aux::stringid(ID, 0)),
+    Check::ResolvesEffect(aux::stringid(ID, 1)),
+];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.enable_revive_limit(duel);

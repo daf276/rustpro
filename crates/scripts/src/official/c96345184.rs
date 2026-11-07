@@ -1,15 +1,25 @@
 // Infinity of the Sacred Beasts - Raviel, Lord of Phantasms
 use crate::prelude::*;
-use crate::testing::{Check, MZONE};
+use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 96345184;
 
 pub const LISTED_NAMES: &[u32] = &[ID];
 
-// Three on the field, two of them to Tribute. No Normal Monster or ported card is another "Sacred Beast" monster, so the
-// search from the hand never resolves.
-pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE), (ID, MZONE)];
-pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 1))];
+// Three on the field, two of them to Tribute, a copy in the hand to reveal and Martyr of the Sacred Beasts in the Deck to
+// search.
+pub const SUPPORT: &[(u32, u16)] = &[
+    (ID, MZONE),
+    (ID, MZONE),
+    (ID, MZONE),
+    (ID, HAND),
+    (59138498, DECK),
+    (59138498, DECK),
+];
+pub const CHECKS: &[Check] = &[
+    Check::ResolvesEffect(aux::stringid(ID, 0)),
+    Check::ResolvesEffect(aux::stringid(ID, 1)),
+];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.enable_revive_limit(duel);

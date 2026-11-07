@@ -116,7 +116,7 @@ pub fn message_name(kind: u8) -> &'static str {
         .map_or("?", |(_, name)| name)
 }
 
-fn describe(message: &[u8]) -> String {
+pub fn describe(message: &[u8]) -> String {
     match message {
         [kind, body @ ..] => format!("MSG_{} {body:02x?}", message_name(*kind)),
         [] => "empty".to_owned(),
@@ -142,6 +142,8 @@ pub struct Report {
     pub reason: u8,
     pub tally: Tally,
     pub record: DuelRecord,
+    // Every message of the duel, if the vendor keeps them.
+    pub stream: Vec<Vec<u8>>,
 }
 
 // How often a duel's messages show the actions phases 1b and 1c added, and the chain links that resolved per card
@@ -382,6 +384,7 @@ pub struct Vendor {
     pub scenario_others: Vec<u32>,
     // Messages shown before and from a divergence.
     pub context: usize,
+    pub keep_stream: bool,
 }
 
 impl Vendor {
@@ -411,6 +414,7 @@ impl Vendor {
             deck: None,
             scenario_others: Vec::new(),
             context: CONTEXT,
+            keep_stream: false,
         })
     }
 
@@ -457,7 +461,23 @@ pub fn diff_duel(vendor: &'static Vendor, seed: u64) -> Result<Report, DiffError
 
 // Scenario `index` of `card`, seeded by both alone, so that adding ports changes no other card's scenarios.
 pub fn diff_scenario(vendor: &'static Vendor, card: u32, index: u32) -> Result<Report, DiffError> {
-    play(vendor, u64::from(card) << 32 | u64::from(index), Some(card), None)
+    play(vendor, scenario_seed(card, index), Some(card), None)
+}
+
+fn scenario_seed(card: u32, index: u32) -> u64 {
+    u64::from(card) << 32 | u64::from(index)
+}
+
+// What scenario `index` of `card` places.
+pub fn scenario(vendor: &Vendor, card: u32, index: u32) -> Option<Scenario> {
+    seeded(vendor, scenario_seed(card, index), Some(card)).2
+}
+
+fn seeded(vendor: &Vendor, seed: u64, card: Option<u32>) -> (StdRng, [u64; 4], Option<Scenario>) {
+    let mut rng = StdRng::seed_from_u64(seed);
+    let duel_seed: [u64; 4] = rng.random();
+    let scenario = card.map(|card| Scenario::generate(card, &vendor.scenario_others, &vendor.cards, &mut rng));
+    (rng, duel_seed, scenario)
 }
 
 // A duel both engines set up from `position` alone, which must start the duel (see scenario::lua).
@@ -467,9 +487,7 @@ pub fn diff_position(vendor: &'static Vendor, seed: u64, position: &Position) ->
 
 // Both engines start from one position: the decks, the scenario of `card` if any on top, or `position` if given.
 fn play(vendor: &'static Vendor, seed: u64, card: Option<u32>, position: Option<&Position>) -> Result<Report, DiffError> {
-    let mut rng = StdRng::seed_from_u64(seed);
-    let duel_seed: [u64; 4] = rng.random();
-    let scenario = card.map(|card| Scenario::generate(card, &vendor.scenario_others, &vendor.cards, &mut rng));
+    let (mut rng, duel_seed, scenario) = seeded(vendor, seed, card);
     let position = match position {
         Some(position) => position.clone(),
         None => {
@@ -543,6 +561,7 @@ fn play(vendor: &'static Vendor, seed: u64, card: Option<u32>, position: Option<
                     reason: *reason,
                     tally,
                     record,
+                    stream: if vendor.keep_stream { compared } else { Vec::new() },
                 });
             }
         }
@@ -653,7 +672,20 @@ pub fn summarize(card: u32, results: &[Result<Report, DiffError>]) -> (bool, Str
         let ok = matches!(check, Check::Report(_)) || (in_first > 0 && in_all > 0);
         passed &= ok;
         let status = if ok { "" } else { " FAIL" };
-        writeln!(out, "  {check:?}: {in_first} in {first}, {in_all} in {}{status}", results.len()).ok();
+        let hits = results.iter().enumerate().filter_map(|(index, result)| {
+            result
+                .as_ref()
+                .ok()
+                .filter(|report| check_count(check, card, &report.tally) > 0)
+                .map(|_| index.to_string())
+        });
+        let hits = hits.take(8).collect::<Vec<_>>().join(" ");
+        writeln!(
+            out,
+            "  {check:?}: {in_first} in {first}, {in_all} in {}{status} (scenarios {hits})",
+            results.len()
+        )
+        .ok();
     }
     let resolved = full.effects.range((card, 0)..=(card, u64::MAX)).map(|(&(_, description), count)| {
         match description.checked_sub(u64::from(card) << 20) {

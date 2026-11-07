@@ -36,7 +36,8 @@ Per card: `pass`/`FAIL` and how many scenarios diffed clean; each check with its
 `aux.Stringid(code, n)`); and the first failing scenario: either the unported call site reached, or the first
 differing message, with its index in the stream, the last messages both engines wrote alike, then each engine's
 messages from there (`MSG_<type> [bytes]`; `--context N` shows N of each, default 5). Other failing scenarios are listed
-by index. A code without a file says `not ported`. The exit code is 1 on any failure. A scenario depends only on
+by index. Each check lists the first scenarios that satisfy it; `--trace K` writes what scenario K places and its whole
+message stream, to see why an effect never resolves. A code without a file says `not ported`. The exit code is 1 on any failure. A scenario depends only on
 (code, index), so a failure reproduces exactly; ports of other cards never change it.
 
 ## Test metadata
@@ -64,6 +65,10 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   A second copy in the Extra Deck makes a Synchro/Xyz/Link Summon of the card far likelier. Normal Monsters by race
   and level: query `vendor/BabelCDB/cards.cdb` (`datas.type & 0x11 = 0x11`, minus Pendulums).
   An effect that needs the card in one zone gets a copy there (`(ID, SZONE)`), or more copies of what it reacts to.
+  `SZONE` never places a Field Spell (that is the Field Zone); use 0. Placement draws random numbers in list order, so
+  reordering `SUPPORT` changes every scenario.
+- `ResolvesEffect` and `Message` count by code or by any card: a `SUPPORT` copy of the card can satisfy them, and
+  `Message(MSG_ATTACK)` counts every attack. Check that the counted path is the card's own.
   A Spell that Special Summons another card is checked by `SpecialSummonedCode(code)`.
 
 ## Mirror API
@@ -109,6 +114,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - Match EDOPro exactly, misrulings and Lua bugs included (an undefined global is nil, an upvalue the Lua reassigns
   stays reassigned). A mirrored bug gets a one-line comment.
 - Port line by line: the same checks, selections, hints, messages and random draws in the same order.
+- A boolean argument the Lua passes as nil is false; the core's default (`lua_get<bool, true>`) applies only to an
+  absent argument, so a library wrapper forwarding a nil parameter passes false.
 - Lua nil for a numeric argument is 0 (`Duel.Remove(c, nil, r)` is position 0, not `POS_FACEUP`). The core
   rounds Lua numbers it reads as integers (`atk/2` becomes `round(atk/2)`). `Duel.IsChainNegatable` is always true
   in the core; the real check is `field_is_chain_negatable`, reached by `NegateActivation`.

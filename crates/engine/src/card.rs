@@ -1487,8 +1487,8 @@ impl Duel {
             .flat_map(move |equip| self.field_effects.registry.equal_range(Container::Equip, Some(equip), code))
     }
 
-    // The effects of `code` of the card's Xyz materials in overlay order (xmaterial_effect of xyz_materials), without those that also
-    // apply to the field. Nothing is attached in most duels.
+    // The effects of `code` of the card's Xyz materials in overlay order (xmaterial_effect), without those that also
+    // apply to the field.
     pub(crate) fn xmaterial_effects(&self, card: CardId, code: u32) -> impl Iterator<Item = EffectId> + '_ {
         let mut materials: Vec<CardId> = if self.overlay_cards.is_empty() {
             Vec::new()

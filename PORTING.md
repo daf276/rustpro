@@ -112,6 +112,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - `aux.SelectUnselectGroup` is `aux::select_unselect_group(duel, g, minc, maxc, &|duel, sg, mg, c| (res, stop),
   seltp, hintmsg)`; `Duel.SelectTarget` returns `Option<CardSet>`; a card calling `Fusion.SummonEffTG/OP` itself builds
   the closure first with `Fusion::new_summon_eff_closure(duel, e, op)`.
+- `unported!(duel, x)` takes what the core would have used, an iterator or `Option`: `(cond).then_some(effect)` for a
+  condition.
 - Filters are `Fn(CardId, &Duel) -> bool`, so `Card.IsX` methods pass directly; extra filter arguments become
   closure captures.
 - A Lua closure an effect keeps (procedure parameters, delayed operations) is a per-card type implementing the

@@ -59,6 +59,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   `Report(&check)`, which only writes the count out. Check each effect that needs a specific path; use another check
   than `Resolves` only for a card that has no effect a scenario can resolve, and say why in one comment line.
 - If a check fails at 13 but passes at 64, improve `SUPPORT` (place what the effect needs where it can be used).
+  A second copy in the Extra Deck makes a Synchro/Xyz/Link Summon of the card far likelier. Normal Monsters by race
+  and level: query `vendor/BabelCDB/cards.cdb` (`datas.type & 0x11 = 0x11`, minus Pendulums).
 
 ## Mirror API
 
@@ -78,6 +80,7 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   library's trait (`SynchroProcedure`, `XyzProcedure`, `FusionMix`, `RitualParams`, `EquipProcedure`,
   `aux::DelayedOperation`, ...); nil parameters are `Option` consts or the trait's defaults. Values a closure
   captures go into the effect's labels or label object. Functions shared by several codes use const generics.
+  A captured card travels as a one-card group in the label object.
 - Lua state kept across calls (`s.x = ...`, tables) is per-duel script state (`get_script_state`/
   `set_script_state`); never a Rust `static`. `pairs(t)` over a table keyed by card codes, where the order shows (a
   filter or message built from it), visits `lua::pairs(codes in insertion order)`.
@@ -95,6 +98,7 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - `e:SetHintTiming(x)` with one argument sets both timings: `e.set_hint_timing(duel, x, x)`.
 - A core function a library replaces keeps a `_core` suffix in the engine; the scripts-crate trait takes the Lua name.
 - An internal engine function whose name a new Lua mirror needs is renamed with a `field_` prefix (`field_raise_event`).
+- A new `Duel` field must also go into the `copy_from` destructure in `script.rs` (snapshot restore).
 
 ## Fidelity
 

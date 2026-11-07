@@ -1422,3 +1422,58 @@ fn equip_by_effect_limit(duel: &Duel, e: EffectId, c: CardId) -> bool {
             .into_iter()
             .any(|te| Some(te) == e.get_label_object(duel))
 }
+
+// The parameters of Cyberdark.EquipFilter, EquipTarget and EquipOperation for the effects that target (targets true); the ones that
+// do not come with the cards that use them. `f` is the filter before EquipFilter wraps it, `equipop` the op.
+pub trait CyberdarkEquip {
+    const MANDATORY: bool;
+
+    fn f(c: CardId, duel: &Duel) -> bool;
+
+    fn equipop(duel: &mut Duel, c: CardId, e: EffectId, tp: u8, tc: CardId) -> Script<()>;
+}
+
+pub struct Cyberdark;
+
+impl Cyberdark {
+    fn equip_filter<P: CyberdarkEquip>(c: CardId, duel: &Duel, tp: u8) -> bool {
+        c.check_unique_on_field(duel, tp) && !c.is_forbidden(duel) && P::f(c, duel)
+    }
+
+    pub fn equip_target<P: CyberdarkEquip>(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bool> {
+        let tp = a.tp;
+        let wc = duel.is_player_affected_by_effect(tp, EFFECT_CYBERDARK_WORLD).is_some();
+        let filter = |c: CardId, duel: &Duel| Cyberdark::equip_filter::<P>(c, duel, tp);
+        if let Some(chkc) = chkc {
+            return Ok(chkc.is_location(duel, LOCATION_GRAVE) && (wc || chkc.is_controler(duel, tp)) && filter(chkc, duel));
+        }
+        let loc = if wc { LOCATION_GRAVE } else { 0 };
+        if chk == 0 {
+            return Ok(P::MANDATORY
+                || (duel.get_location_count(tp, LOCATION_SZONE) > 0 && duel.is_existing_target(filter, tp, LOCATION_GRAVE, loc, 1, None)));
+        }
+        duel.hint(HINT_SELECTMSG, tp, HINTMSG_EQUIP);
+        let g = duel.select_target(tp, filter, tp, LOCATION_GRAVE, loc, 1, 1, None)?;
+        duel.set_operation_info(0, CATEGORY_LEAVE_GRAVE, g, 1, 0, 0);
+        duel.set_operation_info(0, CATEGORY_EQUIP, g, 1, 0, 0);
+        Ok(false)
+    }
+
+    pub fn equip_operation<P: CyberdarkEquip>(duel: &mut Duel, a: &Args) -> Script<()> {
+        let (e, tp) = (a.e, a.tp);
+        if duel.get_location_count(tp, LOCATION_SZONE) <= 0 {
+            return Ok(());
+        }
+        let c = e.get_handler(duel);
+        if c.is_facedown(duel) || !c.is_relate_to_effect(duel, e) {
+            return Ok(());
+        }
+        if let Some(tc) = duel.get_first_target()
+            && tc.is_relate_to_effect(duel, e)
+            && Cyberdark::equip_filter::<P>(tc, duel, tp)
+        {
+            P::equipop(duel, c, e, tp, tc)?;
+        }
+        Ok(())
+    }
+}

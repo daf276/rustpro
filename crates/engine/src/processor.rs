@@ -1523,7 +1523,7 @@ impl Duel {
                     return true;
                 };
                 self.core.summon_cancelable = true;
-                self.summon(turn_player, target, None, false, 0, 0x1f);
+                self.field_summon(turn_player, target, None, false, 0, 0x1f);
                 arg.step = RESTART;
                 false
             }
@@ -1669,7 +1669,28 @@ impl Duel {
                 self.core.attack_player = false;
                 self.core.attacker = None;
                 self.core.attack_target = None;
-                unported!(self, self.is_player_affected_by_effect(turn_player, EFFECT_SKIP_BP));
+                let skip_bp = self.is_player_affected_by_effect(turn_player, EFFECT_SKIP_BP);
+                if skip_bp.is_some() || self.core.force_turn_end {
+                    arg.step = 41;
+                    arg.phase_to_change_to = 2;
+                    let bp_twice = self.is_player_affected_by_effect(turn_player, EFFECT_BP_TWICE);
+                    unported!(self, bp_twice);
+                    arg.repeat_battle_phase = bp_twice.is_some();
+                    if self.core.force_turn_end || skip_bp.is_some_and(|effect| matches!(self.effects[effect].value, Value::Int(0))) {
+                        self.reset_phase(PHASE_BATTLE_STEP);
+                        self.adjust_all();
+                        self.infos.phase = PHASE_BATTLE;
+                        self.emplace_process(PhaseEvent {
+                            phase: PHASE_BATTLE,
+                            ..PhaseEvent::default()
+                        });
+                    } else {
+                        self.core.hint_timing[turn_player] = 0;
+                        self.reset_phase(PHASE_BATTLE);
+                        self.adjust_all();
+                    }
+                    return false;
+                }
                 self.collect_command_activations(true);
                 self.core.attackable_cards.clear();
                 if self
@@ -2137,6 +2158,7 @@ impl Duel {
                 }
                 self.process_single_event();
                 self.process_instant_event();
+                self.core.damage_calculated = true;
                 false
             }
             27 => {

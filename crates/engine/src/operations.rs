@@ -2561,7 +2561,7 @@ impl Duel {
 // Normal Summons, Sets, Flip Summons and position changes: the parts of operations.cpp phase 1b reaches. Summon
 // procedures, EFFECT_EXTRA_SUMMON_COUNT, summon costs, oaths and activity counters wait for effects (phase 2).
 impl Duel {
-    pub(crate) fn summon(
+    pub(crate) fn field_summon(
         &mut self,
         sumplayer: u8,
         target: CardId,

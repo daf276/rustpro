@@ -563,6 +563,10 @@ impl Duel {
     }
 
     fn get_type_lookup(&self, card: CardId, data_type: u32) -> u32 {
+        if let Some(&(_, temp)) = self.core.type_temp.borrow().iter().find(|entry| entry.0 == card) {
+            return temp;
+        }
+        self.core.type_temp.borrow_mut().push((card, data_type));
         let mut card_type = data_type;
         for effect in self.filter_effects(card, &[EFFECT_ADD_TYPE, EFFECT_REMOVE_TYPE, EFFECT_CHANGE_TYPE]) {
             unported!(self, self.effects[effect].operation.map(|_| effect));
@@ -572,7 +576,11 @@ impl Duel {
                 EFFECT_REMOVE_TYPE => card_type &= !value,
                 _ => card_type = value,
             }
+            if let Some(entry) = self.core.type_temp.borrow_mut().last_mut() {
+                entry.1 = card_type;
+            }
         }
+        self.core.type_temp.borrow_mut().pop();
         card_type
     }
 
@@ -1338,6 +1346,7 @@ impl Duel {
                 card.attack_all_target = 1;
             }
             if id & (moved | RESET_LEAVE | RESET_TOFIELD | RESET_TURN_SET) != 0 {
+                self.battled_cards.retain(|entry| entry.0 != card);
                 self.reset_effect_count(card);
             }
             self.reset_counters(card, id);

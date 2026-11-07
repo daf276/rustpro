@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::{EXTRA, MZONE};
 
 const ID: u32 = 49032236;
+pub const XYZ_NUMBER: u32 = 81;
 
 // In the Extra Deck, Xyz Summoned with Chaos Angel and Ruddy Rose Dragon (both Level 10; there is no Level 10 Normal Monster).
 pub const SUPPORT: &[(u32, u16)] = &[(ID, EXTRA), (ID, EXTRA), (22850702, MZONE), (40139997, MZONE), (42410161, MZONE)];

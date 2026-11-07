@@ -598,6 +598,10 @@ impl CardId {
         duel.core.pre_field.contains(&fieldid)
     }
 
+    pub fn get_battled_group_count(self, duel: &Duel) -> usize {
+        duel.battled_cards.iter().filter(|entry| entry.0 == self).count()
+    }
+
     pub fn get_attack_announced_count(self, duel: &Duel) -> u32 {
         u32::from(duel.cards[self].attack_announce_count)
     }

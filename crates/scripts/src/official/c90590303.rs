@@ -5,6 +5,7 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 90590303;
+pub const XYZ_NUMBER: u32 = 41;
 
 // In the Extra Deck, Xyz Summoned with Mystical Elf, Flying Kamakiri #2 and Maiden of the Moonlight, and the opponent's
 // monsters with effects to negate.

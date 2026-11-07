@@ -1120,6 +1120,7 @@ pub trait CardUtility: Copy {
     fn has_level(self, duel: &Duel) -> bool;
     fn is_original_level(self, duel: &Duel, level: u32) -> bool;
     fn lists_code(self, duel: &Duel, code: u32) -> bool;
+    fn xyz_number(self, duel: &Duel) -> Option<u32>;
     fn lists_code_as_material(self, duel: &Duel, codes: &[u32]) -> bool;
     fn lists_archetype_as_material(self, duel: &Duel, setcodes: &[u16]) -> bool;
     fn lists_code_with_archetype(self, duel: &Duel, setcodes: &[u16]) -> bool;
@@ -1415,6 +1416,10 @@ impl CardUtility for CardId {
 
     fn lists_code(self, duel: &Duel, code: u32) -> bool {
         crate::official::listed_names(self.get_original_code(duel)).contains(&code)
+    }
+
+    fn xyz_number(self, duel: &Duel) -> Option<u32> {
+        crate::official::xyz_number(self.get_original_code(duel))
     }
 
     fn lists_code_as_material(self, duel: &Duel, codes: &[u32]) -> bool {

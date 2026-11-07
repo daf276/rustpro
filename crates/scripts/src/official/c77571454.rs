@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 77571454;
+pub const XYZ_NUMBER: u32 = 69;
 
 pub const LISTED_NAMES: &[u32] = &[CARD_UNKNOWN];
 

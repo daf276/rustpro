@@ -8,6 +8,7 @@
 use engine::{Args, CardId, CardSet, Duel, EffectId, Script};
 
 use crate::constant::*;
+use crate::proc_workaround::DuelWorkaround;
 use crate::utility::aux;
 
 pub struct Xyz;

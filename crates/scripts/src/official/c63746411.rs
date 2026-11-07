@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::{EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 63746411;
+pub const XYZ_NUMBER: u32 = 106;
 
 // In the Extra Deck, Xyz Summoned with Mystical Elf and Flying Kamakiri #2, and the opponent's Effect Monsters.
 pub const SUPPORT: &[(u32, u16)] = &[

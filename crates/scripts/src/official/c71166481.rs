@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 71166481;
+pub const XYZ_NUMBER: u32 = 75;
 
 // In the Extra Deck, Xyz Summoned with Petit Angel and Mystical Sheep #2, other Numbers to attach to, and the opponent's
 // monsters with effects.

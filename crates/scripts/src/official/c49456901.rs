@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 49456901;
+pub const XYZ_NUMBER: u32 = 104;
 
 pub const LISTED_NAMES: &[u32] = &[2061963];
 

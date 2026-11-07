@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 32453837;
+pub const XYZ_NUMBER: u32 = 2;
 const HALLUCINATION_COUNTER: u16 = 0x1101;
 
 // In the Extra Deck, Xyz Summoned with Level 2 monsters, and an opponent's copy to attack into.

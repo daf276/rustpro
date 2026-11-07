@@ -2170,6 +2170,10 @@ impl Duel {
                 self.infos.phase = PHASE_DAMAGE;
                 self.core.hint_timing[turn_player] = 0;
                 self.core.chain_attack = false;
+                self.add_battled_card(attacker, attack_target);
+                if let Some(target) = attack_target {
+                    self.add_battled_card(target, Some(attacker));
+                }
                 for p in 0..2 {
                     let amount = self.core.battle_damage[p] as u32;
                     if amount != 0 {
@@ -2725,6 +2729,7 @@ impl Duel {
         match arg.step {
             0 => {
                 self.announced_cards.clear();
+                self.battled_cards.clear();
                 for p in 0..2 {
                     for card in self.player[p].list_mzone.into_iter().flatten() {
                         let card = &mut self.cards[card];
@@ -2939,6 +2944,7 @@ impl Duel {
                         }
                     }
                     self.announced_cards.clear();
+                    self.battled_cards.clear();
                     return false;
                 }
                 arg.has_performed_second_battle_phase = false;
@@ -3124,8 +3130,8 @@ impl Duel {
         self.core.win_reason = 0;
     }
 
-    // Steps 3-5, 8 and 13 adjust trap monsters, control, brainwashing, granted effects and deck reversal, which come
-    // with the cards that cause them.
+    // Steps 3-5 and 13 adjust trap monsters, control, brainwashing and deck reversal, which come with the cards that
+    // cause them.
     fn process_adjust(&mut self, arg: &mut Adjust) -> bool {
         match arg.step {
             0 => {
@@ -3153,6 +3159,12 @@ impl Duel {
             }
             5 => {
                 arg.step = 7;
+                false
+            }
+            8 => {
+                if self.adjust_grant_effect() {
+                    self.core.re_adjust = true;
+                }
                 false
             }
             9 => {
@@ -3312,7 +3324,7 @@ impl Duel {
                 }
                 false
             }
-            3 | 8 | 13 => false,
+            3 | 13 => false,
             _ => true,
         }
     }

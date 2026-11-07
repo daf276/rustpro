@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 65305468;
+pub const XYZ_NUMBER: u32 = 0;
 
 // In the Extra Deck, Xyz Summoned with two Evilswarm Exciton Knights, and Raigeki and Dark Hole in the opponent's hand to
 // destroy it.

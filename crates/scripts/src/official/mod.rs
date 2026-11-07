@@ -46,3 +46,9 @@ pub fn dark_calling(code: u32) -> bool {
     let index = DARK_CALLING.binary_search_by_key(&code, |&(code, _)| code).ok();
     index.and_then(|index| DARK_CALLING.get(index)).is_some_and(|&(_, flag)| flag)
 }
+
+// s.xyz_number, which the Number monsters declare and Card.xyz_number reads.
+pub fn xyz_number(code: u32) -> Option<u32> {
+    let index = XYZ_NUMBER.binary_search_by_key(&code, |&(code, _)| code).ok();
+    index.and_then(|index| XYZ_NUMBER.get(index)).map(|&(_, number)| number)
+}

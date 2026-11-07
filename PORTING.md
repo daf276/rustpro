@@ -21,7 +21,9 @@ registers every `c<code>.rs` and reads its `LISTED_NAMES`, `FIT_MONSTER`, `SUPPO
    `libgroup.rs`), ported from ygopro-core's `lib*.cpp` and the processor code it reaches. Port only the paths ported
    cards can reach; leave the rest as `unported!(duel, <condition the Lua would take that path on>)`.
    The scripts crate's `unported!` takes a bool, the engine's an iterator of effects. Check `proc_workaround.lua`
-   first: it overrides some core functions (`Duel.IsMainPhase(player)` also checks whose turn it is).
+   first: it overrides some core functions (`Duel.IsMainPhase(player)` also checks whose turn it is), also for the
+   library procedures that call them (`Duel.Overlay` raises `EVENT_MOVE`, so the Xyz procedure uses
+   `DuelWorkaround::overlay`).
 4. Declare `SUPPORT` and, if the default does not fit, `CHECKS` (below).
 5. Run `cargo run --release -p diff --bin card -- <code> --threads 7` and iterate until it passes. Several codes may
    be given at once; cargo's own flags (`-j 7`) go before `--`. Then run `cargo test --release -p diff -j 7` (all suites must stay clean),
@@ -79,7 +81,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   `Message(MSG_ATTACK)` (`use engine::constants::MSG_ATTACK`) counts every attack, the usual check of a card with only
   continuous effects. A battle-damage trigger of a high-ATK card needs few other attackers in `SUPPORT`, or the duel
   ends first. Check that the counted path is the card's own. An effect a card grants
-  another (an Xyz material's effect) chains as that other card, so check it another way (`MaterialFrom`, `CardHint`).
+  another (an Xyz material's effect, an equip or `EFFECT_TYPE_GRANT` effect) chains as that other card, so check it
+  another way (`MaterialFrom`, `CardHint`).
   `CardHint` counts by the hinted card, so a hint on another card never counts. `SZONE` often sets a Trap face-down:
   a cost needing several face-up Traps needs five or more copies.
 - `Report` is only for a path no `SUPPORT` can reach (say why in one comment line), never for a reachable one that
@@ -92,6 +95,10 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   A trigger on its own destruction needs a destroyer that can hit the card (Raigeki only hits the opponent; Dark Hole
   also clears what the trigger needs, so a single-target destroyer is best). An effect without `SetDescription` is
   `ResolvesEffect(0)`. A Link whose effect needs its materials to qualify gets only qualifying materials. Test several cards per card command run: each rebuild takes over a minute.
+  Scenario Xyz materials come only from the fixed set: a card needing a specific material gets it attached through a
+  ported `SUPPORT` card (Xyz Import, c1621413). An effect reacting to the opponent targeting a monster gets a targeting
+  card `| OPPONENT` in `SUPPORT` (Mage Power, c49161188). A card an effect summons or adds by name is ported first even
+  when the batch does not list it.
 
 ## Mirror API
 
@@ -134,7 +141,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   oracle's Lua errors (a nil index, an undefined function) is `unported!`; an erroring `chkc` check is `false`.
 - `s.listed_names` is `pub const LISTED_NAMES: &[u32]`, `mt.fit_monster` is `pub const FIT_MONSTER: &[u32]`,
   `s.material_setcode` is `pub const MATERIAL_SETCODE: &[u16]` (read by `ListsArchetypeAsMaterial`),
-  `s.dark_calling` is `pub const DARK_CALLING: bool = true` (read through `official::dark_calling(code)`).
+  `s.dark_calling` is `pub const DARK_CALLING: bool = true` (read through `official::dark_calling(code)`),
+  `s.xyz_number` is `pub const XYZ_NUMBER: u32` (`official::xyz_number(code)`).
   `aux.Stringid(id, n)` is `aux::stringid(ID, n)`. A helper another card's file already has is reused through
   `super::c<code>::name`.
 - Every name of `constant.lua`, `card_counter_constants.lua` and `archetype_setcode_constants.lua` is in the prelude

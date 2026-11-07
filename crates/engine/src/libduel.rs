@@ -2326,6 +2326,14 @@ impl Duel {
         Ok(self.returns.at_i32(0))
     }
 
+    pub fn get_card_setcode_from_code(&self, code: u32) -> Vec<u16> {
+        let data = self.database.and_then(|database| database.get(code));
+        data.into_iter()
+            .flat_map(|data| data.setcodes)
+            .filter(|&setcode| setcode != 0)
+            .collect()
+    }
+
     // None (Lua false) for a player out of range.
     pub fn create_token(&mut self, player: u8, code: u32) -> Option<CardId> {
         if player >= PLAYER_NONE {

@@ -67,6 +67,18 @@ pub mod aux {
         sum_type & SUMMON_TYPE_LINK == SUMMON_TYPE_LINK
     }
 
+    // Auxiliary.EvilHeroLimit; a nil se fails the Lua's `se:GetHandler()`.
+    pub fn evil_hero_limit(duel: &Duel, e: EffectId, se: Option<EffectId>, _: u8, sum_type: u32, _: u8, _: u8) -> bool {
+        let Some(handler) = se.map(|se| se.get_handler(duel)) else {
+            return false;
+        };
+        let tp = e.get_handler_player(duel);
+        let affected = |code| duel.is_player_affected_by_effect(tp, code).is_some();
+        handler.is_code(duel, CARD_DARK_FUSION)
+            || (affected(SKILL_DARK_UNITY) && handler.is_code(duel, CARD_SUPER_POLYMERIZATION))
+            || (affected(EFFECT_SUPREME_CASTLE) && sum_type & SUMMON_TYPE_FUSION == SUMMON_TYPE_FUSION)
+    }
+
     pub fn nvfilter(c: CardId, duel: &Duel) -> bool {
         c.is_has_effect(duel, EFFECT_NECRO_VALLEY).is_none()
     }
@@ -652,6 +664,14 @@ pub mod aux {
         c.is_relate_to_battle(duel) && c.is_status(duel, STATUS_OPPO_BATTLE)
     }
 
+    // Auxiliary.bdgcon: the condition of EVENT_BATTLE_DESTROYING against a monster that went to the Graveyard.
+    pub fn bdgcon(duel: &Duel, a: &Args) -> bool {
+        let c = a.e.get_handler(duel);
+        c.is_relate_to_battle(duel)
+            && c.get_battle_target(duel)
+                .is_some_and(|bc| bc.is_location(duel, LOCATION_GRAVE) && bc.is_monster(duel))
+    }
+
     // Auxiliary.ChangeBattleDamage(PLAYER, VALUE): -1 leaves the damage alone.
     pub fn change_battle_damage<const PLAYER: u8, const VALUE: u32>(duel: &Duel, e: EffectId, damp: u8, _: CardId) -> i64 {
         let target = if PLAYER == 0 { damp } else { 1 - damp };
@@ -946,6 +966,7 @@ pub trait CardUtility: Copy {
     fn lists_code(self, duel: &Duel, code: u32) -> bool;
     fn lists_code_as_material(self, duel: &Duel, codes: &[u32]) -> bool;
     fn lists_archetype_as_material(self, duel: &Duel, setcodes: &[u16]) -> bool;
+    fn lists_code_with_archetype(self, duel: &Duel, setcodes: &[u16]) -> bool;
     fn is_negatable_monster(self, duel: &Duel) -> bool;
     fn is_negatable_spell_trap(self, duel: &Duel) -> bool;
     fn is_negatable(self, duel: &Duel) -> bool;
@@ -1214,10 +1235,16 @@ impl CardUtility for CardId {
 
     fn lists_archetype_as_material(self, duel: &Duel, setcodes: &[u16]) -> bool {
         let listed = crate::official::material_setcode(self.get_original_code(duel));
-        let matches = |setcode: u16, to_match: u16| setcode & 0xfff == to_match & 0xfff && setcode & to_match == setcode;
         setcodes
             .iter()
-            .any(|&setcode| listed.iter().any(|&to_match| matches(setcode, to_match)))
+            .any(|&setcode| listed.iter().any(|&to_match| match_setcode(setcode, to_match)))
+    }
+
+    fn lists_code_with_archetype(self, duel: &Duel, setcodes: &[u16]) -> bool {
+        crate::official::listed_names(self.get_original_code(duel))
+            .iter()
+            .flat_map(|&code| duel.get_card_setcode_from_code(code))
+            .any(|to_match| setcodes.iter().any(|&setcode| match_setcode(setcode, to_match)))
     }
 
     fn is_negatable_monster(self, duel: &Duel) -> bool {
@@ -1329,6 +1356,10 @@ impl EffectUtility for EffectId {
 }
 
 // Card.AnnounceAnotherAttribute and Duel.AnnounceAnotherAttribute: any attribute but the one of `attribute`, if it is single.
+fn match_setcode(setcode: u16, to_match: u16) -> bool {
+    setcode & 0xfff == to_match & 0xfff && setcode & to_match == setcode
+}
+
 fn announce_another_attribute(duel: &mut Duel, attribute: u32, tp: u8) -> Script<u32> {
     duel.hint(HINT_SELECTMSG, tp, HINTMSG_ATTRIBUTE);
     let available = if attribute & attribute.wrapping_sub(1) == 0 {

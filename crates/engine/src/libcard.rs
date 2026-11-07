@@ -940,6 +940,10 @@ impl CardId {
         duel.get_defense(self).max(0)
     }
 
+    pub fn get_attacked_count(self, duel: &Duel) -> u32 {
+        u32::from(duel.cards[self].attacked_count)
+    }
+
     pub fn get_battle_target(self, duel: &Duel) -> Option<CardId> {
         if duel.core.attacker == Some(self) {
             duel.core.attack_target

@@ -59,6 +59,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         setcodes.len(),
         setcodes.join(", ")
     )?;
+    let dark_calling: Vec<String> = cards
+        .iter()
+        .filter_map(|(code, text, _)| Some(format!("({code}, {})", field(*code, text, &["DARK_CALLING"])?)))
+        .collect();
+    writeln!(
+        out,
+        "pub static DARK_CALLING: [(u32, bool); {}] = [{}];",
+        dark_calling.len(),
+        dark_calling.join(", ")
+    )?;
     std::fs::write(Path::new(&std::env::var("OUT_DIR")?).join("official.rs"), out)?;
     Ok(())
 }

@@ -5,8 +5,8 @@ use crate::constants::*;
 use crate::duel::Duel;
 use crate::list::List;
 use crate::processor::{
-    AnnounceAttribute, AnnounceCard, AnnounceRace, SelectBattleCmd, SelectCard, SelectChain, SelectEffectYesNo, SelectIdleCmd,
-    SelectOption, SelectPlace, SelectPosition, SelectSum, SelectTributeP, SelectUnselectCard, SelectYesNo, SortCard,
+    AnnounceAttribute, AnnounceCard, AnnounceNumber, AnnounceRace, SelectBattleCmd, SelectCard, SelectChain, SelectEffectYesNo,
+    SelectIdleCmd, SelectOption, SelectPlace, SelectPosition, SelectSum, SelectTributeP, SelectUnselectCard, SelectYesNo, SortCard,
 };
 
 impl Duel {
@@ -223,6 +223,26 @@ impl Duel {
             self.trace.message(MSG_RETRY);
             return false;
         }
+        true
+    }
+
+    pub(crate) fn process_announce_number(&mut self, arg: &mut AnnounceNumber) -> bool {
+        if arg.step == 0 {
+            let mut message = self.trace.message(MSG_ANNOUNCE_NUMBER);
+            message.u8(arg.playerid).u8(self.core.select_options.len() as u8);
+            for &option in &self.core.select_options {
+                message.u64(option);
+            }
+            return false;
+        }
+        let Some(&number) = usize::try_from(self.returns.at_i32(0))
+            .ok()
+            .and_then(|index| self.core.select_options.get(index))
+        else {
+            self.trace.message(MSG_RETRY);
+            return false;
+        };
+        self.trace.message(MSG_HINT).u8(HINT_NUMBER).u8(arg.playerid).u64(number);
         true
     }
 

@@ -699,8 +699,10 @@ pub const EFFECT_OLDUNION_STATUS: u32 = 348;
 
 pub const MSG_ANNOUNCE_RACE: u8 = 140;
 pub const MSG_ANNOUNCE_ATTRIB: u8 = 141;
+pub const MSG_ANNOUNCE_NUMBER: u8 = 143;
 pub const HINT_RACE: u8 = 6;
 pub const HINT_ATTRIB: u8 = 7;
+pub const HINT_NUMBER: u8 = 9;
 pub const ATTRIBUTE_ALL: u32 = 0x7f;
 pub const RACE_ALL: u64 = 0x4000_0000_ffff_ffff;
 pub const EFFECT_CHANGE_SETCODE: u32 = 350;

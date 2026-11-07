@@ -177,6 +177,10 @@ impl EffectId {
         duel.effects[self].target = Target::SpSummon(target);
     }
 
+    pub fn set_player_card_target(self, duel: &mut Duel, target: fn(&Duel, EffectId, CardId, u8, u32) -> bool) {
+        duel.effects[self].target = Target::PlayerCard(target);
+    }
+
     // Effect.SetTarget for the check of a hand Synchro material, which proc_synchro calls with its own parameters.
     pub fn set_synchro_check_target(self, duel: &mut Duel, target: SynchroCheckFn) {
         duel.effects[self].target = Target::SynchroCheck(target);

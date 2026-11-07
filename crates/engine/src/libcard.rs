@@ -139,6 +139,12 @@ impl CardId {
         duel.cards[self].previous.is_location(location as u16)
     }
 
+    // card::is_capable_change_position_by_effect.
+    pub fn is_can_change_position(self, duel: &Duel) -> bool {
+        let card_type = duel.cards[self].data.card_type;
+        !(card_type & TYPE_LINK != 0 && card_type & TYPE_MONSTER != 0)
+    }
+
     pub fn is_can_turn_set(self, duel: &Duel) -> bool {
         duel.is_capable_turn_set(self, duel.core.reason_player.get())
     }

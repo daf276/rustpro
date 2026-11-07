@@ -80,6 +80,12 @@ pub struct SelectOption {
 }
 
 #[derive(Debug, Clone, Default)]
+pub struct AnnounceNumber {
+    pub step: u16,
+    pub playerid: u8,
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct AnnounceRace {
     pub step: u16,
     pub playerid: u8,
@@ -246,6 +252,7 @@ pub enum Unit {
     SelectEffectYesNo(SelectEffectYesNo),
     SelectYesNo(SelectYesNo),
     SelectOption(SelectOption),
+    AnnounceNumber(AnnounceNumber),
     AnnounceRace(AnnounceRace),
     AnnounceAttribute(AnnounceAttribute),
     AnnounceCard(AnnounceCard),
@@ -327,6 +334,7 @@ units!(
     SelectEffectYesNo,
     SelectYesNo,
     SelectOption,
+    AnnounceNumber,
     AnnounceRace,
     AnnounceAttribute,
     AnnounceCard,
@@ -405,6 +413,7 @@ impl Duel {
             Unit::SelectEffectYesNo(arg) => self.run_steps(arg, Self::process_select_effect_yes_no, true),
             Unit::SelectYesNo(arg) => self.run_steps(arg, Self::process_select_yes_no, true),
             Unit::SelectOption(arg) => self.run_steps(arg, Self::process_select_option, true),
+            Unit::AnnounceNumber(arg) => self.run_steps(arg, Self::process_announce_number, true),
             Unit::AnnounceRace(arg) => self.run_steps(arg, Self::process_announce_race, true),
             Unit::AnnounceAttribute(arg) => self.run_steps(arg, Self::process_announce_attribute, true),
             Unit::AnnounceCard(arg) => self.run_steps(arg, Self::process_announce_card, true),

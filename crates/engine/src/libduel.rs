@@ -13,7 +13,7 @@ use crate::effect::{ChainLimit, ChainLimitFn, Container, CounterFilter, CustomCo
 
 use crate::field::FromEx;
 use crate::operations::{PayLpCost, TossCoin, TossDice};
-use crate::processor::{AnnounceAttribute, AnnounceCard, AnnounceRace, SelectCard, SelectOption, SelectYesNo, SortDeck};
+use crate::processor::{AnnounceAttribute, AnnounceCard, AnnounceNumber, AnnounceRace, SelectCard, SelectOption, SelectYesNo, SortDeck};
 use crate::script::{FusionCheck, Procedure, Script};
 
 // What Duel.GetChainInfo pushes for one CHAININFO flag.
@@ -570,14 +570,42 @@ impl Duel {
     }
 
     pub fn send_to_grave(&mut self, targets: impl Into<CardSet>, reason: u32) -> Script<i32> {
-        let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
+        self.send_to_grave_full(targets, reason, PLAYER_NONE, self.core.reason_player.get())
+    }
+
+    pub fn send_to_grave_full(&mut self, targets: impl Into<CardSet>, reason: u32, player: u8, reason_player: u8) -> Script<i32> {
+        let reason_effect = self.core.reason_effect.get();
         self.send_to(
             targets.into(),
             reason_effect,
             reason,
             reason_player,
-            PLAYER_NONE,
+            player,
             LOCATION_GRAVE,
+            0,
+            POS_FACEUP as u8,
+            false,
+        );
+        self.yield_script()?;
+        Ok(self.returns.at_i32(0))
+    }
+
+    pub fn send_to_extra_p(&mut self, targets: impl Into<CardSet>, player: u8, reason: u32) -> Script<i32> {
+        self.send_to_extra_p_full(targets, player, reason, self.core.reason_player.get())
+    }
+
+    pub fn send_to_extra_p_full(&mut self, targets: impl Into<CardSet>, player: u8, reason: u32, reason_player: u8) -> Script<i32> {
+        if player > PLAYER_NONE {
+            return Ok(0);
+        }
+        let reason_effect = self.core.reason_effect.get();
+        self.send_to(
+            targets.into(),
+            reason_effect,
+            reason,
+            reason_player,
+            player,
+            LOCATION_EXTRA,
             0,
             POS_FACEUP as u8,
             false,
@@ -802,6 +830,10 @@ impl From<u32> for ExtraSummon {
 impl Duel {
     pub fn get_turn_player(&self) -> u8 {
         self.infos.turn_player
+    }
+
+    pub fn check_phase_activity(&self) -> bool {
+        self.core.phase_action
     }
 
     pub fn is_main_phase(&self) -> bool {
@@ -1224,6 +1256,24 @@ impl Duel {
         });
         self.yield_script()?;
         Ok(self.returns.at_u32(0))
+    }
+
+    // The chosen number (a Lua error without any).
+    pub fn announce_number(&mut self, player: u8, numbers: &[u64]) -> Script<u64> {
+        if numbers.is_empty() {
+            self.reach_unported(concat!(file!(), ":", line!(), " (Duel.AnnounceNumber raises a Lua error)"));
+        }
+        self.core.select_options = numbers.iter().copied().collect();
+        self.emplace_process(AnnounceNumber {
+            playerid: player,
+            ..AnnounceNumber::default()
+        });
+        self.yield_script()?;
+        Ok(usize::try_from(self.returns.at_i32(0))
+            .ok()
+            .and_then(|index| numbers.get(index))
+            .copied()
+            .unwrap_or_default())
     }
 
     // The index of the chosen option, announced to the opponent (the default sel_hint).

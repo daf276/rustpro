@@ -2299,18 +2299,24 @@ impl Duel {
     // targets read them).
     #[inline(always)]
     fn is_player_can(&self, playerid: u8, code: u32, card: CardId) -> bool {
+        self.is_player_can_for_reason(playerid, code, card, 0)
+    }
+
+    // `reason` is what the codes whose check reads one pass; the others ignore it.
+    fn is_player_can_for_reason(&self, playerid: u8, code: u32, card: CardId, reason: u32) -> bool {
         if !self.field_effects.registry.has_code(code) {
             return true;
         }
-        self.is_player_can_lookup(playerid, code, card)
+        self.is_player_can_lookup(playerid, code, card, reason)
     }
 
-    fn is_player_can_lookup(&self, playerid: u8, code: u32, card: CardId) -> bool {
+    fn is_player_can_lookup(&self, playerid: u8, code: u32, card: CardId, reason: u32) -> bool {
         !self
             .filter_player_effect(playerid, code, true)
             .into_iter()
             .any(|effect| match self.effects[effect].target {
                 Target::Card(target) => target(self, effect, card),
+                Target::PlayerCard(target) => target(self, effect, card, playerid, reason),
                 _ => true,
             })
     }
@@ -2349,8 +2355,8 @@ impl Duel {
         self.is_player_can(playerid, EFFECT_CANNOT_TO_DECK, card)
     }
 
-    pub(crate) fn field_is_player_can_remove(&self, playerid: u8, card: CardId, _reason: u32) -> bool {
-        self.is_player_can(playerid, EFFECT_CANNOT_REMOVE, card)
+    pub(crate) fn field_is_player_can_remove(&self, playerid: u8, card: CardId, reason: u32) -> bool {
+        self.is_player_can_for_reason(playerid, EFFECT_CANNOT_REMOVE, card, reason)
     }
 
     // field::is_player_can_action: no player effect of `actionlimit` without a target function applies.

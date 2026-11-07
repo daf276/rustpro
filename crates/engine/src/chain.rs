@@ -3,7 +3,7 @@
 use crate::card::{CardId, CardSet};
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{Chain, Container, CounterFilter, EffectId, EffectSet, Event, Operation, Target, TriggeringState};
+use crate::effect::{Chain, Container, CounterFilter, EffectId, EffectSet, Event, Operation, Target, TriggeringState, Value};
 use crate::processor::{PointEvent, RESTART, SelectEffectYesNo, SelectOption};
 use crate::script::{Args, Procedure};
 
@@ -584,7 +584,7 @@ impl Duel {
                 let current = self.cards[handler].current;
                 self.cards[handler].set_status(STATUS_ACT_FROM_HAND, current.location == LOCATION_HAND);
                 if current.location == LOCATION_SZONE {
-                    self.change_position(handler, None, current.controler, POS_FACEUP, 0, false);
+                    self.field_change_position(handler, None, current.controler, POS_FACEUP, 0, false);
                 } else {
                     let data_type = self.cards[handler].data.card_type;
                     unported!(
@@ -894,13 +894,56 @@ impl Duel {
                     arg.step = 0;
                     return false;
                 }
-                // Only effects with a value function or a count limit are offered and used; the rest change nothing.
-                unported!(
-                    self,
-                    self.filter_effect(handler, ecode, true)
-                        .iter()
-                        .filter(|&&e| self.effects[e].is_flag(EFFECT_FLAG_FUNC_VALUE | EFFECT_FLAG_COUNT_LIMIT))
-                );
+                let controler = card.current.controler;
+                self.core.select_effects.clear();
+                self.core.select_options.clear();
+                let effects = self.filter_effect(handler, ecode, true);
+                if effects.is_empty() {
+                    return false;
+                }
+                let mut has_no_side_effect_effs = false;
+                for effect in effects {
+                    let peffect = &self.effects[effect];
+                    if !(peffect.is_flag(EFFECT_FLAG_FUNC_VALUE) || peffect.is_flag(EFFECT_FLAG_COUNT_LIMIT)) {
+                        has_no_side_effect_effs = true;
+                    } else if self.check_count_limit(effect, controler) {
+                        let description = peffect.description;
+                        self.core.select_effects.push(effect);
+                        self.core.select_options.push(description);
+                    }
+                }
+                if self.core.select_options.is_empty() {
+                    arg.step = 0;
+                    return false;
+                }
+                // The option 99 that stands for the effects with no side effect has no entry in select_effects.
+                if has_no_side_effect_effs {
+                    self.core.select_options.insert(0, 99);
+                }
+                if self.core.select_options.len() == 1 {
+                    self.returns.set_i32(0, 0);
+                } else {
+                    self.emplace_process(SelectOption {
+                        playerid: controler,
+                        ..SelectOption::default()
+                    });
+                }
+                false
+            }
+            11 => {
+                let Some(&chain) = self.core.new_chains.first() else { return true };
+                let handler = self.get_handler(chain.triggering_effect);
+                let offset = self.core.select_options.len().saturating_sub(self.core.select_effects.len());
+                let selected = usize::try_from(self.returns.at_i32(0))
+                    .ok()
+                    .and_then(|index| index.checked_sub(offset));
+                if let Some(&effect) = selected.and_then(|index| self.core.select_effects.get(index)) {
+                    self.dec_count(effect, self.cards[handler].current.controler);
+                    match self.effects[effect].value {
+                        Value::Activation(value) => value(self, effect, chain.triggering_effect),
+                        _ => debug_assert!(false, "an activation condition read with the wrong parameters"),
+                    }
+                }
                 arg.step = 0;
                 false
             }

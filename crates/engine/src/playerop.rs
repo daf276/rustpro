@@ -5,8 +5,8 @@ use crate::constants::*;
 use crate::duel::Duel;
 use crate::list::List;
 use crate::processor::{
-    AnnounceRace, SelectBattleCmd, SelectCard, SelectChain, SelectEffectYesNo, SelectIdleCmd, SelectOption, SelectPlace, SelectPosition,
-    SelectSum, SelectTributeP, SelectUnselectCard, SelectYesNo, SortCard,
+    AnnounceAttribute, AnnounceRace, SelectBattleCmd, SelectCard, SelectChain, SelectEffectYesNo, SelectIdleCmd, SelectOption, SelectPlace,
+    SelectPosition, SelectSum, SelectTributeP, SelectUnselectCard, SelectYesNo, SortCard,
 };
 
 impl Duel {
@@ -246,6 +246,33 @@ impl Duel {
             return false;
         }
         self.trace.message(MSG_HINT).u8(HINT_RACE).u8(arg.playerid).u64(selected);
+        true
+    }
+
+    pub(crate) fn process_announce_attribute(&mut self, arg: &mut AnnounceAttribute) -> bool {
+        if arg.step == 0 {
+            if arg.count == 0 {
+                self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(arg.playerid).u64(0);
+                return true;
+            }
+            self.trace
+                .message(MSG_ANNOUNCE_ATTRIB)
+                .u8(arg.playerid)
+                .u8(arg.count)
+                .u32(arg.available);
+            self.returns.clear();
+            return false;
+        }
+        let selected = self.returns.at_u32(0);
+        if selected & !arg.available != 0 || selected.count_ones() != u32::from(arg.count) {
+            self.trace.message(MSG_RETRY);
+            return false;
+        }
+        self.trace
+            .message(MSG_HINT)
+            .u8(HINT_ATTRIB)
+            .u8(arg.playerid)
+            .u64(u64::from(selected));
         true
     }
 

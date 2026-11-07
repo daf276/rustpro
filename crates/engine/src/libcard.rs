@@ -139,6 +139,31 @@ impl CardId {
         duel.cards[self].previous.is_location(location as u16)
     }
 
+    pub fn is_can_turn_set(self, duel: &Duel) -> bool {
+        duel.is_capable_turn_set(self, duel.core.reason_player.get())
+    }
+
+    pub fn get_previous_location(self, duel: &Duel) -> u32 {
+        u32::from(duel.cards[self].previous.location)
+    }
+
+    // Card.GetOriginalCodeRule's first value; the second comes with EFFECT_ADD_CODE.
+    pub fn get_original_code_rule(self, duel: &Duel) -> u32 {
+        unported!(duel, duel.filter_effect(self, EFFECT_ADD_CODE, true));
+        let data = &duel.cards[self].data;
+        if data.alias != 0 { data.alias } else { data.code }
+    }
+
+    pub fn is_original_code_rule(self, duel: &Duel, code: u32) -> bool {
+        self.get_original_code_rule(duel) == code
+    }
+
+    // Card.IsPreviousSetCard: the archetypes of the card's previous code and set code effects, which come with the
+    // cards that change a code or add an archetype; until then they are the archetypes it has.
+    pub fn is_previous_set_card(self, duel: &Duel, setcodes: &[u16]) -> bool {
+        self.is_set_card(duel, setcodes)
+    }
+
     pub fn get_previous_sequence(self, duel: &Duel) -> u32 {
         duel.cards[self].previous.sequence
     }
@@ -693,6 +718,10 @@ impl CardId {
 
     pub fn get_turn_id(self, duel: &Duel) -> i32 {
         i32::from(duel.cards[self].turnid)
+    }
+
+    pub fn get_reason_player(self, duel: &Duel) -> u8 {
+        duel.cards[self].current.reason_player
     }
 
     pub fn is_reason(self, duel: &Duel, reason: u32) -> bool {

@@ -262,6 +262,12 @@ impl EffectId {
         duel.get_owner(self)
     }
 
+    pub fn set_owner_player(self, duel: &mut Duel, player: u8) {
+        if player <= 1 {
+            duel.effects[self].effect_owner = player;
+        }
+    }
+
     pub fn get_activate_location(self, duel: &Duel) -> u32 {
         duel.effects[self].active_location.into()
     }

@@ -38,6 +38,13 @@ impl CardSet {
 }
 
 impl CardSet {
+    // Group.Split: the cards the filter holds for, and the others, the exception among them.
+    pub fn split(&self, duel: &Duel, filter: impl Fn(CardId, &Duel) -> bool, exception: Option<CardSet>) -> (CardSet, CardSet) {
+        let exception = exception.unwrap_or_default();
+        let matching = self.filter(duel, filter, Some(exception));
+        (matching, self.difference(matching))
+    }
+
     pub fn filter_count(&self, duel: &Duel, filter: impl Fn(CardId, &Duel) -> bool, exception: Option<CardSet>) -> usize {
         self.filter(duel, filter, exception).len()
     }

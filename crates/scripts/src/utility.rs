@@ -4,11 +4,16 @@ use engine::{Args, CardId, CardSet, CostFn, Duel, EffectId, Script, Value};
 
 use crate::chain::EffectChain;
 use crate::constant::*;
-use crate::proc_workaround::CardWorkaround;
+use crate::proc_workaround::{CardWorkaround, DuelWorkaround};
 
 // The chain data slots of cd.cost_detached_materials and cd.cost_discarded_cards, above those card ports use.
 const COST_DETACHED_MATERIALS: u8 = u8::MAX;
 const COST_DISCARDED_CARDS: u8 = u8::MAX - 1;
+const COST_LP_PAID: u8 = u8::MAX - 2;
+const COST_CHOICE: u8 = u8::MAX - 3;
+
+// Cost.Choice's {cost, description, additional_check}.
+pub type CostChoice = (CostFn, u64, fn(&Duel, &Args) -> bool);
 
 pub mod aux {
     use engine::{Args, CardId, CardSet, Duel, EffectId, ExtraMaterialCall, Operation, Script, Value};
@@ -231,6 +236,16 @@ pub mod aux {
         e1
     }
 
+    // Auxiliary.DoubleSnareValidity(c, range), a marker effect that nothing ported reads.
+    pub fn double_snare_validity(duel: &mut Duel, c: CardId, range: u32) {
+        let eff = duel.create_effect(c);
+        eff.set_type(duel, EFFECT_TYPE_SINGLE);
+        eff.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE | EFFECT_FLAG_SINGLE_RANGE);
+        eff.set_range(duel, range);
+        eff.set_code(duel, 3682106);
+        c.register_effect(duel, eff);
+    }
+
     pub fn add_lizard_check(duel: &mut Duel, c: CardId) -> EffectId {
         let e1 = duel.create_effect(c);
         e1.set_type(duel, EFFECT_TYPE_SINGLE);
@@ -242,7 +257,11 @@ pub mod aux {
     }
 
     pub fn add_temp_lizard_check(duel: &mut Duel, c: CardId, tp: u8) -> EffectId {
-        let e1 = create_lizard_check(duel, c, |_, _, _| true);
+        add_temp_lizard_check_full(duel, c, tp, |_, _, _| true)
+    }
+
+    pub fn add_temp_lizard_check_full(duel: &mut Duel, c: CardId, tp: u8, filter: fn(&Duel, EffectId, CardId) -> bool) -> EffectId {
+        let e1 = create_lizard_check(duel, c, filter);
         e1.set_reset(duel, RESET_PHASE | PHASE_END);
         duel.register_effect(e1, tp);
         e1
@@ -463,6 +482,12 @@ pub mod aux {
         }
     }
 
+    // Auxiliary.ChangeBattleDamage(PLAYER, VALUE): -1 leaves the damage alone.
+    pub fn change_battle_damage<const PLAYER: u8, const VALUE: u32>(duel: &Duel, e: EffectId, damp: u8, _: CardId) -> i64 {
+        let target = if PLAYER == 0 { damp } else { 1 - damp };
+        if e.get_owner_player(duel) == target { i64::from(VALUE) } else { -1 }
+    }
+
     // Auxiliary.tgoval: EFFECT_CANNOT_BE_EFFECT_TARGET for the opponent's effects.
     pub fn tgoval(duel: &Duel, e: EffectId, _re: EffectId, rp: u8) -> bool {
         rp != e.get_handler_player(duel)
@@ -567,11 +592,27 @@ impl Cost {
     // Cost.Discard() applied: one card from the hand; the discarded cards are kept as the chain data's
     // cost_discarded_cards.
     pub fn discard(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        Cost::discard_full(duel, args, chk, aux::TRUE, false, (1, 1))
+    }
+
+    // Cost.Discard(filter, other, min, max) applied, with the counts given.
+    pub fn discard_full(
+        duel: &mut Duel,
+        args: &Args,
+        chk: i32,
+        filter: impl Fn(CardId, &Duel) -> bool,
+        other: bool,
+        (min, max): (u8, u8),
+    ) -> Script<bool> {
         let (e, tp) = (args.e, args.tp);
+        let exclude = other.then(|| CardSet::from(e.get_handler(duel)));
+        let filter_final = |c: CardId, duel: &Duel| filter(c, duel) && c.is_discardable(duel);
         if chk == 0 {
-            return Ok(duel.is_existing_matching_card(|c, duel| c.is_discardable(duel), tp, LOCATION_HAND, 0, 1, None));
+            return Ok(min > 0
+                && max >= min
+                && duel.is_existing_matching_card(filter_final, tp, LOCATION_HAND, 0, usize::from(min), exclude));
         }
-        duel.discard_hand(tp, |c, duel| c.is_discardable(duel), 1, 1, REASON_COST | REASON_DISCARD)?;
+        duel.discard_hand_full(tp, filter_final, min, max, REASON_COST | REASON_DISCARD, exclude)?;
         let discarded = duel.get_operated_group();
         e.set_chain_data_group(duel, COST_DISCARDED_CARDS, discarded);
         Ok(false)
@@ -592,6 +633,86 @@ impl Cost {
         Ok(false)
     }
 
+    // Cost.PayLP(LP) applied for an LP of at least 1; the LP paid is kept as the chain data's cost_lp_paid.
+    pub fn pay_lp<const LP: u32>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        if chk == 0 {
+            return Ok(duel.check_lp_cost(args.tp, LP));
+        }
+        duel.pay_lp_cost(args.tp, LP)?;
+        args.e.set_chain_data(duel, COST_LP_PAID, i64::from(LP));
+        Ok(false)
+    }
+
+    // Cost.AND(...) applied. A cost that returns false when executed, which stops the others, has no caller.
+    pub fn and(duel: &mut Duel, args: &Args, chk: i32, costs: &[CostFn]) -> Script<bool> {
+        for cost in costs {
+            if !cost(duel, args, chk)? && chk == 0 {
+                return Ok(false);
+            }
+        }
+        Ok(chk == 0)
+    }
+
+    // Cost.Choice(...) applied to {cost, description, additional_check}; the chosen index (from 1) is kept as the chain
+    // data's cost_choice.
+    pub fn choice(duel: &mut Duel, args: &Args, chk: i32, choices: &[CostChoice]) -> Script<bool> {
+        let mut ops = Vec::with_capacity(choices.len());
+        for &(cost, description, additional_check) in choices {
+            let check = cost(duel, args, 0)? && additional_check(duel, args);
+            ops.push((check, description));
+        }
+        if chk == 0 {
+            return Ok(ops.iter().any(|&(check, _)| check));
+        }
+        let Some(choice) = duel.select_effect(args.tp, &ops)? else {
+            return Ok(false);
+        };
+        args.e.set_chain_data(duel, COST_CHOICE, choice as i64);
+        if let Some(&(cost, ..)) = choice.checked_sub(1).and_then(|index| choices.get(index)) {
+            cost(duel, args, 1)?;
+        }
+        Ok(false)
+    }
+
+    pub fn get_choice(duel: &Duel, e: EffectId) -> Option<i64> {
+        e.get_chain_data(duel, COST_CHOICE)
+    }
+
+    // Cost.Reveal(filter, other, min, max, op, location) applied, with the counts given.
+    pub fn reveal(
+        duel: &mut Duel,
+        args: &Args,
+        chk: i32,
+        filter: fn(CardId, &Duel, EffectId, u8) -> bool,
+        other: bool,
+        (min, max): (u8, u8),
+        op: Option<fn(&mut Duel, &Args, CardSet)>,
+        location: u32,
+    ) -> Script<bool> {
+        let (e, tp) = (args.e, args.tp);
+        let exclude = other.then(|| CardSet::from(e.get_handler(duel)));
+        let filter_final = |c: CardId, duel: &Duel| filter(c, duel, e, tp) && !c.is_public(duel);
+        if chk == 0 {
+            return Ok(min > 0 && max >= min && duel.is_existing_matching_card(filter_final, tp, location, 0, usize::from(min), exclude));
+        }
+        duel.hint(HINT_SELECTMSG, tp, HINTMSG_CONFIRM);
+        let g = duel.select_matching_card(tp, filter_final, tp, location, 0, min, max, exclude)?;
+        duel.confirm_cards(1 - tp, g)?;
+        if g.is_exists(duel, |c, duel| c.is_location(duel, LOCATION_HAND), 1, None) {
+            duel.shuffle_hand(tp)?;
+        }
+        if g.is_exists(duel, |c, duel| c.is_location(duel, LOCATION_DECK), 1, None) {
+            duel.shuffle_deck(tp)?;
+        }
+        if g.is_exists(duel, |c, duel| c.is_location(duel, LOCATION_EXTRA), 1, None) {
+            duel.shuffle_extra(tp)?;
+        }
+        if let Some(op) = op {
+            op(duel, args, g);
+        }
+        Ok(false)
+    }
+
     // Cost.RemoveCounterFromField(counter_type, count) applied.
     pub fn remove_counter_from_field<const COUNTER_TYPE: u16, const COUNT: u16>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         if chk == 0 {
@@ -604,13 +725,17 @@ impl Cost {
 
 pub trait CardUtility: Copy {
     fn is_monster(self, duel: &Duel) -> bool;
-    fn is_spell_trap(self, duel: &Duel) -> bool;
+    fn is_spell(self, duel: &Duel) -> bool;
     fn is_trap(self, duel: &Duel) -> bool;
+    fn is_spell_trap(self, duel: &Duel) -> bool;
+    fn is_monster_card(self, duel: &Duel) -> bool;
+    fn is_owner(self, duel: &Duel, player: u8) -> bool;
+    fn is_field_spell(self, duel: &Duel) -> bool;
+    fn is_ritual_spell(self, duel: &Duel) -> bool;
+    fn is_ritual_monster(self, duel: &Duel) -> bool;
     fn is_continuous_spell(self, duel: &Duel) -> bool;
     fn is_continuous_trap(self, duel: &Duel) -> bool;
     fn is_quick_play_spell(self, duel: &Duel) -> bool;
-    fn is_ritual_spell(self, duel: &Duel) -> bool;
-    fn is_ritual_monster(self, duel: &Duel) -> bool;
     fn is_synchro_monster(self, duel: &Duel) -> bool;
     fn is_non_effect_monster(self, duel: &Duel) -> bool;
     fn is_in_main_mzone(self, duel: &Duel, tp: Option<u8>) -> bool;
@@ -633,6 +758,9 @@ pub trait CardUtility: Copy {
     fn is_xyz_summoned(self, duel: &Duel) -> bool;
     fn is_ritual_summoned(self, duel: &Duel) -> bool;
     fn has_flag_effect(self, duel: &Duel, id: u32) -> bool;
+    fn has_flag_effect_full(self, duel: &Duel, id: u32, count: usize) -> bool;
+    fn announce_another_attribute(self, duel: &mut Duel, tp: u8) -> Script<u32>;
+    fn is_race_except(self, duel: &Duel, race: u64) -> bool;
     fn update_level(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>) -> i32;
     fn update_attack(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>, reset_count: Option<u16>) -> i32;
 }
@@ -667,7 +795,22 @@ impl CardUtility for CardId {
     }
 
     fn has_flag_effect(self, duel: &Duel, id: u32) -> bool {
-        self.get_flag_effect(duel, id) >= 1
+        self.has_flag_effect_full(duel, id, 1)
+    }
+
+    fn has_flag_effect_full(self, duel: &Duel, id: u32, count: usize) -> bool {
+        self.get_flag_effect(duel, id) >= count
+    }
+
+    fn announce_another_attribute(self, duel: &mut Duel, tp: u8) -> Script<u32> {
+        announce_another_attribute(duel, self.get_attribute(duel), tp)
+    }
+
+    // Card.IsRaceExcept(c, race, scard, sumtype, playerid): the scard arguments only reach race effects that apply as
+    // material.
+    fn is_race_except(self, duel: &Duel, race: u64) -> bool {
+        let own = self.get_race(duel);
+        own & race != own
     }
 
     // Card.UpdateLevel(c, amt, reset, rc): `reset` None is RESET_EVENT with the standard resets (and RESET_DISABLE
@@ -710,12 +853,36 @@ impl CardUtility for CardId {
         self.is_type(duel, TYPE_MONSTER)
     }
 
-    fn is_spell_trap(self, duel: &Duel) -> bool {
-        self.is_type(duel, TYPE_SPELL | TYPE_TRAP)
+    fn is_spell(self, duel: &Duel) -> bool {
+        self.is_type(duel, TYPE_SPELL)
     }
 
     fn is_trap(self, duel: &Duel) -> bool {
         self.is_type(duel, TYPE_TRAP)
+    }
+
+    fn is_spell_trap(self, duel: &Duel) -> bool {
+        self.is_type(duel, TYPE_SPELL | TYPE_TRAP)
+    }
+
+    fn is_monster_card(self, duel: &Duel) -> bool {
+        self.is_original_type(duel, TYPE_MONSTER)
+    }
+
+    fn is_owner(self, duel: &Duel, player: u8) -> bool {
+        self.get_owner(duel) == player
+    }
+
+    fn is_field_spell(self, duel: &Duel) -> bool {
+        self.is_composite_type(duel, TYPE_SPELL | TYPE_FIELD)
+    }
+
+    fn is_ritual_spell(self, duel: &Duel) -> bool {
+        self.is_composite_type(duel, TYPE_SPELL | TYPE_RITUAL)
+    }
+
+    fn is_ritual_monster(self, duel: &Duel) -> bool {
+        self.is_composite_type(duel, TYPE_MONSTER | TYPE_RITUAL)
     }
 
     fn is_continuous_spell(self, duel: &Duel) -> bool {
@@ -728,14 +895,6 @@ impl CardUtility for CardId {
 
     fn is_quick_play_spell(self, duel: &Duel) -> bool {
         self.is_composite_type(duel, TYPE_SPELL | TYPE_QUICKPLAY)
-    }
-
-    fn is_ritual_spell(self, duel: &Duel) -> bool {
-        self.is_composite_type(duel, TYPE_SPELL | TYPE_RITUAL)
-    }
-
-    fn is_ritual_monster(self, duel: &Duel) -> bool {
-        self.is_composite_type(duel, TYPE_MONSTER | TYPE_RITUAL)
     }
 
     fn is_synchro_monster(self, duel: &Duel) -> bool {
@@ -861,11 +1020,25 @@ impl EffectUtility for EffectId {
     }
 }
 
+// Card.AnnounceAnotherAttribute and Duel.AnnounceAnotherAttribute: any attribute but the one of `attribute`, if it is single.
+fn announce_another_attribute(duel: &mut Duel, attribute: u32, tp: u8) -> Script<u32> {
+    duel.hint(HINT_SELECTMSG, tp, HINTMSG_ATTRIBUTE);
+    let available = if attribute & attribute.wrapping_sub(1) == 0 {
+        !attribute & ATTRIBUTE_ALL
+    } else {
+        ATTRIBUTE_ALL
+    };
+    duel.announce_attribute(tp, 1, available)
+}
+
 pub trait DuelUtility {
     fn select_effect(&mut self, tp: u8, effects: &[(bool, u64)]) -> Script<Option<usize>>;
     fn has_flag_effect(&self, tp: u8, id: u32) -> bool;
     fn has_flag_effect_full(&self, tp: u8, id: u32, ct: usize) -> bool;
     fn get_target_cards(&self, e: EffectId) -> Option<CardSet>;
+    fn announce_another_attribute(&mut self, g: CardSet, tp: u8) -> Script<u32>;
+    fn move_to_deck_bottom_count(&mut self, count: usize, tp: u8) -> Script<()>;
+    fn place_field_spell(&mut self, c: CardId, tp: u8) -> Script<bool>;
 }
 
 impl DuelUtility for Duel {
@@ -896,5 +1069,46 @@ impl DuelUtility for Duel {
 
     fn has_flag_effect_full(&self, tp: u8, id: u32, ct: usize) -> bool {
         self.get_flag_effect(tp, id) >= ct
+    }
+
+    // Duel.PlaceFieldSpell(c, tp, target_p) with target_p left out.
+    fn place_field_spell(&mut self, c: CardId, tp: u8) -> Script<bool> {
+        let fc = self.get_field_card(tp, LOCATION_FZONE, 0);
+        if self.is_duel_type(DUEL_1_FIELD) {
+            if let Some(fc) = fc {
+                self.destroy(fc, REASON_RULE)?;
+            }
+        } else if let Some(fc) = fc
+            && self.send_to_grave(fc, REASON_RULE)? == 0
+        {
+            self.send_to_grave(c, REASON_RULE)?;
+            return Ok(false);
+        }
+        self.break_effect()?;
+        let res = self.move_to_field(c, tp, tp, LOCATION_FZONE, POS_FACEUP, true)?;
+        if res
+            && self.is_duel_type(DUEL_1_FIELD)
+            && let Some(fc) = self.get_field_card(1 - tp, LOCATION_FZONE, 0)
+            && self.destroy(fc, REASON_RULE)? == 0
+        {
+            self.send_to_grave(c, REASON_RULE)?;
+            return Ok(false);
+        }
+        Ok(res)
+    }
+
+    // Duel.MoveToDeckBottom(count, tp): the top card of the Deck, `count` times.
+    fn move_to_deck_bottom_count(&mut self, count: usize, tp: u8) -> Script<()> {
+        for _ in 0..count {
+            if let Some(top) = self.get_decktop_group(tp, 1).get_first() {
+                self.move_sequence(top, SEQ_DECKBOTTOM as u8)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn announce_another_attribute(&mut self, g: CardSet, tp: u8) -> Script<u32> {
+        let attribute = g.get_bitwise_or(self, |c, duel| u64::from(c.get_attribute(duel))) as u32;
+        announce_another_attribute(self, attribute, tp)
     }
 }

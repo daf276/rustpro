@@ -15,6 +15,10 @@ pub struct Fusion;
 // f(c, fc, sumtype, tp).
 pub type MaterialFilter = fn(CardId, &Duel, CardId, u64, u8) -> bool;
 
+// f(c, fc, sumtype, tp, sub, mg, sg) for a filter that reads sg, the materials chosen with c (nil in the first pass, as
+// the Lua's globals are); sub and mg have no caller.
+pub type GroupMaterialFilter = fn(CardId, &Duel, CardId, u64, u8, Option<CardSet>) -> bool;
+
 // preselect(e, tc): false stops the summon.
 pub type Preselect = fn(&mut Duel, EffectId, CardId) -> Script<bool>;
 
@@ -22,6 +26,7 @@ pub type Preselect = fn(&mut Duel, EffectId, CardId) -> Script<bool>;
 pub enum FusionMaterial {
     Code(u32),
     Filter(MaterialFilter),
+    GroupFilter(GroupMaterialFilter),
 }
 
 // Fusion.AddProcMix(c, sub, insf, ...) and the procedures that call it (AddProcMixN, AddProcCode2, ...), with each
@@ -129,10 +134,17 @@ fn check_additional(duel: &Duel, tp: u8, sg: CardSet, fc: CardId) -> bool {
 
 impl FusionMaterial {
     // The material function the procedures build: fun(c, fc, sub, sub2, mg, sg, tp, contact, sumtype).
-    fn check(self, duel: &Duel, c: CardId, fc: CardId, sub: bool, sub2: bool, tp: u8, sumtype: u64) -> bool {
+    fn check(self, duel: &Duel, c: CardId, fc: CardId, sub: bool, sub2: bool, tp: u8, sumtype: u64, sg: Option<CardSet>) -> bool {
         let any = |duel| sub2 && c.is_has_effect(duel, EFFECT_ANY_MATERIAL).is_some();
         match self {
-            Self::Filter(f) => (f(c, duel, fc, sumtype, tp) || any(duel)) && c.is_has_effect(duel, EFFECT_NOT_MATERIAL).is_none(),
+            Self::Filter(_) | Self::GroupFilter(_) => {
+                let passes = match self {
+                    Self::Filter(f) => f(c, duel, fc, sumtype, tp),
+                    Self::GroupFilter(f) => f(c, duel, fc, sumtype, tp, sg),
+                    Self::Code(_) => false,
+                };
+                (passes || any(duel)) && c.is_has_effect(duel, EFFECT_NOT_MATERIAL).is_none()
+            }
             Self::Code(code) => {
                 c.is_summon_code(duel, Some(fc), sumtype, fc.get_controler(duel), &[code])
                     || (sub && c.check_fusion_substitute(duel, fc))
@@ -187,7 +199,9 @@ impl Proc {
     // Fusion.ConditionFilterMix.
     fn condition_filter(self, duel: &Duel, c: CardId, sub: bool, funs: impl IntoIterator<Item = FusionMaterial>) -> bool {
         c.is_can_be_fusion_material(duel, Some(self.fc), self.sumtype)
-            && funs.into_iter().any(|f| f.check(duel, c, self.fc, sub, sub, self.tp, self.sumtype))
+            && funs
+                .into_iter()
+                .any(|f| f.check(duel, c, self.fc, sub, sub, self.tp, self.sumtype, None))
     }
 
     fn cannot_be_material(self, duel: &Duel, g: CardSet) -> bool {
@@ -362,7 +376,7 @@ impl Fusion {
         let (fc, tp, sumtype) = (s.fc, s.tp, s.sumtype);
         let [fun1, rest @ ..] = funs else { return false };
         if rest.is_empty() {
-            return fun1.check(duel, c, fc, sub, sub2, tp, sumtype);
+            return fun1.check(duel, c, fc, sub, sub2, tp, sumtype, Some(sg));
         }
         let sg = sg.union(c.into());
         let next = |sub| {
@@ -373,9 +387,9 @@ impl Fusion {
                 Some(sg),
             )
         };
-        if fun1.check(duel, c, fc, false, sub2, tp, sumtype) {
+        if fun1.check(duel, c, fc, false, sub2, tp, sumtype, Some(sg)) {
             next(sub)
-        } else if sub && fun1.check(duel, c, fc, true, sub2, tp, sumtype) {
+        } else if sub && fun1.check(duel, c, fc, true, sub2, tp, sumtype, Some(sg)) {
             next(false)
         } else {
             false
@@ -459,8 +473,8 @@ impl Rep {
     }
 
     // A card given to fixed material i, or to fun1 when i is None; sub stays only if the card also passes without it.
-    fn after(self, duel: &Duel, s: Proc, c: CardId, i: Option<usize>, f: FusionMaterial) -> Self {
-        let sub = self.sub && f.check(duel, c, s.fc, false, self.sub2, s.tp, s.sumtype);
+    fn after(self, duel: &Duel, s: Proc, c: CardId, i: Option<usize>, f: FusionMaterial, g: CardSet) -> Self {
+        let sub = self.sub && f.check(duel, c, s.fc, false, self.sub2, s.tp, s.sumtype, Some(g));
         match i {
             Some(i) => Self {
                 sub,
@@ -476,8 +490,8 @@ impl Rep {
         }
     }
 
-    fn passes(self, duel: &Duel, s: Proc, c: CardId, f: FusionMaterial) -> bool {
-        f.check(duel, c, s.fc, self.sub, self.sub2, s.tp, s.sumtype)
+    fn passes(self, duel: &Duel, s: Proc, c: CardId, f: FusionMaterial, g: CardSet) -> bool {
+        f.check(duel, c, s.fc, self.sub, self.sub2, s.tp, s.sumtype, Some(g))
     }
 }
 
@@ -582,13 +596,13 @@ impl Fusion {
     fn check_mix_rep<M: FusionMixRep>(duel: &Duel, sg: CardSet, g: CardSet, s: Proc, rep: Rep) -> bool {
         if let Some((i, fun2)) = rest_iter::<M>(rep.rest).next() {
             let filter = |c: CardId, duel: &Duel| {
-                rep.passes(duel, s, c, fun2)
-                    && Fusion::check_mix_rep::<M>(duel, sg, g.union(c.into()), s, rep.after(duel, s, c, Some(i), fun2))
+                let g = g.union(c.into());
+                rep.passes(duel, s, c, fun2, g) && Fusion::check_mix_rep::<M>(duel, sg, g, s, rep.after(duel, s, c, Some(i), fun2, g))
             };
             return sg.is_exists(duel, filter, 1, Some(g));
         }
-        let ct1 = sg.filter_count(duel, |c, duel| rep.passes(duel, s, c, M::FUN1), Some(g));
-        let ct2 = sg.filter_count(duel, |c, duel| Rep { sub: false, ..rep }.passes(duel, s, c, M::FUN1), Some(g));
+        let ct1 = sg.filter_count(duel, |c, duel| rep.passes(duel, s, c, M::FUN1, sg), Some(g));
+        let ct2 = sg.filter_count(duel, |c, duel| Rep { sub: false, ..rep }.passes(duel, s, c, M::FUN1, sg), Some(g));
         ct1 + g.len() == sg.len() && ct1 <= ct2 + 1
     }
 
@@ -614,8 +628,8 @@ impl Fusion {
             true => Fusion::check_mix_rep_selected_cond::<M>(duel, search, g, rep),
             false => Fusion::check_select_mix_rep::<M>(duel, search, g, rep),
         };
-        let fixed = rest_iter::<M>(rep.rest).any(|(i, f)| rep.passes(duel, s, c, f) && cond(rep.after(duel, s, c, Some(i), f)));
-        fixed || (rep.maxc > 0 && rep.passes(duel, s, c, M::FUN1) && cond(rep.after(duel, s, c, None, M::FUN1)))
+        let fixed = rest_iter::<M>(rep.rest).any(|(i, f)| rep.passes(duel, s, c, f, g) && cond(rep.after(duel, s, c, Some(i), f, g)));
+        fixed || (rep.maxc > 0 && rep.passes(duel, s, c, M::FUN1, g) && cond(rep.after(duel, s, c, None, M::FUN1, g)))
     }
 
     fn check_mix_rep_selected_cond<M: FusionMixRep>(duel: &Duel, search: Search, g: CardSet, rep: Rep) -> bool {
@@ -652,12 +666,12 @@ impl Fusion {
         let s = search.proc;
         let g = g.union(c.into());
         if let Some((i, fun2)) = rest_iter::<M>(rep.rest).next() {
-            return rep.passes(duel, s, c, fun2)
-                && Fusion::check_select_mix_rep::<M>(duel, search, g, rep.after(duel, s, c, Some(i), fun2));
+            return rep.passes(duel, s, c, fun2, g)
+                && Fusion::check_select_mix_rep::<M>(duel, search, g, rep.after(duel, s, c, Some(i), fun2, g));
         }
         rep.maxc > 0
-            && rep.passes(duel, s, c, M::FUN1)
-            && Fusion::check_select_mix_rep::<M>(duel, search, g, rep.after(duel, s, c, None, M::FUN1))
+            && rep.passes(duel, s, c, M::FUN1, g)
+            && Fusion::check_select_mix_rep::<M>(duel, search, g, rep.after(duel, s, c, None, M::FUN1, g))
     }
 
     fn select_mix_rep<M: FusionMixRep>(duel: &Duel, c: CardId, search: Search, rep: Rep) -> bool {

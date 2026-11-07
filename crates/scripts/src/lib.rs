@@ -52,7 +52,7 @@ pub mod prelude {
     pub use crate::proc_union::{Union, UnionProcedure};
     pub use crate::proc_workaround::{CardWorkaround, DuelWorkaround};
     pub use crate::proc_xyz::{AlterFilter, Xyz, XyzFilter, XyzProcedure};
-    pub use crate::utility::{CardUtility, Cost, DuelUtility, EffectUtility, aux};
+    pub use crate::utility::{CardUtility, Cost, CostChoice, DuelUtility, EffectUtility, aux};
 }
 
 // What loading utility.lua registers. proc_fusion_spell.lua, proc_skill.lua and proc_maximum.lua also register global

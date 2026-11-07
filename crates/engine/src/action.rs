@@ -30,6 +30,8 @@ pub enum Prompt {
     Position { player: u8, positions: u8 },
     // Picked one race at a time until `count` are picked.
     AnnounceRace { player: u8, count: u8, available: u64 },
+    // Picked one attribute at a time until `count` are picked.
+    AnnounceAttribute { player: u8, count: u8, available: u32 },
     // MSG_SORT_CARD: one Card per answer, the next card of the new order, until all `count` are ordered.
     Sort { player: u8, count: u8 },
 }
@@ -74,6 +76,8 @@ pub enum Action {
     Position(u8),
     // A race by its bit index.
     Race(u8),
+    // An attribute by its bit index.
+    Attribute(u8),
 }
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -202,6 +206,11 @@ impl Duel {
                 count: arg.count,
                 available: arg.available,
             }),
+            Unit::AnnounceAttribute(arg) if arg.step > 0 => Some(Prompt::AnnounceAttribute {
+                player: arg.playerid,
+                count: arg.count,
+                available: arg.available,
+            }),
             Unit::SortCard(arg) if arg.step > 0 => Some(Prompt::Sort {
                 player: arg.playerid,
                 count: self.core.select_cards.len() as u8,
@@ -303,6 +312,10 @@ impl Duel {
                         .map(Action::Card),
                 );
             }
+            Prompt::AnnounceAttribute { available, .. } => {
+                let open = available & !self.returns.at_u32(0);
+                actions.extend((0..32).filter(|bit| open & 1 << bit != 0).map(Action::Attribute));
+            }
         }
     }
 
@@ -352,6 +365,9 @@ impl Duel {
                 bit < 64 && (available & !self.returns.at_u64(0)) & (1 << bit) != 0
             }
             (Prompt::Sort { count, .. }, Action::Card(index)) => index < u16::from(count) && !self.returns.data.contains(&(index as u8)),
+            (Prompt::AnnounceAttribute { available, .. }, Action::Attribute(bit)) => {
+                bit < 32 && (available & !self.returns.at_u32(0)) & (1 << bit) != 0
+            }
             _ => false,
         }
     }
@@ -503,6 +519,16 @@ impl Duel {
                     return Ok(Status::Awaiting);
                 }
             }
+            Action::Attribute(bit) => {
+                let Prompt::AnnounceAttribute { count, .. } = prompt else {
+                    return Err(ActionError::Illegal(action));
+                };
+                let attributes = self.returns.at_u32(0) | 1 << bit;
+                self.returns.set_u32(0, attributes);
+                if attributes.count_ones() < u32::from(count) {
+                    return Ok(Status::Awaiting);
+                }
+            }
         }
         Ok(self.run())
     }
@@ -579,6 +605,10 @@ impl Duel {
                     card.map(|card| Action::Card(u16::from(card))).ok_or_else(undecodable)
                 })
                 .collect::<Result<_, _>>()?,
+            Prompt::AnnounceAttribute { .. } => {
+                let attributes = buffer.at_u32(0);
+                (0..32).filter(|bit| attributes & 1 << bit != 0).map(Action::Attribute).collect()
+            }
         })
     }
 }

@@ -72,7 +72,7 @@ impl Duel {
     }
 
     // The core also takes event cards here; the events that carry some come with the cards that raise them.
-    pub(crate) fn raise_single_event(
+    pub(crate) fn field_raise_single_event(
         &mut self,
         trigger_card: CardId,
         event_code: u32,
@@ -785,7 +785,7 @@ impl Duel {
                     && self.effects[effect].is_flag(EFFECT_FLAG_CARD_TARGET)
                 {
                     for card in targets {
-                        self.raise_single_event(
+                        self.field_raise_single_event(
                             card,
                             EVENT_BECOME_TARGET,
                             Some(effect),

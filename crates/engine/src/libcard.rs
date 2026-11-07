@@ -55,7 +55,7 @@ impl CardId {
         peffect.reset_flag = reset;
         peffect.flag[0] = flag | EFFECT_FLAG_CANNOT_DISABLE;
         peffect.reset_count = count.max(1);
-        peffect.label = crate::effect::Label::new(&[label]);
+        peffect.set_labels(&[label]);
         peffect.description = description;
         duel.card_add_effect(self, effect);
         effect
@@ -591,7 +591,7 @@ impl CardId {
             .registry
             .equal_range(Container::Single, Some(self), code)
             .next()?;
-        Some(duel.effects[effect].label.values().first().copied().unwrap_or(0))
+        Some(duel.effects[effect].labels().first().copied().unwrap_or(0))
     }
 
     pub fn get_flag_effect(self, duel: &Duel, code: u32) -> usize {

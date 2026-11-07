@@ -49,8 +49,8 @@ pub use card::{CardId, CardSet, MAX_CARDS};
 pub use constants::{DUEL_MODE_MR5, PHASE_DAMAGE, PHASE_DAMAGE_CAL};
 pub use duel::{Duel, DuelError, DuelOptions, NewCardInfo, PlayerOptions, Status};
 pub use effect::{
-    ChainLimitFn, ConditionFn, CostFn, CounterFilter, EffectId, EffectSet, ExtraMaterialCall, GroupOperationFn, OpTarget, Operation,
-    OperationFn, SpSummonTargetFn, SynchroCheckFn, SynchroMaterialFn, Target, TargetFn, Value,
+    ChainLimitFn, Condition, ConditionFn, CostFn, CounterFilter, EffectId, EffectSet, ExtraMaterialCall, GroupOperationFn, OpTarget,
+    Operation, OperationFn, SpSummonTargetFn, SynchroCheckFn, SynchroMaterialFn, Target, TargetFn, Value,
 };
 pub use libduel::{ChainInfo, ExtraSummon, FromChainInfo, MonsterStats};
 pub use libeffect::CountCode;

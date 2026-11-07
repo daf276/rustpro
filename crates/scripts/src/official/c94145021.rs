@@ -23,7 +23,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
         let ge1 = duel.create_effect(c);
         ge1.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
         ge1.set_code(duel, EVENT_TO_HAND);
-        ge1.set_condition(duel, regcon);
+        ge1.set_condition_mut(duel, regcon);
         ge1.set_operation(duel, regop);
         duel.register_effect(ge1, 0);
     });
@@ -33,31 +33,28 @@ fn cfilter(c: CardId, duel: &Duel, tp: u8) -> bool {
     c.is_controler(duel, tp) && c.is_previous_location(duel, LOCATION_DECK)
 }
 
-// The players whose hand got cards from the Deck, which regcon keeps in its label for regop; regop recomputes it from
-// the same event instead, since a condition cannot set a label here.
-fn event_player(duel: &Duel, eg: Option<CardSet>) -> Option<u8> {
-    let eg = eg.unwrap_or_default();
-    match (
-        eg.is_exists(duel, |c, duel| cfilter(c, duel, 0), 1, None),
-        eg.is_exists(duel, |c, duel| cfilter(c, duel, 1), 1, None),
-    ) {
-        (false, false) => None,
-        (true, false) => Some(0),
-        (false, true) => Some(1),
-        (true, true) => Some(PLAYER_ALL),
-    }
-}
-
-fn regcon(duel: &Duel, a: &Args) -> bool {
+fn regcon(duel: &mut Duel, a: &Args) -> bool {
     if duel.is_phase(PHASE_DRAW) || duel.is_phase(PHASE_DAMAGE) {
         return false;
     }
-    event_player(duel, a.eg).is_some()
+    let eg = a.eg.unwrap_or_default();
+    let mut v: usize = 0;
+    if eg.is_exists(duel, |c, duel| cfilter(c, duel, 0), 1, None) {
+        v += 1;
+    }
+    if eg.is_exists(duel, |c, duel| cfilter(c, duel, 1), 1, None) {
+        v += 2;
+    }
+    let Some(&player) = v.checked_sub(1).and_then(|v| [0, 1, PLAYER_ALL].get(v)) else {
+        return false;
+    };
+    a.e.set_label(duel, player.into());
+    true
 }
 
 fn regop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let Some(player) = event_player(duel, a.eg) else { return Ok(()) };
-    duel.raise_event(a.eg.unwrap_or_default(), EVENT_CUSTOM + ID, a.re, a.r, a.rp, a.ep, player.into())
+    let label = a.e.get_label(duel) as u32;
+    duel.raise_event(a.eg.unwrap_or_default(), EVENT_CUSTOM + ID, a.re, a.r, a.rp, a.ep, label)
 }
 
 fn condition(_: &Duel, a: &Args) -> bool {

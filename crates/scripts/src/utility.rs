@@ -44,6 +44,11 @@ pub mod aux {
         }
     }
 
+    // aux.GetAttributeStrings: the system string (1010 for EARTH to 1016 for DIVINE) of each attribute in v, lowest first.
+    pub fn get_attribute_strings(v: u32) -> impl Iterator<Item = u64> {
+        (0..7u64).filter(move |bit| v & 1 << bit != 0).map(|bit| 1010 + bit)
+    }
+
     pub fn stat_change_damage_step_condition(duel: &Duel, _: &Args) -> bool {
         !(duel.is_phase(PHASE_DAMAGE) && duel.is_damage_calculated())
     }

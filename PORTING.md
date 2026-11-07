@@ -50,6 +50,7 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   script); one comment line naming them.
   An unported card in SUPPORT runs its Lua in the oracle but nothing in the engine, so the diff fails: port a
   needed support card first (it then has its own checks).
+  Pendulum Normal Monsters have a script (`Pendulum.AddProcedure`), so they need a port too.
 - `pub const CHECKS: &[Check]` (`crate::testing::Check`), each needing a count above 0 in both the first 13 and all
   64 scenarios. Without `CHECKS` the card must resolve some effect (`Check::Resolves`). Others:
   `ResolvesEffect(aux::stringid(ID, n))`, `SpecialSummoned`, `SpecialSummonedCode(code)` (a token the card creates),
@@ -89,6 +90,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - Every name of `constant.lua`, `card_counter_constants.lua` and `archetype_setcode_constants.lua` is in the prelude
   with its Lua name and the type the API takes (`WIN_REASON_NUMBER_iC1000` is upper-cased); never add constants.
 - Cards use `set_operation`; `set_promptless_operation` is for library code that provably cannot prompt.
+- Effect function shapes are the variants of `Value`, `Target`, `Condition`, `Cost` and `Operation` in
+  `crates/engine/src/effect.rs`; reuse one before adding a variant for an unusual signature.
 - `e:SetHintTiming(x)` with one argument sets both timings: `e.set_hint_timing(duel, x, x)`.
 - A core function a library replaces keeps a `_core` suffix in the engine; the scripts-crate trait takes the Lua name.
 - An internal engine function whose name a new Lua mirror needs is renamed with a `field_` prefix (`field_raise_event`).

@@ -6,7 +6,7 @@ use crate::duel::Duel;
 use crate::list::List;
 use crate::processor::{
     AnnounceRace, SelectBattleCmd, SelectCard, SelectChain, SelectEffectYesNo, SelectIdleCmd, SelectOption, SelectPlace, SelectPosition,
-    SelectSum, SelectTributeP, SelectUnselectCard, SelectYesNo,
+    SelectSum, SelectTributeP, SelectUnselectCard, SelectYesNo, SortCard,
 };
 
 impl Duel {
@@ -246,6 +246,50 @@ impl Duel {
             return false;
         }
         self.trace.message(MSG_HINT).u8(HINT_RACE).u8(arg.playerid).u64(selected);
+        true
+    }
+
+    // The answer is the new position of each card, one byte per card.
+    pub(crate) fn process_sort_card(&mut self, arg: &mut SortCard) -> bool {
+        let playerid = arg.playerid;
+        if arg.step == 0 {
+            self.returns.clear();
+            if self.core.select_cards.is_empty() {
+                self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(playerid).u64(0);
+                return true;
+            }
+            let cards: Vec<_> = self
+                .core
+                .select_cards
+                .iter()
+                .map(|&card| (self.cards[card].data.code, self.cards[card].current))
+                .collect();
+            let mut message = self.trace.message(if arg.is_chain { MSG_SORT_CHAIN } else { MSG_SORT_CARD });
+            message.u8(playerid).u32(cards.len() as u32);
+            for (code, current) in cards {
+                message
+                    .u32(code)
+                    .u8(current.controler)
+                    .u32(current.location.into())
+                    .u32(current.sequence);
+            }
+            return false;
+        }
+        if self.returns.at_u8(0) == u8::MAX {
+            return true;
+        }
+        let count = self.core.select_cards.len();
+        let mut seen = vec![false; count];
+        for index in 0..count {
+            let position = usize::from(self.returns.at_u8(index));
+            match seen.get_mut(position) {
+                Some(slot) if !*slot => *slot = true,
+                _ => {
+                    self.trace.message(MSG_RETRY);
+                    return false;
+                }
+            }
+        }
         true
     }
 

@@ -205,6 +205,37 @@ pub struct LocInfo {
     pub position: u32,
 }
 
+// The codes get_attack or get_defense reads: its update, set, final, swap final and base codes, and the other stat's base.
+struct StatCodes {
+    attack: bool,
+    update: u32,
+    set: u32,
+    final_: u32,
+    swap_final: u32,
+    base: u32,
+    other_base: u32,
+}
+
+const ATTACK: StatCodes = StatCodes {
+    attack: true,
+    update: EFFECT_UPDATE_ATTACK,
+    set: EFFECT_SET_ATTACK,
+    final_: EFFECT_SET_ATTACK_FINAL,
+    swap_final: EFFECT_SWAP_ATTACK_FINAL,
+    base: EFFECT_SET_BASE_ATTACK,
+    other_base: EFFECT_SET_BASE_DEFENSE,
+};
+
+const DEFENSE: StatCodes = StatCodes {
+    attack: false,
+    update: EFFECT_UPDATE_DEFENSE,
+    set: EFFECT_SET_DEFENSE,
+    final_: EFFECT_SET_DEFENSE_FINAL,
+    swap_final: EFFECT_SWAP_DEFENSE_FINAL,
+    base: EFFECT_SET_BASE_DEFENSE,
+    other_base: EFFECT_SET_BASE_ATTACK,
+};
+
 // card_state, reduced to what the port reads so far.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct CardState {
@@ -612,9 +643,14 @@ impl Duel {
 
     // card::get_set_card with match_setcode: whether one of the card's archetypes matches `setcode`.
     pub(crate) fn is_set_card(&self, card: CardId, setcode: u16) -> bool {
-        unported!(self, self.filter_effect(card, EFFECT_ADD_SETCODE, true));
         let matches = |code: u16| code != 0 && (setcode & 0xfff) == (code & 0xfff) && (setcode & code) == setcode;
-        self.cards[card].data.setcodes.iter().any(|&code| matches(code))
+        self.get_set_card(card).iter().any(|&code| matches(code))
+    }
+
+    // card::get_set_card: the card's archetypes, 0 in unused slots.
+    pub(crate) fn get_set_card(&self, card: CardId) -> [u16; 5] {
+        unported!(self, self.filter_effect(card, EFFECT_ADD_SETCODE, true));
+        self.cards[card].data.setcodes
     }
 
     // The effects of `codes` on the card, in id order, as consecutive filter_effect calls collect them.
@@ -637,30 +673,8 @@ impl Duel {
         peffect.effect_type & EFFECT_TYPE_SINGLE != 0 && !peffect.is_flag(EFFECT_FLAG_SINGLE_RANGE)
     }
 
-    // Of the stat modifiers EFFECT_UPDATE_ATTACK and EFFECT_SET_BASE_ATTACK are ported; the others and the ASSUME_*
-    // overrides come with the cards that use them.
     pub(crate) fn get_attack(&self, card: CardId) -> i32 {
-        let codes = [EFFECT_SET_ATTACK, EFFECT_SET_ATTACK_FINAL, EFFECT_SWAP_ATTACK_FINAL];
-        let swaps = [EFFECT_SWAP_AD, EFFECT_SWAP_BASE_AD, EFFECT_SET_BASE_DEFENSE];
-        let base = self.get_stat(card, &codes, &swaps, self.cards[card].data.attack);
-        let target = &self.cards[card];
-        if target.current.location != LOCATION_MZONE || target.get_status(STATUS_SUMMONING | STATUS_SPSUMMON_STEP) {
-            return base;
-        }
-        let effects = self.filter_effects(card, &[EFFECT_UPDATE_ATTACK, EFFECT_SET_BASE_ATTACK]);
-        let (mut base, effects) = self.continuous_base_attack(card, base, effects);
-        let (mut up, mut upc) = (0, 0);
-        let mut attack = base;
-        for effect in effects {
-            let value = self.get_value(effect, card);
-            match self.effects[effect].code {
-                EFFECT_SET_BASE_ATTACK => base = value.max(0),
-                _ if self.is_single_unranged(effect) => up += value,
-                _ => upc += value,
-            }
-            attack = (base + up + upc).max(0);
-        }
-        attack
+        self.get_stat_value(card, &ATTACK, false)
     }
 
     // The EFFECT_SET_BASE_ATTACK effects other than a card's own unranged ones apply first, in id order; returns the
@@ -693,20 +707,93 @@ impl Duel {
         if self.cards[card].data.card_type & TYPE_LINK != 0 {
             return 0;
         }
-        let codes = [
-            EFFECT_SWAP_AD,
-            EFFECT_UPDATE_DEFENSE,
-            EFFECT_SET_DEFENSE,
-            EFFECT_SET_DEFENSE_FINAL,
-            EFFECT_SWAP_DEFENSE_FINAL,
-        ];
-        // EFFECT_SET_BASE_ATTACK only changes the defense through a swap.
-        let swaps = [EFFECT_SWAP_BASE_AD, EFFECT_SET_BASE_DEFENSE];
-        self.get_stat(card, &codes, &swaps, self.cards[card].data.defense)
+        self.get_stat_value(card, &DEFENSE, false)
     }
 
-    // The shared shape of get_attack and get_defense; `swaps` are skipped for Link monsters, which only get_attack
-    // reaches.
+    // card::get_attack and card::get_defense, which differ only in the codes they read. `nested` is the call the swap
+    // of EFFECT_SWAP_AD makes, which the core's temp values stop from swapping back. The ASSUME_* overrides and the
+    // temp values a value function reading the same stat would get come with the cards that need them.
+    fn get_stat_value(&self, card: CardId, stat: &StatCodes, nested: bool) -> i32 {
+        let target = &self.cards[card];
+        if target.data.card_type & TYPE_MONSTER == 0
+            && self.get_type(card) & TYPE_MONSTER == 0
+            && self.is_affected_by_effect(card, EFFECT_PRE_MONSTER).is_none()
+        {
+            return 0;
+        }
+        let (own, other) = if stat.attack {
+            (target.data.attack, target.data.defense)
+        } else {
+            (target.data.defense, target.data.attack)
+        };
+        if target.current.location != LOCATION_MZONE || target.get_status(STATUS_SUMMONING | STATUS_SPSUMMON_STEP) {
+            return own;
+        }
+        let (mut base, mut other_base) = (own.max(0), other.max(0));
+        let mut codes: List<u32, 8> = [stat.update, stat.set, stat.final_, stat.swap_final, stat.base]
+            .into_iter()
+            .collect();
+        if target.data.card_type & TYPE_LINK == 0 {
+            codes.extend([EFFECT_SWAP_AD, EFFECT_SWAP_BASE_AD, stat.other_base]);
+        }
+        let rev = self.is_affected_by_effect(card, EFFECT_REVERSE_UPDATE).is_some();
+        let mut effects = EffectSet::default();
+        for effect in self.filter_effects(card, &codes) {
+            let code = self.effects[effect].code;
+            if !self.is_single_unranged(effect) && (code == stat.base || code == stat.other_base) {
+                let value = self.get_value(effect, card).max(0);
+                *(if code == stat.base { &mut base } else { &mut other_base }) = value;
+            } else {
+                effects.push(effect);
+            }
+        }
+        let mut value = base;
+        let (mut set, mut up, mut upc, mut swap_final) = (-1, 0, 0, false);
+        let (mut finals, mut delayed_finals) = (EffectSet::default(), EffectSet::default());
+        for effect in effects {
+            let peffect = &self.effects[effect];
+            match peffect.code {
+                code if code == stat.update && self.is_single_unranged(effect) => up += self.get_value(effect, card),
+                code if code == stat.update => upc += self.get_value(effect, card),
+                code if code == stat.set => {
+                    set = self.get_value(effect, card);
+                    if peffect.effect_type & EFFECT_TYPE_SINGLE == 0 {
+                        up = 0;
+                    }
+                }
+                code if code == stat.final_ && self.is_single_unranged(effect) => {
+                    (set, up, upc) = (self.get_value(effect, card), 0, 0);
+                }
+                code if code == stat.final_ && peffect.is_flag(EFFECT_FLAG_DELAY) => delayed_finals.push(effect),
+                code if code == stat.final_ => finals.push(effect),
+                code if code == stat.base => (base, set) = (self.get_value(effect, card).max(0), -1),
+                code if code == stat.swap_final => (set, up, upc) = (self.get_value(effect, card), 0, 0),
+                code if code == stat.other_base => other_base = self.get_value(effect, card).max(0),
+                EFFECT_SWAP_AD => swap_final = !swap_final,
+                EFFECT_SWAP_BASE_AD => std::mem::swap(&mut base, &mut other_base),
+                _ => {}
+            }
+            let start = if set < 0 { base } else { set };
+            value = if rev { start - up - upc } else { start + up + upc }.max(0);
+        }
+        for effect in finals {
+            value = self.get_value(effect, card);
+        }
+        if !nested {
+            if swap_final {
+                value = self.get_stat_value(card, if stat.attack { &DEFENSE } else { &ATTACK }, true);
+            }
+            for effect in delayed_finals {
+                value = self.get_value(effect, card);
+                if self.effects[effect].is_flag(EFFECT_FLAG_REPEAT) {
+                    value = self.get_value(effect, card);
+                }
+            }
+        }
+        value.max(0)
+    }
+
+    // The checks get_base_attack starts with; `swaps` are skipped for Link monsters.
     fn get_stat(&self, card: CardId, codes: &[u32], swaps: &[u32], base: i32) -> i32 {
         let target = &self.cards[card];
         if target.data.card_type & TYPE_MONSTER == 0
@@ -831,13 +918,27 @@ impl Duel {
         let (effect_type, code) = (peffect.effect_type, peffect.code);
         let mut check_target = Some(card);
         let container = if effect_type & EFFECT_TYPE_SINGLE != 0 {
-            unported!(
-                self,
-                ((matches!(code, EFFECT_SET_ATTACK | EFFECT_SET_BASE_ATTACK | EFFECT_SET_ATTACK_FINAL)
-                    || matches!(code, EFFECT_SET_DEFENSE | EFFECT_SET_BASE_DEFENSE | EFFECT_SET_DEFENSE_FINAL))
-                    && !peffect.is_flag(EFFECT_FLAG_SINGLE_RANGE))
-                .then_some(effect)
-            );
+            // A new stat-setting effect replaces the ones it overrides.
+            let replaced: &[u32] = match code {
+                _ if peffect.is_flag(EFFECT_FLAG_SINGLE_RANGE) => &[],
+                EFFECT_SET_ATTACK | EFFECT_SET_BASE_ATTACK => &[EFFECT_SET_ATTACK, EFFECT_SET_ATTACK_FINAL, EFFECT_SET_BASE_ATTACK],
+                EFFECT_SET_ATTACK_FINAL => &[EFFECT_UPDATE_ATTACK, EFFECT_SET_ATTACK, EFFECT_SET_ATTACK_FINAL],
+                EFFECT_SET_DEFENSE | EFFECT_SET_BASE_DEFENSE => &[EFFECT_SET_DEFENSE, EFFECT_SET_DEFENSE_FINAL, EFFECT_SET_BASE_DEFENSE],
+                EFFECT_SET_DEFENSE_FINAL => &[EFFECT_UPDATE_DEFENSE, EFFECT_SET_DEFENSE, EFFECT_SET_DEFENSE_FINAL],
+                _ => &[],
+            };
+            if !replaced.is_empty() {
+                let removed: Vec<EffectId> = self
+                    .field_effects
+                    .registry
+                    .all(Container::Single, Some(card))
+                    .filter(|&(code, other)| replaced.contains(&code) && !self.effects[other].is_flag(EFFECT_FLAG_SINGLE_RANGE))
+                    .map(|(_, other)| other)
+                    .collect();
+                for other in removed {
+                    self.card_remove_effect(card, other);
+                }
+            }
             Container::Single
         } else if effect_type & EFFECT_TYPE_EQUIP != 0 {
             check_target = self.cards[card].equiping_target;
@@ -2232,6 +2333,18 @@ impl Duel {
             return false;
         }
         self.cost_destination(card, LOCATION_GRAVE).0 == u32::from(LOCATION_GRAVE)
+    }
+
+    pub(crate) fn is_capable_cost_to_deck(&self, card: CardId, playerid: u8) -> bool {
+        if self.cards[card].data.card_type & TYPE_TOKEN != 0
+            || self.is_extra_deck_monster(card)
+            || self.cards[card].current.location == LOCATION_DECK
+            || self.is_affected_by_effect(card, EFFECT_CANNOT_USE_AS_COST).is_some()
+            || !self.is_capable_send_to_deck(card, playerid)
+        {
+            return false;
+        }
+        self.cost_destination(card, LOCATION_DECK).0 == u32::from(LOCATION_DECK)
     }
 
     pub(crate) fn is_capable_cost_to_extra(&self, card: CardId, playerid: u8) -> bool {

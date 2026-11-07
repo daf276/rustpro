@@ -46,6 +46,17 @@ pub type ConditionFn = fn(&Duel, &Args) -> bool;
 pub type CostFn = fn(&mut Duel, &Args, i32) -> Script<bool>;
 pub type TargetFn = fn(&mut Duel, &Args, i32, Option<CardId>) -> Script<bool>;
 pub type OperationFn = fn(&mut Duel, &Args) -> Script<()>;
+// A Duel.SetChainLimit function f(e, rp, tp), with the value its Lua closure captures (0 for none).
+pub type ChainLimitFn = fn(&Duel, EffectId, u8, u8, i64) -> bool;
+
+// chain_limit_t: the function and the player who set it.
+#[derive(Debug, Clone, Copy)]
+pub struct ChainLimit {
+    pub function: ChainLimitFn,
+    pub capture: i64,
+    pub player: u8,
+}
+
 // The operation of EFFECT_SPSUMMON_PROC_G, which fills the group of cards to summon the core passes it.
 pub type GroupOperationFn = fn(&mut Duel, &Args, &mut CardSet) -> Script<()>;
 
@@ -664,6 +675,7 @@ pub struct TriggeringState {
     pub race: u64,
     pub attack: i32,
     pub defense: i32,
+    pub setcodes: [u16; 5],
 }
 
 // chain in field.h.
@@ -1187,7 +1199,7 @@ impl Duel {
         })
     }
 
-    pub(crate) fn is_chainable(&self, effect: EffectId) -> bool {
+    pub(crate) fn is_chainable(&self, effect: EffectId, tp: u8) -> bool {
         let peffect = &self.effects[effect];
         if peffect.effect_type & EFFECT_TYPE_ACTIONS == 0 {
             return false;
@@ -1210,8 +1222,11 @@ impl Duel {
                 return false;
             }
         }
-        // core.chain_limit and chain_limit_p come with Duel.SetChainLimit and the cards that call it.
-        true
+        self.core
+            .chain_limit
+            .iter()
+            .chain(&self.core.chain_limit_p)
+            .all(|limit| (limit.function)(self, effect, limit.player, tp, limit.capture))
     }
 
     // effect::reset: whether a reset of `reset_level` removes the effect. RESET_DISABLE only applies when the owner is

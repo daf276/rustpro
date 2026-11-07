@@ -19,6 +19,21 @@ pub struct Draw {
     pub drawn_set: CardSet,
 }
 
+// `remaining` stands for the core's iterator over the targets.
+#[derive(Debug, Clone, Default)]
+pub struct GetControl {
+    pub step: u16,
+    pub reason_effect: Option<EffectId>,
+    pub chose_player: u8,
+    pub targets: CardSet,
+    pub playerid: u8,
+    pub reset_phase: u16,
+    pub reset_count: u8,
+    pub zone: u32,
+    pub destroy_set: CardSet,
+    pub remaining: CardSet,
+}
+
 #[derive(Debug, Clone)]
 pub struct Equip {
     pub step: u16,
@@ -482,7 +497,7 @@ impl Duel {
                 }
                 self.process_single_event();
                 for event in [EVENT_DRAW, EVENT_TO_HAND, EVENT_MOVE] {
-                    self.raise_event(
+                    self.field_raise_event(
                         Some(drawn_set),
                         event,
                         reason_effect,
@@ -513,6 +528,146 @@ impl Duel {
     }
 
     // Equipping with is_step (Duel.Equip(..., true) and Duel.EquipComplete) comes with the cards that call it.
+    // Unique cards (unique_code) come with the cards that have them.
+    pub(crate) fn process_get_control(&mut self, arg: &mut GetControl) -> bool {
+        let playerid = arg.playerid;
+        match arg.step {
+            0 => {
+                arg.destroy_set.clear();
+                for card in arg.targets {
+                    self.filter_disable_related_cards(card);
+                    let target = &self.cards[card];
+                    let change = target.overlay_target.is_none()
+                        && target.current.controler != playerid
+                        && target.current.controler != PLAYER_NONE
+                        && target.current.location == LOCATION_MZONE
+                        && self.is_affected_by_effect(card, EFFECT_CANNOT_CHANGE_CONTROL).is_none()
+                        && arg.reason_effect.is_none_or(|effect| self.is_affect_by_effect(card, Some(effect)))
+                        && (self.is_flag(DUEL_TRAP_MONSTERS_NOT_USE_ZONE)
+                            || self.get_type(card) & TYPE_TRAPMONSTER == 0
+                            || self
+                                .get_useable_count(Some(card), playerid, LOCATION_SZONE, playerid, LOCATION_REASON_CONTROL, 0xff)
+                                .0
+                                > 0);
+                    if !change {
+                        arg.targets.remove(card);
+                    }
+                }
+                let fcount = self
+                    .get_useable_count(None, playerid, LOCATION_MZONE, playerid, LOCATION_REASON_CONTROL, arg.zone)
+                    .0;
+                if fcount <= 0 {
+                    std::mem::swap(&mut arg.destroy_set, &mut arg.targets);
+                    arg.step = 5;
+                    return false;
+                }
+                if arg.targets.len() as i32 > fcount {
+                    self.core.select_cards = arg.targets.iter().collect();
+                    self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(playerid).u64(502);
+                    let ct = (arg.targets.len() as i32 - fcount) as u8;
+                    self.emplace_process(SelectCard {
+                        playerid,
+                        min: ct,
+                        max: ct,
+                        ..SelectCard::default()
+                    });
+                } else {
+                    arg.step = 1;
+                }
+                false
+            }
+            1 => {
+                let returned = self.returned_cards();
+                arg.destroy_set = arg.destroy_set.union(returned);
+                arg.targets = arg.targets.difference(returned);
+                false
+            }
+            2 => {
+                arg.remaining = arg.targets;
+                false
+            }
+            3 => {
+                let Some(card) = arg.remaining.get_first() else {
+                    self.adjust_instant();
+                    arg.step = 4;
+                    return false;
+                };
+                let move_player = if arg.chose_player == PLAYER_NONE {
+                    playerid
+                } else {
+                    arg.chose_player
+                };
+                let position = self.cards[card].current.position as u8;
+                let zone = arg.zone as u8;
+                self.field_move_to_field(
+                    card,
+                    move_player,
+                    playerid,
+                    LOCATION_MZONE.into(),
+                    position,
+                    false,
+                    zone,
+                    false,
+                    LOCATION_REASON_NONE,
+                );
+                false
+            }
+            4 => {
+                let Some(card) = arg.remaining.get_first() else { return true };
+                self.cards[card].set_status(STATUS_ATTACK_CANCELED, true);
+                self.set_control(card, playerid, arg.reset_phase, arg.reset_count.into());
+                self.reset(card, RESET_CONTROL, RESET_EVENT);
+                self.filter_disable_related_cards(card);
+                arg.remaining.remove(card);
+                arg.step = 2;
+                false
+            }
+            5 => {
+                let reason_player = if arg.chose_player == PLAYER_NONE {
+                    PLAYER_NONE
+                } else {
+                    self.core.reason_player.get()
+                };
+                for card in arg.targets {
+                    if self.cards[card].current.location & LOCATION_ONFIELD == 0 {
+                        arg.targets.remove(card);
+                        continue;
+                    }
+                    for event in [EVENT_CONTROL_CHANGED, EVENT_MOVE] {
+                        self.raise_single_event(card, event, arg.reason_effect, REASON_EFFECT, reason_player, playerid, 0);
+                    }
+                }
+                if !arg.targets.is_empty() {
+                    for event in [EVENT_CONTROL_CHANGED, EVENT_MOVE] {
+                        self.field_raise_event(
+                            Some(arg.targets),
+                            event,
+                            arg.reason_effect,
+                            REASON_EFFECT,
+                            reason_player,
+                            playerid,
+                            0,
+                        );
+                    }
+                }
+                self.process_single_event();
+                self.process_instant_event();
+                false
+            }
+            6 => {
+                if !arg.destroy_set.is_empty() {
+                    self.field_destroy(arg.destroy_set, None, REASON_RULE, PLAYER_NONE, PLAYER_NONE, LOCATION_GRAVE, 0);
+                }
+                false
+            }
+            _ => {
+                self.core.operated_set = arg.targets;
+                self.returns.set_i32(0, arg.targets.len() as i32);
+                true
+            }
+        }
+    }
+
     pub(crate) fn process_equip(&mut self, arg: &mut Equip) -> bool {
         let (equip_player, equip_card, target) = (arg.equip_player, arg.equip_card, arg.target);
         match arg.step {
@@ -625,7 +780,7 @@ impl Duel {
                 let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
                 let equips = Some(CardSet::from(equip_card));
                 self.raise_single_event_with(target, equips, EVENT_EQUIP, reason_effect, 0, reason_player, PLAYER_NONE, 0);
-                self.raise_event(equips, EVENT_EQUIP, reason_effect, 0, reason_player, PLAYER_NONE, 0);
+                self.field_raise_event(equips, EVENT_EQUIP, reason_effect, 0, reason_player, PLAYER_NONE, 0);
                 let card = &self.cards[target];
                 let controler = card
                     .overlay_target
@@ -724,9 +879,9 @@ impl Duel {
                 }
                 let discarded = Some(arg.discarded_set).filter(|set| !set.is_empty());
                 if discarded.is_some() {
-                    self.raise_event(discarded, EVENT_TO_GRAVE, reason_effect, reason, reason_player, 0, 0);
+                    self.field_raise_event(discarded, EVENT_TO_GRAVE, reason_effect, reason, reason_player, 0, 0);
                 }
-                self.raise_event(Some(arg.discarded_set), EVENT_MOVE, reason_effect, reason, reason_player, 0, 0);
+                self.field_raise_event(Some(arg.discarded_set), EVENT_MOVE, reason_effect, reason, reason_player, 0, 0);
                 self.process_single_event();
                 self.process_instant_event();
                 self.adjust_instant();
@@ -761,7 +916,7 @@ impl Duel {
                 self.core.hint_timing[playerid] |= TIMING_DAMAGE;
                 self.player[playerid].lp -= amount as i32;
                 self.trace.message(MSG_DAMAGE).u8(playerid).u32(amount);
-                self.raise_event(
+                self.field_raise_event(
                     reason_card.map(CardSet::from),
                     EVENT_DAMAGE,
                     arg.reason_effect,
@@ -775,7 +930,7 @@ impl Duel {
                         unported!(self, self.is_affected_by_effect(card, EFFECT_MATCH_KILL));
                     }
                     self.raise_single_event(card, EVENT_BATTLE_DAMAGE, None, 0, reason_player, playerid, amount);
-                    self.raise_event(Some(card.into()), EVENT_BATTLE_DAMAGE, None, 0, reason_player, playerid, amount);
+                    self.field_raise_event(Some(card.into()), EVENT_BATTLE_DAMAGE, None, 0, reason_player, playerid, amount);
                     self.process_single_event();
                 }
                 if self.player[playerid].lp < 0 {
@@ -823,7 +978,7 @@ impl Duel {
                 self.core.hint_timing[playerid] |= TIMING_RECOVER;
                 self.player[playerid].lp += amount as i32;
                 self.trace.message(MSG_RECOVER).u8(playerid).u32(amount);
-                self.raise_event(None, EVENT_RECOVER, arg.reason_effect, reason, reason_player, playerid, amount);
+                self.field_raise_event(None, EVENT_RECOVER, arg.reason_effect, reason, reason_player, playerid, amount);
                 self.process_instant_event();
                 false
             }
@@ -1020,7 +1175,7 @@ impl Duel {
                 }
                 self.adjust_instant();
                 self.process_single_event();
-                self.raise_event(Some(arg.targets), EVENT_DESTROY, reason_effect, reason, reason_player, 0, 0);
+                self.field_raise_event(Some(arg.targets), EVENT_DESTROY, reason_effect, reason, reason_player, 0, 0);
                 self.process_instant_event();
                 false
             }
@@ -1197,7 +1352,7 @@ impl Duel {
                     leave_p.insert(card);
                 }
                 if !leave_p.is_empty() {
-                    self.raise_event(Some(leave_p), EVENT_LEAVE_FIELD_P, reason_effect, reason, reason_player, 0, 0);
+                    self.field_raise_event(Some(leave_p), EVENT_LEAVE_FIELD_P, reason_effect, reason, reason_player, 0, 0);
                 }
                 self.process_single_event();
                 self.process_instant_event();
@@ -1401,7 +1556,7 @@ impl Duel {
                 ];
                 for (cards, event) in events {
                     if !cards.is_empty() {
-                        self.raise_event(Some(cards), event, reason_effect, reason, reason_player, 0, 0);
+                        self.field_raise_event(Some(cards), event, reason_effect, reason, reason_player, 0, 0);
                     }
                 }
                 self.process_instant_event();
@@ -1479,10 +1634,10 @@ impl Duel {
                 ];
                 for (cards, event) in sets.into_iter().zip(events) {
                     if !cards.is_empty() {
-                        self.raise_event(Some(cards), event, reason_effect, reason, reason_player, 0, 0);
+                        self.field_raise_event(Some(cards), event, reason_effect, reason, reason_player, 0, 0);
                     }
                 }
-                self.raise_event(Some(arg.targets), EVENT_MOVE, reason_effect, reason, reason_player, 0, 0);
+                self.field_raise_event(Some(arg.targets), EVENT_MOVE, reason_effect, reason, reason_player, 0, 0);
                 self.process_single_event();
                 self.process_instant_event();
                 if !equipings.is_empty() {
@@ -1610,7 +1765,7 @@ impl Duel {
                 let (code, location) = (self.cards[target].data.code, self.cards.get_info_location(target));
                 self.trace.message(MSG_SET).u32(code).loc(location);
                 self.adjust_instant();
-                self.raise_event(Some(target.into()), EVENT_SSET, arg.reason_effect, 0, setplayer, setplayer, 0);
+                self.field_raise_event(Some(target.into()), EVENT_SSET, arg.reason_effect, 0, setplayer, setplayer, 0);
                 self.process_instant_event();
                 if self.core.current_chain.is_empty() {
                     self.adjust_all();
@@ -1965,7 +2120,7 @@ impl Duel {
                                 event.event_cards = Some(arg.targets);
                             }
                         }
-                        self.raise_event(
+                        self.field_raise_event(
                             Some(materials),
                             EVENT_BE_MATERIAL,
                             arg.reason_effect,
@@ -1982,7 +2137,7 @@ impl Duel {
                 false
             }
             4 => {
-                self.raise_event(
+                self.field_raise_event(
                     Some(arg.targets),
                     EVENT_SPSUMMON_SUCCESS,
                     arg.reason_effect,
@@ -2245,7 +2400,7 @@ impl Duel {
         for material in materials.iter() {
             self.raise_single_event(material, event, reason_effect, REASON_SUMMON, player, player, 0);
         }
-        self.raise_event(Some(materials), event, reason_effect, REASON_SUMMON, player, player, 0);
+        self.field_raise_event(Some(materials), event, reason_effect, REASON_SUMMON, player, player, 0);
     }
 
     fn add_summon_count(&mut self, extra_summon_effect: Option<EffectId>, player: u8) {
@@ -2494,11 +2649,12 @@ impl Duel {
             14 => {
                 self.cards[target].set_status(STATUS_SUMMONING, true);
                 self.cards[target].set_status(STATUS_SUMMON_DISABLED, false);
-                self.raise_event(Some(target.into()), EVENT_SUMMON, procedure, 0, sumplayer, sumplayer, 0);
+                self.field_raise_event(Some(target.into()), EVENT_SUMMON, procedure, 0, sumplayer, sumplayer, 0);
                 self.process_instant_event();
                 self.emplace_process(PointEvent {
                     skip_trigger: true,
                     skip_freechain: true,
+                    skip_new: true,
                     ..PointEvent::default()
                 });
                 false
@@ -2539,7 +2695,7 @@ impl Duel {
                 }
                 self.raise_single_event(target, EVENT_SUMMON_SUCCESS, procedure, 0, sumplayer, sumplayer, 0);
                 self.process_single_event();
-                self.raise_event(Some(target.into()), EVENT_SUMMON_SUCCESS, procedure, 0, sumplayer, sumplayer, 0);
+                self.field_raise_event(Some(target.into()), EVENT_SUMMON_SUCCESS, procedure, 0, sumplayer, sumplayer, 0);
                 self.process_instant_event();
                 if self.core.current_chain.is_empty() {
                     self.adjust_all();
@@ -2584,11 +2740,12 @@ impl Duel {
                 }
                 self.cards[target].set_status(STATUS_SUMMONING, true);
                 self.cards[target].set_status(STATUS_SUMMON_DISABLED, false);
-                self.raise_event(Some(target.into()), EVENT_FLIP_SUMMON, None, 0, sumplayer, sumplayer, 0);
+                self.field_raise_event(Some(target.into()), EVENT_FLIP_SUMMON, None, 0, sumplayer, sumplayer, 0);
                 self.process_instant_event();
                 self.emplace_process(PointEvent {
                     skip_trigger: true,
                     skip_freechain: true,
+                    skip_new: true,
                     ..PointEvent::default()
                 });
                 false
@@ -2624,7 +2781,7 @@ impl Duel {
                 }
                 self.process_single_event();
                 for event in events {
-                    self.raise_event(Some(target.into()), event, None, 0, sumplayer, sumplayer, 0);
+                    self.field_raise_event(Some(target.into()), event, None, 0, sumplayer, sumplayer, 0);
                 }
                 self.process_instant_event();
                 self.adjust_all();
@@ -2796,7 +2953,7 @@ impl Duel {
                 let (code, location) = (self.cards[target].data.code, self.cards.get_info_location(target));
                 self.trace.message(MSG_SET).u32(code).loc(location);
                 self.adjust_instant();
-                self.raise_event(Some(target.into()), EVENT_MSET, procedure, 0, setplayer, setplayer, 0);
+                self.field_raise_event(Some(target.into()), EVENT_MSET, procedure, 0, setplayer, setplayer, 0);
                 self.process_instant_event();
                 if self.core.current_chain.is_empty() {
                     self.adjust_all();
@@ -3139,7 +3296,7 @@ impl Duel {
                 let current = self.cards[target].current;
                 if self.cards[target].previous.location == LOCATION_GRAVE {
                     self.raise_single_event(target, EVENT_LEAVE_GRAVE, current.reason_effect, current.reason, move_player, 0, 0);
-                    self.raise_event(
+                    self.field_raise_event(
                         Some(target.into()),
                         EVENT_LEAVE_GRAVE,
                         current.reason_effect,
@@ -3158,7 +3315,7 @@ impl Duel {
                     0,
                     0,
                 );
-                self.raise_event(
+                self.field_raise_event(
                     Some(target.into()),
                     EVENT_MOVE,
                     current.reason_effect,
@@ -3294,7 +3451,7 @@ impl Duel {
                 self.process_single_event();
                 for (cards, event) in [(flips, EVENT_FLIP), (pos_changed, EVENT_CHANGE_POS)] {
                     if !cards.is_empty() {
-                        self.raise_event(Some(cards), event, reason_effect, 0, reason_player, 0, 0);
+                        self.field_raise_event(Some(cards), event, reason_effect, 0, reason_player, 0, 0);
                     }
                 }
                 self.process_instant_event();
@@ -3655,7 +3812,7 @@ impl Duel {
             10 => {
                 self.cards[target].set_status(STATUS_SUMMONING, true);
                 self.cards[target].set_status(STATUS_SUMMON_DISABLED, false);
-                self.raise_event(Some(target.into()), EVENT_SPSUMMON, Some(proc), 0, sumplayer, sumplayer, 0);
+                self.field_raise_event(Some(target.into()), EVENT_SPSUMMON, Some(proc), 0, sumplayer, sumplayer, 0);
                 self.process_instant_event();
                 self.emplace_process(PointEvent {
                     skip_trigger: true,
@@ -3698,7 +3855,7 @@ impl Duel {
                 self.core.spsummon_state_count[sumplayer] += 1;
                 self.raise_single_event(target, EVENT_SPSUMMON_SUCCESS, Some(proc), 0, sumplayer, sumplayer, 0);
                 self.process_single_event();
-                self.raise_event(Some(target.into()), EVENT_SPSUMMON_SUCCESS, Some(proc), 0, sumplayer, sumplayer, 0);
+                self.field_raise_event(Some(target.into()), EVENT_SPSUMMON_SUCCESS, Some(proc), 0, sumplayer, sumplayer, 0);
                 self.process_instant_event();
                 self.point_event_after_summon(sumplayer);
                 true
@@ -3818,7 +3975,7 @@ impl Duel {
                     }
                 }
                 if !disablable.is_empty() {
-                    self.raise_event(Some(disablable), EVENT_SPSUMMON, Some(proc), 0, sumplayer, sumplayer, 0);
+                    self.field_raise_event(Some(disablable), EVENT_SPSUMMON, Some(proc), 0, sumplayer, sumplayer, 0);
                     self.process_instant_event();
                     self.emplace_process(PointEvent {
                         skip_trigger: true,
@@ -3880,7 +4037,7 @@ impl Duel {
                     );
                 }
                 self.process_single_event();
-                self.raise_event(Some(group), EVENT_SPSUMMON_SUCCESS, Some(proc), 0, sumplayer, sumplayer, 0);
+                self.field_raise_event(Some(group), EVENT_SPSUMMON_SUCCESS, Some(proc), 0, sumplayer, sumplayer, 0);
                 self.process_instant_event();
                 self.point_event_after_summon(sumplayer);
                 true
@@ -3928,7 +4085,7 @@ impl Duel {
         for material in materials {
             self.raise_single_event(material, code, Some(proc), reason, sumplayer, sumplayer, 0);
         }
-        self.raise_event(Some(materials), code, Some(proc), reason, sumplayer, sumplayer, 0);
+        self.field_raise_event(Some(materials), code, Some(proc), reason, sumplayer, sumplayer, 0);
         self.process_single_event();
         self.process_instant_event();
     }
@@ -4051,7 +4208,7 @@ impl Duel {
             3 => {
                 let reason_effect = self.core.reason_effect.get();
                 let code = EVENT_REMOVE_COUNTER + u32::from(counter_type);
-                self.raise_event(None, code, reason_effect, arg.reason, arg.rplayer, arg.rplayer, u32::from(count));
+                self.field_raise_event(None, code, reason_effect, arg.reason, arg.rplayer, arg.rplayer, u32::from(count));
                 self.process_instant_event();
                 false
             }
@@ -4245,7 +4402,7 @@ impl Duel {
                     self.trace.message(MSG_MOVE).u32(code).loc(from).loc(to).u32(reason);
                 }
                 if !from_grave.is_empty() {
-                    self.raise_event(Some(from_grave), EVENT_LEAVE_GRAVE, reason_effect, 0, reason_player, 0, 0);
+                    self.field_raise_event(Some(from_grave), EVENT_LEAVE_GRAVE, reason_effect, 0, reason_player, 0, 0);
                     self.process_single_event();
                     self.process_instant_event();
                 }
@@ -4451,7 +4608,7 @@ impl Duel {
             7 => {
                 self.adjust_instant();
                 let operated = self.core.operated_set;
-                self.raise_event(Some(operated), EVENT_SSET, arg.reason_effect, 0, setplayer, setplayer, 0);
+                self.field_raise_event(Some(operated), EVENT_SSET, arg.reason_effect, 0, setplayer, setplayer, 0);
                 self.process_instant_event();
                 if self.core.current_chain.is_empty() {
                     self.adjust_all();

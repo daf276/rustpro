@@ -30,6 +30,19 @@ pub mod aux {
         (id & 0xfffff) | ((code as u64) << 20)
     }
 
+    // s.global_check per script, as script state keyed by the script's id.
+    pub fn global_check(duel: &mut Duel, id: u32, func: impl FnOnce(&mut Duel)) {
+        let key = (1 << 61) | u64::from(id);
+        if duel.get_script_state(key) == 0 {
+            duel.set_script_state(key, 1);
+            func(duel);
+        }
+    }
+
+    pub fn stat_change_damage_step_condition(duel: &Duel, _: &Args) -> bool {
+        !(duel.is_phase(PHASE_DAMAGE) && duel.is_damage_calculated())
+    }
+
     pub fn exccon(duel: &Duel, a: &Args) -> bool {
         let c = a.e.get_handler(duel);
         duel.get_turn_count() != c.get_turn_id(duel) || c.is_reason(duel, REASON_RETURN)
@@ -511,6 +524,15 @@ impl Cost {
         Ok(false)
     }
 
+    pub fn self_to_grave(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        let c = args.e.get_handler(duel);
+        if chk == 0 {
+            return Ok(c.is_able_to_grave_as_cost(duel));
+        }
+        duel.send_to_grave(c, REASON_COST)?;
+        Ok(false)
+    }
+
     pub fn self_banish(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         let c = args.e.get_handler(duel);
         if chk == 0 {
@@ -583,8 +605,12 @@ impl Cost {
 pub trait CardUtility: Copy {
     fn is_monster(self, duel: &Duel) -> bool;
     fn is_spell_trap(self, duel: &Duel) -> bool;
+    fn is_trap(self, duel: &Duel) -> bool;
     fn is_continuous_spell(self, duel: &Duel) -> bool;
     fn is_continuous_trap(self, duel: &Duel) -> bool;
+    fn is_quick_play_spell(self, duel: &Duel) -> bool;
+    fn is_ritual_spell(self, duel: &Duel) -> bool;
+    fn is_ritual_monster(self, duel: &Duel) -> bool;
     fn is_synchro_monster(self, duel: &Duel) -> bool;
     fn is_non_effect_monster(self, duel: &Duel) -> bool;
     fn is_in_main_mzone(self, duel: &Duel, tp: Option<u8>) -> bool;
@@ -688,12 +714,28 @@ impl CardUtility for CardId {
         self.is_type(duel, TYPE_SPELL | TYPE_TRAP)
     }
 
+    fn is_trap(self, duel: &Duel) -> bool {
+        self.is_type(duel, TYPE_TRAP)
+    }
+
     fn is_continuous_spell(self, duel: &Duel) -> bool {
         self.is_composite_type(duel, TYPE_SPELL | TYPE_CONTINUOUS)
     }
 
     fn is_continuous_trap(self, duel: &Duel) -> bool {
         self.is_composite_type(duel, TYPE_TRAP | TYPE_CONTINUOUS)
+    }
+
+    fn is_quick_play_spell(self, duel: &Duel) -> bool {
+        self.is_composite_type(duel, TYPE_SPELL | TYPE_QUICKPLAY)
+    }
+
+    fn is_ritual_spell(self, duel: &Duel) -> bool {
+        self.is_composite_type(duel, TYPE_SPELL | TYPE_RITUAL)
+    }
+
+    fn is_ritual_monster(self, duel: &Duel) -> bool {
+        self.is_composite_type(duel, TYPE_MONSTER | TYPE_RITUAL)
     }
 
     fn is_synchro_monster(self, duel: &Duel) -> bool {
@@ -822,6 +864,7 @@ impl EffectUtility for EffectId {
 pub trait DuelUtility {
     fn select_effect(&mut self, tp: u8, effects: &[(bool, u64)]) -> Script<Option<usize>>;
     fn has_flag_effect(&self, tp: u8, id: u32) -> bool;
+    fn has_flag_effect_full(&self, tp: u8, id: u32, ct: usize) -> bool;
     fn get_target_cards(&self, e: EffectId) -> Option<CardSet>;
 }
 
@@ -848,6 +891,10 @@ impl DuelUtility for Duel {
     }
 
     fn has_flag_effect(&self, tp: u8, id: u32) -> bool {
-        self.get_flag_effect(tp, id) >= 1
+        self.has_flag_effect_full(tp, id, 1)
+    }
+
+    fn has_flag_effect_full(&self, tp: u8, id: u32, ct: usize) -> bool {
+        self.get_flag_effect(tp, id) >= ct
     }
 }

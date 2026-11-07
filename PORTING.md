@@ -76,6 +76,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - `ResolvesEffect` and `Message` count by code or by any card: a `SUPPORT` copy of the card can satisfy them, and
   `Message(MSG_ATTACK)` counts every attack. Check that the counted path is the card's own. An effect a card grants
   another (an Xyz material's effect) chains as that other card, so check it another way (`MaterialFrom`, `CardHint`).
+  `CardHint` counts by the hinted card, so a hint on another card never counts. `SZONE` often sets a Trap face-down:
+  a cost needing several face-up Traps needs five or more copies.
 - `Report` is only for a path no `SUPPORT` can reach (say why in one comment line), never for a reachable one that
   is merely rare. An effect needing an empty hand is one: the opening hand is always drawn.
 - `SpecialSummoned` counts the card under test being summoned; what a card summons is `SpecialSummonedCode`.

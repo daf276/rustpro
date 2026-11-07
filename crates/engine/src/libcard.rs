@@ -395,6 +395,10 @@ impl CardId {
         setcodes.iter().any(|&setcode| duel.is_set_card(self, setcode))
     }
 
+    pub fn is_original_set_card(self, duel: &Duel, setcodes: &[u16]) -> bool {
+        setcodes.iter().any(|&setcode| duel.is_original_set_card(self, setcode))
+    }
+
     // Card.IsSetCard as material: card::get_summon_set_card, whose code and archetype effects with an operation come with
     // the cards that register them.
     pub fn is_set_card_full(self, duel: &Duel, setcodes: &[u16], _scard: Option<CardId>, _sumtype: u64, _player: u8) -> bool {

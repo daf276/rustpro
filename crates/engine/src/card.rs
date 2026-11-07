@@ -40,6 +40,11 @@ impl std::fmt::Debug for CardId {
     }
 }
 
+// card::match_setcode: `code` is `setcode` or a sub-archetype of it; the empty slot 0 never matches.
+fn match_setcode(setcode: u16, code: u16) -> bool {
+    code != 0 && (setcode & 0xfff) == (code & 0xfff) && (setcode & code) == setcode
+}
+
 // card_set: ordered by cardid like card_sort. Scripts see it as a Group.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct CardSet([u64; MAX_CARDS / 64]);
@@ -689,8 +694,12 @@ impl Duel {
 
     // card::get_set_card with match_setcode: whether one of the card's archetypes matches `setcode`.
     pub(crate) fn is_set_card(&self, card: CardId, setcode: u16) -> bool {
-        let matches = |code: u16| code != 0 && (setcode & 0xfff) == (code & 0xfff) && (setcode & code) == setcode;
-        self.get_set_card(card).iter().any(|&code| matches(code))
+        self.get_set_card(card).iter().any(|&code| match_setcode(setcode, code))
+    }
+
+    // Card.IsOriginalSetCard for one archetype: card::get_origin_set_card is the database's setcodes.
+    pub(crate) fn is_original_set_card(&self, card: CardId, setcode: u16) -> bool {
+        self.cards[card].data.setcodes.iter().any(|&code| match_setcode(setcode, code))
     }
 
     // card::get_set_card: the card's archetypes, 0 in unused slots.

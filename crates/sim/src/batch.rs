@@ -2,6 +2,7 @@ use engine::{Action, ActionError, Duel, PositionError, Prompt};
 use rayon::prelude::*;
 
 use crate::encoding::{ACTIONS, EncodingError, find, write_mask};
+use crate::tensor::Tensors;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AutoAdvance {
@@ -69,6 +70,8 @@ pub enum BatchError {
     Encoding { slot: usize, error: EncodingError },
     #[error("slot {slot}: {error}")]
     Setup { slot: usize, error: PositionError },
+    #[error("buffers for {rows} observations for {slots} slots")]
+    Rows { rows: usize, slots: usize },
 }
 
 // No duel once the generator has retired the slot.
@@ -181,6 +184,23 @@ impl<G> Batch<G> {
 
     pub fn legal(&self, slot: usize) -> &[Action] {
         self.slots.get(slot).map_or(&[], |slot| &slot.legal)
+    }
+
+    // Each slot's observation for the player its prompt waits for, empty rows for a retired slot.
+    pub fn observe(&mut self, tensors: &mut Tensors) -> Result<(), BatchError> {
+        if tensors.len() != self.len() {
+            return Err(BatchError::Rows {
+                rows: tensors.len(),
+                slots: self.len(),
+            });
+        }
+        let observe = |slot: &mut Slot| {
+            let duel = slot.duel.as_ref()?;
+            Some(duel.observe(duel.prompt()?.player()))
+        };
+        tensors
+            .par_write(self.slots.par_iter_mut(), observe)
+            .map_err(|(slot, error)| BatchError::Encoding { slot, error })
     }
 }
 

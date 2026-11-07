@@ -83,6 +83,11 @@ pub mod aux {
         c.is_has_effect(duel, EFFECT_NECRO_VALLEY).is_none()
     }
 
+    // aux.ReleaseCheckMMZ, a check of Duel.CheckReleaseGroupCost.
+    pub fn release_check_mmz(duel: &Duel, sg: CardSet, tp: u8, _: CardSet) -> (bool, bool) {
+        (duel.get_mzone_count(tp, Some(sg)) > 0, false)
+    }
+
     // The required and filter parameters of Auxiliary.AddLavaProcedure; a nil filter is Card.IsMonster.
     pub trait LavaProcedure {
         const REQUIRED: usize;
@@ -997,6 +1002,7 @@ pub trait CardUtility: Copy {
     fn has_non_zero_attack(self, duel: &Duel) -> bool;
     fn has_non_zero_defense(self, duel: &Duel) -> bool;
     fn is_owner(self, duel: &Duel, player: u8) -> bool;
+    fn is_equip_spell(self, duel: &Duel) -> bool;
     fn is_field_spell(self, duel: &Duel) -> bool;
     fn is_ritual_spell(self, duel: &Duel) -> bool;
     fn is_ritual_monster(self, duel: &Duel) -> bool;
@@ -1204,6 +1210,10 @@ impl CardUtility for CardId {
 
     fn is_owner(self, duel: &Duel, player: u8) -> bool {
         self.get_owner(duel) == player
+    }
+
+    fn is_equip_spell(self, duel: &Duel) -> bool {
+        self.is_composite_type(duel, TYPE_SPELL | TYPE_EQUIP)
     }
 
     fn is_field_spell(self, duel: &Duel) -> bool {

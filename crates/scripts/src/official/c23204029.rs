@@ -60,7 +60,7 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<b
     Ok(false)
 }
 
-fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
     let (e, c) = (a.e, a.e.get_handler(duel));
     let Some(tc) = duel.get_first_target() else { return Ok(()) };
     if ((tc.is_faceup(duel) && !tc.is_disabled(duel)) || tc.is_type(duel, TYPE_TRAPMONSTER)) && tc.is_relate_to_effect(duel, e) {

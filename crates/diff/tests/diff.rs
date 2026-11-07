@@ -1,6 +1,5 @@
 use std::io::Write;
 use std::ops::Range;
-use std::path::{Path, PathBuf};
 
 use diff::{DiffError, Report, SCENARIOS, SCENARIOS_FULL, Tally, Vendor, diff_cards, diff_duel, summarize};
 use rayon::prelude::*;
@@ -8,12 +7,6 @@ use scripts::{CARD_SCRIPTS, CLASSIC_CARDS};
 
 const WIN_BY_LP: u8 = 1;
 const WIN_BY_DECK_OUT: u8 = 2;
-
-fn load(vendor: fn(&Path) -> Result<Vendor, DiffError>) -> Result<&'static Vendor, DiffError> {
-    Ok(Box::leak(Box::new(vendor(
-        &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../vendor"),
-    )?)))
-}
 
 fn diff_duels(vendor: &'static Vendor, seeds: Range<u64>) -> Result<(Tally, Vec<Report>), DiffError> {
     let results: Vec<Result<Report, DiffError>> = seeds.into_par_iter().map(|seed| diff_duel(vendor, seed)).collect();
@@ -40,7 +33,7 @@ fn write_tally(tally: &Tally) {
 }
 
 fn assert_normal_monsters_clean(seeds: Range<u64>) -> Result<(), DiffError> {
-    let (tally, reports) = diff_duels(load(Vendor::normal_monsters)?, seeds)?;
+    let (tally, reports) = diff_duels(Vendor::leak(Vendor::normal_monsters)?, seeds)?;
     let reasons: Vec<u8> = reports.iter().map(|report| report.reason).collect();
     // Replays stay at 0: without effects nothing changes the opponent's monsters while an attack is pending.
     let exercised = [
@@ -63,7 +56,7 @@ fn assert_normal_monsters_clean(seeds: Range<u64>) -> Result<(), DiffError> {
 }
 
 fn assert_classic_effects_clean(seeds: Range<u64>) -> Result<(), DiffError> {
-    let (tally, _) = diff_duels(load(Vendor::classic_effects)?, seeds)?;
+    let (tally, _) = diff_duels(Vendor::leak(Vendor::classic_effects)?, seeds)?;
     let resolutions: Vec<(u32, u32)> = CLASSIC_CARDS.iter().map(|&code| (code, tally.resolutions(code))).collect();
     assert!(
         resolutions.iter().all(|&(_, count)| count > 0) && tally.chain_disabled > 0,
@@ -96,7 +89,7 @@ fn should_match_the_oracle_in_5000_classic_effect_duels() {
 
 // Checks that every card of the main and Extra Deck resolves some effect.
 fn assert_elfnote_clean(seeds: Range<u64>) -> Result<(), DiffError> {
-    let vendor = load(Vendor::elfnote)?;
+    let vendor = Vendor::leak(Vendor::elfnote)?;
     let (tally, _) = diff_duels(vendor, seeds)?;
     write_tally(&tally);
     let cards = vendor.deck.iter().flat_map(|deck| deck.main.iter().chain(&deck.extra));
@@ -119,7 +112,7 @@ fn should_match_the_oracle_in_5000_elfnote_mirror_matches() {
 // Writes each card's scenarios out and checks that they diff clean and pass the card's checks, and that Ritual
 // materials are selected by both kinds of sum.
 fn assert_scenarios_clean(count: u32) -> Result<(), DiffError> {
-    let vendor = load(Vendor::scenarios)?;
+    let vendor = Vendor::leak(Vendor::scenarios)?;
     let cards: Vec<u32> = CARD_SCRIPTS.iter().map(|card| card.code).collect();
     let runs = diff_cards(vendor, &cards, count);
     let out = &mut std::io::stdout().lock();

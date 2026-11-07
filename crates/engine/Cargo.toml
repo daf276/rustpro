@@ -6,6 +6,9 @@ license.workspace = true
 
 [dependencies]
 carddata = { path = "../carddata", default-features = false }
+# Positions and duel records as compact bytes; alloc only, for Vec.
+postcard = { version = "1", default-features = false, features = ["alloc"] }
+serde = { version = "1", default-features = false, features = ["alloc", "derive"] }
 thiserror = { version = "2", default-features = false }
 
 [dev-dependencies]

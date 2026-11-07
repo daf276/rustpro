@@ -33,6 +33,7 @@ pub mod constants;
 mod duel;
 mod effect;
 mod field;
+mod gamestate;
 mod libcard;
 mod libduel;
 mod libeffect;
@@ -52,6 +53,7 @@ pub use effect::{
     ChainLimitFn, Condition, ConditionFn, CostFn, CounterFilter, EffectId, EffectSet, Event, ExtraMaterialCall, GroupOperationFn, OpTarget,
     Operation, OperationFn, SpSummonTargetFn, SynchroCheckFn, SynchroMaterialFn, Target, TargetFn, Value,
 };
+pub use gamestate::{DuelRecord, FormatError, PlacedCard, Position, PositionError, ReplayError};
 pub use libduel::{ChainInfo, ExtraSummon, FromChainInfo, MonsterStats, ReleaseOptions};
 pub use libeffect::CountCode;
 pub use script::{Args, FusionCheck, InitialEffect, Interrupt, Library, Script};

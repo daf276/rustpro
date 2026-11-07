@@ -1,4 +1,5 @@
 use carddata::{CardDatabase, Deck};
+use serde::{Deserialize, Serialize};
 
 use crate::buffer::{ProgressiveBuffer, Trace};
 use crate::card::{Card, CardId, CardSet, Cards, MAX_CARDS, StaticData};
@@ -22,7 +23,7 @@ pub enum DuelError {
     UnknownCard(u32),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlayerOptions {
     pub starting_lp: u32,
     pub starting_draw_count: u32,
@@ -48,7 +49,7 @@ pub struct DuelOptions {
     pub team2: PlayerOptions,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NewCardInfo {
     pub team: u8,
     pub duelist: u8,
@@ -203,12 +204,12 @@ impl Duel {
 
     // Debug.AddCard, which puzzles use: unlike OCG_DuelNewCard it places face-up Pendulums in the Extra Deck and the
     // Pendulum Zones, and a card placed on an occupied field zone becomes an Xyz material of the card there.
-    // `info.team` is the owner and `info.con` the controller.
-    pub fn debug_add_card(&mut self, info: NewCardInfo, proc: bool, database: &'static CardDatabase) -> Result<(), DuelError> {
+    // `info.team` is the owner and `info.con` the controller. Returns the card, or None if there was no room.
+    pub fn debug_add_card(&mut self, info: NewCardInfo, proc: bool, database: &'static CardDatabase) -> Result<Option<CardId>, DuelError> {
         let location = info.loc as u16;
         if !self.is_location_useable(info.con, location, info.seq) {
             let Some(target) = self.field_card(info.con, location, info.seq) else {
-                return Ok(());
+                return Ok(None);
             };
             let card = self.create_card(info.code, database)?;
             self.cards[card].owner = info.team;
@@ -216,7 +217,7 @@ impl Duel {
             if proc {
                 self.cards[card].set_status(STATUS_PROC_COMPLETE, true);
             }
-            return Ok(());
+            return Ok(Some(card));
         }
         let card = self.create_card(info.code, database)?;
         self.cards[card].owner = info.team;
@@ -238,7 +239,7 @@ impl Duel {
         };
         self.add_card(info.con, card, location, sequence as u8, pzone);
         self.place(card, position, proc);
-        Ok(())
+        Ok(Some(card))
     }
 
     // pduel->new_card: the card object with its script's initial effects, not yet in any location.

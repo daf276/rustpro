@@ -596,6 +596,10 @@ impl CardId {
         duel.is_removeable(self, player, position as u8, reason)
     }
 
+    pub fn is_able_to_change_controler(self, duel: &Duel) -> bool {
+        duel.is_affected_by_effect(self, EFFECT_CANNOT_CHANGE_CONTROL).is_none()
+    }
+
     pub fn is_able_to_grave_as_cost(self, duel: &Duel) -> bool {
         duel.is_capable_cost_to_grave(self, duel.core.reason_player.get())
     }

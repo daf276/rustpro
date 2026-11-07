@@ -619,6 +619,16 @@ pub mod aux {
         }
     }
 
+    pub fn dncheck(duel: &Duel, sg: CardSet, mg: CardSet, c: Option<CardId>) -> (bool, bool) {
+        dpcheck(|c, duel| i64::from(c.get_code(duel)))(duel, sg, mg, c)
+    }
+
+    // Auxiliary.bdocon: the condition of EVENT_BATTLE_DESTROYING against an opponent's monster.
+    pub fn bdocon(duel: &Duel, a: &Args) -> bool {
+        let c = a.e.get_handler(duel);
+        c.is_relate_to_battle(duel) && c.is_status(duel, STATUS_OPPO_BATTLE)
+    }
+
     // Auxiliary.ChangeBattleDamage(PLAYER, VALUE): -1 leaves the damage alone.
     pub fn change_battle_damage<const PLAYER: u8, const VALUE: u32>(duel: &Duel, e: EffectId, damp: u8, _: CardId) -> i64 {
         let target = if PLAYER == 0 { damp } else { 1 - damp };
@@ -912,6 +922,7 @@ pub trait CardUtility: Copy {
     fn is_negatable_monster(self, duel: &Duel) -> bool;
     fn is_negatable_spell_trap(self, duel: &Duel) -> bool;
     fn is_negatable(self, duel: &Duel) -> bool;
+    fn is_attribute_except(self, duel: &Duel, att: u32) -> bool;
     fn add_must_be_special_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_be_fusion_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_first_be_fusion_summoned(self, duel: &mut Duel) -> EffectId;
@@ -1025,7 +1036,7 @@ impl CardUtility for CardId {
         c.get_attack(duel) - atk
     }
 
-    // Card.EquipByEffectAndLimitRegister; `up` is nil in Lua unless mustbefaceup is given, and Duel.Equip defaults nil to true.
+    // Card.EquipByEffectAndLimitRegister; `up` is nil in Lua unless mustbefaceup is given, which Duel.Equip reads as false.
     fn equip_by_effect_and_limit_register(
         self,
         duel: &mut Duel,
@@ -1036,7 +1047,7 @@ impl CardUtility for CardId {
         mustbefaceup: Option<bool>,
     ) -> Script<bool> {
         let c = self;
-        if !duel.equip_full(tp, tc, c, mustbefaceup.unwrap_or(true), false)? {
+        if !duel.equip_full(tp, tc, c, mustbefaceup.unwrap_or(false), false)? {
             return Ok(false);
         }
         if let Some(code) = code {
@@ -1166,6 +1177,11 @@ impl CardUtility for CardId {
         self.is_faceup(duel) && !self.is_disabled(duel) && self.is_spell_trap(duel)
     }
 
+    fn is_attribute_except(self, duel: &Duel, att: u32) -> bool {
+        let current = self.get_attribute(duel);
+        current & att != current
+    }
+
     fn is_negatable(self, duel: &Duel) -> bool {
         self.is_negatable_monster(duel) || self.is_negatable_spell_trap(duel)
     }
@@ -1273,6 +1289,7 @@ pub trait DuelUtility {
     fn announce_another_attribute(&mut self, g: CardSet, tp: u8) -> Script<u32>;
     fn move_to_deck_bottom_count(&mut self, count: usize, tp: u8) -> Script<()>;
     fn move_to_deck_bottom(&mut self, targets: CardSet) -> Script<()>;
+    fn move_to_deck_top(&mut self, targets: CardSet) -> Script<()>;
     fn place_field_spell(&mut self, c: CardId, tp: u8) -> Script<bool>;
     fn count_heads(&self, results: &[u8]) -> usize;
 }
@@ -1351,6 +1368,14 @@ impl DuelUtility for Duel {
     fn move_to_deck_bottom(&mut self, targets: CardSet) -> Script<()> {
         for c in targets.filter(self, |c, duel| c.is_location(duel, LOCATION_DECK), None) {
             self.move_sequence(c, SEQ_DECKBOTTOM as u8)?;
+        }
+        Ok(())
+    }
+
+    // Duel.MoveToDeckTop(obj): the cards in the Deck, in group order.
+    fn move_to_deck_top(&mut self, targets: CardSet) -> Script<()> {
+        for c in targets.filter(self, |c, duel| c.is_location(duel, LOCATION_DECK), None) {
+            self.move_sequence(c, SEQ_DECKTOP as u8)?;
         }
         Ok(())
     }

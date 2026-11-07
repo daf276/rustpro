@@ -1122,7 +1122,13 @@ impl Duel {
                             continue;
                         }
                     }
-                    unported!(self, self.filter_effect(card, EFFECT_INDESTRUCTABLE, true));
+                    if let Some(effect) = self.check_indestructable_value(card) {
+                        if reason_player != PLAYER_SELFDES && !indestructable_effects.contains(&effect) {
+                            indestructable_effects.push(effect);
+                        }
+                        indestructable.insert(card);
+                        continue;
+                    }
                     let counted = self.indestructable_by_count(card);
                     for &effect in &counted {
                         if !indestructable_effects.contains(&effect) {
@@ -1279,7 +1285,14 @@ impl Duel {
                         arg.targets.remove(card);
                         continue;
                     }
-                    unported!(self, self.filter_effect(card, EFFECT_INDESTRUCTABLE, true));
+                    if let Some(effect) = self.check_indestructable_value(card) {
+                        let code = self.cards[self.effects[effect].owner].data.code;
+                        self.trace.message(MSG_HINT).u8(HINT_CARD).u8(0).u64(u64::from(code));
+                        self.restore_reason(card);
+                        self.cards[card].set_status(STATUS_DESTROY_CONFIRMED, false);
+                        arg.targets.remove(card);
+                        continue;
+                    }
                     let counted = self.indestructable_by_count(card);
                     for &effect in &counted {
                         self.dec_count(effect, PLAYER_NONE);
@@ -2242,9 +2255,10 @@ impl Duel {
             3 => {
                 self.trace.message(MSG_SPSUMMONED);
                 for card in arg.targets {
+                    let summon_player = self.cards[card].summon.player;
+                    self.check_card_counter(card.into(), ACTIVITY_SPSUMMON, summon_player);
                     let current = self.cards[card].current;
                     if current.position & POS_FACEDOWN == 0 {
-                        let summon_player = self.cards[card].summon.player;
                         self.field_raise_single_event(
                             card,
                             EVENT_SPSUMMON_SUCCESS,
@@ -4063,6 +4077,7 @@ impl Duel {
             }
             17 => {
                 self.set_spsummon_counter(sumplayer);
+                self.check_card_counter(target.into(), ACTIVITY_SPSUMMON, sumplayer);
                 self.add_spsummon_once(sumplayer, self.cards[target].spsummon_code);
                 self.field_raise_single_event(target, EVENT_SPSUMMON_SUCCESS, Some(proc), 0, sumplayer, sumplayer, 0);
                 self.process_single_event();
@@ -4240,6 +4255,7 @@ impl Duel {
                 let group = arg.proc_g.cards;
                 self.trace.message(MSG_SPSUMMONED);
                 self.set_spsummon_counter(sumplayer);
+                self.check_card_counter(group, ACTIVITY_SPSUMMON, sumplayer);
                 let codes = group.iter().map(|card| self.cards[card].spsummon_code).filter(|&code| code != 0);
                 self.add_spsummon_once_codes(sumplayer, codes.collect());
                 for card in group {

@@ -4,7 +4,7 @@ use crate::card::{Card, CardId, CardSet, LocInfo, SendtoParam};
 use crate::chain::{AddChain, Execute, SolveChain, SolveContinuous};
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{Chain, Container, EffectId};
+use crate::effect::{Chain, Container, EffectId, Value};
 use crate::field::PerPlayer;
 use crate::operations::{
     ChangePos, Damage, Destroy, DiscardDeck, Draw, Equip, FlipSummon, GetControl, MonsterSet, MoveToField, PayLpCost, Recover, Release,
@@ -2376,22 +2376,34 @@ impl Duel {
                                 );
                             }
                             for card in [attacker, target] {
-                                let codes = [
-                                    EFFECT_REFLECT_BATTLE_DAMAGE,
-                                    EFFECT_ALSO_BATTLE_DAMAGE,
-                                    EFFECT_NO_BATTLE_DAMAGE,
-                                    EFFECT_AVOID_BATTLE_DAMAGE,
-                                ];
+                                let codes = [EFFECT_REFLECT_BATTLE_DAMAGE, EFFECT_ALSO_BATTLE_DAMAGE];
                                 unported!(self, codes.into_iter().filter_map(|code| self.is_affected_by_effect(card, code)));
                                 unported!(self, self.filter_effect(card, EFFECT_CHANGE_BATTLE_DAMAGE, true));
                             }
                             for p in 0..2 {
-                                let codes = [EFFECT_REFLECT_BATTLE_DAMAGE, EFFECT_ALSO_BATTLE_DAMAGE, EFFECT_AVOID_BATTLE_DAMAGE];
+                                let codes = [EFFECT_REFLECT_BATTLE_DAMAGE, EFFECT_ALSO_BATTLE_DAMAGE];
                                 unported!(
                                     self,
                                     codes.into_iter().filter_map(|code| self.is_player_affected_by_effect(p, code))
                                 );
                                 unported!(self, self.filter_player_effect(p, EFFECT_CHANGE_BATTLE_DAMAGE, false));
+                            }
+                            let pd = self.cards[target].current.controler;
+                            if self.is_affected_by_effect(attacker, EFFECT_NO_BATTLE_DAMAGE).is_some()
+                                || self
+                                    .is_affected_by_effect_target(target, EFFECT_AVOID_BATTLE_DAMAGE, attacker)
+                                    .is_some()
+                                || self.is_player_affected_by_effect(pd, EFFECT_AVOID_BATTLE_DAMAGE).is_some()
+                            {
+                                self.core.battle_damage[pd] = 0;
+                            }
+                            if self.is_affected_by_effect(target, EFFECT_NO_BATTLE_DAMAGE).is_some()
+                                || self
+                                    .is_affected_by_effect_target(attacker, EFFECT_AVOID_BATTLE_DAMAGE, target)
+                                    .is_some()
+                                || self.is_player_affected_by_effect(1 - pd, EFFECT_AVOID_BATTLE_DAMAGE).is_some()
+                            {
+                                self.core.battle_damage[1 - pd] = 0;
                             }
                             reason_card = Some(attacker);
                         }
@@ -2420,13 +2432,7 @@ impl Duel {
             } else {
                 Some(attacker)
             };
-            let card_codes = [
-                EFFECT_BOTH_BATTLE_DAMAGE,
-                EFFECT_REFLECT_BATTLE_DAMAGE,
-                EFFECT_ALSO_BATTLE_DAMAGE,
-                EFFECT_NO_BATTLE_DAMAGE,
-                EFFECT_AVOID_BATTLE_DAMAGE,
-            ];
+            let card_codes = [EFFECT_BOTH_BATTLE_DAMAGE, EFFECT_REFLECT_BATTLE_DAMAGE, EFFECT_ALSO_BATTLE_DAMAGE];
             for card in [Some(reason), dam_card].into_iter().flatten() {
                 unported!(
                     self,
@@ -2434,7 +2440,7 @@ impl Duel {
                 );
             }
             for p in [damp, 1 - damp] {
-                let player_codes = [EFFECT_REFLECT_BATTLE_DAMAGE, EFFECT_ALSO_BATTLE_DAMAGE, EFFECT_AVOID_BATTLE_DAMAGE];
+                let player_codes = [EFFECT_REFLECT_BATTLE_DAMAGE, EFFECT_ALSO_BATTLE_DAMAGE];
                 unported!(
                     self,
                     player_codes
@@ -2443,11 +2449,37 @@ impl Duel {
                 );
             }
             self.change_battle_damage(reason, dam_card, damp);
+            if self.is_affected_by_effect(reason, EFFECT_NO_BATTLE_DAMAGE).is_some()
+                || dam_card.is_some_and(|card| {
+                    self.is_affected_by_effect_target(card, EFFECT_AVOID_BATTLE_DAMAGE, reason)
+                        .is_some()
+                })
+                || self.is_player_affected_by_effect(damp, EFFECT_AVOID_BATTLE_DAMAGE).is_some()
+            {
+                self.core.battle_damage[damp] = 0;
+            }
+            if dam_card.is_some_and(|card| self.is_affected_by_effect(card, EFFECT_NO_BATTLE_DAMAGE).is_some())
+                || self.is_avoiding_battle_damage(reason, dam_card)
+                || self.is_player_affected_by_effect(1 - damp, EFFECT_AVOID_BATTLE_DAMAGE).is_some()
+            {
+                self.core.battle_damage[1 - damp] = 0;
+            }
         }
         if self.core.battle_damage[damp] == 0 && self.core.battle_damage[1 - damp] == 0 {
             reason_card = None;
         }
         (reason_card, destroyed)
+    }
+
+    // card.is_affected_by_effect(EFFECT_AVOID_BATTLE_DAMAGE, dam_card) with a dam_card that may be nil, which only an
+    // effect whose value is an integer can be told apart for.
+    fn is_avoiding_battle_damage(&self, reason_card: CardId, dam_card: Option<CardId>) -> bool {
+        let found = self.is_affected_by_effect_target(reason_card, EFFECT_AVOID_BATTLE_DAMAGE, dam_card.unwrap_or(reason_card));
+        unported!(
+            self,
+            found.filter(|&e| dam_card.is_none() && !matches!(self.effects[e].value, Value::Int(_)))
+        );
+        found.is_some()
     }
 
     // The EFFECT_CHANGE_BATTLE_DAMAGE effects of the cards and players, in id order, double, halve or set the damage.

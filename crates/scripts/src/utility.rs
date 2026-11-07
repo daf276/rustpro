@@ -542,7 +542,10 @@ pub mod aux {
         _g: Option<CardSet>,
         _r: u32,
     ) -> CardSet {
-        unported!(duel, !duel.get_player_effect(tp, EFFECT_MUST_BE_MATERIAL).is_empty());
+        unported!(
+            duel,
+            duel.may_have_effect(EFFECT_MUST_BE_MATERIAL) && !duel.get_player_effect(tp, EFFECT_MUST_BE_MATERIAL).is_empty()
+        );
         CardSet::default()
     }
 

@@ -169,6 +169,69 @@ pub mod aux {
         Ok(())
     }
 
+    // The extracat, extrainfo and extraop parameters of Auxiliary.EnableNeosReturn; returneff has no caller.
+    pub trait NeosReturn {
+        const EXTRACAT: u64 = 0;
+
+        fn extrainfo(_duel: &mut Duel, _a: &Args) {}
+
+        fn extraop(_duel: &mut Duel, _a: &Args) -> Script<()> {
+            Ok(())
+        }
+    }
+
+    pub fn enable_neos_return<P: NeosReturn>(duel: &mut Duel, c: CardId) {
+        let e1 = duel.create_effect(c);
+        e1.set_category(duel, CATEGORY_TODECK | P::EXTRACAT);
+        e1.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_TRIGGER_F);
+        e1.set_code(duel, EVENT_PHASE + PHASE_END);
+        e1.set_range(duel, LOCATION_MZONE);
+        e1.set_count_limit(duel, 1, 0);
+        e1.set_condition(duel, |duel, a| a.e.get_handler(duel).is_has_effect(duel, 42015635).is_none());
+        e1.set_target(duel, neos_return_target::<P>);
+        e1.set_operation(duel, neos_return_operation::<P>);
+        c.register_effect(duel, e1);
+        let e2 = e1.clone_effect(duel);
+        e2.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_TRIGGER_O);
+        e2.set_property(duel, 0);
+        e2.set_condition(duel, |duel, a| a.e.get_handler(duel).is_has_effect(duel, 42015635).is_some());
+        c.register_effect(duel, e2);
+    }
+
+    fn neos_return_target<P: NeosReturn>(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+        if chk == 0 {
+            return Ok(true);
+        }
+        duel.set_operation_info(0, CATEGORY_TODECK, Some(a.e.get_handler(duel).into()), 1, 0, 0);
+        P::extrainfo(duel, a);
+        Ok(false)
+    }
+
+    fn neos_return_substitute_filter(c: CardId, duel: &Duel) -> bool {
+        c.is_code(duel, 14088859) && c.is_able_to_remove_as_cost(duel)
+    }
+
+    fn neos_return_operation<P: NeosReturn>(duel: &mut Duel, a: &Args) -> Script<()> {
+        let (e, tp) = (a.e, a.tp);
+        let c = e.get_handler(duel);
+        if !c.is_relate_to_effect(duel, e) || c.is_facedown(duel) {
+            return Ok(());
+        }
+        let sc = duel.get_first_matching_card(necro_valley_filter(neos_return_substitute_filter), tp, LOCATION_GRAVE, 0, None);
+        match sc {
+            Some(sc) if duel.select_yes_no(tp, stringid(14088859, 0))? => {
+                duel.remove(sc, POS_FACEUP, REASON_COST)?;
+            }
+            _ => {
+                duel.send_to_deck(c, PLAYER_NONE, SEQ_DECKSHUFFLE, REASON_EFFECT)?;
+            }
+        }
+        if c.is_location(duel, LOCATION_EXTRA) {
+            P::extraop(duel, a)?;
+        }
+        Ok(())
+    }
+
     // Auxiliary.GetMMZonesPointedTo(player) with the default filter, locations and target player.
     pub fn get_mm_zones_pointed_to(duel: &Duel, player: u8) -> u32 {
         let links = duel.get_matching_group(
@@ -1058,6 +1121,7 @@ pub trait CardUtility: Copy {
     fn add_must_be_special_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_be_fusion_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_first_be_fusion_summoned(self, duel: &mut Duel) -> EffectId;
+    fn add_must_be_special_summoned_by_dark_fusion(self, duel: &mut Duel) -> EffectId;
 
     fn negate_effects(self, duel: &mut Duel, c: CardId, reset: u32, negates_cards: bool);
     fn is_fusion_monster(self, duel: &Duel) -> bool;
@@ -1416,6 +1480,26 @@ impl CardUtility for CardId {
             }),
         );
         self.register_effect(duel, e0);
+        e0
+    }
+
+    fn add_must_be_special_summoned_by_dark_fusion(self, duel: &mut Duel) -> EffectId {
+        let e0 = duel.create_effect(self);
+        e0.set_type(duel, EFFECT_TYPE_SINGLE);
+        e0.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
+        e0.set_code(duel, EFFECT_SPSUMMON_CONDITION);
+        e0.set_value(duel, Value::SpSummonCondition(aux::evil_hero_limit));
+        self.register_effect(duel, e0);
+        let e1 = duel.create_effect(self);
+        e1.set_type(duel, EFFECT_TYPE_SINGLE);
+        e1.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
+        e1.set_code(duel, CARD_CLOCK_LIZARD);
+        e1.set_condition(duel, |duel, a| {
+            duel.is_player_affected_by_effect(a.e.get_handler_player(duel), EFFECT_SUPREME_CASTLE)
+                .is_none()
+        });
+        e1.set_value(duel, 1);
+        self.register_effect(duel, e1);
         e0
     }
 

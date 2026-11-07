@@ -785,7 +785,7 @@ impl Duel {
     }
 
     pub(crate) fn get_attack(&self, card: CardId) -> i32 {
-        self.get_stat_value(card, &ATTACK, false)
+        self.get_stat_value(card, &ATTACK)
     }
 
     // The `code` (EFFECT_SET_BASE_ATTACK or _DEFENSE) effects other than a card's own unranged ones apply first, in id
@@ -829,13 +829,12 @@ impl Duel {
         if self.cards[card].data.card_type & TYPE_LINK != 0 {
             return 0;
         }
-        self.get_stat_value(card, &DEFENSE, false)
+        self.get_stat_value(card, &DEFENSE)
     }
 
-    // card::get_attack and card::get_defense, which differ only in the codes they read. `nested` is the call the swap
-    // of EFFECT_SWAP_AD makes, which the core's temp values stop from swapping back. The ASSUME_* overrides and the
-    // temp values a value function reading the same stat would get come with the cards that need them.
-    fn get_stat_value(&self, card: CardId, stat: &StatCodes, nested: bool) -> i32 {
+    // card::get_attack and card::get_defense, which differ only in the codes they read. The ASSUME_* overrides come with
+    // the cards that need them.
+    fn get_stat_value(&self, card: CardId, stat: &StatCodes) -> i32 {
         let target = &self.cards[card];
         if target.data.card_type & TYPE_MONSTER == 0
             && self.get_type(card) & TYPE_MONSTER == 0
@@ -851,16 +850,21 @@ impl Duel {
         if target.current.location != LOCATION_MZONE || target.get_status(STATUS_SUMMONING | STATUS_SPSUMMON_STEP) {
             return own;
         }
+        if let Some(value) = self.temp_stat(card, stat.attack) {
+            return value;
+        }
         let (mut base, mut other_base) = (own.max(0), other.max(0));
+        self.core.stat_temp.borrow_mut().push((card, stat.attack, base));
         let mut codes: List<u32, 8> = [stat.update, stat.set, stat.final_, stat.swap_final, stat.base]
             .into_iter()
             .collect();
         if target.data.card_type & TYPE_LINK == 0 {
             codes.extend([EFFECT_SWAP_AD, EFFECT_SWAP_BASE_AD, stat.other_base]);
         }
+        let filtered = self.filter_effects(card, &codes);
         let rev = self.is_affected_by_effect(card, EFFECT_REVERSE_UPDATE).is_some();
         let mut effects = EffectSet::default();
-        for effect in self.filter_effects(card, &codes) {
+        for effect in filtered {
             let code = self.effects[effect].code;
             if !self.is_single_unranged(effect) && (code == stat.base || code == stat.other_base) {
                 let value = self.get_value(effect, card).max(0);
@@ -870,6 +874,7 @@ impl Duel {
             }
         }
         let mut value = base;
+        self.set_temp_stat(value);
         let (mut set, mut up, mut upc, mut swap_final) = (-1, 0, 0, false);
         let (mut finals, mut delayed_finals) = (EffectSet::default(), EffectSet::default());
         for effect in effects {
@@ -897,22 +902,40 @@ impl Duel {
             }
             let start = if set < 0 { base } else { set };
             value = if rev { start - up - upc } else { start + up + upc }.max(0);
+            self.set_temp_stat(value);
         }
         for effect in finals {
             value = self.get_value(effect, card);
+            self.set_temp_stat(value);
         }
-        if !nested {
+        if self.temp_stat(card, !stat.attack).is_none() {
             if swap_final {
-                value = self.get_stat_value(card, if stat.attack { &DEFENSE } else { &ATTACK }, true);
+                value = self.get_stat_value(card, if stat.attack { &DEFENSE } else { &ATTACK });
+                self.set_temp_stat(value);
             }
             for effect in delayed_finals {
                 value = self.get_value(effect, card);
+                self.set_temp_stat(value);
                 if self.effects[effect].is_flag(EFFECT_FLAG_REPEAT) {
                     value = self.get_value(effect, card);
+                    self.set_temp_stat(value);
                 }
             }
         }
+        self.core.stat_temp.borrow_mut().pop();
         value.max(0)
+    }
+
+    fn temp_stat(&self, card: CardId, attack: bool) -> Option<i32> {
+        let temp = self.core.stat_temp.borrow();
+        temp.iter().find(|&&(c, a, _)| c == card && a == attack).map(|&(_, _, value)| value)
+    }
+
+    // Nested evaluations pop what they push, so the running one is the last entry.
+    fn set_temp_stat(&self, value: i32) {
+        if let Some(entry) = self.core.stat_temp.borrow_mut().last_mut() {
+            entry.2 = value;
+        }
     }
 
     // The checks get_base_attack starts with; `swaps` are skipped for Link monsters.

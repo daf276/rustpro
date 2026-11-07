@@ -321,6 +321,8 @@ pub struct Processor {
     pub copy_reset_count: u8,
     // Set and cleared by scripts from checks that only read.
     pub must_select_cards: std::cell::Cell<CardSet>,
+    // temp.attack and temp.defense of a card while get_attack or get_defense evaluates it: (card, is attack, value).
+    pub stat_temp: std::cell::RefCell<List<(CardId, bool, i32), 4>>,
 }
 
 clone_by_field!(Processor {
@@ -456,7 +458,8 @@ clone_by_field!(Processor {
     fusion_materials,
     copy_reset,
     copy_reset_count,
-    must_select_cards
+    must_select_cards,
+    stat_temp
 });
 
 impl Processor {
@@ -595,6 +598,7 @@ impl Processor {
             copy_reset: 0,
             copy_reset_count: 0,
             must_select_cards: Default::default(),
+            stat_temp: Default::default(),
         }
     }
 }

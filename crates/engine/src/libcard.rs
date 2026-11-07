@@ -579,6 +579,12 @@ impl CardId {
         duel.filter_effect(self, code, true).len()
     }
 
+    // Card.GetActivateEffect, the first of the card's activate effects (the Lua takes the first of several).
+    pub fn get_activate_effect(self, duel: &Duel) -> Option<EffectId> {
+        let mut registered = duel.field_effects.registry.all(Container::Field, Some(self));
+        registered.find_map(|(_, effect)| (duel.effects[effect].effect_type & EFFECT_TYPE_ACTIVATE != 0).then_some(effect))
+    }
+
     // The old-negate rule (DUEL_SPSUMMON_ONCE_OLD_NEGATE) and its global flag are not part of the duel mode.
     pub fn set_sp_summon_once(self, duel: &mut Duel, code: u32) {
         if duel.cards[self].is_status(STATUS_COPYING_EFFECT) {

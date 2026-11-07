@@ -44,6 +44,7 @@ pub type EffectSet = List<EffectId, 8>;
 
 pub type ConditionFn = fn(&Duel, &Args) -> bool;
 pub type CostFn = fn(&mut Duel, &Args, i32) -> Script<bool>;
+pub type CostConditionFn = fn(&Duel, EffectId, CardId, u8, u32) -> bool;
 pub type TargetFn = fn(&mut Duel, &Args, i32, Option<CardId>) -> Script<bool>;
 pub type OperationFn = fn(&mut Duel, &Args) -> Script<()>;
 // A Duel.SetChainLimit function f(e, rp, tp), with the value its Lua closure captures (0 for none).
@@ -189,6 +190,8 @@ pub struct Effect {
     pub active_type: u32,
     pub condition: Option<ConditionFn>,
     pub cost: Option<CostFn>,
+    // The cost (e, c, playerid, sumtype) of EFFECT_SPSUMMON_COST and the like, which the core only asks whether it holds.
+    pub cost_condition: Option<CostConditionFn>,
     pub target: Target,
     pub value: Value,
     pub operation: Option<Operation>,
@@ -230,6 +233,7 @@ impl Effect {
             active_type: 0,
             condition: None,
             cost: None,
+            cost_condition: None,
             target: Target::None,
             value: Value::Int(0),
             operation: None,
@@ -1210,7 +1214,8 @@ impl Duel {
     }
 
     pub(crate) fn is_immuned(&self, effect: EffectId, card: CardId) -> bool {
-        self.filter_immune_effect(card).into_iter().any(|immune| {
+        let cached = self.immune_effects.iter().find(|(cached, _)| *cached == card);
+        let immune = |&immune: &EffectId| {
             self.is_available(immune)
                 && match self.effects[immune].value {
                     Value::Int(value) => value != 0,
@@ -1220,7 +1225,8 @@ impl Duel {
                         false
                     }
                 }
-        })
+        };
+        cached.is_some_and(|(_, immune_effects)| immune_effects.iter().any(immune))
     }
 
     pub(crate) fn is_chainable(&self, effect: EffectId, tp: u8) -> bool {

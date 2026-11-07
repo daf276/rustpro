@@ -3,8 +3,8 @@ use crate::card::CardId;
 use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{
-    ConditionFn, CostFn, EffectId, ExtraMaterialFn, GroupOperationFn, Label, Operation, OperationFn, SpSummonTargetFn, SynchroCheckFn,
-    SynchroMaterialFn, Target, TargetFn, Value,
+    ConditionFn, CostConditionFn, CostFn, EffectId, ExtraMaterialFn, GroupOperationFn, Label, Operation, OperationFn, SpSummonTargetFn,
+    SynchroCheckFn, SynchroMaterialFn, Target, TargetFn, Value,
 };
 
 impl Duel {
@@ -188,6 +188,11 @@ impl EffectId {
 
     pub fn set_cost(self, duel: &mut Duel, cost: CostFn) {
         duel.effects[self].cost = Some(cost);
+    }
+
+    // Effect.SetCost for the cost (e, c, playerid, sumtype) of the effects the core checks when a card is summoned or Set.
+    pub fn set_cost_condition(self, duel: &mut Duel, cost: CostConditionFn) {
+        duel.effects[self].cost_condition = Some(cost);
     }
 
     pub fn set_value(self, duel: &mut Duel, value: impl Into<Value>) {

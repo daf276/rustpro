@@ -61,6 +61,99 @@ pub mod aux {
         c.is_has_effect(duel, EFFECT_NECRO_VALLEY).is_none()
     }
 
+    // The required and filter parameters of Auxiliary.AddLavaProcedure; a nil filter is Card.IsMonster.
+    pub trait LavaProcedure {
+        const REQUIRED: usize;
+
+        fn filter(c: CardId, duel: &Duel) -> bool {
+            c.is_monster(duel)
+        }
+    }
+
+    pub fn add_lava_procedure<P: LavaProcedure>(
+        duel: &mut Duel,
+        c: CardId,
+        position: u32,
+        value: i32,
+        description: Option<u64>,
+    ) -> EffectId {
+        let e1 = duel.create_effect(c);
+        if let Some(description) = description {
+            e1.set_description(duel, description);
+        }
+        e1.set_type(duel, EFFECT_TYPE_FIELD);
+        e1.set_code(duel, EFFECT_SPSUMMON_PROC);
+        e1.set_property(duel, EFFECT_FLAG_UNCOPYABLE + EFFECT_FLAG_SPSUM_PARAM);
+        e1.set_range(duel, LOCATION_HAND);
+        e1.set_target_range(duel, position, 1);
+        e1.set_value(duel, value);
+        e1.set_condition(duel, lava_condition::<P>);
+        e1.set_target(duel, lava_target::<P>);
+        e1.set_operation(duel, lava_operation);
+        c.register_effect(duel, e1);
+        e1
+    }
+
+    fn lava_check(duel: &Duel, sg: CardSet, tp: u8) -> (bool, bool) {
+        (
+            duel.get_mzone_count_full(1 - tp, Some(sg), tp, LOCATION_REASON_TOFIELD, 0xff) > 0,
+            false,
+        )
+    }
+
+    fn lava_materials<P: LavaProcedure>(duel: &Duel, tp: u8) -> CardSet {
+        duel.get_matching_group(|c, duel| c.is_releasable(duel) && P::filter(c, duel), tp, 0, LOCATION_MZONE, None)
+    }
+
+    fn lava_condition<P: LavaProcedure>(duel: &Duel, a: &Args) -> bool {
+        let Some(c) = a.c else { return true };
+        let tp = c.get_controler(duel);
+        let required = P::REQUIRED.max(1);
+        select_unselect_group_check(duel, lava_materials::<P>(duel, tp), required, required, &|duel, sg, _, _| {
+            lava_check(duel, sg, tp)
+        })
+    }
+
+    fn lava_target<P: LavaProcedure>(duel: &mut Duel, a: &Args, _: i32, _: Option<CardId>) -> Script<bool> {
+        let tp = a.tp;
+        let required = P::REQUIRED.max(1);
+        let mg = lava_materials::<P>(duel, tp);
+        let g = select_unselect_group_full(
+            duel,
+            mg,
+            required,
+            required,
+            &|duel, sg, _, _| lava_check(duel, sg, tp),
+            tp,
+            HINTMSG_RELEASE,
+            None,
+            true,
+        )?;
+        if g.is_empty() {
+            return Ok(false);
+        }
+        a.e.set_label_object_group(duel, Some(g));
+        Ok(true)
+    }
+
+    fn lava_operation(duel: &mut Duel, a: &Args) -> Script<()> {
+        let g = a.e.get_label_object_group(duel).unwrap_or_default();
+        duel.release(g, REASON_COST)?;
+        Ok(())
+    }
+
+    // Auxiliary.GetMMZonesPointedTo(player) with the default filter, locations and target player.
+    pub fn get_mm_zones_pointed_to(duel: &Duel, player: u8) -> u32 {
+        let links = duel.get_matching_group(
+            |c, duel| c.is_faceup(duel) && c.is_type(duel, TYPE_LINK),
+            player,
+            LOCATION_MZONE,
+            LOCATION_MZONE,
+            None,
+        );
+        links.get_bitwise_or(duel, |c, duel| u64::from(c.get_linked_zone_full(duel, player))) as u32 & ZONES_MMZ
+    }
+
     pub fn necro_valley_filter(filter: impl Fn(CardId, &Duel) -> bool) -> impl Fn(CardId, &Duel) -> bool {
         move |c, duel| filter(c, duel) && !(c.is_has_effect(duel, EFFECT_NECRO_VALLEY).is_some() && duel.is_chain_disablable(0))
     }
@@ -558,6 +651,15 @@ impl Cost {
         Ok(false)
     }
 
+    pub fn self_reveal(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        let c = args.e.get_handler(duel);
+        if chk == 0 {
+            return Ok(!c.is_public(duel));
+        }
+        duel.confirm_cards(1 - args.tp, c)?;
+        Ok(false)
+    }
+
     pub fn self_banish(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         let c = args.e.get_handler(duel);
         if chk == 0 {
@@ -733,6 +835,7 @@ pub trait CardUtility: Copy {
     fn is_field_spell(self, duel: &Duel) -> bool;
     fn is_ritual_spell(self, duel: &Duel) -> bool;
     fn is_ritual_monster(self, duel: &Duel) -> bool;
+    fn is_normal_spell_trap(self, duel: &Duel) -> bool;
     fn is_continuous_spell(self, duel: &Duel) -> bool;
     fn is_continuous_trap(self, duel: &Duel) -> bool;
     fn is_quick_play_spell(self, duel: &Duel) -> bool;
@@ -747,6 +850,7 @@ pub trait CardUtility: Copy {
     fn is_negatable_spell_trap(self, duel: &Duel) -> bool;
     fn is_negatable(self, duel: &Duel) -> bool;
     fn add_must_be_special_summoned(self, duel: &mut Duel) -> EffectId;
+    fn add_must_be_fusion_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_first_be_fusion_summoned(self, duel: &mut Duel) -> EffectId;
 
     fn negate_effects(self, duel: &mut Duel, c: CardId, reset: u32, negates_cards: bool);
@@ -885,6 +989,10 @@ impl CardUtility for CardId {
         self.is_composite_type(duel, TYPE_MONSTER | TYPE_RITUAL)
     }
 
+    fn is_normal_spell_trap(self, duel: &Duel) -> bool {
+        [TYPE_SPELL, TYPE_TRAP].contains(&self.get_type(duel))
+    }
+
     fn is_continuous_spell(self, duel: &Duel) -> bool {
         self.is_composite_type(duel, TYPE_SPELL | TYPE_CONTINUOUS)
     }
@@ -954,6 +1062,19 @@ impl CardUtility for CardId {
         e0.set_type(duel, EFFECT_TYPE_SINGLE);
         e0.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
         e0.set_code(duel, EFFECT_SPSUMMON_CONDITION);
+        self.register_effect(duel, e0);
+        e0
+    }
+
+    fn add_must_be_fusion_summoned(self, duel: &mut Duel) -> EffectId {
+        let e0 = duel.create_effect(self);
+        e0.set_type(duel, EFFECT_TYPE_SINGLE);
+        e0.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
+        e0.set_code(duel, EFFECT_SPSUMMON_CONDITION);
+        e0.set_value(
+            duel,
+            Value::SpSummonCondition(|_, _, _, _, sum_type, _, _| sum_type & SUMMON_TYPE_FUSION == SUMMON_TYPE_FUSION),
+        );
         self.register_effect(duel, e0);
         e0
     }

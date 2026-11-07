@@ -3,7 +3,7 @@ use carddata::{CardDatabase, Deck};
 use crate::buffer::{ProgressiveBuffer, Trace};
 use crate::card::{Card, CardId, CardSet, Cards, MAX_CARDS, StaticData};
 use crate::constants::*;
-use crate::effect::{EffectId, Effects, Event, FieldEffect};
+use crate::effect::{EffectId, EffectSet, Effects, Event, FieldEffect};
 use crate::field::{FieldInfo, PerPlayer, PlayerInfo, Processor, Relations, ReturnCards};
 use crate::list::List;
 use crate::processor::{OcgStatus, Startup};
@@ -110,6 +110,9 @@ pub struct Duel {
     pub(crate) card_relations: Vec<(CardId, CardId, u32)>,
     // The cards equipped to a monster; card::equiping_cards of a card are those whose equiping_target it is.
     pub(crate) equip_cards: CardSet,
+    // card::immune_effect of the cards that have any: refreshed only by refresh_disable_status, so an effect registered
+    // since is not in it.
+    pub(crate) immune_effects: Vec<(CardId, EffectSet)>,
     // The first unported call site an effect reached, set in checks that only read.
     pub(crate) unported: std::cell::Cell<Option<&'static str>>,
 }
@@ -159,6 +162,7 @@ impl Duel {
             counters: Vec::new(),
             card_targets: Vec::new(),
             card_relations: Vec::new(),
+            immune_effects: Vec::new(),
             equip_cards: CardSet::default(),
             unported: std::cell::Cell::new(None),
         })

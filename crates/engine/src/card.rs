@@ -455,17 +455,38 @@ impl Duel {
         data.card_type & TYPE_MONSTER != 0 && data.card_type & self.get_extra_deck_types() != 0
     }
 
-    // card::get_code: the alias for alternate arts; EFFECT_CHANGE_CODE and EFFECT_ADD_CODE come with their cards.
+    // card::get_code: the alias for alternate arts and the last EFFECT_CHANGE_CODE; EFFECT_ADD_CODE comes with its cards.
     pub(crate) fn get_code(&self, card: CardId) -> u32 {
-        unported!(self, self.filter_effect(card, EFFECT_CHANGE_CODE, true));
-        unported!(self, self.filter_effect(card, EFFECT_ADD_CODE, true));
         let data = &self.cards[card].data;
-        if data.alias != 0 { data.alias } else { data.code }
+        let code = self
+            .filter_effect(card, EFFECT_CHANGE_CODE, true)
+            .last()
+            .map_or(data.code, |&effect| self.get_value(effect, card) as u32);
+        if code == data.code {
+            unported!(self, self.filter_effect(card, EFFECT_ADD_CODE, true));
+            return if data.alias != 0 { data.alias } else { code };
+        }
+        match self.database.and_then(|database| database.get(code)) {
+            Some(changed) if changed.alias != 0 && Self::second_code(code) == 0 => changed.alias,
+            _ => code,
+        }
+    }
+
+    // card::second_code: the mapping of double-name cards.
+    fn second_code(code: u32) -> u32 {
+        match code {
+            78_734_254 => 17_955_766,
+            13_857_930 => 17_732_278,
+            _ => 0,
+        }
     }
 
     pub(crate) fn get_another_code(&self, card: CardId) -> u32 {
+        let code = self.get_code(card);
+        if code != self.cards[card].data.code {
+            return Self::second_code(code);
+        }
         unported!(self, self.filter_effect(card, EFFECT_ADD_CODE, true));
-        let _ = card;
         0
     }
 
@@ -667,7 +688,17 @@ impl Duel {
     // card::get_set_card: the card's archetypes, 0 in unused slots.
     pub(crate) fn get_set_card(&self, card: CardId) -> [u16; 5] {
         unported!(self, self.filter_effect(card, EFFECT_ADD_SETCODE, true));
-        self.cards[card].data.setcodes
+        let data = &self.cards[card].data;
+        let code = self.get_code(card);
+        let own = if code == data.code {
+            data.setcodes
+        } else {
+            self.database
+                .and_then(|database| database.get(code))
+                .map_or([0; 5], |changed| changed.setcodes)
+        };
+        unported!(self, (self.get_another_code(card) != 0).then_some(()));
+        own
     }
 
     // The effects of `codes` on the card, in id order, as consecutive filter_effect calls collect them.
@@ -1153,6 +1184,11 @@ impl Duel {
         let forbidden = self.is_affected_by_effect(card, EFFECT_FORBIDDEN).is_some();
         let disabled =
             self.is_affected_by_effect(card, EFFECT_CANNOT_DISABLE).is_none() && self.is_affected_by_effect(card, EFFECT_DISABLE).is_some();
+        self.immune_effects.retain(|(cached, _)| *cached != card);
+        let immune_effects = self.filter_immune_effect(card);
+        if !immune_effects.is_empty() {
+            self.immune_effects.push((card, immune_effects));
+        }
         let card = &mut self.cards[card];
         card.set_status(STATUS_FORBIDDEN, forbidden);
         card.set_status(STATUS_DISABLED, disabled);
@@ -1414,7 +1450,7 @@ impl Duel {
         effects
     }
 
-    // card::filter_immune_effect: the core caches them in card::immune_effect; here they are collected when asked.
+    // card::filter_immune_effect.
     pub(crate) fn filter_immune_effect(&self, card: CardId) -> EffectSet {
         let registry = &self.field_effects.registry;
         let mut effects: EffectSet = registry.equal_range(Container::Single, Some(card), EFFECT_IMMUNE_EFFECT).collect();
@@ -1426,6 +1462,7 @@ impl Duel {
                 .equal_range(Container::Aura, None, EFFECT_IMMUNE_EFFECT)
                 .filter(|&effect| self.effect_is_target(effect, card)),
         );
+        effects.sort_by_key(|&effect| self.effects.id(effect));
         effects
     }
 
@@ -1513,13 +1550,22 @@ impl Duel {
         !self.is_immuned(effect, card)
     }
 
-    pub(crate) fn check_cost_condition(&self, card: CardId, code: u32, playerid: u8) -> bool {
-        unported!(
-            self,
-            self.filter_player_effect(playerid, code, false)
-                .into_iter()
-                .chain(self.filter_effect(card, code, true))
-        );
+    // `sumtype` is 0 where the core passes none.
+    pub(crate) fn check_cost_condition(&self, card: CardId, code: u32, playerid: u8, sumtype: u32) -> bool {
+        let effects = self
+            .filter_player_effect(playerid, code, false)
+            .into_iter()
+            .chain(self.filter_effect(card, code, true));
+        for effect in effects {
+            let peffect = &self.effects[effect];
+            unported!(self, peffect.cost.map(|_| effect));
+            if peffect
+                .cost_condition
+                .is_some_and(|cost| !cost(self, effect, card, playerid, sumtype))
+            {
+                return false;
+            }
+        }
         true
     }
 
@@ -1729,7 +1775,7 @@ impl Duel {
         {
             return false;
         }
-        if self.cards[card].is_status(STATUS_FORBIDDEN) || !self.check_cost_condition(card, EFFECT_SUMMON_COST, playerid) {
+        if self.cards[card].is_status(STATUS_FORBIDDEN) || !self.check_cost_condition(card, EFFECT_SUMMON_COST, playerid, 0) {
             return false;
         }
         if self.cards[card].current.location == LOCATION_MZONE {
@@ -1805,7 +1851,7 @@ impl Duel {
         {
             return false;
         }
-        if !self.check_cost_condition(card, EFFECT_MSET_COST, playerid) {
+        if !self.check_cost_condition(card, EFFECT_MSET_COST, playerid, 0) {
             return false;
         }
         let (result, procedures) = self.filter_set_procedure(card, playerid, ignore_count, min_tribute, zone);
@@ -1830,7 +1876,7 @@ impl Duel {
         !self.cards[card].is_status(STATUS_FORBIDDEN)
             && self.is_affected_by_effect(card, EFFECT_CANNOT_SSET).is_none()
             && self.is_player_can_sset(playerid, card)
-            && self.check_cost_condition(card, EFFECT_SSET_COST, playerid)
+            && self.check_cost_condition(card, EFFECT_SSET_COST, playerid, 0)
     }
 
     // card::filter_spsummon_procedure: the card's EFFECT_SPSUMMON_PROC effects it can be summoned with now.
@@ -1942,7 +1988,7 @@ impl Duel {
         if self.cards[card].data.card_type & TYPE_MONSTER == 0
             || self.is_affected_by_effect(card, EFFECT_CANNOT_SPECIAL_SUMMON).is_some()
             || self.cards[card].is_status(STATUS_FORBIDDEN)
-            || !self.check_cost_condition(card, EFFECT_SPSUMMON_COST, playerid)
+            || !self.check_cost_condition(card, EFFECT_SPSUMMON_COST, playerid, summon_type)
         {
             return false;
         }
@@ -2014,7 +2060,7 @@ impl Duel {
         {
             return false;
         }
-        if !self.check_cost_condition(card, EFFECT_SPSUMMON_COST, sumplayer) {
+        if !self.check_cost_condition(card, EFFECT_SPSUMMON_COST, sumplayer, sumtype) {
             return false;
         }
         if !nocheck {
@@ -2095,7 +2141,7 @@ impl Duel {
         self.is_capable_attack(card)
             && (self.is_affected_by_effect(card, EFFECT_CANNOT_ATTACK_ANNOUNCE).is_none()
                 || self.is_affected_by_effect(card, EFFECT_UNSTOPPABLE_ATTACK).is_some())
-            && self.check_cost_condition(card, EFFECT_ATTACK_COST, playerid)
+            && self.check_cost_condition(card, EFFECT_ATTACK_COST, playerid, 0)
     }
 
     pub(crate) fn is_capable_be_effect_target(&self, card: CardId, effect: EffectId, playerid: u8) -> bool {
@@ -2167,7 +2213,7 @@ impl Duel {
             && !target.is_status(STATUS_FORBIDDEN)
             && self.is_affected_by_effect(card, EFFECT_CANNOT_FLIP_SUMMON).is_none()
             && self.is_affected_by_effect(card, EFFECT_CANNOT_CHANGE_POSITION).is_none()
-            && self.check_cost_condition(card, EFFECT_FLIPSUMMON_COST, playerid)
+            && self.check_cost_condition(card, EFFECT_FLIPSUMMON_COST, playerid, 0)
     }
 
     pub(crate) fn set_material(&mut self, card: CardId, materials: CardSet) {
@@ -2637,7 +2683,8 @@ impl Duel {
         for code in [EFFECT_ADD_CODE, EFFECT_REMOVE_CODE] {
             unported!(self, self.filter_effect(card, code, false));
         }
-        unported!(self, self.filter_effect(card, EFFECT_CHANGE_CODE, true));
+        let changes = self.filter_effect(card, EFFECT_CHANGE_CODE, true);
+        unported!(self, changes.into_iter().filter(|&effect| self.effects[effect].operation.is_some()));
         let (code, another) = (self.get_code(card), self.get_another_code(card));
         codes.iter().any(|&other| other == code || (another != 0 && other == another))
     }

@@ -40,7 +40,7 @@ fn spcostfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
 fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8, attr: u32) -> bool {
     c.is_set_card(duel, &[SET_ELFNOTE])
         && !c.is_original_attribute(duel, attr)
-        && c.is_can_be_special_summoned_full(duel, e, 0, tp, false, false, POS_FACEUP_DEFENSE)
+        && c.is_can_be_special_summoned_full(duel, e, 0, tp, false, false, POS_FACEUP_DEFENSE, tp, 0xff)
 }
 
 fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {

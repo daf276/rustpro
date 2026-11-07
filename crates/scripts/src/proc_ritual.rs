@@ -181,7 +181,7 @@ impl Ritual {
     ) -> bool {
         if !(c.is_original_type(duel, TYPE_RITUAL) && c.is_original_type(duel, TYPE_MONSTER))
             || !P::filter(c, duel)
-            || !c.is_can_be_special_summoned_full(duel, e, SUMMON_TYPE_RITUAL, tp, false, true, P::SUMPOS)
+            || !c.is_can_be_special_summoned_full(duel, e, SUMMON_TYPE_RITUAL, tp, false, true, P::SUMPOS, tp, 0xff)
         {
             return false;
         }

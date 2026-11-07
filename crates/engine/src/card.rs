@@ -1081,7 +1081,7 @@ impl Duel {
         if effect_type & EFFECT_TYPE_SINGLE != 0 && code == EFFECT_UPDATE_LEVEL && flag & EFFECT_FLAG_SINGLE_RANGE == 0 {
             let value = self.get_value(effect, card);
             if value > 0 {
-                self.raise_single_event(card, EVENT_LEVEL_UP, Some(effect), 0, 0, 0, value as u32);
+                self.field_raise_single_event(card, EVENT_LEVEL_UP, Some(effect), 0, 0, 0, value as u32);
                 self.process_single_event();
             }
         }
@@ -1979,7 +1979,9 @@ impl Duel {
         let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
         self.core.reason_effect.set(Some(effect));
         self.core.reason_player.set(self.cards[card].current.controler);
-        let result = self.effects[effect].condition.is_none_or(|condition| condition(self, args));
+        let result = self.effects[effect]
+            .condition
+            .is_none_or(|condition| self.check_condition(condition, args));
         self.core.reason_effect.set(reason_effect);
         self.core.reason_player.set(reason_player);
         result
@@ -2677,7 +2679,7 @@ impl Duel {
                     chkf,
                     ..Args::default()
                 };
-                let result = condition(self, &args);
+                let result = self.check_condition(condition, &args);
                 self.core.reason_effect.set(reason_effect);
                 self.core.reason_player.set(reason_player);
                 result
@@ -2835,7 +2837,7 @@ impl Duel {
             .u8(current.sequence as u8)
             .u16(count);
         let reason_effect = self.core.reason_effect.get();
-        self.raise_single_event(
+        self.field_raise_single_event(
             card,
             EVENT_ADD_COUNTER + u32::from(counter_type),
             reason_effect,

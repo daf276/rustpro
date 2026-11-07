@@ -3,9 +3,10 @@ use crate::card::CardId;
 use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{
-    ConditionFn, CostConditionFn, CostFn, EffectId, ExtraMaterialFn, GroupOperationFn, Label, Operation, OperationFn, SpSummonTargetFn,
+    Condition, ConditionFn, CostConditionFn, CostFn, EffectId, ExtraMaterialFn, GroupOperationFn, Operation, OperationFn, SpSummonTargetFn,
     SynchroCheckFn, SynchroMaterialFn, Target, TargetFn, Value,
 };
+use crate::script::Args;
 
 impl Duel {
     pub fn create_effect(&mut self, card: CardId) -> EffectId {
@@ -40,6 +41,10 @@ impl EffectId {
 
     pub fn set_description(self, duel: &mut Duel, description: u64) {
         duel.effects[self].description = description;
+    }
+
+    pub fn get_description(self, duel: &Duel) -> u64 {
+        duel.effects[self].description
     }
 
     pub fn set_code(self, duel: &mut Duel, code: u32) {
@@ -139,16 +144,16 @@ impl EffectId {
     }
 
     pub fn set_label(self, duel: &mut Duel, label: i64) {
-        duel.effects[self].label = Label::new(&[label]);
+        duel.effects[self].set_labels(&[label]);
     }
 
     // Effect.SetLabel with several values.
     pub fn set_labels(self, duel: &mut Duel, labels: &[i64]) {
-        duel.effects[self].label = Label::new(labels);
+        duel.effects[self].set_labels(labels);
     }
 
     pub fn get_labels(self, duel: &Duel) -> &[i64] {
-        duel.effects[self].label.values()
+        duel.effects[self].labels()
     }
 
     pub fn set_category(self, duel: &mut Duel, category: u64) {
@@ -160,7 +165,12 @@ impl EffectId {
     }
 
     pub fn set_condition(self, duel: &mut Duel, condition: ConditionFn) {
-        duel.effects[self].condition = Some(condition);
+        duel.effects[self].condition = Some(Condition::Check(condition));
+    }
+
+    // Effect.SetCondition for a condition that writes state other functions read later.
+    pub fn set_condition_mut(self, duel: &mut Duel, condition: fn(&mut Duel, &Args) -> bool) {
+        duel.effects[self].condition = Some(Condition::Mut(condition));
     }
 
     pub fn set_target(self, duel: &mut Duel, target: TargetFn) {
@@ -246,7 +256,7 @@ impl EffectId {
     }
 
     pub fn get_label(self, duel: &Duel) -> i64 {
-        duel.effects[self].label.values().first().copied().unwrap_or(0)
+        duel.effects[self].labels().first().copied().unwrap_or(0)
     }
 
     // Label objects that are cards or groups come with the scripts that set them.

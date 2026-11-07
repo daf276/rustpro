@@ -43,6 +43,15 @@ impl std::fmt::Debug for EffectId {
 pub type EffectSet = List<EffectId, 8>;
 
 pub type ConditionFn = fn(&Duel, &Args) -> bool;
+
+// effect::condition. A condition whose Lua writes state that persists (its effect's label or label object, script
+// state, flag effects) is `Mut`; the core reaches the conditions of actions only where the engine holds `&mut Duel`.
+#[derive(Debug, Clone, Copy)]
+pub enum Condition {
+    Check(ConditionFn),
+    Mut(fn(&mut Duel, &Args) -> bool),
+}
+
 pub type CostFn = fn(&mut Duel, &Args, i32) -> Script<bool>;
 pub type CostConditionFn = fn(&Duel, EffectId, CardId, u8, u32) -> bool;
 pub type TargetFn = fn(&mut Duel, &Args, i32, Option<CardId>) -> Script<bool>;
@@ -147,28 +156,6 @@ impl Default for Value {
     }
 }
 
-// The values Effect.SetLabel stores; scripts use at most a few.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct Label {
-    values: [i64; 2],
-    len: u8,
-}
-
-impl Label {
-    pub fn new(values: &[i64]) -> Self {
-        let mut label = Label::default();
-        for (slot, &value) in label.values.iter_mut().zip(values) {
-            *slot = value;
-            label.len += 1;
-        }
-        label
-    }
-
-    pub fn values(&self) -> &[i64] {
-        self.values.get(..usize::from(self.len)).unwrap_or_default()
-    }
-}
-
 // effect in effect.h; `id` and `status` are kept in [Effects].
 #[derive(Debug, Clone, Copy)]
 pub struct Effect {
@@ -193,7 +180,7 @@ pub struct Effect {
     pub hint_timing: [u32; 2],
     pub card_type: u32,
     pub active_type: u32,
-    pub condition: Option<ConditionFn>,
+    pub condition: Option<Condition>,
     pub cost: Option<CostFn>,
     // The cost (e, c, playerid, sumtype) of EFFECT_SPSUMMON_COST and the like, which the core only asks whether it holds.
     pub cost_condition: Option<CostConditionFn>,
@@ -205,7 +192,10 @@ pub struct Effect {
     pub handler: Option<CardId>,
     pub active_handler: Option<CardId>,
     pub description: u64,
-    pub label: Label,
+    // The values Effect.SetLabel stores (scripts use at most two) and their count, a field of its own so that it packs
+    // with the other small fields instead of padding the values to 24 bytes.
+    pub label: [i64; 2],
+    pub label_len: u8,
     pub label_object: Option<EffectId>,
     // Where the effect is registered: its keys in a card's container and in the field's, which are never 0.
     pub card_key: Option<NonZeroU64>,
@@ -247,11 +237,24 @@ impl Effect {
             handler: None,
             active_handler: None,
             description: 0,
-            label: Label::default(),
+            label: [0; 2],
+            label_len: 0,
             label_object: None,
             card_key: None,
             field_key: None,
         }
+    }
+
+    pub fn set_labels(&mut self, values: &[i64]) {
+        self.label_len = 0;
+        for (slot, &value) in self.label.iter_mut().zip(values) {
+            *slot = value;
+            self.label_len += 1;
+        }
+    }
+
+    pub fn labels(&self) -> &[i64] {
+        self.label.get(..usize::from(self.label_len)).unwrap_or_default()
     }
 
     pub fn is_flag(&self, flag: u32) -> bool {
@@ -813,7 +816,7 @@ impl Duel {
         let Some(condition) = peffect.condition else {
             return true;
         };
-        let result = condition(self, &Args::effect(effect));
+        let result = self.check_condition(condition, &Args::effect(effect));
         let status = self.effects.status(effect);
         if result {
             if status & EFFECT_STATUS_AVAILABLE == 0 {
@@ -1073,7 +1076,7 @@ impl Duel {
         let peffect = &self.effects[effect];
         let (condition, cost, target, effect_type) = (peffect.condition, peffect.cost, peffect.target, peffect.effect_type);
         let args = Args::event(reason_effect, playerid, event);
-        if !neglect_cond && condition.is_some_and(|condition| !condition(self, &args)) {
+        if !neglect_cond && condition.is_some_and(|condition| !self.run_condition(condition, &args)) {
             return false;
         }
         if !neglect_cost
@@ -1089,6 +1092,24 @@ impl Duel {
             return false;
         }
         true
+    }
+
+    pub(crate) fn run_condition(&mut self, condition: Condition, args: &Args) -> bool {
+        match condition {
+            Condition::Check(condition) => condition(self, args),
+            Condition::Mut(condition) => condition(self, args),
+        }
+    }
+
+    // A condition reached where the duel is only read: one that writes would need its writes carried out of the call.
+    pub(crate) fn check_condition(&self, condition: Condition, args: &Args) -> bool {
+        match condition {
+            Condition::Check(condition) => condition(self, args),
+            Condition::Mut(condition) => {
+                self.reach_unported(concat!(file!(), ":", line!(), " (a condition that writes, reached by a check)"));
+                self.check_mut(|duel| condition(duel, args))
+            }
+        }
     }
 
     pub(crate) fn is_condition_check(&mut self, effect: EffectId, playerid: u8, event: &Event) -> bool {
@@ -1107,7 +1128,7 @@ impl Duel {
         let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
         self.core.reason_effect.set(Some(effect));
         self.core.reason_player.set(playerid);
-        let result = condition(self, &Args::event(effect, playerid, event));
+        let result = self.run_condition(condition, &Args::event(effect, playerid, event));
         self.core.reason_effect.set(reason_effect);
         self.core.reason_player.set(reason_player);
         result

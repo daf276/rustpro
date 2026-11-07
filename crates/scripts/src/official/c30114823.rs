@@ -16,8 +16,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_code(duel, EFFECT_EXTRA_MATERIAL);
     e1.set_range(duel, LOCATION_HAND);
     e1.set_target_range(duel, 1, 0);
-    e1.set_extra_material_operation(duel, extracon);
-    e1.set_value(duel, Value::ExtraMaterial(extraval));
+    e1.set_extra_material_operation(duel, extracon::<ID>);
+    e1.set_value(duel, Value::ExtraMaterial(extraval::<ID>));
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
     e2.set_description(duel, aux::stringid(ID, 0));
@@ -32,35 +32,45 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.register_effect(duel, e2);
 }
 
-fn extracon(duel: &Duel, _c: CardId, e: EffectId, _tp: u8, sg: CardSet, mg: CardSet, _lc: CardId, og: CardSet, _chk: i32) -> bool {
+pub fn extracon<const CODE: u32>(
+    duel: &Duel,
+    _c: CardId,
+    e: EffectId,
+    _tp: u8,
+    sg: CardSet,
+    mg: CardSet,
+    _lc: CardId,
+    og: CardSet,
+    _chk: i32,
+) -> bool {
     let player = e.get_handler_player(duel);
     let extrafilter = |c: CardId, duel: &Duel| c.is_location(duel, LOCATION_MZONE) && c.is_controler(duel, player);
     sg.union(mg)
         .filter(duel, extrafilter, None)
         .is_exists(duel, |c, duel| c.is_race(duel, RACE_CYBERSE), 1, Some(og))
-        && sg.filter_count(duel, |c, duel| c.has_flag_effect(duel, ID), None) < 2
+        && sg.filter_count(duel, |c, duel| c.has_flag_effect(duel, CODE), None) < 2
 }
 
 // The flags chk 0 registers (s.flagmap) are the card's only flags of this code, so chk 2 resets them by the code.
-fn extraval(duel: &mut Duel, e: EffectId, call: ExtraMaterialCall) -> CardSet {
+pub fn extraval<const CODE: u32>(duel: &mut Duel, e: EffectId, call: ExtraMaterialCall) -> CardSet {
     let c = e.get_handler(duel);
     match call {
         ExtraMaterialCall::Get { summon_type, tp, sc } => {
-            if summon_type != SUMMON_TYPE_LINK || !sc.is_set_card(duel, &[SET_CODE_TALKER]) || duel.has_flag_effect(tp, ID) {
+            if summon_type != SUMMON_TYPE_LINK || !sc.is_set_card(duel, &[SET_CODE_TALKER]) || duel.has_flag_effect(tp, CODE) {
                 return CardSet::default();
             }
-            c.register_flag_effect(duel, ID, 0, 0, 1);
+            c.register_flag_effect(duel, CODE, 0, 0, 1);
             c.into()
         }
         ExtraMaterialCall::Use { summon_type, sg, tp, .. } => {
             if summon_type & SUMMON_TYPE_LINK == SUMMON_TYPE_LINK && !sg.is_empty() {
-                duel.hint(HINT_CARD, tp, u64::from(ID));
-                duel.register_flag_effect(tp, ID, RESET_PHASE | PHASE_END, 0, 1);
+                duel.hint(HINT_CARD, tp, u64::from(CODE));
+                duel.register_flag_effect(tp, CODE, RESET_PHASE | PHASE_END, 0, 1);
             }
             CardSet::default()
         }
         ExtraMaterialCall::Delete { .. } => {
-            c.reset_flag_effect(duel, ID);
+            c.reset_flag_effect(duel, CODE);
             CardSet::default()
         }
     }

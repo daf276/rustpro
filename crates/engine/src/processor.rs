@@ -1838,13 +1838,13 @@ impl Duel {
                     .loc(self.cards.get_info_location(attacker))
                     .loc(target_location);
                 if let Some(target) = attack_target {
-                    self.raise_single_event(target, EVENT_BE_BATTLE_TARGET, None, 0, 0, 1 - turn_player, 0);
+                    self.field_raise_single_event(target, EVENT_BE_BATTLE_TARGET, None, 0, 0, 1 - turn_player, 0);
                     self.field_raise_event(Some(target.into()), EVENT_BE_BATTLE_TARGET, None, 0, 0, 1 - turn_player, 0);
                 }
                 self.core.attack_rollback = false;
                 self.core.opp_mzone = self.opponent_field_ids();
                 if !arg.is_replaying_attack {
-                    self.raise_single_event(attacker, EVENT_ATTACK_ANNOUNCE, None, 0, 0, turn_player, 0);
+                    self.field_raise_single_event(attacker, EVENT_ATTACK_ANNOUNCE, None, 0, 0, turn_player, 0);
                     self.field_raise_event(Some(attacker.into()), EVENT_ATTACK_ANNOUNCE, None, 0, 0, turn_player, 0);
                 }
                 let card = &mut self.cards[attacker];
@@ -2071,7 +2071,7 @@ impl Duel {
                     };
                     let reason_player = self.cards[card].current.controler;
                     for battler in [Some(attacker), attack_target].into_iter().flatten() {
-                        self.raise_single_event(battler, EVENT_PRE_BATTLE_DAMAGE, None, 0, reason_player, p, amount);
+                        self.field_raise_single_event(battler, EVENT_PRE_BATTLE_DAMAGE, None, 0, reason_player, p, amount);
                     }
                     self.field_raise_event(Some(card.into()), EVENT_PRE_BATTLE_DAMAGE, None, 0, reason_player, p, amount);
                 }
@@ -2183,11 +2183,11 @@ impl Duel {
             // Runs into step 32, where Duel.CalculateDamage continues.
             31 => {
                 self.release_delayed_flips();
-                self.raise_single_event(attacker, EVENT_BATTLED, None, 0, PLAYER_NONE, 0, 0);
+                self.field_raise_single_event(attacker, EVENT_BATTLED, None, 0, PLAYER_NONE, 0, 0);
                 let mut battled = CardSet::from(attacker);
                 if let Some(target) = attack_target {
                     battled.insert(target);
-                    self.raise_single_event(target, EVENT_BATTLED, None, 0, PLAYER_NONE, 0, 1);
+                    self.field_raise_single_event(target, EVENT_BATTLED, None, 0, PLAYER_NONE, 0, 1);
                 }
                 self.field_raise_event(Some(battled), EVENT_BATTLED, None, 0, PLAYER_NONE, 0, 0);
                 self.process_single_event();
@@ -2235,9 +2235,9 @@ impl Duel {
                         continue;
                     }
                     let reason_player = self.cards[by].current.controler;
-                    self.raise_single_event(by, EVENT_BATTLE_DESTROYING, None, reason, reason_player, 0, value(by));
-                    self.raise_single_event(card, EVENT_BATTLE_DESTROYED, None, reason, reason_player, 0, value(card));
-                    self.raise_single_event(card, EVENT_DESTROYED, None, reason, reason_player, 0, value(card));
+                    self.field_raise_single_event(by, EVENT_BATTLE_DESTROYING, None, reason, reason_player, 0, value(by));
+                    self.field_raise_single_event(card, EVENT_BATTLE_DESTROYED, None, reason, reason_player, 0, value(card));
+                    self.field_raise_single_event(card, EVENT_DESTROYED, None, reason, reason_player, 0, value(card));
                     destroying.insert(by);
                     destroyed.insert(card);
                 }
@@ -2302,9 +2302,9 @@ impl Duel {
 
     // Raises the event on the attacker (value 0), the target (value 1) and the field, then processes them.
     fn raise_battle_events(&mut self, code: u32, attacker: CardId, attack_target: Option<CardId>) {
-        self.raise_single_event(attacker, code, None, 0, 0, 0, 0);
+        self.field_raise_single_event(attacker, code, None, 0, 0, 0, 0);
         if let Some(target) = attack_target {
-            self.raise_single_event(target, code, None, 0, 0, 0, 1);
+            self.field_raise_single_event(target, code, None, 0, 0, 0, 1);
         }
         self.field_raise_event(None, code, None, 0, 0, 0, 0);
         self.process_single_event();

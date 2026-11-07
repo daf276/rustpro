@@ -932,9 +932,9 @@ impl Duel {
         let during_to_hand = self.field_check_event(EVENT_TO_HAND).is_some();
         let mut hand = CardSet::default();
         for card in targets {
-            self.raise_single_event(card, EVENT_CONFIRM, reason_effect, reason, reason_player, revealing_player, 0);
+            self.field_raise_single_event(card, EVENT_CONFIRM, reason_effect, reason, reason_player, revealing_player, 0);
             if during_to_hand && self.cards[card].current.location == LOCATION_HAND {
-                self.raise_single_event(
+                self.field_raise_single_event(
                     card,
                     EVENT_TOHAND_CONFIRM,
                     reason_effect,
@@ -1148,7 +1148,7 @@ impl Duel {
         self.swap_card(card1, card2);
         let reason_player = self.core.reason_player.get();
         for card in [card1, card2] {
-            self.raise_single_event(card, EVENT_MOVE, reason_effect, 0, reason_player, player, 0);
+            self.field_raise_single_event(card, EVENT_MOVE, reason_effect, 0, reason_player, player, 0);
         }
         self.field_raise_event(
             Some(CardSet::from_iter([card1, card2])),
@@ -1219,7 +1219,7 @@ impl Duel {
         let moved = self.move_card(player, card, location, sequence, false);
         if moved {
             let reason_player = self.core.reason_player.get();
-            self.raise_single_event(card, EVENT_MOVE, reason_effect, 0, reason_player, player, 0);
+            self.field_raise_single_event(card, EVENT_MOVE, reason_effect, 0, reason_player, player, 0);
             self.field_raise_event(Some(card.into()), EVENT_MOVE, reason_effect, 0, reason_player, player, 0);
             self.process_single_event();
             self.process_instant_event();
@@ -1259,6 +1259,21 @@ impl Duel {
             event_value,
         );
         self.process_instant_event();
+        self.yield_script()
+    }
+
+    pub fn raise_single_event(
+        &mut self,
+        card: CardId,
+        code: u32,
+        reason_effect: Option<EffectId>,
+        reason: u32,
+        reason_player: u8,
+        event_player: u8,
+        event_value: u32,
+    ) -> Script<()> {
+        self.field_raise_single_event(card, code, reason_effect, reason, reason_player, event_player, event_value);
+        self.process_single_event();
         self.yield_script()
     }
 
@@ -1602,7 +1617,7 @@ impl Duel {
         peffect.s_range = 1;
         peffect.o_range = 0;
         peffect.reset_count = count.max(1);
-        peffect.label = crate::effect::Label::new(&[0]);
+        peffect.set_labels(&[0]);
         self.add_effect(effect, player);
         Some(effect)
     }

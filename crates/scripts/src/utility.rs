@@ -295,6 +295,15 @@ pub mod aux {
         eff
     }
 
+    // Auxiliary.chainreg: the flag effect Spell Counter cards read to count a Spell activated in the chain.
+    pub fn chainreg(duel: &mut Duel, a: &Args) -> Script<()> {
+        let c = a.e.get_handler(duel);
+        if c.get_flag_effect(duel, 1) == 0 {
+            c.register_flag_effect(duel, 1, (RESET_EVENT | RESETS_STANDARD) & !RESET_TURN_SET | RESET_CHAIN, 0, 1);
+        }
+        Ok(())
+    }
+
     // Auxiliary.ToHandOrElse for one card: to the hand, or else `oper` where `check` allows it (`str` its option).
     pub fn to_hand_or_else(
         duel: &mut Duel,

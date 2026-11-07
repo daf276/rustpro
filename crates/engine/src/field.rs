@@ -203,6 +203,12 @@ pub struct Processor {
     pub real_chain_count: i32,
     pub ignition_priority_chains: Vec<Chain>,
     pub continuous_chain: Vec<Chain>,
+    // How often a card's adjustment came again within one adjust_all, for Duel.Readjust and the control adjustment.
+    pub readjust_map: std::collections::BTreeMap<CardId, u32>,
+    // The continuous effects whose destruction replacement came out in battle; their operations run in step 29.
+    pub desrep_chain: Vec<Chain>,
+    // The group a Destroy shares with its DestroyReplace and OperationReplace units, innermost last.
+    pub replace_targets: Vec<CardSet>,
     pub solving_continuous: Vec<Chain>,
     pub sub_solving_continuous: Vec<Chain>,
     pub delayed_continuous_tp: Vec<Chain>,
@@ -301,6 +307,8 @@ pub struct Processor {
     pub summon_cancelable: bool,
     // A procedure summon a chain link started, run once the link has resolved.
     pub reserved: Option<Box<Unit>>,
+    // 1 while Duel.CalculateDamage waits for the chain to end, 2 while the rest of its damage step runs.
+    pub effect_damage_step: u8,
     pub summoning_card: Option<CardId>,
     // The group of the SpSummon running, which its failed steps leave.
     pub spsummon_group: CardSet,
@@ -345,6 +353,9 @@ clone_by_field!(Processor {
     real_chain_count,
     ignition_priority_chains,
     continuous_chain,
+    readjust_map,
+    desrep_chain,
+    replace_targets,
     solving_continuous,
     sub_solving_continuous,
     delayed_continuous_tp,
@@ -433,6 +444,7 @@ clone_by_field!(Processor {
     summon_depth,
     summon_cancelable,
     reserved,
+    effect_damage_step,
     summoning_card,
     spsummon_group,
     fusion_materials,
@@ -477,6 +489,9 @@ impl Processor {
             real_chain_count: 0,
             ignition_priority_chains: Vec::new(),
             continuous_chain: Vec::new(),
+            readjust_map: Default::default(),
+            desrep_chain: Vec::new(),
+            replace_targets: Vec::new(),
             solving_continuous: Vec::new(),
             sub_solving_continuous: Vec::new(),
             delayed_continuous_tp: Vec::new(),
@@ -565,6 +580,7 @@ impl Processor {
             summon_depth: 0,
             summon_cancelable: false,
             reserved: None,
+            effect_damage_step: 0,
             summoning_card: None,
             spsummon_group: CardSet::default(),
             fusion_materials: CardSet::default(),
@@ -2088,13 +2104,21 @@ impl Duel {
                 .collect()
         };
         unported!(self, self.is_player_affected_by_effect(p, EFFECT_SELF_ATTACK).filter(|_| !must));
-        unported!(
-            self,
-            self.filter_effect(card, EFFECT_EXTRA_ATTACK, true)
+        let extra_attacks = |duel: &Self, code| {
+            duel.filter_effect(card, code, true)
                 .into_iter()
-                .chain(self.filter_effect(card, EFFECT_EXTRA_ATTACK_MONSTER, true))
+                .map(|effect| duel.get_value(effect, card))
+                .fold(0, i32::max)
+        };
+        let (extra_count, extra_count_m) = (
+            extra_attacks(self, EFFECT_EXTRA_ATTACK),
+            extra_attacks(self, EFFECT_EXTRA_ATTACK_MONSTER),
         );
-        if !chain_attack && self.cards[card].announce_count > 0 {
+        let announce_count = i32::from(self.cards[card].announce_count);
+        if !chain_attack
+            && announce_count > extra_count
+            && (extra_count_m == 0 || announce_count > extra_count_m || self.find_announced_card(card, None) > 0)
+        {
             let mut targets = Cards16::default();
             if let Some(effect) = self
                 .is_affected_by_effect(card, EFFECT_ATTACK_ALL)
@@ -2150,6 +2174,7 @@ impl Duel {
         }
         if (mcount == 0 || self.is_affected_by_effect(card, EFFECT_DIRECT_ATTACK).is_some() || self.core.attack_player)
             && self.is_affected_by_effect(card, EFFECT_CANNOT_DIRECT_ATTACK).is_none()
+            && !(!chain_attack && extra_count_m != 0 && announce_count > extra_count)
             && !(chain_attack && self.core.chain_attack_target.is_some())
         {
             self.cards[card].direct_attackable = 1;
@@ -2652,6 +2677,7 @@ impl Duel {
 
     pub(crate) fn adjust_all(&mut self) {
         self.infos.event_id += 1;
+        self.core.readjust_map.clear();
         self.emplace_process(Adjust::default());
     }
 

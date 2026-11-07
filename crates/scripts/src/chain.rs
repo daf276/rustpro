@@ -40,6 +40,7 @@ pub trait EffectChain: Copy {
     fn get_chain_data_group(self, duel: &Duel, slot: u8) -> Option<CardSet>;
     fn set_chain_data_group(self, duel: &mut Duel, slot: u8, group: CardSet);
     fn is_card_setcode(self, duel: &Duel, setcode: u16) -> bool;
+    fn is_card_attribute(self, duel: &Duel, attribute: u32) -> bool;
 }
 
 impl EffectChain for EffectId {
@@ -66,6 +67,11 @@ impl EffectChain for EffectId {
     // Effect.IsCardSetcode.
     fn is_card_setcode(self, duel: &Duel, setcode: u16) -> bool {
         properties_card(duel, self).is_some_and(|card| card.is_set_card(duel, &[setcode]))
+    }
+
+    // Effect.IsCardAttribute.
+    fn is_card_attribute(self, duel: &Duel, attribute: u32) -> bool {
+        properties_card(duel, self).is_some_and(|card| card.is_attribute(duel, attribute))
     }
 }
 

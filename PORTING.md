@@ -114,7 +114,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   `is_player_can_special_summon_monster(p, code, MonsterStats::new(...))`, with the struct's fields for nil arguments.
   It takes `&mut Duel` (the core's temp card takes the stats), so a condition calls it through `check_mut`.
 - `s.listed_names` is `pub const LISTED_NAMES: &[u32]`, `mt.fit_monster` is `pub const FIT_MONSTER: &[u32]`,
-  `s.material_setcode` is `pub const MATERIAL_SETCODE: &[u16]` (read by `ListsArchetypeAsMaterial`).
+  `s.material_setcode` is `pub const MATERIAL_SETCODE: &[u16]` (read by `ListsArchetypeAsMaterial`),
+  `s.dark_calling` is `pub const DARK_CALLING: bool = true` (read through `official::dark_calling(code)`).
   `aux.Stringid(id, n)` is `aux::stringid(ID, n)`. A helper another card's file already has is reused through
   `super::c<code>::name`.
 - Every name of `constant.lua`, `card_counter_constants.lua` and `archetype_setcode_constants.lua` is in the prelude

@@ -14,7 +14,6 @@ pub const SUPPORT: &[(u32, u16)] = &[
     (16304628, EXTRA),
     (84327329, HAND),
     (21844576, GRAVE),
-    (21844576, GRAVE),
 ];
 pub const CHECKS: &[Check] = &[Check::Resolves, Check::MaterialFrom(MZONE)];
 

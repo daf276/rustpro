@@ -274,7 +274,8 @@ impl Duel {
     // ([Duel::referenced_cards]), and a face-down card keeps whether it is an Extra Deck card.
     // While a function waits midway for an answer, its snapshot is resampled instead (the cards it has moved since
     // keep theirs) and the function reruns to its prompt, as an answer would rerun it; a sample whose rerun shows the
-    // player anything else is drawn again, up to [RERUN_ATTEMPTS] times. Its RNG stays, as the rerun replays it.
+    // player anything else, or stops at another prompt or one without actions (the opponent's earlier answers can lead
+    // elsewhere in it), is drawn again, up to [RERUN_ATTEMPTS] times. Its RNG stays, as the rerun replays it.
     pub fn determinize(&self, player: u8, rng: &mut Xoshiro256StarStar, pool: &Deck) -> Result<Duel, DeterminizeError> {
         if player > 1 {
             return Err(DeterminizeError::Player(player));
@@ -291,14 +292,14 @@ impl Duel {
             duel.random = Xoshiro256StarStar::new([rng.next_u64(), rng.next_u64(), rng.next_u64(), rng.next_u64() | 1]);
             return Ok(duel);
         }
-        let observation = self.observe(player);
+        let (observation, prompt) = (self.observe(player), self.prompt());
         for _ in 0..RERUN_ATTEMPTS {
             let changes = self.unchanged(|| self.sample(player, rng, pool, database))?;
             if let Some(snapshot) = duel.core.replay.snapshot.as_deref_mut() {
                 snapshot.change(&changes);
             }
             duel.rerun_to_prompt();
-            if duel.observe(player) == observation {
+            if duel.prompt() == prompt && duel.observe(player) == observation && !duel.legal_actions().is_empty() {
                 return Ok(duel);
             }
             duel = self.clone();

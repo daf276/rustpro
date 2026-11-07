@@ -556,6 +556,10 @@ impl CardId {
         duel.get_card_effect(self, code)
     }
 
+    pub fn get_effect_count(self, duel: &Duel, code: u32) -> usize {
+        duel.filter_effect(self, code, true).len()
+    }
+
     // The old-negate rule (DUEL_SPSUMMON_ONCE_OLD_NEGATE) and its global flag are not part of the duel mode.
     pub fn set_sp_summon_once(self, duel: &mut Duel, code: u32) {
         if duel.cards[self].is_status(STATUS_COPYING_EFFECT) {

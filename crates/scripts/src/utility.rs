@@ -871,11 +871,20 @@ impl Cost {
 
     // Cost.SoftOncePerChain(flag) applied: the handler is flagged until the chain ends.
     pub fn soft_once_per_chain<const FLAG: u32>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        Cost::soft_once::<FLAG, RESET_CHAIN>(duel, args, chk)
+    }
+
+    // Cost.SoftOncePerBattle(flag) applied: the handler is flagged until the end of the Damage Step.
+    pub fn soft_once_per_battle<const FLAG: u32>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        Cost::soft_once::<FLAG, { RESET_PHASE | PHASE_DAMAGE }>(duel, args, chk)
+    }
+
+    fn soft_once<const FLAG: u32, const RESET: u32>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         let c = args.e.get_handler(duel);
         if chk == 0 {
             return Ok(!c.has_flag_effect(duel, FLAG));
         }
-        c.register_flag_effect(duel, FLAG, RESET_EVENT | RESETS_STANDARD | RESET_CHAIN, 0, 1);
+        c.register_flag_effect(duel, FLAG, RESET_EVENT | RESETS_STANDARD | RESET, 0, 1);
         Ok(false)
     }
 
@@ -967,6 +976,7 @@ pub trait CardUtility: Copy {
     fn is_spell_trap(self, duel: &Duel) -> bool;
     fn is_monster_card(self, duel: &Duel) -> bool;
     fn has_non_zero_attack(self, duel: &Duel) -> bool;
+    fn has_non_zero_defense(self, duel: &Duel) -> bool;
     fn is_owner(self, duel: &Duel, player: u8) -> bool;
     fn is_field_spell(self, duel: &Duel) -> bool;
     fn is_ritual_spell(self, duel: &Duel) -> bool;
@@ -1167,6 +1177,10 @@ impl CardUtility for CardId {
 
     fn has_non_zero_attack(self, duel: &Duel) -> bool {
         self.is_faceup(duel) && self.get_attack(duel) > 0
+    }
+
+    fn has_non_zero_defense(self, duel: &Duel) -> bool {
+        self.is_faceup(duel) && self.get_defense(duel) > 0
     }
 
     fn is_owner(self, duel: &Duel, player: u8) -> bool {

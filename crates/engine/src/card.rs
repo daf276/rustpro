@@ -8,7 +8,7 @@ use carddata::Card as CardData;
 use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{Container, EffectId, EffectSet, Operation, Target, Value, container_key, remove_item};
-use crate::list::List;
+use crate::list::{List, Marks};
 use crate::script::{Args, Procedure};
 
 pub const MAX_CARDS: usize = 512;
@@ -152,15 +152,25 @@ impl FromIterator<CardId> for CardSet {
 pub struct Cards {
     list: Vec<Card>,
     scratch: Card,
+    changed: Marks<{ MAX_CARDS / 64 }>,
 }
 
 impl Cards {
-    pub fn copy_from(&mut self, source: &Self) {
-        self.list.clone_from(&source.list);
+    // Makes these equal to `source`, which must have been equal apart from the cards either changed since they last
+    // synced.
+    pub fn sync_from(&mut self, source: &Self) {
+        self.list.truncate(source.list.len());
+        self.list.extend_from_slice(source.list.get(self.list.len()..).unwrap_or_default());
+        for index in self.changed.take_with(&source.changed) {
+            if let (Some(to), Some(from)) = (self.list.get_mut(index), source.list.get(index)) {
+                *to = *from;
+            }
+        }
     }
 
     pub fn push(&mut self, card: Card) -> Option<CardId> {
         let id = CardId::new(u16::try_from(self.list.len()).ok().filter(|&id| usize::from(id) < MAX_CARDS)?);
+        self.changed.mark(self.list.len());
         self.list.push(card);
         Some(id)
     }
@@ -198,7 +208,8 @@ impl Index<CardId> for Cards {
 
 impl IndexMut<CardId> for Cards {
     fn index_mut(&mut self, card: CardId) -> &mut Card {
-        let Self { list, scratch } = self;
+        let Self { list, scratch, changed } = self;
+        changed.mark(card.index());
         list.get_mut(card.index()).unwrap_or(scratch)
     }
 }

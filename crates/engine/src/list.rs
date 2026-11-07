@@ -310,6 +310,37 @@ impl<T: Copy + Default, const N: usize> Shared<T, N> {
     }
 }
 
+// One bit per item of a list of at most 64 * W items: what changed since a copy of it last synced. `mark` wraps a larger
+// index instead of checking it, which keeps a branch out of every write it guards.
+#[derive(Debug, Clone)]
+pub struct Marks<const W: usize>([Cell<u64>; W]);
+
+impl<const W: usize> Default for Marks<W> {
+    fn default() -> Self {
+        Self(std::array::from_fn(|_| Cell::new(0)))
+    }
+}
+
+impl<const W: usize> Marks<W> {
+    pub fn mark(&mut self, index: usize) {
+        if let Some(word) = self.0.get_mut(index / 64 % W) {
+            *word.get_mut() |= 1 << (index % 64);
+        }
+    }
+
+    // The indices marked here or in `other`, clearing both.
+    pub fn take_with<'a>(&'a self, other: &'a Self) -> impl Iterator<Item = usize> + 'a {
+        (self.0.iter().zip(&other.0).enumerate()).flat_map(|(word, (mine, theirs))| {
+            let mut bits = mine.take() | theirs.take();
+            std::iter::from_fn(move || {
+                let bit = (bits != 0).then(|| bits.trailing_zeros() as usize)?;
+                bits &= bits - 1;
+                Some(64 * word + bit)
+            })
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

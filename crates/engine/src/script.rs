@@ -7,6 +7,8 @@
 // function bails, the prompt is presented on the state the function reached, and once answered the function reruns
 // from a snapshot taken before it started, reading the answers so far from a choice log; the messages its earlier
 // attempts already wrote are muted.
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+
 use crate::buffer::ProgressiveBuffer;
 use crate::card::{CardId, CardSet};
 use crate::duel::Duel;
@@ -103,8 +105,8 @@ pub struct Replay {
     // The trace count when the last attempt started: the next one mutes what was written since, which includes what the
     // answered prompt wrote (MSG_HINT with the announced race), as its rerun writes that again.
     pub messages: u64,
-    // The duel before the pending function's first attempt; set while one of its prompts waits.
-    pub snapshot: Option<Box<Duel>>,
+    // The duel before the pending function's first attempt; set while one of its prompts waits. Clones share it.
+    pub snapshot: Option<Snapshot>,
     pub spare: Spare,
     // The prompt a nested loop met with no answer logged, carried out to the function's unit.
     pub prompt: Option<Box<Unit>>,
@@ -116,10 +118,17 @@ pub struct Replay {
     pub stack: List<(EffectId, u8), 4>,
 }
 
-// The last finished function's snapshot, whose buffers and arenas the next snapshot reuses; a clone of the duel starts
-// without one.
+pub type Snapshot = Arc<Mutex<Duel>>;
+
+// Panics only follow bugs, so a poisoned snapshot is used as it is.
+pub(crate) fn lock(snapshot: &Snapshot) -> MutexGuard<'_, Duel> {
+    snapshot.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+// The last finished function's snapshot, whose buffers and arenas the next snapshot reuses unless a clone still shares
+// it; a clone of the duel starts without one.
 #[derive(Debug, Default)]
-pub struct Spare(Option<Box<Duel>>);
+pub struct Spare(Option<Snapshot>);
 
 impl Clone for Spare {
     fn clone(&self) -> Self {
@@ -159,13 +168,13 @@ impl Duel {
             return result.ok();
         }
         let (snapshot, mute) = match self.core.replay.snapshot.take() {
-            Some(mut snapshot) => {
+            Some(snapshot) => {
                 // No answer is empty; an empty one reruns to the prompt that waits (Duel::rerun_to_prompt).
                 if !self.returns.data.is_empty() {
                     let answer = self.returns.data.clone();
                     self.core.replay.log.push(answer);
                 }
-                self.copy_from(&mut snapshot);
+                self.copy_from(&mut lock(&snapshot));
                 (snapshot, self.trace.count - self.core.replay.messages)
             }
             None => (self.snapshot(), 0),
@@ -233,21 +242,24 @@ impl Duel {
     }
 
     // A copy without the trace and the replay state, which live on across attempts.
-    fn snapshot(&mut self) -> Box<Duel> {
-        if let Some(mut spare) = self.core.replay.spare.0.take() {
-            spare.copy_from(self);
+    fn snapshot(&mut self) -> Snapshot {
+        if let Some(mut spare) = self.core.replay.spare.0.take()
+            && let Some(spare_duel) = Arc::get_mut(&mut spare)
+        {
+            spare_duel.get_mut().unwrap_or_else(PoisonError::into_inner).copy_from(self);
             return spare;
         }
         let trace = std::mem::take(&mut self.trace);
         let replay = std::mem::take(&mut self.core.replay);
-        let snapshot = Box::new(self.clone());
+        let snapshot = Arc::new(Mutex::new(self.clone()));
         self.trace = trace;
         self.core.replay = replay;
         snapshot
     }
 
     // Makes this duel equal to `source` apart from the trace and the replay state, reusing its buffers. One must be a
-    // snapshot of the other, since the arenas copy only what changed since either synced.
+    // snapshot of the other, since the cards, the registry and the effect arena copy only what changed since either
+    // synced.
     fn copy_from(&mut self, source: &mut Duel) {
         let Duel {
             cards,
@@ -281,11 +293,11 @@ impl Duel {
             equip_cards,
             unported,
         } = source;
-        self.cards.copy_from(cards);
+        self.cards.sync_from(cards);
         self.player.clone_from(player);
         self.infos.clone_from(infos);
         self.effects.sync_from(effects);
-        self.field_effects.clone_from(field_effects);
+        self.field_effects.sync_from(field_effects);
         self.relations.clone_from(relations);
         let (replay, own) = (std::mem::take(&mut core.replay), std::mem::take(&mut self.core.replay));
         self.core.clone_from(core);

@@ -985,6 +985,16 @@ impl Cost {
         Ok(false)
     }
 
+    // Cost.RemoveCounterFromSelf(counter_type, count) applied.
+    pub fn remove_counter_from_self<const COUNTER_TYPE: u16, const COUNT: u16>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        let c = args.e.get_handler(duel);
+        if chk == 0 {
+            return Ok(c.is_can_remove_counter(duel, args.tp, COUNTER_TYPE, COUNT, REASON_COST));
+        }
+        c.remove_counter(duel, args.tp, COUNTER_TYPE, COUNT, REASON_COST)?;
+        Ok(false)
+    }
+
     // Cost.RemoveCounterFromField(counter_type, count) applied.
     pub fn remove_counter_from_field<const COUNTER_TYPE: u16, const COUNT: u16>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         if chk == 0 {

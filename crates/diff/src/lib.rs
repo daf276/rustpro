@@ -557,7 +557,7 @@ fn play(
         let mut actual = frames(&trace);
         sort_hint_removals(&mut actual);
         let mismatch = |compared: &[Vec<u8>], from: usize| {
-            let context = vendor.context;
+            let context = if vendor.keep_stream { usize::MAX } else { vendor.context };
             DiffError::Mismatch(Box::new(Mismatch {
                 seed,
                 index: compared.len(),

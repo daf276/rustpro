@@ -40,7 +40,7 @@ Per card: `pass`/`FAIL` and how many scenarios diffed clean; each check with its
 differing message, with its index in the stream, the last messages both engines wrote alike, then each engine's
 messages from there (`MSG_<type> [bytes]`; `--context N` shows N of each, default 5). Other failing scenarios are listed
 by index. Each check lists the first scenarios that satisfy it; `--trace K` writes what scenario K places and its whole
-message stream, to see why an effect never resolves. A code without a file says `not ported`. The exit code is 1 on any failure. A scenario depends only on
+message stream (up to the divergence, for a failing one), to see why an effect never resolves. A code without a file says `not ported`. The exit code is 1 on any failure. A scenario depends only on
 (code, index), so a failure reproduces exactly; ports of other cards never change it.
 
 ## Test metadata
@@ -71,7 +71,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   `SZONE` never places a Field Spell (that is the Field Zone); use 0. Placement draws random numbers in list order, so
   reordering `SUPPORT` changes every scenario.
 - `ResolvesEffect` and `Message` count by code or by any card: a `SUPPORT` copy of the card can satisfy them, and
-  `Message(MSG_ATTACK)` counts every attack. Check that the counted path is the card's own.
+  `Message(MSG_ATTACK)` counts every attack. Check that the counted path is the card's own. An effect a card grants
+  another (an Xyz material's effect) chains as that other card, so check it another way (`MaterialFrom`, `CardHint`).
 - `Report` is only for a path no `SUPPORT` can reach (say why in one comment line), never for a reachable one that
   is merely rare. An effect needing an empty hand is one: the opening hand is always drawn.
 - `SpecialSummoned` counts the card under test being summoned; what a card summons is `SpecialSummonedCode`.
@@ -86,7 +87,7 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   `CardSet` taking the duel first: `c.is_type(duel, TYPE_SYNCHRO)`. `Effect.CreateEffect(c)` is
   `duel.create_effect(c)`, `e:Clone()` is `e.clone_effect(duel)`, `#g` is `g.len()`. Names are the Lua names in
   snake case.
-- Optional trailing arguments: the plain name takes the arguments most calls pass; `_full` takes all of them. Call
+- Optional trailing arguments: the plain name takes the arguments most calls pass; `_full` takes all of them (add it where a mirror lacks it). Call
   `_full` exactly when the Lua call passes one of the optional ones, with the Lua default for any it leaves out
   (`c.is_type_full(duel, TYPE_TUNER, Some(sc), sumtype, tp)`). Lua nil is `None` for cards and groups and
   `PLAYER_NONE` for a player.

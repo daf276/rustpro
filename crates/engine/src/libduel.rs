@@ -153,6 +153,7 @@ const CHAININFO_TRIGGERING_CONTROLER: u32 = 3;
 const CHAININFO_TRIGGERING_LOCATION: u32 = 4;
 const CHAININFO_TRIGGERING_LOCATION_SYMBOLIC: u32 = 5;
 const CHAININFO_TRIGGERING_SEQUENCE: u32 = 6;
+const CHAININFO_TRIGGERING_POSITION: u32 = 16;
 const CHAININFO_TRIGGERING_TYPE: u32 = 19;
 const CHAININFO_TARGET_CARDS: u32 = 8;
 const CHAININFO_TARGET_PLAYER: u32 = 9;
@@ -196,6 +197,15 @@ impl Duel {
             return 0;
         }
         self.player[player].lp
+    }
+
+    pub fn set_lp(&mut self, player: u8, lp: i32) {
+        if player > 1 {
+            return;
+        }
+        let lp = lp.max(0);
+        self.player[player].lp = lp;
+        self.trace.message(MSG_LPUPDATE).u8(player).u32(lp as u32);
     }
 
     pub fn negate_summon(&mut self, targets: impl Into<CardSet>) {
@@ -726,6 +736,7 @@ impl Duel {
             }
             CHAININFO_TRIGGERING_LOCATION_SYMBOLIC => int((chain.triggering_location & !u16::from(LOCATION_MZONE | LOCATION_SZONE)).into()),
             CHAININFO_TRIGGERING_SEQUENCE => int(chain.triggering_sequence.into()),
+            CHAININFO_TRIGGERING_POSITION => int(chain.triggering_position.into()),
             CHAININFO_TRIGGERING_TYPE => int(chain.triggering_state.card_type.into()),
             CHAININFO_TARGET_CARDS => ChainInfo::Cards(chain.target_cards),
             CHAININFO_TARGET_PLAYER => int(chain.target_player.into()),
@@ -2348,11 +2359,29 @@ impl Duel {
         self.core.attack_target
     }
 
-    // The AttackDisable unit in one. core.effect_damage_step is set only by Duel.CalculateDamage, which no port calls.
+    pub fn calculate_damage(&mut self, attacker: CardId, attack_target: Option<CardId>) -> Script<()> {
+        self.calculate_damage_full(attacker, attack_target, false)
+    }
+
+    pub fn calculate_damage_full(&mut self, attacker: CardId, attack_target: Option<CardId>, new_attack: bool) -> Script<()> {
+        if Some(attacker) == attack_target {
+            return Ok(());
+        }
+        self.emplace_process(crate::processor::DamageStep {
+            attacker: Some(attacker),
+            attack_target,
+            new_attack,
+            ..Default::default()
+        });
+        self.yield_script()
+    }
+
+    // The AttackDisable unit in one.
     pub fn negate_attack(&mut self) -> Script<bool> {
         let reason_effect = self.core.reason_effect.get();
         let Some(attacker) = self.core.attacker.filter(|&attacker| {
-            self.cards[attacker].fieldid_r == self.core.pre_field[0]
+            self.core.effect_damage_step == 0
+                && self.cards[attacker].fieldid_r == self.core.pre_field[0]
                 && self.cards[attacker].current.location == LOCATION_MZONE
                 && self.is_capable_attack(attacker)
                 && self.is_affect_by_effect(attacker, reason_effect)

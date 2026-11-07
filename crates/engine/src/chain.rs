@@ -1198,7 +1198,7 @@ impl Duel {
                     self.core.chain_limit.clear();
                     return false;
                 }
-                self.run_reserved();
+                self.run_reserved(false);
                 arg.step = RESTART;
                 false
             }
@@ -1230,7 +1230,7 @@ impl Duel {
                 core.point_event.clear();
                 self.trace.message(MSG_CHAIN_END);
                 self.reset_chain();
-                self.run_reserved();
+                self.run_reserved(true);
                 false
             }
             13 => {
@@ -1256,8 +1256,10 @@ impl Duel {
     }
 
     // The procedure summon a resolved chain link started (Duel.SynchroSummon and friends).
-    fn run_reserved(&mut self) {
-        if self.core.summoning_card.take().is_some()
+    // `damage_step` also resumes the damage step of Duel.CalculateDamage, which waits for the chain to end.
+    fn run_reserved(&mut self, damage_step: bool) {
+        let summoning = self.core.summoning_card.take().is_some();
+        if (summoning || (damage_step && self.core.effect_damage_step == 1))
             && let Some(reserved) = self.core.reserved.take()
         {
             self.core.subunits.push(*reserved);

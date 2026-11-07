@@ -110,6 +110,10 @@ impl CardId {
         duel.cards[self].is_position(POS_FACEUP)
     }
 
+    pub fn is_position(self, duel: &Duel, position: u32) -> bool {
+        duel.cards[self].is_position(position & 0xff)
+    }
+
     pub fn is_facedown(self, duel: &Duel) -> bool {
         duel.cards[self].is_position(POS_FACEDOWN)
     }
@@ -528,6 +532,25 @@ impl CardId {
         duel.core.pre_field.contains(&fieldid)
     }
 
+    pub fn get_attack_announced_count(self, duel: &Duel) -> u32 {
+        u32::from(duel.cards[self].attack_announce_count)
+    }
+
+    pub fn cancel_to_grave(self, duel: &mut Duel) {
+        self.cancel_to_grave_full(duel, true);
+    }
+
+    pub fn cancel_to_grave_full(self, duel: &mut Duel, cancel: bool) {
+        if !cancel {
+            duel.core.leave_confirmed.insert(self);
+        }
+        duel.cards[self].set_status(STATUS_LEAVE_CONFIRMED, !cancel);
+    }
+
+    pub fn can_attack(self, duel: &Duel) -> bool {
+        duel.is_capable_attack(self)
+    }
+
     pub fn can_chain_attack(self, duel: &mut Duel) -> bool {
         self.can_chain_attack_full(duel, 2, false)
     }
@@ -597,6 +620,30 @@ impl CardId {
     }
 
     pub fn is_able_to_change_controler(self, duel: &Duel) -> bool {
+        duel.is_affected_by_effect(self, EFFECT_CANNOT_CHANGE_CONTROL).is_none()
+    }
+
+    pub fn is_controler_can_be_changed(self, duel: &Duel) -> bool {
+        self.is_controler_can_be_changed_full(duel, false, 0xff)
+    }
+
+    pub fn is_controler_can_be_changed_full(self, duel: &Duel, ignore_mzone: bool, zone: u32) -> bool {
+        let current = duel.cards[self].current;
+        if current.controler == PLAYER_NONE || current.location != LOCATION_MZONE {
+            return false;
+        }
+        let opponent = 1 - current.controler;
+        let useable = |location, zone| {
+            duel.get_useable_count(Some(self), opponent, location, current.controler, LOCATION_REASON_CONTROL, zone)
+                .0
+        };
+        if !ignore_mzone && useable(LOCATION_MZONE, zone) <= 0 {
+            return false;
+        }
+        let trap_monster_zone = !duel.is_flag(DUEL_TRAP_MONSTERS_NOT_USE_ZONE) && duel.get_type(self) & TYPE_TRAPMONSTER != 0;
+        if trap_monster_zone && useable(LOCATION_SZONE, 0xff) <= 0 {
+            return false;
+        }
         duel.is_affected_by_effect(self, EFFECT_CANNOT_CHANGE_CONTROL).is_none()
     }
 

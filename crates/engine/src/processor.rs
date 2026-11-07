@@ -7,9 +7,9 @@ use crate::duel::Duel;
 use crate::effect::{Chain, Container, EffectId, Value};
 use crate::field::PerPlayer;
 use crate::operations::{
-    ChangePos, Damage, Destroy, DiscardDeck, Draw, Equip, FlipSummon, GetControl, MonsterSet, MoveToField, PayLpCost, Recover, Release,
-    RemoveCounter, RemoveOverlay, SelectTribute, SendTo, SpSummon, SpSummonRule, SpSummonStep, SpellSet, SpellSetGroup, SummonRule,
-    TossCoin, TossDice, XyzOverlay,
+    ChangePos, Damage, Destroy, DestroyReplace, DiscardDeck, Draw, Equip, FlipSummon, GetControl, MonsterSet, MoveToField,
+    OperationReplace, PayLpCost, Recover, Release, RemoveCounter, RemoveOverlay, SelectTribute, SendTo, SpSummon, SpSummonRule,
+    SpSummonStep, SpellSet, SpellSetGroup, SummonRule, TossCoin, TossDice, XyzOverlay,
 };
 use crate::script::Procedure;
 
@@ -222,6 +222,17 @@ pub struct PhaseEvent {
 
 // `forced_attack` (ForcedBattle, from Duel.ForceAttack), the damage change effect and must_attack_map
 // (EFFECT_MUST_ATTACK_MONSTER) come with the cards that use them.
+// Duel.CalculateDamage: the damage step of one attacker against one target, run apart from the Battle Phase's attack.
+#[derive(Debug, Clone, Default)]
+pub struct DamageStep {
+    pub step: u16,
+    pub attacker: Option<CardId>,
+    pub attack_target: Option<CardId>,
+    pub new_attack: bool,
+    pub backup_phase: u16,
+    pub cards_destroyed_by_battle: Option<CardSet>,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct BattleCommand {
     pub step: u16,
@@ -273,7 +284,10 @@ pub enum Unit {
     PhaseEvent(PhaseEvent),
     PointEvent(PointEvent),
     BattleCommand(BattleCommand),
+    DamageStep(DamageStep),
     Destroy(Destroy),
+    DestroyReplace(DestroyReplace),
+    OperationReplace(OperationReplace),
     Release(Release),
     SendTo(SendTo),
     MoveToField(MoveToField),
@@ -355,7 +369,10 @@ units!(
     PhaseEvent,
     PointEvent,
     BattleCommand,
+    DamageStep,
     Destroy,
+    DestroyReplace,
+    OperationReplace,
     Release,
     SendTo,
     MoveToField,
@@ -434,7 +451,10 @@ impl Duel {
             Unit::PhaseEvent(arg) => self.run_steps(arg, Self::process_phase_event, false),
             Unit::PointEvent(arg) => self.run_steps(arg, Self::process_point_event, false),
             Unit::BattleCommand(arg) => self.run_steps(arg, Self::process_battle_command, false),
+            Unit::DamageStep(arg) => self.run_steps(arg, Self::process_damage_step, false),
             Unit::Destroy(arg) => self.run_steps(arg, Self::process_destroy, false),
+            Unit::DestroyReplace(arg) => self.run_steps(arg, Self::process_destroy_replace, false),
+            Unit::OperationReplace(arg) => self.run_steps(arg, Self::process_operation_replace, false),
             Unit::Release(arg) => self.run_steps(arg, Self::process_release, false),
             Unit::SendTo(arg) => self.run_steps(arg, Self::process_send_to, false),
             Unit::MoveToField(arg) => self.run_steps(arg, Self::process_move_to_field, false),
@@ -554,14 +574,29 @@ impl Duel {
                     }
                 }
                 // Effects taking control non-permanently last until the End Phase, not until the end of the turn.
-                unported!(
-                    self,
-                    self.field_effects
-                        .pheff
-                        .iter()
-                        .copied()
-                        .filter(|&effect| self.effects[effect].code == EFFECT_SET_CONTROL)
-                );
+                for effect in self.field_effects.pheff.clone() {
+                    let (code, reset_flag, reset_count) = {
+                        let peffect = &self.effects[effect];
+                        (peffect.code, peffect.reset_flag, peffect.reset_count)
+                    };
+                    let pid = self.get_handler_player(effect);
+                    let own_turn = (reset_flag & RESET_SELF_TURN != 0 && pid == turn_player)
+                        || (reset_flag & RESET_OPPO_TURN != 0 && pid != turn_player);
+                    if code != EFFECT_SET_CONTROL
+                        || reset_flag & u32::from(phase) == 0
+                        || pid != check_player
+                        || !own_turn
+                        || reset_count != 1
+                    {
+                        continue;
+                    }
+                    let handler = self.get_handler(effect);
+                    if self.get_value(effect, handler) != i32::from(self.cards[handler].current.controler) {
+                        continue;
+                    }
+                    self.push_candidate(effect);
+                    cn_count += 1;
+                }
                 self.core.spe_effect[check_player] = 0;
                 if !self.core.hand_adjusted {
                     for effect in self.field_effect_range(Container::TriggerO, phase_event) {
@@ -1341,12 +1376,26 @@ impl Duel {
                         self.core.to_ep = false;
                     }
                 }
-                let skip = if phase == PHASE_MAIN1 { EFFECT_SKIP_M1 } else { EFFECT_SKIP_M2 };
-                unported!(
-                    self,
-                    self.is_player_affected_by_effect(turn_player, skip)
-                        .filter(|_| phase == PHASE_MAIN1 || phase == PHASE_MAIN2)
-                );
+                let skip = |duel: &Self, code| duel.is_player_affected_by_effect(turn_player, code).is_some();
+                if (phase == PHASE_MAIN1 && skip(self, EFFECT_SKIP_M1))
+                    || (phase == PHASE_MAIN2 && skip(self, EFFECT_SKIP_M2))
+                    || self.core.force_turn_end
+                {
+                    if self.core.to_bp && self.core.to_ep {
+                        self.core.select_options = [80, 81].into_iter().collect();
+                        self.emplace_process(SelectOption {
+                            playerid: turn_player,
+                            ..SelectOption::default()
+                        });
+                        arg.step = 11;
+                    } else {
+                        arg.phase_to_change_to = if self.core.to_bp { 6 } else { 7 };
+                        arg.step = 10;
+                        self.reset_phase(phase);
+                        self.adjust_all();
+                    }
+                    return false;
+                }
                 if phase == PHASE_MAIN2 && self.core.skip_m2 {
                     self.core.skip_m2 = false;
                     self.returns.set_i32(0, 7);
@@ -1569,6 +1618,13 @@ impl Duel {
                 self.returns.set_i32(0, i32::from(arg.phase_to_change_to));
                 self.infos.can_shuffle = true;
                 true
+            }
+            12 => {
+                arg.phase_to_change_to = if self.returns.at_i32(0) == 0 { 6 } else { 7 };
+                self.reset_phase(phase);
+                self.adjust_all();
+                arg.step = 10;
+                false
             }
             13 => {
                 let Some(target) = arg.card_to_reposition else { return true };
@@ -2137,6 +2193,7 @@ impl Duel {
                     self.cards[card].set_status(STATUS_BATTLE_RESULT, false);
                 }
                 self.core.battle_destroy_rep.clear();
+                self.core.desrep_chain.clear();
                 if !destroyed.is_empty() {
                     let (targets, reason) = (destroyed, REASON_BATTLE);
                     self.emplace_process(Destroy {
@@ -2145,6 +2202,7 @@ impl Duel {
                         reason,
                         targets,
                         reason_effect: None,
+                        replacing: false,
                     });
                     arg.cards_destroyed_by_battle = Some(destroyed);
                 }
@@ -2166,7 +2224,14 @@ impl Duel {
                         0,
                     );
                 }
-                // The core also runs core.desrep_chain here, which only EFFECT_DESTROY_REPLACE fills.
+                if !self.core.desrep_chain.is_empty() {
+                    self.emplace_process(OperationReplace {
+                        step: 15,
+                        replace_effect: None,
+                        target: None,
+                        is_destroy: false,
+                    });
+                }
                 self.adjust_all();
                 false
             }
@@ -2179,12 +2244,16 @@ impl Duel {
                 self.core.selfdes_disabled = false;
                 self.adjust_all();
                 if self.is_flag(DUEL_6_STEP_BATLLE_STEP) {
-                    self.core.hint_timing[turn_player] = TIMING_DAMAGE_CAL;
-                    self.battle_window(45, false);
+                    if self.core.effect_damage_step == 0 {
+                        self.core.hint_timing[turn_player] = TIMING_DAMAGE_CAL;
+                        self.battle_window(45, false);
+                    } else {
+                        self.field_break_effect(true);
+                    }
                 }
                 false
             }
-            // Runs into step 32, where Duel.CalculateDamage continues.
+            // Runs into step 32; Duel.CalculateDamage hands over to its own damage step and starts step 32 there.
             31 => {
                 self.release_delayed_flips();
                 self.field_raise_single_event(attacker, EVENT_BATTLED, None, 0, PLAYER_NONE, 0, 0);
@@ -2196,10 +2265,18 @@ impl Duel {
                 self.field_raise_event(Some(battled), EVENT_BATTLED, None, 0, PLAYER_NONE, 0, 0);
                 self.process_single_event();
                 self.process_instant_event();
+                if self.core.effect_damage_step != 0 {
+                    if let Some(Unit::DamageStep(damage_step)) = self.core.reserved.as_deref_mut() {
+                        damage_step.cards_destroyed_by_battle = arg.cards_destroyed_by_battle;
+                    }
+                    return true;
+                }
                 arg.step = 32;
-                self.core.hint_timing[0] |= TIMING_BATTLED;
-                self.core.hint_timing[1] |= TIMING_BATTLED;
-                self.battle_window(43, false);
+                self.battled_window();
+                false
+            }
+            32 => {
+                self.battled_window();
                 false
             }
             33 => {
@@ -2219,6 +2296,7 @@ impl Duel {
                         reason,
                         targets,
                         reason_effect: None,
+                        replacing: false,
                     });
                 }
                 self.adjust_all();
@@ -2269,10 +2347,93 @@ impl Duel {
                 self.trace.message(MSG_DAMAGE_STEP_END);
                 self.reset_phase(PHASE_DAMAGE);
                 self.adjust_all();
-                false
+                self.core.effect_damage_step != 0
             }
             _ => true,
         }
+    }
+
+    // Duel.CalculateDamage's DamageStep: steps 0 and 1 run the damage calculation (BattleCommand step 26) apart from the
+    // attack, then the unit waits in core.reserved for the chain it was called in to end, and step 2 runs the rest of
+    // the damage step (BattleCommand step 32).
+    pub(crate) fn process_damage_step(&mut self, arg: &mut DamageStep) -> bool {
+        match arg.step {
+            0 => {
+                if self.core.effect_damage_step != 0 && !arg.new_attack {
+                    return true;
+                }
+                self.core.effect_damage_step = 1;
+                std::mem::swap(&mut self.core.attacker, &mut arg.attacker);
+                std::mem::swap(&mut self.core.attack_target, &mut arg.attack_target);
+                arg.backup_phase = self.infos.phase;
+                let (attacker, attack_target) = (self.core.attacker, self.core.attack_target);
+                let on_field = |duel: &Self, card: CardId| duel.cards[card].current.location == LOCATION_MZONE;
+                let Some(attacker) =
+                    attacker.filter(|&attacker| on_field(self, attacker) && attack_target.is_none_or(|target| on_field(self, target)))
+                else {
+                    arg.step = 2;
+                    return false;
+                };
+                // The attack counters of a new attack come with the cards that call it with new_attack.
+                unported!(self, arg.new_attack.then_some(attacker));
+                self.add_announced_card(attacker, attack_target);
+                self.attack_all_target_check();
+                let target_location = attack_target.map_or(LocInfo::default(), |target| self.cards.get_info_location(target));
+                self.trace
+                    .message(MSG_ATTACK)
+                    .loc(self.cards.get_info_location(attacker))
+                    .loc(target_location);
+                self.infos.phase = PHASE_DAMAGE;
+                self.trace.message(MSG_DAMAGE_STEP_START);
+                self.core.pre_field[0] = self.cards[attacker].fieldid_r;
+                self.cards[attacker].attacked_count += 1;
+                self.core.pre_field[1] = 0;
+                if let Some(target) = attack_target {
+                    self.core.pre_field[1] = self.cards[target].fieldid_r;
+                    if self.cards[target].is_position(POS_FACEDOWN) {
+                        self.field_change_position(target, None, PLAYER_NONE, self.cards[target].current.position >> 1, 0, true);
+                        self.adjust_all();
+                    }
+                }
+                false
+            }
+            1 => {
+                self.infos.phase = PHASE_DAMAGE_CAL;
+                self.emplace_process(BattleCommand {
+                    step: 26,
+                    ..BattleCommand::default()
+                });
+                arg.step = 2;
+                self.core.reserved = Some(Box::new(Unit::DamageStep(arg.clone())));
+                true
+            }
+            2 => {
+                self.core.effect_damage_step = 2;
+                self.emplace_process(BattleCommand {
+                    step: 32,
+                    cards_destroyed_by_battle: arg.cards_destroyed_by_battle,
+                    ..BattleCommand::default()
+                });
+                false
+            }
+            3 => {
+                std::mem::swap(&mut self.core.attacker, &mut arg.attacker);
+                std::mem::swap(&mut self.core.attack_target, &mut arg.attack_target);
+                for card in [self.core.attacker, self.core.attack_target].into_iter().flatten() {
+                    self.cards[card].set_status(STATUS_ATTACK_CANCELED, true);
+                }
+                self.core.effect_damage_step = 0;
+                self.infos.phase = arg.backup_phase;
+                true
+            }
+            _ => true,
+        }
+    }
+
+    fn battled_window(&mut self) {
+        self.core.hint_timing[0] |= TIMING_BATTLED;
+        self.core.hint_timing[1] |= TIMING_BATTLED;
+        self.battle_window(43, false);
     }
 
     fn select_attack_target(&mut self) {
@@ -2987,6 +3148,7 @@ impl Duel {
             }
             11 => {
                 let mut turn_player = self.infos.turn_player;
+                let mut pos_adjust = CardSet::default();
                 for _ in 0..2 {
                     for card in self.player[turn_player].list_mzone.into_iter().flatten() {
                         let card_type = self.cards[card].data.card_type;
@@ -2995,9 +3157,33 @@ impl Duel {
                         {
                             continue;
                         }
-                        unported!(self, self.filter_effect(card, EFFECT_SET_POSITION, true));
+                        let Some(&effect) = self.filter_effect(card, EFFECT_SET_POSITION, true).last() else {
+                            continue;
+                        };
+                        let pos = self.get_value(effect, card) as u32;
+                        if pos & 0xff != self.cards[card].current.position {
+                            pos_adjust.insert(card);
+                            self.cards[card].position_param = pos;
+                            let just_pos = self.cards[card].is_status(STATUS_JUST_POS);
+                            self.cards[card].set_status(STATUS_CONTINUOUS_POS, just_pos);
+                        } else {
+                            self.cards[card].set_status(STATUS_CONTINUOUS_POS, false);
+                        }
+                        self.cards[card].set_status(STATUS_JUST_POS, false);
                     }
                     turn_player = 1 - turn_player;
+                }
+                if !pos_adjust.is_empty() {
+                    self.core.re_adjust = true;
+                    self.emplace_process(ChangePos {
+                        step: 0,
+                        reason_player: PLAYER_NONE,
+                        enable: true,
+                        oppo_selection: false,
+                        reason_effect: None,
+                        targets: pos_adjust,
+                        to_grave_set: CardSet::default(),
+                    });
                 }
                 false
             }
@@ -3047,14 +3233,47 @@ impl Duel {
                 false
             }
             4 => {
-                // Control changes (an EFFECT_SET_CONTROL running out) come with the cards that take control.
-                unported!(
-                    self,
-                    [0, 1]
-                        .into_iter()
-                        .flat_map(|p| self.player[p].list_mzone.into_iter().flatten())
-                        .filter(|&card| self.refresh_control_status(card).0 != self.cards[card].current.controler)
-                );
+                // core.last_control_changed_id is read only with EFFECT_REMOVE_BRAINWASHING.
+                let turn_player = self.infos.turn_player;
+                let (mut adjust_set, mut reason_cards) = (PerPlayer::<CardSet>::default(), CardSet::default());
+                for p in 0..2 {
+                    for card in self.player[p].list_mzone.into_iter().flatten() {
+                        let (reference, effect) = self.refresh_control_status(card);
+                        if self.cards[card].current.controler == reference
+                            || self.is_affected_by_effect(card, EFFECT_CANNOT_CHANGE_CONTROL).is_some()
+                        {
+                            continue;
+                        }
+                        adjust_set[p].insert(card);
+                        if let Some(effect) = effect
+                            && (self.effects[effect].effect_type & EFFECT_TYPE_SINGLE == 0 || self.effects[effect].condition.is_some())
+                        {
+                            reason_cards.insert(self.get_handler(effect));
+                        }
+                    }
+                }
+                if !adjust_set[0].is_empty() || !adjust_set[1].is_empty() {
+                    self.core.re_adjust = true;
+                    for (targets, playerid) in [
+                        (adjust_set[1 - turn_player], turn_player),
+                        (adjust_set[turn_player], 1 - turn_player),
+                    ] {
+                        self.emplace_process(GetControl {
+                            chose_player: PLAYER_NONE,
+                            targets,
+                            playerid,
+                            zone: 0xff,
+                            ..GetControl::default()
+                        });
+                    }
+                    for card in reason_cards {
+                        let readjusts = self.core.readjust_map.entry(card).or_default();
+                        *readjusts += 1;
+                        if *readjusts > 3 {
+                            self.field_destroy(card.into(), None, REASON_RULE, PLAYER_NONE, PLAYER_NONE, LOCATION_GRAVE, 0);
+                        }
+                    }
+                }
                 false
             }
             3 | 8 | 13 => false,

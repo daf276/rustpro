@@ -61,6 +61,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - If a check fails at 13 but passes at 64, improve `SUPPORT` (place what the effect needs where it can be used).
   A second copy in the Extra Deck makes a Synchro/Xyz/Link Summon of the card far likelier. Normal Monsters by race
   and level: query `vendor/BabelCDB/cards.cdb` (`datas.type & 0x11 = 0x11`, minus Pendulums).
+  An effect that needs the card in one zone gets a copy there (`(ID, SZONE)`), or more copies of what it reacts to.
+  A Spell that Special Summons another card is checked by `SpecialSummonedCode(code)`.
 
 ## Mirror API
 

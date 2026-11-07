@@ -142,6 +142,7 @@ pub struct SpSummonStep {
     pub zone: u32,
     pub in_group: bool,
     pub target: CardId,
+    pub spsummon_cost_effects: Vec<EffectId>,
 }
 
 #[derive(Debug, Clone)]
@@ -1871,7 +1872,7 @@ impl Duel {
             2 => {
                 self.core.phase_action = true;
                 self.cards[target].set_status(STATUS_SET_TURN, true);
-                unported!(self, (self.cards[target].data.card_type & TYPE_MONSTER != 0).then_some(target));
+                self.apply_monster_sset(target);
                 let (code, location) = (self.cards[target].data.code, self.cards.get_info_location(target));
                 self.trace.message(MSG_SET).u32(code).loc(location);
                 self.adjust_instant();
@@ -1886,6 +1887,34 @@ impl Duel {
             }
             _ => true,
         }
+    }
+
+    // The EFFECT_SPSUMMON_COST effects of a card about to be Special Summoned: their operations pay the cost.
+    fn run_spsummon_cost_operations(&mut self, card: CardId, sumplayer: u8, effects: &mut Vec<EffectId>) {
+        *effects = self.filter_effect(card, EFFECT_SPSUMMON_COST, true).into_iter().collect();
+        for &effect in effects.iter() {
+            if self.effects[effect].operation.is_some() {
+                let nil_event = self.nil_event;
+                self.execute_procedure(ExecuteKind::Operation, effect, sumplayer, nil_event, None);
+            }
+        }
+    }
+
+    // A monster Set in the Spell & Trap Zone takes the type its EFFECT_MONSTER_SSET effect gives.
+    fn apply_monster_sset(&mut self, target: CardId) {
+        if self.cards[target].data.card_type & TYPE_MONSTER == 0 {
+            return;
+        }
+        let type_val = self
+            .is_affected_by_effect(target, EFFECT_MONSTER_SSET)
+            .map_or(0, |effect| self.get_value(effect, target));
+        let effect = self.new_effect(target);
+        let peffect = &mut self.effects[effect];
+        peffect.effect_type = EFFECT_TYPE_SINGLE;
+        peffect.code = EFFECT_CHANGE_TYPE;
+        peffect.reset_flag = RESET_EVENT + 0x1fe_0000;
+        peffect.value = Value::Int(type_val);
+        self.card_add_effect(target, effect);
     }
 
     // field::special_summon: Duel.SpecialSummon's cards in one SpSummon. EFFECT_DEVINE_LIGHT and
@@ -1972,6 +2001,7 @@ impl Duel {
             zone,
             in_group: false,
             target,
+            spsummon_cost_effects: Vec::new(),
         });
     }
 
@@ -2045,10 +2075,14 @@ impl Duel {
                     arg.step = 4;
                     return false;
                 }
-                unported!(self, self.filter_effect(target, EFFECT_SPSUMMON_COST, true));
+                let sumplayer = summon.player;
+                self.run_spsummon_cost_operations(target, sumplayer, &mut arg.spsummon_cost_effects);
                 false
             }
             1 => {
+                for &effect in &arg.spsummon_cost_effects {
+                    self.release_oath_relation(effect);
+                }
                 if !arg.in_group {
                     self.core.special_summoning.insert(target);
                 }
@@ -2142,6 +2176,7 @@ impl Duel {
                             zone: arg.zone,
                             in_group: true,
                             target: card,
+                            spsummon_cost_effects: Vec::new(),
                         });
                     }
                 }
@@ -3811,6 +3846,7 @@ pub struct SpSummonRule {
     pub summon_proc_effect: Option<EffectId>,
     pub proc_g: Box<ProcGroup>,
     pub procedure: Option<Box<Procedure>>,
+    pub spsummon_cost_effects: Vec<EffectId>,
 }
 
 // The cards of an EFFECT_SPSUMMON_PROC_G summon, and those not yet moved.
@@ -3830,6 +3866,7 @@ impl Duel {
             summon_proc_effect: None,
             proc_g: Box::default(),
             procedure: procedure.map(Box::new),
+            spsummon_cost_effects: Vec::new(),
         });
     }
     // Steps 0-17 summon by EFFECT_SPSUMMON_PROC, 20-28 the group of EFFECT_SPSUMMON_PROC_G.
@@ -3890,7 +3927,7 @@ impl Duel {
                 if self.returns.at_i32(0) == 0 {
                     return true;
                 }
-                unported!(self, self.filter_effect(target, EFFECT_SPSUMMON_COST, true));
+                self.run_spsummon_cost_operations(target, sumplayer, &mut arg.spsummon_cost_effects);
                 false
             }
             3 => {
@@ -3986,6 +4023,9 @@ impl Duel {
                     arg.step = 14;
                     return false;
                 }
+                for &effect in &arg.spsummon_cost_effects {
+                    self.remove_oath_effect(effect);
+                }
                 self.remove_procedure_oath(proc, sumplayer);
                 if self.cards[target].current.location == LOCATION_MZONE {
                     self.send_to(target.into(), None, REASON_RULE, sumplayer, sumplayer, LOCATION_GRAVE, 0, 0, false);
@@ -3996,6 +4036,9 @@ impl Duel {
             }
             15 => {
                 self.release_oath_relation(proc);
+                for &effect in &arg.spsummon_cost_effects {
+                    self.release_oath_relation(effect);
+                }
                 self.cards[target].set_status(STATUS_SUMMONING, false);
                 self.cards[target].set_status(STATUS_PROC_COMPLETE | STATUS_SPSUMMON_TURN, true);
                 self.enable_field_effect(target, true);
@@ -4048,7 +4091,7 @@ impl Duel {
                         group.remove(card);
                         continue;
                     }
-                    unported!(self, self.filter_effect(card, EFFECT_SPSUMMON_COST, true));
+                    self.run_spsummon_cost_operations(card, sumplayer, &mut arg.spsummon_cost_effects);
                 }
                 arg.proc_g.cards = group;
                 false
@@ -4161,6 +4204,9 @@ impl Duel {
                 }
                 if arg.proc_g.cards.is_empty() {
                     self.remove_procedure_oath(proc, sumplayer);
+                    for &effect in &arg.spsummon_cost_effects {
+                        self.remove_oath_effect(effect);
+                    }
                     self.emplace_process(PointEvent::default());
                     return true;
                 }
@@ -4168,6 +4214,9 @@ impl Duel {
             }
             27 => {
                 self.release_oath_relation(proc);
+                for &effect in &arg.spsummon_cost_effects {
+                    self.release_oath_relation(effect);
+                }
                 for card in arg.proc_g.cards {
                     self.cards[card].set_status(STATUS_SUMMONING, false);
                     self.cards[card].set_status(STATUS_SPSUMMON_TURN, true);
@@ -4727,7 +4776,7 @@ impl Duel {
             4 => {
                 let Some(target) = state.pre_set.first() else { return true };
                 self.cards[target].set_status(STATUS_SET_TURN, true);
-                unported!(self, (self.cards[target].data.card_type & TYPE_MONSTER != 0).then_some(target));
+                self.apply_monster_sset(target);
                 let (code, location) = (self.cards[target].data.code, self.cards.get_info_location(target));
                 self.trace.message(MSG_SET).u32(code).loc(location);
                 state.set.insert(target);

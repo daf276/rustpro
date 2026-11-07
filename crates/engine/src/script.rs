@@ -273,6 +273,7 @@ impl Duel {
             counters,
             card_targets,
             card_relations,
+            immune_effects,
             equip_cards,
             unported,
         } = source;
@@ -303,6 +304,7 @@ impl Duel {
         self.counters.clone_from(counters);
         self.card_targets.clone_from(card_targets);
         self.card_relations.clone_from(card_relations);
+        self.immune_effects.clone_from(immune_effects);
         self.equip_cards.clone_from(equip_cards);
         self.unported.clone_from(unported);
     }

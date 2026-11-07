@@ -70,7 +70,7 @@ impl CardId {
         nocheck: bool,
         nolimit: bool,
     ) -> bool {
-        self.is_can_be_special_summoned_full(duel, effect, sumtype, sumplayer, nocheck, nolimit, POS_FACEUP)
+        self.is_can_be_special_summoned_full(duel, effect, sumtype, sumplayer, nocheck, nolimit, POS_FACEUP, sumplayer, 0xff)
     }
 
     pub fn is_can_be_special_summoned_full(
@@ -82,8 +82,10 @@ impl CardId {
         nocheck: bool,
         nolimit: bool,
         position: u32,
+        toplayer: u8,
+        zone: u32,
     ) -> bool {
-        duel.is_can_be_special_summoned(self, effect, sumtype, position as u8, sumplayer, sumplayer, nocheck, nolimit, 0xff)
+        duel.is_can_be_special_summoned(self, effect, sumtype, position as u8, sumplayer, toplayer, nocheck, nolimit, zone)
     }
 
     pub fn is_location(self, duel: &Duel, location: u32) -> bool {
@@ -300,6 +302,10 @@ impl CardId {
         }
     }
 
+    pub fn is_original_code(self, duel: &Duel, code: u32) -> bool {
+        self.get_original_code(duel) == code
+    }
+
     // The second code of an EFFECT_ADD_CODE comes with the cards that register one.
     pub fn get_original_code_rule(self, duel: &Duel) -> u32 {
         let added = duel.filter_effect(self, EFFECT_ADD_CODE, true);
@@ -458,6 +464,11 @@ impl CardId {
         {
             duel.card_relations.push((self, target, reset));
         }
+    }
+
+    pub fn release_relation(self, duel: &mut Duel, target: CardId) {
+        duel.card_relations
+            .retain(|&(card, related, _)| !(card == self && related == target));
     }
 
     pub fn is_relate_to_card(self, duel: &Duel, target: CardId) -> bool {
@@ -634,6 +645,36 @@ impl CardId {
         cards
     }
 
+    // Card.GetFreeLinkedZone for the controller: card::get_linked_zone(true).
+    pub fn get_free_linked_zone(self, duel: &Duel) -> u32 {
+        let controler = duel.cards[self].current.controler;
+        let mut zone = duel.card_linked_zone(&duel.zones(), self);
+        let sides = [
+            (controler, 0, LOCATION_MZONE),
+            (controler, 8, LOCATION_SZONE),
+            (1 - controler, 16, LOCATION_MZONE),
+            (1 - controler, 24, LOCATION_SZONE),
+        ];
+        for (player, shift, location) in sides {
+            for sequence in 0..8 {
+                if !duel.is_location_useable(player, u16::from(location), sequence) {
+                    zone &= !(1 << (sequence + shift));
+                }
+            }
+        }
+        zone
+    }
+
+    // Card.GetLinkedZone with the player the zones are seen from.
+    pub fn get_linked_zone_full(self, duel: &Duel, player: u8) -> u32 {
+        let zone = duel.card_linked_zone(&duel.zones(), self);
+        if player == 1u8.wrapping_sub(duel.cards[self].current.controler) {
+            ((zone & 0xffff) << 16) | (zone >> 16)
+        } else {
+            zone
+        }
+    }
+
     pub fn get_reason_card(self, duel: &Duel) -> Option<CardId> {
         duel.cards[self].current.reason_card
     }
@@ -778,6 +819,38 @@ impl CardId {
         duel.cards[self].data.card_type & TYPE_LINK == 0 && self.is_monster_now(duel) && duel.get_defense(self) >= defense
     }
 
+    pub fn is_defense_below(self, duel: &Duel, defense: i32) -> bool {
+        let card = &duel.cards[self];
+        if card.data.card_type & TYPE_LINK != 0
+            || (card.data.card_type & TYPE_MONSTER == 0
+                && duel.get_type(self) & TYPE_MONSTER == 0
+                && card.current.location != LOCATION_MZONE)
+        {
+            return false;
+        }
+        let current = duel.get_defense(self);
+        current >= 0 && current <= defense
+    }
+
+    // Lua passes the values to match as further arguments.
+    pub fn is_attack(self, duel: &Duel, attacks: &[i32]) -> bool {
+        self.is_monster_now(duel) && attacks.contains(&duel.get_attack(self))
+    }
+
+    pub fn get_text_attack(self, duel: &Duel) -> i32 {
+        let card = &duel.cards[self];
+        if card.status & STATUS_NO_LEVEL != 0 { 0 } else { card.data.attack }
+    }
+
+    pub fn get_original_race(self, duel: &Duel) -> u64 {
+        let card = &duel.cards[self];
+        if card.status & STATUS_NO_LEVEL != 0 { 0 } else { card.data.race }
+    }
+
+    pub fn is_original_race(self, duel: &Duel, race: u64) -> bool {
+        self.get_original_race(duel) & race != 0
+    }
+
     // Lua passes the values to match as further arguments.
     pub fn is_defense(self, duel: &Duel, defenses: &[i32]) -> bool {
         duel.cards[self].data.card_type & TYPE_LINK == 0 && self.is_monster_now(duel) && defenses.contains(&duel.get_defense(self))
@@ -843,6 +916,10 @@ impl CardId {
     pub fn add_counter_full(self, duel: &mut Duel, counter_type: u16, count: u16, singly: bool) -> bool {
         let (reason_effect, reason_player) = (duel.core.reason_effect.get(), duel.core.reason_player.get());
         duel.is_affect_by_effect(self, reason_effect) && duel.add_counter(self, reason_player, counter_type, count, singly)
+    }
+
+    pub fn is_can_add_counter(self, duel: &Duel, counter_type: u16, count: u16) -> bool {
+        duel.is_can_add_counter(self, duel.core.reason_player.get(), counter_type, count, false, 0)
     }
 
     pub fn enable_counter_permit(self, duel: &mut Duel, counter_type: u16) {

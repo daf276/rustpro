@@ -120,7 +120,7 @@ impl Union {
         if chk == 0 {
             return Ok(c.get_flag_effect(duel, code) == 0
                 && duel.get_location_count(tp, LOCATION_MZONE) > 0
-                && c.is_can_be_special_summoned_full(duel, e, 0, tp, true, false, Union::position::<P>()));
+                && c.is_can_be_special_summoned_full(duel, e, 0, tp, true, false, Union::position::<P>(), tp, 0xff));
         }
         duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, 0, 0);
         c.register_flag_effect(duel, code, Union::FLAG_RESET, 0, 1);
@@ -136,7 +136,7 @@ impl Union {
         let pos = Union::position::<P>();
         if duel.special_summon(c, 0, tp, tp, true, false, pos)? == 0
             && duel.get_location_count(tp, LOCATION_MZONE) <= 0
-            && c.is_can_be_special_summoned_full(duel, e, 0, tp, true, false, pos)
+            && c.is_can_be_special_summoned_full(duel, e, 0, tp, true, false, pos, tp, 0xff)
         {
             duel.send_to_grave(c, REASON_RULE)?;
         }

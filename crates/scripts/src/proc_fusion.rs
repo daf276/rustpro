@@ -871,7 +871,7 @@ impl Fusion {
     ) -> bool {
         c.is_type(duel, TYPE_FUSION)
             && P::fusfilter(c, duel)
-            && (P::NOSUMMONCHECK || c.is_can_be_special_summoned_full(duel, e, value, tp, sumlimit, false, P::SUMPOS))
+            && (P::NOSUMMONCHECK || c.is_can_be_special_summoned_full(duel, e, value, tp, sumlimit, false, P::SUMPOS, tp, 0xff))
             && c.check_fusion_material(duel, Some(mg), gc, chkf)
     }
 

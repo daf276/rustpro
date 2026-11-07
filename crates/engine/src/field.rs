@@ -2392,13 +2392,13 @@ impl Duel {
         if target.data.card_type & TYPE_LINK != 0 && target.data.card_type & TYPE_MONSTER != 0 {
             sumpos &= POS_FACEUP_ATTACK as u8;
         }
-        if sumpos == 0 || !self.check_cost_condition(card, EFFECT_SPSUMMON_COST, playerid) {
+        let sumtype = sumtype | SUMMON_TYPE_SPECIAL;
+        if sumpos == 0 || !self.check_cost_condition(card, EFFECT_SPSUMMON_COST, playerid, sumtype) {
             return false;
         }
         if u32::from(sumpos) & POS_FACEDOWN != 0 && self.is_player_affected_by_effect(playerid, EFFECT_DEVINE_LIGHT).is_some() {
             sumpos = (sumpos & POS_FACEUP as u8) | ((sumpos & POS_FACEDOWN as u8) >> 1);
         }
-        let sumtype = sumtype | SUMMON_TYPE_SPECIAL;
         let forbidden = self
             .filter_player_effect(playerid, EFFECT_CANNOT_SPECIAL_SUMMON, true)
             .into_iter()

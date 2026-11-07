@@ -280,6 +280,22 @@ impl CardId {
         }
     }
 
+    // The second code of an EFFECT_ADD_CODE comes with the cards that register one.
+    pub fn get_original_code_rule(self, duel: &Duel) -> u32 {
+        let added = duel.filter_effect(self, EFFECT_ADD_CODE, true);
+        unported!(duel, added.iter());
+        let data = &duel.cards[self].data;
+        if data.alias != 0 && added.is_empty() {
+            data.alias
+        } else {
+            data.code
+        }
+    }
+
+    pub fn is_original_code_rule(self, duel: &Duel, code: u32) -> bool {
+        self.get_original_code_rule(duel) == code
+    }
+
     pub fn get_attribute(self, duel: &Duel) -> u32 {
         duel.get_attribute(self)
     }
@@ -677,6 +693,10 @@ impl CardId {
         duel.get_base_attack(self).max(0)
     }
 
+    pub fn get_base_defense(self, duel: &Duel) -> i32 {
+        duel.get_base_defense(self).max(0)
+    }
+
     pub fn get_defense(self, duel: &Duel) -> i32 {
         duel.get_defense(self).max(0)
     }
@@ -747,6 +767,17 @@ impl CardId {
     pub fn is_releasable_full(self, duel: &Duel, reason: u32, player: Option<u8>) -> bool {
         let player = player.unwrap_or_else(|| duel.core.reason_player.get());
         duel.is_releasable_by_nonsummon(self, player, reason)
+    }
+
+    pub fn is_releasable_by_effect(self, duel: &Duel) -> bool {
+        self.is_releasable_by_effect_full(duel, None, None)
+    }
+
+    // `effect` and `player` None are the reason effect and player.
+    pub fn is_releasable_by_effect_full(self, duel: &Duel, effect: Option<EffectId>, player: Option<u8>) -> bool {
+        let effect = effect.or(duel.core.reason_effect.get());
+        let player = player.unwrap_or_else(|| duel.core.reason_player.get());
+        duel.is_releasable_by_nonsummon(self, player, REASON_EFFECT) && duel.is_releasable_by_effect(self, effect)
     }
 
     pub fn is_immune_to_effect(self, duel: &Duel, effect: EffectId) -> bool {

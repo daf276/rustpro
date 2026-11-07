@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::num::{NonZeroU16, NonZeroU64};
 use std::ops::{Deref, Index, IndexMut};
 
@@ -302,6 +303,17 @@ static BLANK: CardData = CardData {
 impl Default for StaticData {
     fn default() -> Self {
         Self(&BLANK)
+    }
+}
+
+impl StaticData {
+    // Data no database holds (the stats Duel.IsPlayerCanSpecialSummonMonster gives the temp card), kept for the life of
+    // the thread: each distinct value is leaked once.
+    pub fn interned(data: CardData) -> Self {
+        thread_local! {
+            static INTERNED: std::cell::RefCell<HashMap<CardData, &'static CardData>> = std::cell::RefCell::default();
+        }
+        Self(INTERNED.with_borrow_mut(|interned| *interned.entry(data).or_insert_with(|| Box::leak(Box::new(data)))))
     }
 }
 
@@ -677,13 +689,13 @@ impl Duel {
         self.get_stat_value(card, &ATTACK, false)
     }
 
-    // The EFFECT_SET_BASE_ATTACK effects other than a card's own unranged ones apply first, in id order; returns the
-    // base they leave and the other effects.
-    fn continuous_base_attack(&self, card: CardId, base: i32, effects: EffectSet) -> (i32, EffectSet) {
+    // The `code` (EFFECT_SET_BASE_ATTACK or _DEFENSE) effects other than a card's own unranged ones apply first, in id
+    // order; returns the base they leave and the other effects.
+    fn continuous_base(&self, card: CardId, code: u32, base: i32, effects: EffectSet) -> (i32, EffectSet) {
         let mut base = base;
         let mut rest = EffectSet::default();
         for effect in effects {
-            if self.effects[effect].code == EFFECT_SET_BASE_ATTACK && !self.is_single_unranged(effect) {
+            if self.effects[effect].code == code && !self.is_single_unranged(effect) {
                 base = self.get_value(effect, card).max(0);
             } else {
                 rest.push(effect);
@@ -694,12 +706,23 @@ impl Duel {
 
     pub(crate) fn get_base_attack(&self, card: CardId) -> i32 {
         let swaps = [EFFECT_SWAP_BASE_AD, EFFECT_SET_BASE_DEFENSE];
-        let base = self.get_stat(card, &[], &swaps, self.cards[card].data.attack);
+        self.get_base_stat(card, EFFECT_SET_BASE_ATTACK, &swaps, self.cards[card].data.attack)
+    }
+
+    pub(crate) fn get_base_defense(&self, card: CardId) -> i32 {
+        if self.cards[card].data.card_type & TYPE_LINK != 0 {
+            return 0;
+        }
+        self.get_base_stat(card, EFFECT_SET_BASE_DEFENSE, &[EFFECT_SWAP_BASE_AD], self.cards[card].data.defense)
+    }
+
+    fn get_base_stat(&self, card: CardId, code: u32, swaps: &[u32], base: i32) -> i32 {
+        let base = self.get_stat(card, &[], swaps, base);
         let target = &self.cards[card];
         if target.current.location != LOCATION_MZONE || target.get_status(STATUS_SUMMONING | STATUS_SPSUMMON_STEP) {
             return base;
         }
-        let (base, effects) = self.continuous_base_attack(card, base, self.filter_effects(card, &[EFFECT_SET_BASE_ATTACK]));
+        let (base, effects) = self.continuous_base(card, code, base, self.filter_effects(card, &[code]));
         effects.iter().fold(base, |_, &effect| self.get_value(effect, card).max(0))
     }
 

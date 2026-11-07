@@ -68,9 +68,13 @@ pub enum Target {
     None,
     Action(TargetFn),
     Card(fn(&Duel, EffectId, CardId) -> bool),
+    // The target (e, c, sump, sumtype, sumpos, targetp, se) of EFFECT_CANNOT_SPECIAL_SUMMON.
+    SpSummon(SpSummonTargetFn),
     // The check (e, c, sg, tg, ntg, tsg, ntsg) -> (ok, trg, ntrg) of a hand Synchro material, read only by proc_synchro.
     SynchroCheck(SynchroCheckFn),
 }
+
+pub type SpSummonTargetFn = fn(&Duel, EffectId, CardId, u8, u32, u8, u8, Option<EffectId>) -> bool;
 
 pub type SynchroCheckFn = fn(&Duel, EffectId, Option<CardId>, CardSet, CardSet, CardSet, CardSet, CardSet) -> (bool, CardSet, CardSet);
 
@@ -1136,6 +1140,8 @@ impl Duel {
         match self.effects[effect].target {
             Target::None => true,
             Target::Card(target) => target(self, effect, card),
+            // The core passes only (e, c); the rest are nil.
+            Target::SpSummon(target) => target(self, effect, card, PLAYER_NONE, 0, 0, PLAYER_NONE, None),
             Target::Action(_) | Target::SynchroCheck(_) => {
                 debug_assert!(false, "a field effect has an activation target");
                 true

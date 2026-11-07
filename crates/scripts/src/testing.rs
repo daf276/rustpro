@@ -20,6 +20,8 @@ pub enum Check {
     // The effect with this description (aux::stringid) resolves.
     ResolvesEffect(u64),
     SpecialSummoned,
+    // A card with this code, such as a token the card creates, is Special Summoned.
+    SpecialSummonedCode(u32),
     // Moved as a Ritual Summon material.
     RitualMaterial,
     // Moved as a material from this location (HAND, MZONE, ...).

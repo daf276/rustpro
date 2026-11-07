@@ -1,12 +1,19 @@
 // Port of libduel.cpp. Functions that yield in the core run their units before they return.
-use crate::card::{CardId, CardSet};
+use carddata::{
+    OPCODE_ADD, OPCODE_ALLOW_ALIASES, OPCODE_ALLOW_TOKENS, OPCODE_AND, OPCODE_BAND, OPCODE_BNOT, OPCODE_BOR, OPCODE_BXOR, OPCODE_DIV,
+    OPCODE_ISATTRIBUTE, OPCODE_ISCODE, OPCODE_ISRACE, OPCODE_ISSETCARD, OPCODE_ISTYPE, OPCODE_LSHIFT, OPCODE_MUL, OPCODE_NEG, OPCODE_NOT,
+    OPCODE_OR, OPCODE_RSHIFT, OPCODE_SUB,
+};
+
+use crate::card::{CardId, CardSet, StaticData};
 use crate::chain::ExecuteKind;
 use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{ChainLimit, ChainLimitFn, Container, CounterFilter, CustomCounter, EffectId, EffectSet, Event, OpTarget, Value};
 
 use crate::field::FromEx;
-use crate::processor::{AnnounceRace, SelectCard, SelectOption, SelectYesNo, SortDeck};
+use crate::operations::{TossCoin, TossDice};
+use crate::processor::{AnnounceCard, AnnounceRace, SelectCard, SelectOption, SelectYesNo, SortDeck};
 use crate::script::{FusionCheck, Procedure, Script};
 
 // What Duel.GetChainInfo pushes for one CHAININFO flag.
@@ -78,6 +85,33 @@ impl FromChainInfo for Option<CardSet> {
         match info {
             ChainInfo::Cards(cards) => cards,
             _ => None,
+        }
+    }
+}
+
+// The card_data fields Duel.IsPlayerCanSpecialSummonMonster gives the temp card over the database's data of its code;
+// None (Lua nil) keeps the database's.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct MonsterStats {
+    pub setcode: Option<u16>,
+    pub card_type: Option<u32>,
+    pub attack: Option<i32>,
+    pub defense: Option<i32>,
+    pub level: Option<u32>,
+    pub race: Option<u64>,
+    pub attribute: Option<u32>,
+}
+
+impl MonsterStats {
+    pub const fn new(setcode: u16, card_type: u32, attack: i32, defense: i32, level: u32, race: u64, attribute: u32) -> Self {
+        Self {
+            setcode: Some(setcode),
+            card_type: Some(card_type),
+            attack: Some(attack),
+            defense: Some(defense),
+            level: Some(level),
+            race: Some(race),
+            attribute: Some(attribute),
         }
     }
 }
@@ -1716,6 +1750,184 @@ impl Duel {
         self.field_special_summon_complete(self.core.reason_effect.get(), self.core.reason_player.get());
         self.yield_script()?;
         Ok(self.returns.at_i32(0))
+    }
+
+    // None (Lua false) for a player out of range.
+    pub fn create_token(&mut self, player: u8, code: u32) -> Option<CardId> {
+        if player >= PLAYER_NONE {
+            return None;
+        }
+        let Some(card) = self.database.and_then(|database| self.create_card(code, database).ok()) else {
+            self.reach_unported(concat!(file!(), ":", line!(), " (a token not in the database, or over MAX_CARDS)"));
+            return None;
+        };
+        let token = &mut self.cards[card];
+        token.owner = player;
+        token.current.location = 0;
+        token.current.controler = player;
+        Some(card)
+    }
+
+    pub fn is_player_can_special_summon_monster(&mut self, player: u8, code: u32, stats: MonsterStats) -> bool {
+        self.is_player_can_special_summon_monster_full(player, code, stats, POS_FACEUP, player, 0)
+    }
+
+    // The core's field::temp_card takes the stats while the check runs.
+    pub fn is_player_can_special_summon_monster_full(
+        &mut self,
+        player: u8,
+        code: u32,
+        stats: MonsterStats,
+        pos: u32,
+        toplayer: u8,
+        sumtype: u32,
+    ) -> bool {
+        if player > 1 {
+            return false;
+        }
+        let mut data = self.database.and_then(|database| database.get(code)).copied().unwrap_or_default();
+        data.code = code;
+        data.alias = 0;
+        let setcodes = &mut data.setcodes;
+        if let Some(setcode) = stats.setcode.filter(|&setcode| setcode != 0 && !setcodes.contains(&setcode))
+            && let Some(slot) = setcodes.iter_mut().take(4).find(|slot| **slot == 0)
+        {
+            *slot = setcode;
+        }
+        data.card_type = stats.card_type.unwrap_or(data.card_type);
+        data.attack = stats.attack.unwrap_or(data.attack);
+        data.defense = stats.defense.unwrap_or(data.defense);
+        data.level = stats.level.unwrap_or(data.level);
+        data.race = stats.race.unwrap_or(data.race);
+        data.attribute = stats.attribute.unwrap_or(data.attribute);
+        let temp_card = CardId::default();
+        self.cards[temp_card].data = StaticData::interned(data);
+        let reason_effect = self.core.reason_effect.get();
+        let result = self.is_player_can_spsummon(reason_effect, sumtype, pos as u8, player, toplayer, temp_card);
+        self.cards[temp_card].data = StaticData::default();
+        result
+    }
+
+    pub fn is_player_can_special_summon_count(&self, player: u8, count: u32) -> bool {
+        player <= 1 && self.is_player_can_spsummon_count(player, count)
+    }
+
+    pub fn get_activity_count(&self, player: u8, activity: u8) -> u32 {
+        if player > 1 {
+            return 0;
+        }
+        let core = &self.core;
+        u32::from(match activity {
+            ACTIVITY_SUMMON => core.summon_state_count[player],
+            ACTIVITY_NORMALSUMMON => core.normalsummon_state_count[player],
+            ACTIVITY_SPSUMMON => core.spsummon_state_count[player],
+            ACTIVITY_FLIPSUMMON => core.flipsummon_state_count[player],
+            ACTIVITY_ATTACK => core.attack_state_count[player],
+            ACTIVITY_BATTLE_PHASE => core.battle_phase_count[player],
+            _ => {
+                self.reach_unported(concat!(file!(), ":", line!(), " (Duel.GetActivityCount raises a Lua error)"));
+                0
+            }
+        })
+    }
+
+    // The results, 1 for heads; none for a player out of range or no coins.
+    pub fn toss_coin(&mut self, player: u8, count: u8) -> Script<Vec<u8>> {
+        if player > 1 || count == 0 {
+            return Ok(Vec::new());
+        }
+        let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
+        self.emplace_process(TossCoin {
+            reason_effect,
+            reason_player,
+            playerid: player,
+            count: count.min(5),
+            ..TossCoin::default()
+        });
+        self.yield_script()?;
+        Ok(self.core.coin_results.to_vec())
+    }
+
+    pub fn toss_dice(&mut self, player: u8, count: u8) -> Script<Vec<u8>> {
+        self.toss_dice_full(player, count, 0)
+    }
+
+    // The player's dice, then the opponent's.
+    pub fn toss_dice_full(&mut self, player: u8, count1: u8, count2: u8) -> Script<Vec<u8>> {
+        if player > 1 {
+            return Ok(Vec::new());
+        }
+        let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
+        self.emplace_process(TossDice {
+            reason_effect,
+            reason_player,
+            playerid: player,
+            count1,
+            count2,
+            ..TossDice::default()
+        });
+        self.yield_script()?;
+        Ok(self.core.dice_results.to_vec())
+    }
+
+    pub fn get_coin_result(&self) -> &[u8] {
+        &self.core.coin_results
+    }
+
+    pub fn get_dice_result(&self) -> &[u8] {
+        &self.core.dice_results
+    }
+
+    pub fn set_coin_result(&mut self, results: &[u8]) {
+        if results.len() != self.core.coin_results.len() {
+            self.reach_unported(concat!(file!(), ":", line!(), " (Duel.SetCoinResult raises a Lua error)"));
+            return;
+        }
+        self.core.coin_results = results.iter().map(|&result| u8::from(result != 0)).collect();
+    }
+
+    pub fn set_dice_result(&mut self, results: &[u8]) {
+        if results.len() != self.core.dice_results.len() {
+            self.reach_unported(concat!(file!(), ":", line!(), " (Duel.SetDiceResult raises a Lua error)"));
+            return;
+        }
+        self.core.dice_results = results.iter().copied().collect();
+    }
+
+    // The declared code. The forms without a filter or with a type are the opcodes [TYPE_MONSTER | TYPE_SPELL |
+    // TYPE_TRAP, OPCODE_ISTYPE] and [type, OPCODE_ISTYPE].
+    pub fn announce_card(&mut self, player: u8, opcodes: &[u64]) -> Script<u32> {
+        let mut stack_size = 0;
+        for &opcode in opcodes {
+            stack_size += match opcode {
+                OPCODE_ADD | OPCODE_SUB | OPCODE_MUL | OPCODE_DIV | OPCODE_AND | OPCODE_OR => -1,
+                OPCODE_BAND | OPCODE_BOR | OPCODE_BXOR | OPCODE_LSHIFT | OPCODE_RSHIFT => -1,
+                OPCODE_NEG | OPCODE_NOT | OPCODE_BNOT | OPCODE_ALLOW_ALIASES | OPCODE_ALLOW_TOKENS => 0,
+                OPCODE_ISCODE | OPCODE_ISSETCARD | OPCODE_ISTYPE | OPCODE_ISRACE | OPCODE_ISATTRIBUTE => 0,
+                _ => 1,
+            };
+            if stack_size <= 0 {
+                break;
+            }
+        }
+        let has_opcodes = opcodes
+            .iter()
+            .any(|&opcode| opcode != OPCODE_ALLOW_ALIASES && opcode != OPCODE_ALLOW_TOKENS);
+        if stack_size != 1 && has_opcodes {
+            self.reach_unported(concat!(file!(), ":", line!(), " (Duel.AnnounceCard raises a Lua error)"));
+        }
+        self.core.select_options = opcodes.iter().copied().collect();
+        if !has_opcodes {
+            self.core
+                .select_options
+                .extend([u64::from(TYPE_MONSTER | TYPE_SPELL | TYPE_TRAP), OPCODE_ISTYPE]);
+        }
+        self.emplace_process(AnnounceCard {
+            playerid: player,
+            ..AnnounceCard::default()
+        });
+        self.yield_script()?;
+        Ok(self.returns.at_i32(0) as u32)
     }
 
     pub fn get_attacker(&self) -> Option<CardId> {

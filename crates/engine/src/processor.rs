@@ -8,7 +8,8 @@ use crate::effect::{Chain, Container, EffectId};
 use crate::field::PerPlayer;
 use crate::operations::{
     ChangePos, Damage, Destroy, DiscardDeck, Draw, Equip, FlipSummon, GetControl, MonsterSet, MoveToField, Recover, Release, RemoveCounter,
-    RemoveOverlay, SelectTribute, SendTo, SpSummon, SpSummonRule, SpSummonStep, SpellSet, SpellSetGroup, SummonRule, XyzOverlay,
+    RemoveOverlay, SelectTribute, SendTo, SpSummon, SpSummonRule, SpSummonStep, SpellSet, SpellSetGroup, SummonRule, TossCoin, TossDice,
+    XyzOverlay,
 };
 use crate::script::Procedure;
 
@@ -84,6 +85,12 @@ pub struct AnnounceRace {
     pub playerid: u8,
     pub count: u8,
     pub available: u64,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct AnnounceCard {
+    pub step: u16,
+    pub playerid: u8,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -232,6 +239,7 @@ pub enum Unit {
     SelectYesNo(SelectYesNo),
     SelectOption(SelectOption),
     AnnounceRace(AnnounceRace),
+    AnnounceCard(AnnounceCard),
     SortCard(SortCard),
     SortDeck(SortDeck),
     SelectCard(SelectCard),
@@ -267,6 +275,8 @@ pub enum Unit {
     DiscardDeck(DiscardDeck),
     Equip(Equip),
     GetControl(GetControl),
+    TossCoin(TossCoin),
+    TossDice(TossDice),
     Damage(Damage),
     Recover(Recover),
     Execute(Execute),
@@ -308,6 +318,7 @@ units!(
     SelectYesNo,
     SelectOption,
     AnnounceRace,
+    AnnounceCard,
     SortCard,
     SortDeck,
     SelectCard,
@@ -343,6 +354,8 @@ units!(
     DiscardDeck,
     Equip,
     GetControl,
+    TossCoin,
+    TossDice,
     Damage,
     Recover,
     Execute,
@@ -381,6 +394,7 @@ impl Duel {
             Unit::SelectYesNo(arg) => self.run_steps(arg, Self::process_select_yes_no, true),
             Unit::SelectOption(arg) => self.run_steps(arg, Self::process_select_option, true),
             Unit::AnnounceRace(arg) => self.run_steps(arg, Self::process_announce_race, true),
+            Unit::AnnounceCard(arg) => self.run_steps(arg, Self::process_announce_card, true),
             Unit::SortCard(arg) => self.run_steps(arg, Self::process_sort_card, true),
             Unit::SortDeck(arg) => self.run_steps(arg, Self::process_sort_deck, false),
             Unit::SelectCard(arg) => self.run_steps(arg, Self::process_select_card, true),
@@ -416,6 +430,8 @@ impl Duel {
             Unit::DiscardDeck(arg) => self.run_steps(arg, Self::process_discard_deck, false),
             Unit::Equip(arg) => self.run_steps(arg, Self::process_equip, false),
             Unit::GetControl(arg) => self.run_steps(arg, Self::process_get_control, false),
+            Unit::TossCoin(arg) => self.run_steps(arg, Self::process_toss_coin, false),
+            Unit::TossDice(arg) => self.run_steps(arg, Self::process_toss_dice, false),
             Unit::Damage(arg) => self.run_steps(arg, Self::process_damage, false),
             Unit::Recover(arg) => self.run_steps(arg, Self::process_recover, false),
             Unit::Execute(arg) => self.run_steps(arg, Self::process_execute, false),

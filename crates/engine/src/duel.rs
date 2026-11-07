@@ -84,6 +84,8 @@ pub struct Duel {
     pub(crate) trace: Trace,
     pub(crate) result: Option<(u8, u8)>,
     pub(crate) library: Option<&'static Library>,
+    // The database the duel's cards were read from, which Duel.CreateToken and Duel.AnnounceCard read at runtime.
+    pub(crate) database: Option<&'static CardDatabase>,
     // The scripts' own state for this duel (s.xxx tables and aux.GlobalCheck), keyed by script and slot.
     pub(crate) script_state: List<(u64, i64), 4>,
     pub(crate) script_groups: Vec<(u64, CardSet)>,
@@ -145,6 +147,7 @@ impl Duel {
             trace: Trace::default(),
             result: None,
             library: None,
+            database: None,
             script_state: List::default(),
             script_groups: Vec::new(),
             fusion_check_additional: None,
@@ -235,7 +238,8 @@ impl Duel {
     }
 
     // pduel->new_card: the card object with its script's initial effects, not yet in any location.
-    fn create_card(&mut self, code: u32, database: &'static CardDatabase) -> Result<CardId, DuelError> {
+    pub(crate) fn create_card(&mut self, code: u32, database: &'static CardDatabase) -> Result<CardId, DuelError> {
+        self.database = Some(database);
         // The core takes an unknown code with blank data; here it is an error, since the data cannot carry the code.
         let data = match code {
             0 => StaticData::default(),

@@ -13,6 +13,7 @@ macro_rules! unported {
 
 pub mod chain;
 mod constant;
+pub mod lua;
 mod official;
 mod proc_equip;
 mod proc_fusion;
@@ -35,10 +36,13 @@ use engine::{Duel, Library};
 pub use official::{CARD_SCRIPTS, CLASSIC_CARDS, CardScript, card, card_script};
 
 pub mod prelude {
-    pub use engine::{Args, CardId, CardSet, ChainLimitFn, CounterFilter, Duel, EffectId, ExtraMaterialCall, FusionCheck, Script, Value};
+    pub use engine::{
+        Args, CardId, CardSet, ChainLimitFn, CounterFilter, Duel, EffectId, ExtraMaterialCall, FusionCheck, MonsterStats, Script, Value,
+    };
 
     pub use crate::chain::{self, DuelChain, EffectChain};
     pub use crate::constant::*;
+    pub use crate::lua;
     pub use crate::proc_equip::{Equip, EquipProcedure};
     pub use crate::proc_fusion::{ContactFusion, DuelFusion, Fusion, FusionMaterial, FusionMix, FusionMixRep, FusionSummonParams};
     pub use crate::proc_gemini::Gemini;

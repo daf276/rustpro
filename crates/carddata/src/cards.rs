@@ -56,7 +56,7 @@ pub enum CardsError {
     Sqlite(#[from] rusqlite::Error),
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct Card {
     pub code: u32,
     pub alias: u32,

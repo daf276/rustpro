@@ -866,6 +866,7 @@ pub trait DuelUtility {
     fn has_flag_effect(&self, tp: u8, id: u32) -> bool;
     fn has_flag_effect_full(&self, tp: u8, id: u32, ct: usize) -> bool;
     fn get_target_cards(&self, e: EffectId) -> Option<CardSet>;
+    fn count_heads(&self, results: &[u8]) -> usize;
 }
 
 impl DuelUtility for Duel {
@@ -892,6 +893,10 @@ impl DuelUtility for Duel {
 
     fn has_flag_effect(&self, tp: u8, id: u32) -> bool {
         self.has_flag_effect_full(tp, id, 1)
+    }
+
+    fn count_heads(&self, results: &[u8]) -> usize {
+        results.iter().filter(|&&result| u32::from(result) == COIN_HEADS).count()
     }
 
     fn has_flag_effect_full(&self, tp: u8, id: u32, ct: usize) -> bool {

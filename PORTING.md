@@ -33,9 +33,9 @@ Per card: `pass`/`FAIL` and how many scenarios diffed clean; each check with its
 (the default test) and over all of them (default 64, `--scenarios K`); the resolved chain links per effect (`#n` is
 `aux.Stringid(code, n)`); and the first failing scenario: either the unported call site reached, or the first
 differing message, with its index in the stream, the last messages both engines wrote alike, then each engine's
-messages from there (`MSG_<type> [bytes]`). Other failing scenarios are listed by index. A code without a file says
-`not ported`. The exit code is 1 on any failure. A scenario depends only on (code, index), so a failure reproduces
-exactly; ports of other cards never change it.
+messages from there (`MSG_<type> [bytes]`; `--context N` shows N of each, default 5). Other failing scenarios are listed
+by index. A code without a file says `not ported`. The exit code is 1 on any failure. A scenario depends only on
+(code, index), so a failure reproduces exactly; ports of other cards never change it.
 
 ## Test metadata
 
@@ -48,11 +48,11 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   script); one comment line naming them.
 - `pub const CHECKS: &[Check]` (`crate::testing::Check`), each needing a count above 0 in both the first 13 and all
   64 scenarios. Without `CHECKS` the card must resolve some effect (`Check::Resolves`). Others:
-  `ResolvesEffect(aux::stringid(ID, n))`, `SpecialSummoned`, `RitualMaterial`, `MaterialFrom(location)`,
-  `CardHint(description)`, `Message(MSG_*)` (from `engine::constants`; the message must be about the card),
-  `TributeSummoned(n)`, `TributeSet(n)`, `Replaced`, and `Report(&check)`, which only writes the count out.
-  Check each effect that needs a specific path; use another check than `Resolves` only for a card that has no
-  effect a scenario can resolve, and say why in one comment line.
+  `ResolvesEffect(aux::stringid(ID, n))`, `SpecialSummoned`, `SpecialSummonedCode(code)` (a token the card creates),
+  `RitualMaterial`, `MaterialFrom(location)`, `CardHint(description)`, `Message(MSG_*)` (from `engine::constants`; the
+  message must be about the card or about no card), `TributeSummoned(n)`, `TributeSet(n)`, `Replaced`, and
+  `Report(&check)`, which only writes the count out. Check each effect that needs a specific path; use another check
+  than `Resolves` only for a card that has no effect a scenario can resolve, and say why in one comment line.
 - If a check fails at 13 but passes at 64, improve `SUPPORT` (place what the effect needs where it can be used).
 
 ## Mirror API
@@ -74,7 +74,11 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   `aux::DelayedOperation`, ...); nil parameters are `Option` consts or the trait's defaults. Values a closure
   captures go into the effect's labels or label object. Functions shared by several codes use const generics.
 - Lua state kept across calls (`s.x = ...`, tables) is per-duel script state (`get_script_state`/
-  `set_script_state`); never a Rust `static`.
+  `set_script_state`); never a Rust `static`. `pairs(t)` over a table keyed by card codes, where the order shows (a
+  filter or message built from it), visits `lua::pairs(codes in insertion order)`.
+- `Duel.IsPlayerCanSpecialSummonMonster(p, code, setcode, type, atk, def, lv, race, att)` is
+  `is_player_can_special_summon_monster(p, code, MonsterStats::new(...))`, with the struct's fields for nil arguments.
+  It takes `&mut Duel` (the core's temp card takes the stats), so a condition calls it through `check_mut`.
 - `s.listed_names` is `pub const LISTED_NAMES: &[u32]`, `mt.fit_monster` is `pub const FIT_MONSTER: &[u32]`.
   `aux.Stringid(id, n)` is `aux::stringid(ID, n)`. A helper another card's file already has is reused through
   `super::c<code>::name`.

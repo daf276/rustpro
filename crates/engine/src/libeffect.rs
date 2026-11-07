@@ -3,8 +3,8 @@ use crate::card::CardId;
 use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{
-    ConditionFn, CostFn, EffectId, ExtraMaterialFn, GroupOperationFn, Label, Operation, OperationFn, SynchroCheckFn, SynchroMaterialFn,
-    Target, TargetFn, Value,
+    ConditionFn, CostFn, EffectId, ExtraMaterialFn, GroupOperationFn, Label, Operation, OperationFn, SpSummonTargetFn, SynchroCheckFn,
+    SynchroMaterialFn, Target, TargetFn, Value,
 };
 
 impl Duel {
@@ -170,6 +170,11 @@ impl EffectId {
     // Effect.SetTarget for the card filter (e, c) of a non-activated effect.
     pub fn set_target_card(self, duel: &mut Duel, target: fn(&Duel, EffectId, CardId) -> bool) {
         duel.effects[self].target = Target::Card(target);
+    }
+
+    // Effect.SetTarget for EFFECT_CANNOT_SPECIAL_SUMMON with a target that reads past (e, c).
+    pub fn set_target_spsummon(self, duel: &mut Duel, target: SpSummonTargetFn) {
+        duel.effects[self].target = Target::SpSummon(target);
     }
 
     // Effect.SetTarget for the check of a hand Synchro material, which proc_synchro calls with its own parameters.

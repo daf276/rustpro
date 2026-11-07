@@ -70,6 +70,9 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   An effect that needs the card in one zone gets a copy there (`(ID, SZONE)`), or more copies of what it reacts to.
   `SZONE` never places a Field Spell (that is the Field Zone); use 0. Placement draws random numbers in list order, so
   reordering `SUPPORT` changes every scenario.
+  `DECK` cards are often drawn into the opening hand: list 2-3 copies of what an effect needs in the Deck.
+  `| OPPONENT` is relative to the owner of the card under test. A card immune while a copy is in the GY never sees
+  removal: put the second copy in the Extra Deck instead.
 - `ResolvesEffect` and `Message` count by code or by any card: a `SUPPORT` copy of the card can satisfy them, and
   `Message(MSG_ATTACK)` counts every attack. Check that the counted path is the card's own. An effect a card grants
   another (an Xyz material's effect) chains as that other card, so check it another way (`MaterialFrom`, `CardHint`).

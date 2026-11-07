@@ -3,7 +3,7 @@
 use crate::card::{CardId, CardSet};
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{Container, EffectId, EffectSet};
+use crate::effect::{Container, EffectId, EffectSet, Value};
 use crate::script::Script;
 
 impl CardId {
@@ -60,6 +60,22 @@ impl CardId {
         duel.card_add_effect(self, effect);
         effect
     }
+
+    // The attribute, race, level, ATK and DEF arguments come with the cards that pass them.
+    pub fn add_monster_attribute(self, duel: &mut Duel, card_type: u32) {
+        duel.cards[self].set_status(STATUS_NO_LEVEL, false);
+        let effect = duel.new_effect(self);
+        let peffect = &mut duel.effects[effect];
+        peffect.effect_type = EFFECT_TYPE_SINGLE;
+        peffect.code = EFFECT_PRE_MONSTER;
+        peffect.flag[0] = EFFECT_FLAG_CANNOT_DISABLE;
+        let resets = RESET_TURN_SET | RESET_TOGRAVE | RESET_REMOVE | RESET_TEMP_REMOVE | RESET_TOHAND | RESET_TODECK | RESET_OVERLAY;
+        peffect.reset_flag = RESET_CHAIN | RESET_EVENT | resets;
+        peffect.value = Value::Int(card_type as i32);
+        duel.card_add_effect(self, effect);
+    }
+
+    pub fn add_monster_attribute_complete(self, _duel: &mut Duel) {}
 
     pub fn is_can_be_special_summoned(
         self,
@@ -663,6 +679,14 @@ impl CardId {
         duel.is_capable_cost_to_deck(self, duel.core.reason_player.get())
     }
 
+    pub fn is_able_to_deck_or_extra_as_cost(self, duel: &Duel) -> bool {
+        if duel.is_extra_deck_monster(self) {
+            self.is_able_to_extra_as_cost(duel)
+        } else {
+            self.is_able_to_deck_as_cost(duel)
+        }
+    }
+
     pub fn is_able_to_extra_as_cost(self, duel: &Duel) -> bool {
         duel.is_capable_cost_to_extra(self, duel.core.reason_player.get())
     }
@@ -681,6 +705,14 @@ impl CardId {
 
     pub fn is_synchro_summonable_full(self, duel: &Duel, must: Option<CardSet>, materials: Option<CardSet>, min: u16, max: u16) -> bool {
         duel.spsummonable_rule(self, TYPE_SYNCHRO, SUMMON_TYPE_SYNCHRO, must, materials, min, max)
+    }
+
+    pub fn is_xyz_summonable(self, duel: &Duel, must: Option<CardSet>, materials: Option<CardSet>) -> bool {
+        self.is_xyz_summonable_full(duel, must, materials, 0, 0)
+    }
+
+    pub fn is_xyz_summonable_full(self, duel: &Duel, must: Option<CardSet>, materials: Option<CardSet>, min: u16, max: u16) -> bool {
+        duel.spsummonable_rule(self, TYPE_XYZ, SUMMON_TYPE_XYZ, must, materials, min, max)
     }
 
     pub fn is_link_summonable(self, duel: &Duel, must: Option<CardSet>, materials: Option<CardSet>) -> bool {

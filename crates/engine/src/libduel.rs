@@ -762,8 +762,20 @@ impl Duel {
     }
 
     pub fn destroy(&mut self, targets: impl Into<CardSet>, reason: u32) -> Script<i32> {
-        let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
-        self.field_destroy(targets.into(), reason_effect, reason, reason_player, PLAYER_NONE, LOCATION_GRAVE, 0);
+        self.destroy_full(targets, reason, u32::from(LOCATION_GRAVE), self.core.reason_player.get())
+    }
+
+    pub fn destroy_full(&mut self, targets: impl Into<CardSet>, reason: u32, destination: u32, reason_player: u8) -> Script<i32> {
+        let reason_effect = self.core.reason_effect.get();
+        self.field_destroy(
+            targets.into(),
+            reason_effect,
+            reason,
+            reason_player,
+            PLAYER_NONE,
+            destination as u8,
+            0,
+        );
         self.yield_script()?;
         Ok(self.returns.at_i32(0))
     }
@@ -1522,9 +1534,13 @@ impl Duel {
     }
 
     pub fn hint_selection(&mut self, targets: impl Into<CardSet>) {
+        self.hint_selection_full(targets, true);
+    }
+
+    pub fn hint_selection_full(&mut self, targets: impl Into<CardSet>, selection: bool) {
         let targets = targets.into();
         let locations: Vec<_> = targets.iter().map(|card| self.cards.get_info_location(card)).collect();
-        let mut message = self.trace.message(MSG_CARD_SELECTED);
+        let mut message = self.trace.message(if selection { MSG_CARD_SELECTED } else { MSG_BECOME_TARGET });
         message.u32(locations.len() as u32);
         for location in locations {
             message.loc(location);
@@ -1751,6 +1767,22 @@ impl Duel {
         max: u16,
     ) -> Script<()> {
         self.spsummon_rule(SUMMON_TYPE_SYNCHRO, player, card, must, materials, min, max)
+    }
+
+    pub fn xyz_summon(&mut self, player: u8, card: CardId, must: Option<CardSet>, materials: Option<CardSet>) -> Script<()> {
+        self.xyz_summon_full(player, card, must, materials, 0, 0)
+    }
+
+    pub fn xyz_summon_full(
+        &mut self,
+        player: u8,
+        card: CardId,
+        must: Option<CardSet>,
+        materials: Option<CardSet>,
+        min: u16,
+        max: u16,
+    ) -> Script<()> {
+        self.spsummon_rule(SUMMON_TYPE_XYZ, player, card, must, materials, min, max)
     }
 
     pub fn link_summon(&mut self, player: u8, card: CardId, must: Option<CardSet>, materials: Option<CardSet>) -> Script<()> {

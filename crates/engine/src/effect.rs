@@ -133,6 +133,8 @@ pub enum Value {
     SpSummonCondition(fn(&Duel, EffectId, Option<EffectId>, u8, u32, u8, u8) -> bool),
     // value(e, c, sc): EFFECT_SYNCHRO_MAT_FROM_HAND.
     MaterialFor(fn(&Duel, EffectId, CardId, CardId) -> bool),
+    // value(e, c, rc): EFFECT_XYZ_LEVEL.
+    XyzLevel(fn(&Duel, EffectId, CardId, CardId) -> i32),
     // value(e, re, r, rp): EFFECT_DESTROY_SUBSTITUTE.
     Reason(fn(&Duel, EffectId, Option<EffectId>, u32, u8) -> bool),
     // value(e, re), called for what it does when the card is activated: EFFECT_TRAP_ACT_IN_SET_TURN.
@@ -1215,6 +1217,7 @@ impl Duel {
             | Value::Material(_)
             | Value::SpSummonCondition(_)
             | Value::MaterialFor(_)
+            | Value::XyzLevel(_)
             | Value::Reason(_)
             | Value::HandSynchro(_)
             | Value::ExtraMaterial(_) => {

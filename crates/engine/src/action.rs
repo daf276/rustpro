@@ -34,6 +34,8 @@ pub enum Prompt {
     AnnounceAttribute { player: u8, count: u8, available: u32 },
     // MSG_SORT_CARD: one Card per answer, the next card of the new order, until all `count` are ordered.
     Sort { player: u8, count: u8 },
+    // A card code passing the filter of MSG_ANNOUNCE_CARD.
+    AnnounceCard { player: u8 },
 }
 
 // Kinds in the order of their response codes (playerop.cpp); indices point into the prompt's lists.
@@ -78,6 +80,7 @@ pub enum Action {
     Race(u8),
     // An attribute by its bit index.
     Attribute(u8),
+    Code(u32),
 }
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -215,6 +218,7 @@ impl Duel {
                 player: arg.playerid,
                 count: self.core.select_cards.len() as u8,
             }),
+            Unit::AnnounceCard(arg) if arg.step > 0 => Some(Prompt::AnnounceCard { player: arg.playerid }),
             _ => None,
         }
     }
@@ -316,6 +320,14 @@ impl Duel {
                 let open = available & !self.returns.at_u32(0);
                 actions.extend((0..32).filter(|bit| open & 1 << bit != 0).map(Action::Attribute));
             }
+            Prompt::AnnounceCard { .. } => {
+                let cards = self.database.into_iter().flat_map(|database| database.cards());
+                actions.extend(
+                    cards
+                        .filter(|card| self.is_declarable(card.code))
+                        .map(|card| Action::Code(card.code)),
+                );
+            }
         }
     }
 
@@ -368,6 +380,7 @@ impl Duel {
             (Prompt::AnnounceAttribute { available, .. }, Action::Attribute(bit)) => {
                 bit < 32 && (available & !self.returns.at_u32(0)) & (1 << bit) != 0
             }
+            (Prompt::AnnounceCard { .. }, Action::Code(code)) => self.is_declarable(code),
             _ => false,
         }
     }
@@ -509,6 +522,7 @@ impl Duel {
                 }
             }
             Action::Position(position) => self.respond(i32::from(position)),
+            Action::Code(code) => self.respond(code as i32),
             Action::Race(bit) => {
                 let Prompt::AnnounceRace { count, .. } = prompt else {
                     return Err(ActionError::Illegal(action));
@@ -609,6 +623,7 @@ impl Duel {
                 let attributes = buffer.at_u32(0);
                 (0..32).filter(|bit| attributes & 1 << bit != 0).map(Action::Attribute).collect()
             }
+            Prompt::AnnounceCard { .. } => vec![Action::Code(value as u32)],
         })
     }
 }

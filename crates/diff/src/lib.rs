@@ -377,6 +377,8 @@ pub struct Vendor {
     pub deck: Option<Deck>,
     // The cards a scenario places at random besides the card under test and its support.
     pub scenario_others: Vec<u32>,
+    // Messages shown before and from a divergence.
+    pub context: usize,
 }
 
 impl Vendor {
@@ -399,6 +401,7 @@ impl Vendor {
             effect_cards: Vec::new(),
             deck: None,
             scenario_others: Vec::new(),
+            context: CONTEXT,
         })
     }
 
@@ -501,12 +504,13 @@ fn play(vendor: &'static Vendor, seed: u64, card: Option<u32>) -> Result<Report,
         let mut actual = frames(&trace);
         sort_hint_removals(&mut actual);
         let mismatch = |compared: &[Vec<u8>], from: usize| {
+            let context = vendor.context;
             DiffError::Mismatch(Box::new(Mismatch {
                 seed,
                 index: compared.len(),
-                preceding: compared.iter().skip(compared.len().saturating_sub(CONTEXT)).cloned().collect(),
-                oracle: expected.iter().skip(from).take(CONTEXT).cloned().collect(),
-                engine: actual.iter().skip(from).take(CONTEXT).map(|message| message.to_vec()).collect(),
+                preceding: compared.iter().skip(compared.len().saturating_sub(context)).cloned().collect(),
+                oracle: expected.iter().skip(from).take(context).cloned().collect(),
+                engine: actual.iter().skip(from).take(context).map(|message| message.to_vec()).collect(),
             }))
         };
         for (index, message) in expected.iter().enumerate() {
@@ -597,6 +601,7 @@ pub fn check_count(check: Check, card: u32, tally: &Tally) -> u32 {
         Check::Resolves => tally.resolutions(card),
         Check::ResolvesEffect(description) => get(&tally.effects, (card, description)),
         Check::SpecialSummoned => get(&tally.special_summons, card),
+        Check::SpecialSummonedCode(code) => get(&tally.special_summons, code),
         Check::RitualMaterial => get(&tally.ritual_materials, card),
         Check::MaterialFrom(location) => get(&tally.materials, (card, location as u8)),
         Check::CardHint(description) => get(&tally.card_hints, (description, card)),

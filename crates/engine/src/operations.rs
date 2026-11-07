@@ -1,5 +1,5 @@
 // Ports of operations.cpp.
-use crate::card::{CardId, CardSet, SendtoParam};
+use crate::card::{CardId, CardSet, LocInfo, SendtoParam};
 use crate::chain::ExecuteKind;
 use crate::constants::*;
 use crate::duel::Duel;
@@ -1481,7 +1481,35 @@ impl Duel {
                     unported!(self, self.is_affected_by_effect(card, EFFECT_TO_GRAVE_REDIRECT_CB));
                 }
                 self.enable_field_effect(card, false);
-                // Tokens, which only card effects create, leave play here without moving (phase 2).
+                if self.cards[card].data.card_type & TYPE_TOKEN != 0 {
+                    let (code, from) = (self.cards[card].data.code, self.cards.get_info_location(card));
+                    let reason = self.cards[card].current.reason;
+                    self.trace.message(MSG_MOVE).u32(code).loc(from).loc(LocInfo::default()).u32(reason);
+                    if !self.core.current_chain.is_empty() {
+                        self.core.just_sent_cards.insert(card);
+                    }
+                    let field_id = self.next_field_id();
+                    let token = &mut self.cards[card];
+                    let current = token.current;
+                    token.previous.controler = current.controler;
+                    token.previous.location = current.location;
+                    token.previous.sequence = current.sequence;
+                    token.previous.position = current.position;
+                    token.previous.pzone = current.pzone;
+                    token.current.reason &= !REASON_TEMPORARY;
+                    token.fieldid = field_id;
+                    token.fieldid_r = field_id;
+                    self.reset(card, RESET_LEAVE, RESET_EVENT);
+                    self.clear_relate_effect(card);
+                    self.remove_card(card);
+                    if let Some(param) = &mut arg.extra_args {
+                        param.leave_field.insert(card);
+                        param.cvit += 1;
+                    }
+                    arg.step = 4;
+                    self.cards[card].set_status(STATUS_LEAVE_CONFIRMED, false);
+                    return false;
+                }
                 self.returns.set_i32(0, 0);
                 false
             }
@@ -2141,7 +2169,15 @@ impl Duel {
                     self.core.operated_set.clear();
                     return true;
                 }
-                // set_spsummon_counter and the once-per-turn summons come with the cards that limit special summons.
+                // The once-per-turn summons come with the cards that limit special summons.
+                let turn_player = self.infos.turn_player;
+                let by_turn_player = |duel: &Self, card: CardId| duel.cards[card].summon.player == turn_player;
+                if arg.targets.iter().any(|card| by_turn_player(self, card)) {
+                    self.set_spsummon_counter(turn_player);
+                }
+                if arg.targets.iter().any(|card| !by_turn_player(self, card)) {
+                    self.set_spsummon_counter(1 - turn_player);
+                }
                 for card in arg.targets {
                     self.cards[card].set_status(STATUS_SPSUMMON_STEP, false);
                     self.cards[card].set_status(STATUS_SPSUMMON_TURN, true);
@@ -3967,7 +4003,7 @@ impl Duel {
                 false
             }
             17 => {
-                self.core.spsummon_state_count[sumplayer] += 1;
+                self.set_spsummon_counter(sumplayer);
                 self.raise_single_event(target, EVENT_SPSUMMON_SUCCESS, Some(proc), 0, sumplayer, sumplayer, 0);
                 self.process_single_event();
                 self.field_raise_event(Some(target.into()), EVENT_SPSUMMON_SUCCESS, Some(proc), 0, sumplayer, sumplayer, 0);
@@ -4137,7 +4173,7 @@ impl Duel {
             28 => {
                 let group = arg.proc_g.cards;
                 self.trace.message(MSG_SPSUMMONED);
-                self.core.spsummon_state_count[sumplayer] += 1;
+                self.set_spsummon_counter(sumplayer);
                 for card in group {
                     let current = self.cards[card].current;
                     let summon_player = self.cards[card].summon.player;
@@ -4738,5 +4774,91 @@ impl Duel {
             }
             _ => true,
         }
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct TossCoin {
+    pub step: u16,
+    pub reason_effect: Option<EffectId>,
+    pub reason_player: u8,
+    pub playerid: u8,
+    pub count: u8,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct TossDice {
+    pub step: u16,
+    pub reason_effect: Option<EffectId>,
+    pub reason_player: u8,
+    pub playerid: u8,
+    pub count1: u8,
+    pub count2: u8,
+}
+
+// The tosses' EFFECT_*_REPLACE and EFFECT_*_CHOOSE paths (step 3 rewrites the chosen results) come with the cards that
+// register them.
+impl Duel {
+    pub(crate) fn process_toss_coin(&mut self, arg: &mut TossCoin) -> bool {
+        let (reason_effect, reason_player, playerid, count) = (arg.reason_effect, arg.reason_player, arg.playerid, arg.count);
+        if arg.step == 0 {
+            self.core.coin_results.clear();
+            for code in [EFFECT_TOSS_COIN_REPLACE, EFFECT_TOSS_COIN_CHOOSE] {
+                unported!(self, self.field_effect_range(Container::Continuous, code));
+            }
+            {
+                let mut message = self.trace.message(MSG_TOSS_COIN);
+                message.u8(playerid).u8(count);
+                for _ in 0..count {
+                    let coin = self.random.get_next_integer(0, 1) as u8;
+                    self.core.coin_results.push(coin);
+                    message.u8(coin);
+                }
+            }
+            self.field_raise_event(
+                None,
+                EVENT_TOSS_COIN_NEGATE,
+                reason_effect,
+                0,
+                reason_player,
+                playerid,
+                u32::from(count),
+            );
+            self.process_instant_event();
+            return false;
+        }
+        let heads = self.core.coin_results.iter().filter(|&&coin| u32::from(coin) == COIN_HEADS).count() as u32;
+        let tails = u32::from(count) - heads;
+        let value = tails << 16 | heads << 8 | u32::from(count);
+        self.field_raise_event(None, EVENT_TOSS_COIN, reason_effect, 0, reason_player, playerid, value);
+        self.process_instant_event();
+        true
+    }
+
+    pub(crate) fn process_toss_dice(&mut self, arg: &mut TossDice) -> bool {
+        let (reason_effect, reason_player, playerid) = (arg.reason_effect, arg.reason_player, arg.playerid);
+        let value = u32::from(arg.count1) + (u32::from(arg.count2) << 16);
+        if arg.step == 0 {
+            self.core.dice_results.clear();
+            for code in [EFFECT_TOSS_DICE_REPLACE, EFFECT_TOSS_DICE_CHOOSE] {
+                unported!(self, self.field_effect_range(Container::Continuous, code));
+            }
+            let second = (arg.count2 > 0).then_some((1 - playerid, arg.count2));
+            for (player, count) in [(playerid, arg.count1)].into_iter().chain(second) {
+                let mut message = self.trace.message(MSG_TOSS_DICE);
+                message.u8(player).u8(count);
+                for _ in 0..count {
+                    let dice = self.random.get_next_integer(1, 6) as u8;
+                    self.core.dice_results.push(dice);
+                    message.u8(dice);
+                }
+            }
+            self.field_raise_event(None, EVENT_TOSS_DICE_NEGATE, reason_effect, 0, reason_player, playerid, value);
+            self.process_instant_event();
+            return false;
+        }
+        self.field_raise_event(None, EVENT_TOSS_DICE, reason_effect, 0, reason_player, playerid, value);
+        self.process_instant_event();
+        true
     }
 }

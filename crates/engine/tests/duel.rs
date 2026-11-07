@@ -4,7 +4,7 @@ use std::sync::LazyLock;
 
 use carddata::{Card, CardDatabase, Deck, TYPE_MONSTER, TYPE_NORMAL, TYPE_SPELL, TYPE_TRAP};
 use engine::constants::{
-    EFFECT_FLAG_SINGLE_RANGE, EFFECT_TYPE_CONTINUOUS, EFFECT_TYPE_FIELD, EFFECT_TYPE_SINGLE, EFFECT_UPDATE_DEFENSE, EVENT_DRAW,
+    EFFECT_CHANGE_BATTLE_STAT, EFFECT_FLAG_SINGLE_RANGE, EFFECT_TYPE_CONTINUOUS, EFFECT_TYPE_FIELD, EFFECT_TYPE_SINGLE, EVENT_DRAW,
     LOCATION_MZONE,
 };
 use engine::{
@@ -146,14 +146,14 @@ fn should_finish_identically_when_cloned_at_a_prompt() {
     }
 }
 
-// Every card gains DEF from an effect code no ported card registers, which get_defense does not apply yet.
-fn unported_defense_boost(_: u32) -> Option<InitialEffect> {
+// Every card gets EFFECT_CHANGE_BATTLE_STAT, which damage calculation does not apply yet.
+fn unported_battle_stat(_: u32) -> Option<InitialEffect> {
     Some(|duel: &mut Duel, card: CardId| {
         let effect = duel.create_effect(card);
         effect.set_type(duel, EFFECT_TYPE_SINGLE.into());
         effect.set_property(duel, EFFECT_FLAG_SINGLE_RANGE);
         effect.set_range(duel, LOCATION_MZONE.into());
-        effect.set_code(duel, EFFECT_UPDATE_DEFENSE);
+        effect.set_code(duel, EFFECT_CHANGE_BATTLE_STAT);
         effect.set_value(duel, 500);
         card.register_effect(duel, effect);
     })
@@ -164,12 +164,12 @@ fn unported_defense_boost(_: u32) -> Option<InitialEffect> {
 fn should_mark_the_duel_when_an_effect_reaches_an_unported_call_site() {
     static LIBRARY: Library = Library {
         load: |_| {},
-        card_script: unported_defense_boost,
+        card_script: unported_battle_stat,
     };
     let mut duel = started_duel(&CODES.collect::<Vec<_>>(), &LIBRARY).unwrap();
     assert_eq!(duel.unported_site(), None);
     play(&mut duel, 0..DECISIONS).unwrap();
-    assert!(duel.unported_site().is_some_and(|site| site.contains("card.rs")));
+    assert!(duel.unported_site().is_some_and(|site| site.contains("processor.rs")));
 }
 
 // A global effect declared promptless whose operation asks a question on every draw.

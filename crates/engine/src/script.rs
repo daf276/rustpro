@@ -261,6 +261,7 @@ impl Duel {
             trace: _,
             result,
             library,
+            database,
             script_state,
             script_groups,
             fusion_check_additional,
@@ -290,6 +291,7 @@ impl Duel {
         self.random.clone_from(random);
         self.result.clone_from(result);
         self.library.clone_from(library);
+        self.database.clone_from(database);
         self.script_state.clone_from(script_state);
         self.script_groups.clone_from(script_groups);
         self.fusion_check_additional = *fusion_check_additional;

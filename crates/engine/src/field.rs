@@ -167,6 +167,9 @@ pub struct Processor {
     pub select_cards: Cards16,
     pub unselect_cards: Cards16,
     pub select_options: List<u64, 4>,
+    // The last toss's results: coins 1 for heads, dice 1 to 6.
+    pub coin_results: List<u8, 5>,
+    pub dice_results: List<u8, 2>,
     pub select_effects: List<EffectId, 4>,
     // The group a summon procedure of EFFECT_SPSUMMON_PROC_G fills (SpSummonRule's cards_to_summon_g).
     pub cards_to_summon_g: CardSet,
@@ -307,6 +310,8 @@ clone_by_field!(Processor {
     select_cards,
     unselect_cards,
     select_options,
+    coin_results,
+    dice_results,
     select_effects,
     cards_to_summon_g,
     custom_counters,
@@ -436,6 +441,8 @@ impl Processor {
             select_cards: Default::default(),
             unselect_cards: Default::default(),
             select_options: Default::default(),
+            coin_results: Default::default(),
+            dice_results: Default::default(),
             select_effects: Default::default(),
             cards_to_summon_g: CardSet::default(),
             custom_counters: Default::default(),
@@ -2361,11 +2368,11 @@ impl Duel {
     // the once-per-turn summons come with the cards and libraries that use them.
     pub(crate) fn is_player_can_spsummon(
         &self,
-        _effect: Option<EffectId>,
+        effect: Option<EffectId>,
         sumtype: u32,
         sumpos: u8,
         playerid: u8,
-        _toplayer: u8,
+        toplayer: u8,
         card: CardId,
     ) -> bool {
         let target = &self.cards[card];
@@ -2382,11 +2389,37 @@ impl Duel {
         if sumpos == 0 || !self.check_cost_condition(card, EFFECT_SPSUMMON_COST, playerid) {
             return false;
         }
-        let _ = sumtype;
-        if !self.is_player_can(playerid, EFFECT_CANNOT_SPECIAL_SUMMON, card) {
+        if u32::from(sumpos) & POS_FACEDOWN != 0 && self.is_player_affected_by_effect(playerid, EFFECT_DEVINE_LIGHT).is_some() {
+            sumpos = (sumpos & POS_FACEUP as u8) | ((sumpos & POS_FACEDOWN as u8) >> 1);
+        }
+        let sumtype = sumtype | SUMMON_TYPE_SPECIAL;
+        let forbidden = self
+            .filter_player_effect(playerid, EFFECT_CANNOT_SPECIAL_SUMMON, true)
+            .into_iter()
+            .any(|limit| match self.effects[limit].target {
+                Target::Card(target) => target(self, limit, card),
+                Target::SpSummon(target) => target(self, limit, card, playerid, sumtype, sumpos, toplayer, effect),
+                _ => true,
+            });
+        if forbidden {
             return false;
         }
         unported!(self, self.filter_player_effect(playerid, EFFECT_FORCE_SPSUMMON_POSITION, true));
+        unported!(self, self.field_effects.spsummon_count_eff.iter().copied());
+        true
+    }
+
+    // field::set_spsummon_counter without DUEL_CANNOT_SUMMON_OATH_OLD; the counters of EFFECT_SPSUMMON_COUNT_LIMIT come
+    // with the cards that register it.
+    pub(crate) fn set_spsummon_counter(&mut self, playerid: u8) {
+        self.core.spsummon_state_count[playerid] += 1;
+        unported!(self, self.field_effects.spsummon_count_eff.iter().copied());
+    }
+
+    // EFFECT_LEFT_SPSUMMON_COUNT values and the counters of EFFECT_SPSUMMON_COUNT_LIMIT (check_spsummon_counter) come
+    // with the cards that register them.
+    pub(crate) fn is_player_can_spsummon_count(&self, playerid: u8, _count: u32) -> bool {
+        unported!(self, self.filter_player_effect(playerid, EFFECT_LEFT_SPSUMMON_COUNT, true));
         unported!(self, self.field_effects.spsummon_count_eff.iter().copied());
         true
     }

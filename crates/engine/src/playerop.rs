@@ -5,8 +5,8 @@ use crate::constants::*;
 use crate::duel::Duel;
 use crate::list::List;
 use crate::processor::{
-    AnnounceAttribute, AnnounceRace, SelectBattleCmd, SelectCard, SelectChain, SelectEffectYesNo, SelectIdleCmd, SelectOption, SelectPlace,
-    SelectPosition, SelectSum, SelectTributeP, SelectUnselectCard, SelectYesNo, SortCard,
+    AnnounceAttribute, AnnounceCard, AnnounceRace, SelectBattleCmd, SelectCard, SelectChain, SelectEffectYesNo, SelectIdleCmd,
+    SelectOption, SelectPlace, SelectPosition, SelectSum, SelectTributeP, SelectUnselectCard, SelectYesNo, SortCard,
 };
 
 impl Duel {
@@ -274,6 +274,30 @@ impl Duel {
             .u8(arg.playerid)
             .u64(u64::from(selected));
         true
+    }
+
+    // The options are the opcodes of the filter the declared code must pass.
+    pub(crate) fn process_announce_card(&mut self, arg: &mut AnnounceCard) -> bool {
+        if arg.step == 0 {
+            let mut message = self.trace.message(MSG_ANNOUNCE_CARD);
+            message.u8(arg.playerid).u8(self.core.select_options.len() as u8);
+            for &option in &self.core.select_options {
+                message.u64(option);
+            }
+            return false;
+        }
+        let code = self.returns.at_i32(0);
+        if !self.is_declarable(code as u32) {
+            self.trace.message(MSG_RETRY);
+            return false;
+        }
+        self.trace.message(MSG_HINT).u8(HINT_CODE).u8(arg.playerid).u64(code as u64);
+        true
+    }
+
+    pub(crate) fn is_declarable(&self, code: u32) -> bool {
+        let card = self.database.and_then(|database| database.get(code));
+        card.is_some_and(|card| card.is_declarable(&self.core.select_options))
     }
 
     // The answer is the new position of each card, one byte per card.

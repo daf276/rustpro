@@ -1039,6 +1039,7 @@ pub trait DuelUtility {
     fn announce_another_attribute(&mut self, g: CardSet, tp: u8) -> Script<u32>;
     fn move_to_deck_bottom_count(&mut self, count: usize, tp: u8) -> Script<()>;
     fn place_field_spell(&mut self, c: CardId, tp: u8) -> Script<bool>;
+    fn count_heads(&self, results: &[u8]) -> usize;
 }
 
 impl DuelUtility for Duel {
@@ -1065,6 +1066,10 @@ impl DuelUtility for Duel {
 
     fn has_flag_effect(&self, tp: u8, id: u32) -> bool {
         self.has_flag_effect_full(tp, id, 1)
+    }
+
+    fn count_heads(&self, results: &[u8]) -> usize {
+        results.iter().filter(|&&result| u32::from(result) == COIN_HEADS).count()
     }
 
     fn has_flag_effect_full(&self, tp: u8, id: u32, ct: usize) -> bool {

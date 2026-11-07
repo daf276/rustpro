@@ -246,6 +246,45 @@ pub mod aux {
         c.register_effect(duel, eff);
     }
 
+    pub fn add_er_equip_limit(duel: &mut Duel, c: CardId, con: Option<engine::ConditionFn>, linkedeff: EffectId) {
+        add_er_equip_limit_full(duel, c, con, linkedeff, None, None, None);
+    }
+
+    // The equipval and equipop of aux.AddEREquipLimit are left out: only c78063197, which is not ported, reads them.
+    pub fn add_er_equip_limit_full(
+        duel: &mut Duel,
+        c: CardId,
+        con: Option<engine::ConditionFn>,
+        linkedeff: EffectId,
+        prop: Option<u32>,
+        resetflag: Option<u32>,
+        resetcount: Option<u16>,
+    ) {
+        let finalprop = EFFECT_FLAG_CANNOT_DISABLE | prop.unwrap_or(0);
+        let reset = |duel: &mut Duel, effect: EffectId| match (resetflag, resetcount) {
+            (Some(resetflag), Some(resetcount)) => effect.set_reset_full(duel, resetflag, resetcount),
+            (Some(resetflag), None) => effect.set_reset(duel, resetflag),
+            _ => {}
+        };
+        let e1 = duel.create_effect(c);
+        if let Some(con) = con {
+            e1.set_condition(duel, con);
+        }
+        e1.set_type(duel, EFFECT_TYPE_SINGLE);
+        e1.set_property_full(duel, finalprop, EFFECT_FLAG2_MAJESTIC_MUST_COPY);
+        e1.set_code(duel, 89785779);
+        e1.set_label_object(duel, Some(linkedeff));
+        reset(duel, e1);
+        c.register_effect(duel, e1);
+        let e2 = duel.create_effect(c);
+        e2.set_type(duel, EFFECT_TYPE_SINGLE);
+        e2.set_property_full(duel, finalprop & !EFFECT_FLAG_CANNOT_DISABLE, EFFECT_FLAG2_MAJESTIC_MUST_COPY);
+        e2.set_code(duel, 89785779 + EFFECT_EQUIP_LIMIT);
+        reset(duel, e2);
+        c.register_effect(duel, e2);
+        linkedeff.set_label_object(duel, Some(e2));
+    }
+
     pub fn add_lizard_check(duel: &mut Duel, c: CardId) -> EffectId {
         let e1 = duel.create_effect(c);
         e1.set_type(duel, EFFECT_TYPE_SINGLE);
@@ -545,6 +584,15 @@ pub mod aux {
 pub struct Cost;
 
 impl Cost {
+    pub fn self_reveal(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        let c = args.e.get_handler(duel);
+        if chk == 0 {
+            return Ok(!c.is_public(duel));
+        }
+        duel.confirm_cards(1 - args.tp, c)?;
+        Ok(false)
+    }
+
     pub fn self_discard(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         let c = args.e.get_handler(duel);
         if chk == 0 {
@@ -743,6 +791,7 @@ pub trait CardUtility: Copy {
     fn is_monster(self, duel: &Duel) -> bool;
     fn is_spell(self, duel: &Duel) -> bool;
     fn is_trap(self, duel: &Duel) -> bool;
+    fn is_equip_card(self, duel: &Duel) -> bool;
     fn is_spell_trap(self, duel: &Duel) -> bool;
     fn is_monster_card(self, duel: &Duel) -> bool;
     fn is_owner(self, duel: &Duel, player: u8) -> bool;
@@ -753,6 +802,7 @@ pub trait CardUtility: Copy {
     fn is_continuous_trap(self, duel: &Duel) -> bool;
     fn is_quick_play_spell(self, duel: &Duel) -> bool;
     fn is_synchro_monster(self, duel: &Duel) -> bool;
+    fn is_effect_monster(self, duel: &Duel) -> bool;
     fn is_non_effect_monster(self, duel: &Duel) -> bool;
     fn is_in_main_mzone(self, duel: &Duel, tp: Option<u8>) -> bool;
     fn is_sequence(self, duel: &Duel, sequence: u32) -> bool;
@@ -763,6 +813,7 @@ pub trait CardUtility: Copy {
     fn is_negatable_spell_trap(self, duel: &Duel) -> bool;
     fn is_negatable(self, duel: &Duel) -> bool;
     fn add_must_be_special_summoned(self, duel: &mut Duel) -> EffectId;
+    fn add_must_be_fusion_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_first_be_fusion_summoned(self, duel: &mut Duel) -> EffectId;
 
     fn negate_effects(self, duel: &mut Duel, c: CardId, reset: u32, negates_cards: bool);
@@ -779,6 +830,15 @@ pub trait CardUtility: Copy {
     fn is_race_except(self, duel: &Duel, race: u64) -> bool;
     fn update_level(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>) -> i32;
     fn update_attack(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>, reset_count: Option<u16>) -> i32;
+    fn equip_by_effect_and_limit_register(
+        self,
+        duel: &mut Duel,
+        e: EffectId,
+        tp: u8,
+        tc: CardId,
+        code: Option<u32>,
+        mustbefaceup: Option<bool>,
+    ) -> Script<bool>;
 }
 
 impl CardUtility for CardId {
@@ -865,6 +925,35 @@ impl CardUtility for CardId {
         c.get_attack(duel) - atk
     }
 
+    // Card.EquipByEffectAndLimitRegister; `up` is nil in Lua unless mustbefaceup is given, and Duel.Equip defaults nil to true.
+    fn equip_by_effect_and_limit_register(
+        self,
+        duel: &mut Duel,
+        e: EffectId,
+        tp: u8,
+        tc: CardId,
+        code: Option<u32>,
+        mustbefaceup: Option<bool>,
+    ) -> Script<bool> {
+        let c = self;
+        if !duel.equip_full(tp, tc, c, mustbefaceup.unwrap_or(true), false)? {
+            return Ok(false);
+        }
+        if let Some(code) = code {
+            tc.register_flag_effect(duel, code, RESET_EVENT + RESETS_STANDARD, 0, 0);
+        }
+        let te = e.get_label_object(duel);
+        let e1 = duel.create_effect(c);
+        e1.set_type(duel, EFFECT_TYPE_SINGLE);
+        e1.set_property(duel, EFFECT_FLAG_OWNER_RELATE);
+        e1.set_code(duel, EFFECT_EQUIP_LIMIT);
+        e1.set_reset(duel, RESET_EVENT + RESETS_STANDARD);
+        e1.set_value(duel, Value::Card(|duel, e, c| equip_by_effect_limit(duel, e, c).into()));
+        e1.set_label_object(duel, te);
+        tc.register_effect(duel, e1);
+        Ok(true)
+    }
+
     fn is_monster(self, duel: &Duel) -> bool {
         self.is_type(duel, TYPE_MONSTER)
     }
@@ -875,6 +964,10 @@ impl CardUtility for CardId {
 
     fn is_trap(self, duel: &Duel) -> bool {
         self.is_type(duel, TYPE_TRAP)
+    }
+
+    fn is_equip_card(self, duel: &Duel) -> bool {
+        self.is_type(duel, TYPE_EQUIP)
     }
 
     fn is_spell_trap(self, duel: &Duel) -> bool {
@@ -915,6 +1008,10 @@ impl CardUtility for CardId {
 
     fn is_synchro_monster(self, duel: &Duel) -> bool {
         self.is_composite_type(duel, TYPE_MONSTER | TYPE_SYNCHRO)
+    }
+
+    fn is_effect_monster(self, duel: &Duel) -> bool {
+        self.is_monster(duel) && self.is_type(duel, TYPE_EFFECT)
     }
 
     fn is_non_effect_monster(self, duel: &Duel) -> bool {
@@ -984,6 +1081,19 @@ impl CardUtility for CardId {
             Value::SpSummonCondition(|duel, e, _, _, sum_type, _, _| {
                 !e.get_handler(duel).is_location(duel, LOCATION_EXTRA) || sum_type & SUMMON_TYPE_FUSION == SUMMON_TYPE_FUSION
             }),
+        );
+        self.register_effect(duel, e0);
+        e0
+    }
+
+    fn add_must_be_fusion_summoned(self, duel: &mut Duel) -> EffectId {
+        let e0 = duel.create_effect(self);
+        e0.set_type(duel, EFFECT_TYPE_SINGLE);
+        e0.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
+        e0.set_code(duel, EFFECT_SPSUMMON_CONDITION);
+        e0.set_value(
+            duel,
+            Value::SpSummonCondition(|_, _, _, _, sum_type, _, _| sum_type & SUMMON_TYPE_FUSION == SUMMON_TYPE_FUSION),
         );
         self.register_effect(duel, e0);
         e0
@@ -1141,4 +1251,12 @@ impl DuelUtility for Duel {
         let attribute = g.get_bitwise_or(self, |c, duel| u64::from(c.get_attribute(duel))) as u32;
         announce_another_attribute(self, attribute, tp)
     }
+}
+
+// Card.EquipByEffectLimit.
+fn equip_by_effect_limit(duel: &Duel, e: EffectId, c: CardId) -> bool {
+    e.get_owner(duel) == c
+        && c.get_card_effect(duel, 89785779 + EFFECT_EQUIP_LIMIT)
+            .into_iter()
+            .any(|te| Some(te) == e.get_label_object(duel))
 }

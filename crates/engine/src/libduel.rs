@@ -9,7 +9,9 @@ use crate::card::{CardId, CardSet, StaticData};
 use crate::chain::ExecuteKind;
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{ChainLimit, ChainLimitFn, Container, CounterFilter, CustomCounter, EffectId, EffectSet, Event, OpTarget, Value};
+use crate::effect::{
+    ChainLimit, ChainLimitFn, Container, CounterFilter, CustomCounter, EffectId, EffectSet, Event, OpTarget, OperationFn, Value,
+};
 
 use crate::field::FromEx;
 use crate::operations::{PayLpCost, TossCoin, TossDice};
@@ -85,6 +87,35 @@ impl FromChainInfo for Option<CardSet> {
         match info {
             ChainInfo::Cards(cards) => cards,
             _ => None,
+        }
+    }
+}
+
+// The arguments Duel.CheckReleaseGroup and Duel.SelectReleaseGroup take in their long form after the counts.
+#[derive(Debug, Clone, Copy)]
+pub struct ReleaseOptions {
+    pub use_hand: bool,
+    pub check_field: bool,
+    pub to_check: Option<CardId>,
+    pub toplayer: u8,
+    pub zone: u32,
+    pub use_oppo: bool,
+    pub exception: Option<CardId>,
+    pub exception_group: Option<CardSet>,
+}
+
+impl ReleaseOptions {
+    // Where Lua leaves the arguments out: the player's own zones, no field check.
+    pub fn new(player: u8) -> Self {
+        Self {
+            use_hand: false,
+            check_field: false,
+            to_check: None,
+            toplayer: player,
+            zone: 0xff,
+            use_oppo: false,
+            exception: None,
+            exception_group: None,
         }
     }
 }
@@ -185,7 +216,7 @@ impl Duel {
             (EVENT_SPSUMMON, EVENT_SPSUMMON_NEGATED),
         ]
         .into_iter()
-        .find(|&(event, _)| self.check_event(event).is_some())
+        .find(|&(event, _)| self.field_check_event(event).is_some())
         .map_or(0, |(_, negated)| negated);
         let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
         self.field_raise_event(Some(targets), event_code, reason_effect, REASON_EFFECT, reason_player, sumplayer, 0);
@@ -236,6 +267,114 @@ impl Duel {
         });
         self.yield_script()?;
         Ok(self.returns.at_i32(0) != 0)
+    }
+
+    // Duel.GetReleaseGroup, which proc_workaround.lua replaces.
+    pub fn get_release_group_core(&self, player: u8, hand: bool, oppo: bool, reason: u32) -> CardSet {
+        let mut group = CardSet::default();
+        if player <= 1 {
+            self.get_release_list(player, &mut group, hand, None, None, None, oppo, reason);
+        }
+        group
+    }
+
+    // Duel.CheckReleaseGroup in its long form (the core ignores max).
+    pub fn check_release_group_full(&self, player: u8, f: impl Fn(CardId, &Duel) -> bool, min: usize, options: ReleaseOptions) -> bool {
+        if player > 1 {
+            return false;
+        }
+        let result = self.check_release_list(player, min, &f, &options, REASON_EFFECT);
+        self.core.must_select_cards.set(CardSet::default());
+        result
+    }
+
+    // Duel.SelectReleaseGroup in its long form; the empty group stands for nil, which a canceled selection returns. The
+    // Extra Deck and opponent's monsters that EFFECT_EXTRA_RELEASE* allow come with the cards that register them.
+    pub fn select_release_group_full(
+        &mut self,
+        player: u8,
+        f: impl Fn(CardId, &Duel) -> bool,
+        (min, max): (u8, u8),
+        cancelable: bool,
+        options: ReleaseOptions,
+    ) -> Script<CardSet> {
+        if player > 1 {
+            return Ok(CardSet::default());
+        }
+        let mut release_cards = CardSet::default();
+        self.get_release_list(
+            player,
+            &mut release_cards,
+            options.use_hand,
+            Some(&f),
+            options.exception,
+            options.exception_group,
+            options.use_oppo,
+            REASON_EFFECT,
+        );
+        let mut must_choose_one = None;
+        if options.check_field {
+            let zone = options.zone
+                & (0x1f & self.get_forced_zones(options.to_check, options.toplayer, LOCATION_MZONE, player, LOCATION_REASON_TOFIELD));
+            let (ct, _) = self.get_useable_count(
+                options.to_check,
+                options.toplayer,
+                LOCATION_MZONE,
+                player,
+                LOCATION_REASON_TOFIELD,
+                zone,
+            );
+            if ct < i32::from(min) {
+                must_choose_one =
+                    Some(release_cards.filter(self, |card, duel| duel.is_release_in_zone(card, options.toplayer, zone), None));
+            }
+        }
+        self.return_cards.clear();
+        let Some(must_choose) = must_choose_one else {
+            let allmust = release_cards.is_empty() || max == 0;
+            self.hint(HINT_SELECTMSG, player, 500);
+            self.select_cards(player, release_cards, cancelable, if allmust { 0 } else { min }, max)?;
+            let selected = self.returned_cards();
+            return Ok(if selected.len() < usize::from(min) {
+                CardSet::default()
+            } else {
+                selected
+            });
+        };
+        let mut operated = CardSet::default();
+        loop {
+            let must_chosen = !operated.intersection(must_choose).is_empty();
+            let finishable = operated.len() >= usize::from(min) && must_chosen;
+            let curmax = i32::from(max) - operated.len() as i32 - i32::from(!must_chosen);
+            let diff = if curmax > 0 {
+                release_cards
+            } else if !must_chosen {
+                must_choose
+            } else {
+                CardSet::default()
+            };
+            self.hint(HINT_SELECTMSG, player, 500);
+            let picked = diff.difference(operated).select_unselect(
+                self,
+                Some(operated),
+                player,
+                finishable,
+                finishable || operated.is_empty(),
+                min,
+                max,
+            )?;
+            let Some(card) = picked else {
+                return Ok(operated);
+            };
+            if operated.contains(card) {
+                operated.remove(card);
+            } else {
+                operated.insert(card);
+            }
+            if operated.len() == usize::from(max) {
+                return Ok(operated);
+            }
+        }
     }
 
     pub fn get_tribute_group(&self, card: CardId) -> CardSet {
@@ -490,6 +629,55 @@ impl Duel {
         }
     }
 
+    // field::change_target: the index of the chain link, which counts past the chain or before it take the newest.
+    fn chain_link_index(&self, chain_count: u8) -> Option<usize> {
+        let len = self.core.current_chain.len();
+        (len > 0).then(|| {
+            if usize::from(chain_count) > len || chain_count < 1 {
+                len - 1
+            } else {
+                usize::from(chain_count) - 1
+            }
+        })
+    }
+
+    pub fn change_target_card(&mut self, chain_count: u8, targets: CardSet) {
+        let Some(index) = self.chain_link_index(chain_count) else { return };
+        let Some(chain) = self.core.current_chain.get_mut(index) else {
+            return;
+        };
+        let Some(old_targets) = chain.target_cards else { return };
+        chain.target_cards = Some(targets);
+        let (effect, chain_id) = (chain.triggering_effect, chain.chain_id);
+        for card in old_targets {
+            self.release_relation(card, effect, chain_id);
+        }
+        for card in targets {
+            self.create_relation(card, effect, chain_id);
+        }
+        if self.effects[effect].is_flag(EFFECT_FLAG_CARD_TARGET) {
+            let locations: Vec<_> = targets.iter().map(|card| self.cards.get_info_location(card)).collect();
+            let mut message = self.trace.message(MSG_BECOME_TARGET);
+            message.u32(locations.len() as u32);
+            for location in locations {
+                message.loc(location);
+            }
+        }
+    }
+
+    pub fn change_chain_operation(&mut self, chain_count: u8, operation: OperationFn) {
+        let Some(index) = self.chain_link_index(chain_count) else { return };
+        let Some(chain) = self.core.current_chain.get_mut(index) else {
+            return;
+        };
+        chain.replace_op = Some(operation);
+        let effect = chain.triggering_effect;
+        let handler = self.get_handler(effect);
+        if self.effects[effect].effect_type & EFFECT_TYPE_ACTIVATE != 0 && self.cards[handler].current.location == LOCATION_SZONE {
+            self.cards[handler].set_status(STATUS_LEAVE_CONFIRMED, true);
+        }
+    }
+
     pub fn set_target_player(&mut self, player: u8) {
         if let Some(chain) = self.get_chain(0) {
             chain.target_player = player;
@@ -741,7 +929,7 @@ impl Duel {
         }
         let reason = if self.core.chain_solving { REASON_EFFECT } else { REASON_COST };
         let (reason_effect, reason_player, revealing_player) = (self.core.reason_effect.get(), self.core.reason_player.get(), 1 - player);
-        let during_to_hand = self.check_event(EVENT_TO_HAND).is_some();
+        let during_to_hand = self.field_check_event(EVENT_TO_HAND).is_some();
         let mut hand = CardSet::default();
         for card in targets {
             self.raise_single_event(card, EVENT_CONFIRM, reason_effect, reason, reason_player, revealing_player, 0);
@@ -839,6 +1027,10 @@ impl Duel {
     pub fn is_main_phase(&self) -> bool {
         let phase = self.infos.phase;
         phase == PHASE_MAIN1 || phase == PHASE_MAIN2
+    }
+
+    pub fn is_battle_phase(&self) -> bool {
+        (PHASE_BATTLE_START..=PHASE_BATTLE).contains(&self.infos.phase)
     }
 
     pub fn is_damage_calculated(&self) -> bool {
@@ -2106,8 +2298,26 @@ impl Duel {
         Ok(self.returns.at_i32(0) as u32)
     }
 
+    pub fn check_event(&self, code: u32) -> bool {
+        self.field_check_event(code).is_some()
+    }
+
+    // Duel.CheckEvent with get_info: the raised event, whose fields are the values Lua returns after the boolean.
+    pub fn check_event_full(&self, code: u32) -> Option<Event> {
+        self.field_check_event(code)
+    }
+
     pub fn get_attacker(&self) -> Option<CardId> {
         self.core.attacker
+    }
+
+    pub fn chain_attack(&mut self) {
+        let Some(attacker) = self.core.attacker else { return };
+        if !self.is_affect_by_effect(attacker, self.core.reason_effect.get()) {
+            return;
+        }
+        self.core.chain_attack = true;
+        self.core.chain_attacker_id = self.cards[attacker].fieldid;
     }
 
     pub fn get_attack_target(&self) -> Option<CardId> {

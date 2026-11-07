@@ -5,9 +5,13 @@ use crate::card::{CardId, CardSet, LocInfo, Relation};
 use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{Chain, ChainLimit, Container, CustomCounter, EffectId, EffectSet, Event, Target, container_key, remove_item};
+use crate::libduel::ReleaseOptions;
 use crate::list::List;
 use crate::processor::{Adjust, Unit};
 use crate::script::Replay;
+
+// The filter of the cards a release may use.
+pub(crate) type ReleaseFilter<'a> = &'a dyn Fn(CardId, &Duel) -> bool;
 
 // Per-player arrays indexed by player id like the core's `x[playerid]`; any id but 0 reads player 1.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -279,6 +283,8 @@ pub struct Processor {
     pub spsummon_state_count: PerPlayer<u8>,
     pub spsummon_state_count_rst: PerPlayer<u8>,
     pub spsummon_state_count_tmp: PerPlayer<u8>,
+    // The codes of cards with Card.SetSPSummonOnce a player special summoned this turn, and how often.
+    pub spsummon_once_map: PerPlayer<Vec<(u32, u32)>>,
     pub spsummon_rst: bool,
     pub attack_state_count: PerPlayer<u8>,
     pub battle_phase_count: PerPlayer<u8>,
@@ -411,6 +417,7 @@ clone_by_field!(Processor {
     spsummon_state_count,
     spsummon_state_count_rst,
     spsummon_state_count_tmp,
+    spsummon_once_map,
     spsummon_rst,
     attack_state_count,
     battle_phase_count,
@@ -542,6 +549,7 @@ impl Processor {
             spsummon_state_count: PerPlayer::default(),
             spsummon_state_count_rst: PerPlayer::default(),
             spsummon_state_count_tmp: PerPlayer::default(),
+            spsummon_once_map: PerPlayer::default(),
             spsummon_rst: false,
             attack_state_count: PerPlayer::default(),
             battle_phase_count: PerPlayer::default(),
@@ -2232,6 +2240,106 @@ impl Duel {
         (rcount, params)
     }
 
+    // Puts the cards the player may release for a non-summon reason into the set, matching `fun`. What EFFECT_EXTRA_RELEASE
+    // and EFFECT_EXTRA_RELEASE_NONSUM add from the opponent's monsters comes with the cards that register them.
+    pub(crate) fn get_release_list(
+        &self,
+        playerid: u8,
+        release_list: &mut CardSet,
+        use_hand: bool,
+        fun: Option<ReleaseFilter>,
+        exc: Option<CardId>,
+        exg: Option<CardSet>,
+        use_oppo: bool,
+        reason: u32,
+    ) {
+        let usable = |card: CardId| Some(card) != exc && !exg.is_some_and(|exg| exg.contains(card));
+        let releasable = |card: CardId| self.is_releasable_by_nonsummon(card, playerid, reason) && fun.is_none_or(|fun| fun(card, self));
+        for card in self.player[playerid].list_mzone.into_iter().flatten() {
+            if usable(card) && releasable(card) {
+                release_list.insert(card);
+            }
+        }
+        if use_hand {
+            for &card in &self.player[playerid].list_hand {
+                if usable(card) && releasable(card) {
+                    release_list.insert(card);
+                }
+            }
+        }
+        for card in self.player[1 - playerid].list_mzone.into_iter().flatten() {
+            if !(usable(card) && (self.cards[card].is_position(POS_FACEUP) || fun.is_none()) && releasable(card)) {
+                continue;
+            }
+            if use_oppo {
+                release_list.insert(card);
+            } else {
+                unported!(
+                    self,
+                    self.is_affected_by_effect(card, EFFECT_EXTRA_RELEASE)
+                        .or_else(|| self.is_affected_by_effect(card, EFFECT_EXTRA_RELEASE_NONSUM))
+                );
+            }
+        }
+    }
+
+    // Whether the player can release at least `min` cards matching `fun` (see get_release_list).
+    pub(crate) fn check_release_list(
+        &self,
+        playerid: u8,
+        min: usize,
+        fun: &dyn Fn(CardId, &Self) -> bool,
+        options: &ReleaseOptions,
+        reason: u32,
+    ) -> bool {
+        let mut relcard = CardSet::default();
+        self.get_release_list(
+            playerid,
+            &mut relcard,
+            options.use_hand,
+            Some(fun),
+            options.exception,
+            options.exception_group,
+            options.use_oppo,
+            reason,
+        );
+        if options.check_field {
+            let zone = options.zone
+                & (0x1f
+                    & self.get_forced_zones(
+                        options.to_check,
+                        playerid,
+                        LOCATION_MZONE,
+                        options.toplayer,
+                        LOCATION_REASON_TOFIELD,
+                    ));
+            let (ct, _) = self.get_useable_count(
+                options.to_check,
+                playerid,
+                LOCATION_MZONE,
+                options.toplayer,
+                LOCATION_REASON_TOFIELD,
+                zone,
+            );
+            if ct < min as i32 && !relcard.iter().any(|card| self.is_release_in_zone(card, playerid, zone)) {
+                return false;
+            }
+        }
+        for card in self.core.must_select_cards.get().iter() {
+            if !relcard.contains(card) {
+                return false;
+            }
+            relcard.remove(card);
+        }
+        relcard.len() >= min
+    }
+
+    // Whether the card is a monster of the player in one of the zones.
+    pub(crate) fn is_release_in_zone(&self, card: CardId, playerid: u8, zone: u32) -> bool {
+        let current = self.cards[card].current;
+        current.location == LOCATION_MZONE && current.controler == playerid && (zone >> current.sequence) & 1 != 0
+    }
+
     pub(crate) fn get_summon_count_limit(&self, playerid: u8) -> i32 {
         if self.is_flag(DUEL_UNLIMITED_SUMMONS) {
             return i32::MAX - 100;
@@ -2411,8 +2519,40 @@ impl Duel {
             return false;
         }
         unported!(self, self.filter_player_effect(playerid, EFFECT_FORCE_SPSUMMON_POSITION, true));
+        if !self.check_spsummon_once(card, playerid) {
+            return false;
+        }
         unported!(self, self.field_effects.spsummon_count_eff.iter().copied());
         true
+    }
+
+    pub(crate) fn check_spsummon_once(&self, card: CardId, playerid: u8) -> bool {
+        let code = self.cards[card].spsummon_code;
+        code == 0
+            || self.core.spsummon_once_map[playerid]
+                .iter()
+                .all(|&(once, count)| once != code || count == 0)
+    }
+
+    // The ++spsummon_once_map[player][code] of the summons, which skip cards without a code to limit.
+    pub(crate) fn add_spsummon_once(&mut self, playerid: u8, code: u32) {
+        if code == 0 {
+            return;
+        }
+        let map = &mut self.core.spsummon_once_map[playerid];
+        match map.iter_mut().find(|(once, _)| *once == code) {
+            Some((_, count)) => *count += 1,
+            None => map.push((code, 1)),
+        }
+    }
+
+    // The summons of a group count each code once: the core collects them in a set first.
+    pub(crate) fn add_spsummon_once_codes(&mut self, playerid: u8, mut codes: Vec<u32>) {
+        codes.sort_unstable();
+        codes.dedup();
+        for code in codes {
+            self.add_spsummon_once(playerid, code);
+        }
     }
 
     // field::set_spsummon_counter without DUEL_CANNOT_SUMMON_OATH_OLD; the counters of EFFECT_SPSUMMON_COUNT_LIMIT come

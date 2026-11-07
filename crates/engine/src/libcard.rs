@@ -116,6 +116,10 @@ impl CardId {
         duel.cards[self].is_position(POS_ATTACK)
     }
 
+    pub fn is_defense_pos(self, duel: &Duel) -> bool {
+        duel.cards[self].is_position(POS_DEFENSE)
+    }
+
     pub fn get_attack(self, duel: &Duel) -> i32 {
         duel.get_attack(self).max(0)
     }
@@ -129,6 +133,19 @@ impl CardId {
         }
         let current = duel.get_attack(self);
         current >= 0 && current <= attack
+    }
+
+    pub fn is_defense_below(self, duel: &Duel, defense: i32) -> bool {
+        let card = &duel.cards[self];
+        if card.data.card_type & TYPE_LINK != 0
+            || (card.data.card_type & TYPE_MONSTER == 0
+                && duel.get_type(self) & TYPE_MONSTER == 0
+                && card.current.location & LOCATION_MZONE == 0)
+        {
+            return false;
+        }
+        let current = duel.get_defense(self);
+        current >= 0 && current <= defense
     }
 
     pub fn is_can_be_effect_target(self, duel: &Duel, effect: EffectId) -> bool {
@@ -479,9 +496,39 @@ impl CardId {
         duel.get_card_effect(self, code)
     }
 
+    // The old-negate rule (DUEL_SPSUMMON_ONCE_OLD_NEGATE) and its global flag are not part of the duel mode.
+    pub fn set_sp_summon_once(self, duel: &mut Duel, code: u32) {
+        if duel.cards[self].is_status(STATUS_COPYING_EFFECT) {
+            return;
+        }
+        duel.cards[self].spsummon_code = code;
+    }
+
     pub fn is_relate_to_battle(self, duel: &Duel) -> bool {
         let fieldid = duel.cards[self].fieldid_r;
         duel.core.pre_field.contains(&fieldid)
+    }
+
+    pub fn can_chain_attack(self, duel: &mut Duel) -> bool {
+        self.can_chain_attack_full(duel, 2, false)
+    }
+
+    pub fn can_chain_attack_full(self, duel: &mut Duel, ac: u8, monsteronly: bool) -> bool {
+        if Some(self) != duel.core.attacker {
+            return false;
+        }
+        let card = &duel.cards[self];
+        if card.is_status(STATUS_BATTLE_DESTROYED)
+            || card.current.controler != duel.infos.turn_player
+            || card.fieldid_r != duel.core.pre_field[0]
+            || !duel.is_capable_attack_announce(self, duel.infos.turn_player)
+            || (ac != 0 && card.announce_count >= ac)
+            || (ac == 2 && duel.is_affected_by_effect(self, EFFECT_EXTRA_ATTACK).is_some())
+        {
+            return false;
+        }
+        let targets = duel.field_get_attack_target(self, true, true);
+        !(targets.is_empty() && (monsteronly || duel.cards[self].direct_attackable == 0))
     }
 
     // A relation to the chain link of the effect if one is on the chain, else to the effect alone.
@@ -684,6 +731,10 @@ impl CardId {
 
     pub fn get_material(self, duel: &Duel) -> CardSet {
         duel.material_cards(self)
+    }
+
+    pub fn get_material_count(self, duel: &Duel) -> usize {
+        duel.material_cards(self).len()
     }
 
     // `sumtype` is SUMMON_TYPE_FUSION where Lua leaves it out; the player is the reason player.

@@ -918,6 +918,7 @@ pub trait CardUtility: Copy {
     fn is_continuous_trap(self, duel: &Duel) -> bool;
     fn is_quick_play_spell(self, duel: &Duel) -> bool;
     fn is_synchro_monster(self, duel: &Duel) -> bool;
+    fn is_xyz_monster(self, duel: &Duel) -> bool;
     fn is_effect_monster(self, duel: &Duel) -> bool;
     fn is_non_effect_monster(self, duel: &Duel) -> bool;
     fn is_in_main_mzone(self, duel: &Duel, tp: Option<u8>) -> bool;
@@ -1142,6 +1143,10 @@ impl CardUtility for CardId {
 
     fn is_synchro_monster(self, duel: &Duel) -> bool {
         self.is_composite_type(duel, TYPE_MONSTER | TYPE_SYNCHRO)
+    }
+
+    fn is_xyz_monster(self, duel: &Duel) -> bool {
+        self.is_composite_type(duel, TYPE_MONSTER | TYPE_XYZ)
     }
 
     fn is_effect_monster(self, duel: &Duel) -> bool {

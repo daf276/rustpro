@@ -3597,8 +3597,10 @@ impl Duel {
                     if current.location & LOCATION_ONFIELD != 0 {
                         resetflag |= RESET_LEAVE;
                     }
-                    unported!(self, self.is_affected_by_effect(target, EFFECT_PRE_MONSTER));
-                    if location & LOCATION_ONFIELD != 0 && current.location & LOCATION_ONFIELD != 0 {
+                    let pre_monster = self.is_affected_by_effect(target, EFFECT_PRE_MONSTER);
+                    let trap_monster = pre_monster
+                        .is_some_and(|effect| matches!(self.effects[effect].value, Value::Int(value) if value as u32 & TYPE_TRAP != 0));
+                    if location & LOCATION_ONFIELD != 0 && current.location & LOCATION_ONFIELD != 0 && !trap_monster && arg.ret != 2 {
                         resetflag |= RESET_MSCHANGE;
                     }
                     self.reset(target, resetflag, RESET_EVENT);
@@ -3696,44 +3698,77 @@ impl Duel {
                             .chain(self.filter_player_effect(1, EFFECT_MUST_USE_MZONE, false))
                             .chain(self.filter_effect(target, EFFECT_MUST_USE_MZONE, true))
                     );
-                    unported!(self, self.is_affected_by_effect(target, EFFECT_PRE_MONSTER));
+                    if let Some(pre_monster) = self.is_affected_by_effect(target, EFFECT_PRE_MONSTER) {
+                        let card_type = match self.effects[pre_monster].value {
+                            Value::Int(value) => value as u32,
+                            _ => 0,
+                        };
+                        // A Trap Monster also gets TYPE_TRAPMONSTER and a Spell & Trap Zone to use.
+                        unported!(self, (card_type & TYPE_TRAP != 0).then_some(pre_monster));
+                        self.reset(target, EFFECT_PRE_MONSTER, RESET_CODE);
+                        let effect = self.new_effect(target);
+                        let peffect = &mut self.effects[effect];
+                        peffect.effect_type = EFFECT_TYPE_SINGLE;
+                        peffect.code = EFFECT_CHANGE_TYPE;
+                        peffect.flag[0] = EFFECT_FLAG_CANNOT_DISABLE;
+                        peffect.reset_flag = RESET_EVENT + 0x1fc0000;
+                        peffect.value = Value::Int((TYPE_MONSTER | card_type) as i32);
+                        self.card_add_effect(target, effect);
+                    }
                 }
-                if arg.enable {
+                if arg.enable || (arg.ret == 1 && self.cards[target].is_position(POS_FACEUP)) {
                     self.enable_field_effect(target, true);
                 }
-                let current = self.cards[target].current;
-                if self.cards[target].previous.location == LOCATION_GRAVE {
-                    self.field_raise_single_event(target, EVENT_LEAVE_GRAVE, current.reason_effect, current.reason, move_player, 0, 0);
-                    self.field_raise_event(
-                        Some(target.into()),
-                        EVENT_LEAVE_GRAVE,
+                if arg.ret == 1
+                    && self.cards[target].current.location == LOCATION_MZONE
+                    && self.cards[target].data.card_type & TYPE_MONSTER == 0
+                {
+                    self.send_to(
+                        target.into(),
+                        None,
+                        REASON_RULE,
+                        PLAYER_NONE,
+                        PLAYER_NONE,
+                        LOCATION_GRAVE,
+                        0,
+                        0,
+                        false,
+                    );
+                } else {
+                    let current = self.cards[target].current;
+                    if self.cards[target].previous.location == LOCATION_GRAVE {
+                        self.field_raise_single_event(target, EVENT_LEAVE_GRAVE, current.reason_effect, current.reason, move_player, 0, 0);
+                        self.field_raise_event(
+                            Some(target.into()),
+                            EVENT_LEAVE_GRAVE,
+                            current.reason_effect,
+                            current.reason,
+                            move_player,
+                            0,
+                            0,
+                        );
+                    }
+                    self.field_raise_single_event(
+                        target,
+                        EVENT_MOVE,
                         current.reason_effect,
                         current.reason,
-                        move_player,
+                        current.reason_player,
                         0,
                         0,
                     );
+                    self.field_raise_event(
+                        Some(target.into()),
+                        EVENT_MOVE,
+                        current.reason_effect,
+                        current.reason,
+                        current.reason_player,
+                        0,
+                        0,
+                    );
+                    self.process_single_event();
+                    self.process_instant_event();
                 }
-                self.field_raise_single_event(
-                    target,
-                    EVENT_MOVE,
-                    current.reason_effect,
-                    current.reason,
-                    current.reason_player,
-                    0,
-                    0,
-                );
-                self.field_raise_event(
-                    Some(target.into()),
-                    EVENT_MOVE,
-                    current.reason_effect,
-                    current.reason,
-                    current.reason_player,
-                    0,
-                    0,
-                );
-                self.process_single_event();
-                self.process_instant_event();
                 self.adjust_disable_check_list();
                 false
             }

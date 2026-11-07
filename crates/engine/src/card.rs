@@ -621,12 +621,19 @@ impl Duel {
         rank as u32
     }
 
-    // card::check_xyz_level; EFFECT_XYZ_LEVEL comes with the cards that register it.
-    pub(crate) fn check_xyz_level(&self, card: CardId, _xyzc: CardId, level: u32) -> bool {
+    pub(crate) fn check_xyz_level(&self, card: CardId, xyzc: CardId, level: u32) -> bool {
         if self.cards[card].status & STATUS_NO_LEVEL != 0 {
             return false;
         }
-        unported!(self, self.filter_effect(card, EFFECT_XYZ_LEVEL, true));
+        for effect in self.filter_effect(card, EFFECT_XYZ_LEVEL, true) {
+            let lev = match self.effects[effect].value {
+                Value::XyzLevel(value) => value(self, effect, card, xyzc) as u32,
+                _ => self.get_value(effect, card) as u32,
+            };
+            if lev & 0xfff == level || (lev >> 16) & 0xfff == level {
+                return true;
+            }
+        }
         self.get_level(card) == level
     }
 
@@ -2668,7 +2675,13 @@ impl Duel {
         {
             return false;
         }
-        unported!(self, self.filter_effect(card, EFFECT_CANNOT_BE_LINK_MATERIAL, true));
+        let limits = self.filter_effect(card, EFFECT_CANNOT_BE_LINK_MATERIAL, true);
+        if limits
+            .into_iter()
+            .any(|effect| self.get_value(effect, scard.unwrap_or_default()) != 0)
+        {
+            return false;
+        }
         !self.is_forbidden_material(card, scard, SUMMON_TYPE_LINK.into(), playerid)
     }
 

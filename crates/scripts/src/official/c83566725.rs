@@ -1,12 +1,15 @@
 // The Phantom Knights of Doomed Soleret
 use crate::prelude::*;
-use crate::testing::{Check, GRAVE, MZONE};
+use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 83566725;
 
-// Sangan, a Level 3 DARK monster, for the Level change; no ported card is a "The Phantom Knights" Spell/Trap to Set.
-pub const SUPPORT: &[(u32, u16)] = &[(26202165, MZONE), (ID, GRAVE)];
-pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 2))];
+// Sangan, a Level 3 DARK monster, for the Level change; Umbrage Veil, a "The Phantom Knights" Trap to Set.
+pub const SUPPORT: &[(u32, u16)] = &[(26202165, MZONE), (ID, GRAVE), (ID, HAND), (ID, HAND), (85257384, DECK)];
+pub const CHECKS: &[Check] = &[
+    Check::ResolvesEffect(aux::stringid(ID, 1)),
+    Check::ResolvesEffect(aux::stringid(ID, 2)),
+];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e1 = duel.create_effect(c);

@@ -502,13 +502,23 @@ impl CardId {
 
     // The counts of equipped Union monsters in their union state and in the old union state.
     pub fn get_union_count(self, duel: &Duel) -> (usize, usize) {
-        let unions = |code| {
-            duel.equiping_cards(self)
-                .iter()
-                .filter(|&equip| duel.cards[equip].data.card_type & TYPE_UNION != 0 && duel.is_affected_by_effect(equip, code).is_some())
-                .count()
-        };
-        (unions(EFFECT_UNION_STATUS), unions(EFFECT_OLDUNION_STATUS))
+        (
+            self.union_count(duel, EFFECT_UNION_STATUS),
+            self.union_count(duel, EFFECT_OLDUNION_STATUS),
+        )
+    }
+
+    fn union_count(self, duel: &Duel, status: u32) -> usize {
+        duel.equiping_cards(self)
+            .iter()
+            .filter(|&equip| duel.cards[equip].data.card_type & TYPE_UNION != 0 && duel.is_affected_by_effect(equip, status).is_some())
+            .count()
+    }
+
+    pub fn check_equip_target(self, duel: &Duel, target: CardId) -> bool {
+        duel.is_affected_by_effect_target(self, EFFECT_EQUIP_LIMIT, target).is_some()
+            && (duel.is_affected_by_effect(self, EFFECT_OLDUNION_STATUS).is_none() || target.union_count(duel, EFFECT_UNION_STATUS) == 0)
+            && (duel.is_affected_by_effect(self, EFFECT_UNION_STATUS).is_none() || target.union_count(duel, EFFECT_OLDUNION_STATUS) == 0)
     }
 
     pub fn set_card_target(self, duel: &mut Duel, target: CardId) {

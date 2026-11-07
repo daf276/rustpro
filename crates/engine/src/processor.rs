@@ -2553,10 +2553,11 @@ impl Duel {
                                     self.core.battle_damage[player] = (a - d) as i32;
                                 }
                             }
-                            if pierces
-                                .iter()
-                                .fold(false, |double, &effect| self.get_value(effect, attacker) as u32 == DOUBLE_DAMAGE || double)
-                            {
+                            let mut double = false;
+                            for &effect in &pierces {
+                                double = self.get_value(effect, attacker) as u32 == DOUBLE_DAMAGE || double;
+                            }
+                            if double {
                                 for (player, damaged) in [0, 1].into_iter().zip(players) {
                                     if damaged {
                                         self.core.battle_damage[player] *= 2;

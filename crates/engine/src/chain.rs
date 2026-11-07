@@ -343,12 +343,12 @@ impl Duel {
                 break;
             };
             let Some(target) = event.trigger_card else { continue };
-            let effects: EffectSet = self
+            let mut effects: EffectSet = self
                 .field_effects
                 .registry
                 .equal_range(Container::Single, Some(target), event.event_code)
                 .collect();
-            // The effects of the target's Xyz materials (xmaterial_effect) come with Xyz monsters.
+            effects.extend(self.xmaterial_effects(target, event.event_code));
             for effect in effects {
                 self.process_single_event_effect(effect, &event, &mut tp, &mut ntp);
             }

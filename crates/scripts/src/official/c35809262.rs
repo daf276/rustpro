@@ -47,7 +47,7 @@ fn damcon(duel: &Duel, a: &Args) -> bool {
         .is_some_and(|bc| c.is_relate_to_battle(duel) && bc.is_location(duel, LOCATION_GRAVE) && bc.is_monster(duel))
 }
 
-fn damtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+pub fn damtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
     let tp = a.tp;
     if chk == 0 {
         return Ok(true);
@@ -63,7 +63,7 @@ fn damtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool>
     Ok(false)
 }
 
-fn damop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn damop(duel: &mut Duel, a: &Args) -> Script<()> {
     if let Some(tc) = duel.get_first_target()
         && tc.is_relate_to_effect(duel, a.e)
     {

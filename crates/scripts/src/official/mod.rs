@@ -40,3 +40,9 @@ pub fn material_setcode(code: u32) -> &'static [u16] {
         .and_then(|index| MATERIAL_SETCODE.get(index))
         .map_or(&[], |&(_, setcodes)| setcodes)
 }
+
+// s.dark_calling = true, which the Evil HERO cards read on the cards they check.
+pub fn dark_calling(code: u32) -> bool {
+    let index = DARK_CALLING.binary_search_by_key(&code, |&(code, _)| code).ok();
+    index.and_then(|index| DARK_CALLING.get(index)).is_some_and(|&(_, flag)| flag)
+}

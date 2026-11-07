@@ -178,6 +178,10 @@ impl CardSet {
         self.iter().fold(0, |total, card| total | value(card, duel))
     }
 
+    pub fn get_bin_class_count(&self, duel: &Duel, value: impl Fn(CardId, &Duel) -> u64) -> usize {
+        self.get_bitwise_or(duel, value).count_ones() as usize
+    }
+
     // Group.GetMaxGroup: the cards with the highest value and that value, None for an empty group.
     pub fn get_max_group(&self, duel: &Duel, value: impl Fn(CardId, &Duel) -> i64) -> Option<(CardSet, i64)> {
         let mut max: Option<(CardSet, i64)> = None;

@@ -1,6 +1,8 @@
 // What a player may know of a duel, and duels resampled to agree with it. The visibility rules mirror what EDOPro's
 // server sends each player: card::get_infos's QUERY_IS_PUBLIC to both, and to the controller its cards outside the Deck.
 // Like the core, they keep no memory: a card confirmed earlier is known only while something keeps it public.
+use std::sync::{Arc, Mutex};
+
 use carddata::{Card as CardData, CardDatabase, Deck};
 use serde::{Deserialize, Serialize};
 
@@ -12,6 +14,7 @@ use crate::effect::Event;
 use crate::field::{Cards8, Cards16};
 use crate::processor::Unit;
 use crate::rng::Xoshiro256StarStar;
+use crate::script::lock;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Observation {
@@ -127,16 +130,17 @@ fn same_place(a: &CardState, b: &CardState) -> bool {
 
 impl Duel {
     pub fn observe(&self, player: u8) -> Observation {
-        self.unchanged(|| self.observe_now(player))
+        self.unchanged(|_| self.observe_now(player))
     }
 
     // Runs `read`, then puts back the effect ids and statuses and the field id counter its effect lookups changed, here
     // and in a waiting function's snapshot: a condition becoming available takes a new id, which orders later lookups.
-    fn unchanged<T>(&self, read: impl FnOnce() -> T) -> T {
+    fn unchanged<T>(&self, read: impl FnOnce(Option<&Duel>) -> T) -> T {
         let saved = |duel: &Duel| (duel.infos.field_id.get(), duel.effects.cells());
-        let snapshot = self.core.replay.snapshot.as_deref();
+        let snapshot = self.core.replay.snapshot.as_ref().map(lock);
+        let snapshot = snapshot.as_deref();
         let (own, waiting) = (saved(self), snapshot.map(saved));
-        let result = read();
+        let result = read(snapshot);
         for (duel, (field_id, cells)) in std::iter::once((self, own)).chain(snapshot.zip(waiting)) {
             duel.infos.field_id.set(field_id);
             duel.effects.restore_cells(&cells);
@@ -285,7 +289,7 @@ impl Duel {
             return Ok(duel);
         };
         if self.core.replay.snapshot.is_none() {
-            let changes = self.unchanged(|| self.sample(player, rng, pool, database))?;
+            let changes = self.unchanged(|_| self.sample(player, rng, pool, database, None))?;
             let trace = std::mem::take(&mut duel.trace);
             duel.change(&changes);
             duel.trace = trace;
@@ -294,9 +298,11 @@ impl Duel {
         }
         let (observation, prompt) = (self.observe(player), self.prompt());
         for _ in 0..RERUN_ATTEMPTS {
-            let changes = self.unchanged(|| self.sample(player, rng, pool, database))?;
-            if let Some(snapshot) = duel.core.replay.snapshot.as_deref_mut() {
-                snapshot.change(&changes);
+            let changes = self.unchanged(|running| self.sample(player, rng, pool, database, running))?;
+            if let Some(snapshot) = &mut duel.core.replay.snapshot {
+                let mut resampled = lock(snapshot).clone();
+                resampled.change(&changes);
+                *snapshot = Arc::new(Mutex::new(resampled));
             }
             duel.rerun_to_prompt();
             if duel.prompt() == prompt && duel.observe(player) == observation && !duel.legal_actions().is_empty() {
@@ -329,10 +335,10 @@ impl Duel {
         rng: &mut Xoshiro256StarStar,
         pool: &Deck,
         database: &'static CardDatabase,
+        running: Option<&Duel>,
     ) -> Result<Changes, DeterminizeError> {
         let opponent = 1 - player;
         let pinned = self.referenced_cards();
-        let running = self.core.replay.snapshot.as_deref();
         let resampled = |card: CardId| {
             let target = &self.cards[card];
             let unmoved = running

@@ -148,6 +148,7 @@ pub type Events = List<Event, 4>;
 pub type PendingEvents = List<Event, 1>;
 pub type FieldIds = List<u32, 8>;
 pub type Relations = List<Relation, 8>;
+pub type CountCodes = List<(u64, u32), 8>;
 
 #[derive(Debug, Clone, Default)]
 pub struct ReturnCards {
@@ -246,9 +247,9 @@ pub struct Processor {
     pub operated_set: CardSet,
     pub reseted_effects: Vec<EffectId>,
     // effect_count_code, effect_count_code_duel and effect_count_code_chain: hash maps in the core, only looked up.
-    pub effect_count_code: Vec<(u64, u32)>,
-    pub effect_count_code_duel: Vec<(u64, u32)>,
-    pub effect_count_code_chain: Vec<(u64, u32)>,
+    pub effect_count_code: CountCodes,
+    pub effect_count_code_duel: CountCodes,
+    pub effect_count_code_chain: CountCodes,
     pub global_flag: u32,
     pub chain_solving: bool,
     pub conti_solving: bool,
@@ -527,9 +528,9 @@ impl Processor {
             battle_destroyed: CardSet::default(),
             operated_set: CardSet::default(),
             reseted_effects: Vec::new(),
-            effect_count_code: Vec::new(),
-            effect_count_code_duel: Vec::new(),
-            effect_count_code_chain: Vec::new(),
+            effect_count_code: CountCodes::default(),
+            effect_count_code_duel: CountCodes::default(),
+            effect_count_code_chain: CountCodes::default(),
             global_flag: 0,
             chain_solving: false,
             conti_solving: false,
@@ -1834,7 +1835,7 @@ impl Duel {
         }
     }
 
-    fn count_map(&mut self, flag: u8) -> &mut Vec<(u64, u32)> {
+    fn count_map(&mut self, flag: u8) -> &mut CountCodes {
         if flag & EFFECT_COUNT_CODE_DUEL != 0 {
             &mut self.core.effect_count_code_duel
         } else if flag & EFFECT_COUNT_CODE_CHAIN != 0 {

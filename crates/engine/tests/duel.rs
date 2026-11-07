@@ -136,12 +136,14 @@ fn should_finish_identically_when_cloned_at_a_prompt() {
             let mut duel = started_duel(&main, &scripts::LIBRARY).unwrap();
             play(&mut duel, 0..prompt).unwrap();
             let mut clone = duel.clone();
-            play(&mut clone, prompt..DECISIONS).unwrap();
-            assert_eq!(
-                (clone.take_trace(), clone.result()),
-                (full.clone().take_trace(), full.result()),
-                "cloned at prompt {prompt}"
-            );
+            for duel in [&mut duel, &mut clone] {
+                play(duel, prompt..DECISIONS).unwrap();
+                assert_eq!(
+                    (duel.take_trace(), duel.result()),
+                    (full.clone().take_trace(), full.result()),
+                    "cloned at prompt {prompt}"
+                );
+            }
         }
     }
 }

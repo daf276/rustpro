@@ -490,13 +490,15 @@ pub struct Registry {
     codes: [u64; 32],
     cards: [u64; 32],
     keys: [u64; 32],
+    changed: Cell<bool>,
 }
 
 clone_by_field!(Registry {
     entries,
     codes,
     cards,
-    keys
+    keys,
+    changed
 });
 
 #[inline]
@@ -529,6 +531,7 @@ impl Registry {
     pub fn insert(&mut self, key: u64, effect: EffectId) {
         let at = self.entries.partition_point(|&(other, _)| other <= key);
         self.entries.insert(at, (key, effect));
+        self.changed.set(true);
         set(&mut self.codes, code_bit(key as u32), true);
         set(&mut self.cards, card_bit(key), true);
         set(&mut self.keys, key_bit(key), true);
@@ -543,6 +546,7 @@ impl Registry {
             .and_then(|entries| entries.iter().position(|&(_, e)| e == effect))
         {
             self.entries.remove(start + offset);
+            self.changed.set(true);
         }
         if self.entries.get(start).is_some_and(|&(other, _)| other == key) {
             return;
@@ -560,6 +564,13 @@ impl Registry {
         );
         let bit = key_bit(key);
         set(&mut self.keys, bit, self.entries.iter().any(|&(other, _)| key_bit(other) == bit));
+    }
+
+    // Makes this equal to `source`, which must have been equal apart from what either changed since they last synced.
+    pub fn sync_from(&mut self, source: &Self) {
+        if self.changed.take() | source.changed.take() {
+            self.clone_from(source);
+        }
     }
 
     // False when no container holds an effect with this code. The lookups that run most check it in an inlined
@@ -627,6 +638,28 @@ clone_by_field!(FieldEffect {
     spsummon_count_eff,
     disable_check_set
 });
+
+impl FieldEffect {
+    // clone_from, with the registry synced as [Registry::sync_from] does.
+    pub fn sync_from(&mut self, source: &Self) {
+        let Self {
+            registry,
+            oath,
+            pheff,
+            cheff,
+            rechargeable,
+            spsummon_count_eff,
+            disable_check_set,
+        } = source;
+        self.registry.sync_from(registry);
+        self.oath.clone_from(oath);
+        self.pheff.clone_from(pheff);
+        self.cheff.clone_from(cheff);
+        self.rechargeable.clone_from(rechargeable);
+        self.spsummon_count_eff.clone_from(spsummon_count_eff);
+        self.disable_check_set = *disable_check_set;
+    }
+}
 
 pub fn remove_item<T: Copy + Default + PartialEq, const N: usize>(list: &mut List<T, N>, item: &T) {
     if let Some(at) = list.iter().position(|other| other == item) {

@@ -91,7 +91,9 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   `_full` exactly when the Lua call passes one of the optional ones, with the Lua default for any it leaves out
   (`c.is_type_full(duel, TYPE_TUNER, Some(sc), sumtype, tp)`). Lua nil is `None` for cards and groups and
   `PLAYER_NONE` for a player.
-- Functions that can prompt or yield return `Script<T>`; propagate with `?`. A target or cost returns `Ok(chk0)` for
+- Functions that can prompt or yield return `Script<T>`; propagate with `?`. A target whose Lua takes no `chkc`
+  ignores it (no early return on `chkc.is_some()`). An argument that reads the duel is computed before a call that
+  takes `&mut Duel` (`let turn = duel.get_turn_count(); e1.set_label(duel, turn)`). A target or cost returns `Ok(chk0)` for
   chk 0 and `Ok(false)` after doing its work, where the Lua returns nothing.
 - Filters are `Fn(CardId, &Duel) -> bool`, so `Card.IsX` methods pass directly; extra filter arguments become
   closure captures.

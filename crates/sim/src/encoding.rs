@@ -91,7 +91,7 @@ pub enum EncodingError {
     Row { index: usize, rows: usize },
 }
 
-fn slot(action: Action, code: usize) -> (Section, usize) {
+pub(crate) fn slot(action: Action, code: usize) -> (Section, usize) {
     let command = |slot| (Section::Command, slot);
     match action {
         Action::Chain(None) => command(0),

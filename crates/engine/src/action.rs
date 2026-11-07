@@ -259,6 +259,10 @@ impl Duel {
     // Replaces the contents of `actions`; reusing one buffer keeps a simulation loop free of allocations.
     pub fn legal_actions_into(&self, actions: &mut Vec<Action>) {
         actions.clear();
+        self.extend_legal_actions(actions);
+    }
+
+    pub(crate) fn extend_legal_actions(&self, actions: &mut impl Extend<Action>) {
         let Some(prompt) = self.prompt() else { return };
         match prompt {
             Prompt::IdleCommand { player } => {

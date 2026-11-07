@@ -194,12 +194,8 @@ impl<G> Batch<G> {
                 slots: self.len(),
             });
         }
-        let observe = |slot: &mut Slot| {
-            let duel = slot.duel.as_ref()?;
-            Some(duel.observe(duel.prompt()?.player()))
-        };
         tensors
-            .par_write(self.slots.par_iter_mut(), observe)
+            .par_write(self.slots.par_iter_mut().map(|slot| slot.duel.as_mut()))
             .map_err(|(slot, error)| BatchError::Encoding { slot, error })
     }
 }

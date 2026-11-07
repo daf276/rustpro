@@ -2751,9 +2751,7 @@ impl Duel {
                     core.summon_count[p] = 0;
                     core.spsummon_once_map[p].clear();
                 }
-                for &effect in self.core.reseted_effects.iter() {
-                    self.effects.delete(effect);
-                }
+                self.effects.delete(&self.core.reseted_effects);
                 self.core.reseted_effects.clear();
                 self.core.effect_count_code.clear();
                 self.emplace_process(RefreshRelay::default());

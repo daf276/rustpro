@@ -219,9 +219,8 @@ impl Duel {
     #[pyo3(signature = (player, out = None, row = 0))]
     fn observe(&mut self, py: Python<'_>, player: u8, out: Option<Py<Tensors>>, row: usize) -> PyResult<Py<Tensors>> {
         let out = out.map_or_else(|| Py::new(py, Tensors::new(py, 1)), Ok)?;
-        let observation = self.duel().observe(player);
-        out.get()
-            .write(py, |tensors| tensors.write(row, Some(&observation)).map_err(fail))?;
+        let duel = self.duel();
+        out.get().write(py, |tensors| tensors.write_duel(row, duel, player).map_err(fail))?;
         Ok(out)
     }
 

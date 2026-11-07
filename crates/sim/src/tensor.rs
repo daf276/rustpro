@@ -1,9 +1,9 @@
 // Fixed-size integer tensors of an observation, column names in order. Players are relative to the observer (0 itself,
 // 1 its opponent, 2 neither, as the winner of a draw), -1 is none, and codes are the raw u32 bits.
-use engine::{Action, Observation, Prompt, SeenCard};
+use engine::{Action, Choice, Duel, Observation, ObservationSink, Prompt, SeenCard, SeenLink};
 use rayon::prelude::*;
 
-use crate::encoding::{ACTIONS, EncodingError, indices, slots};
+use crate::encoding::{ACTIONS, EncodingError, slot};
 
 pub const GLOBAL_FEATURES: [&str; 10] = [
     "turn",
@@ -126,6 +126,13 @@ impl<'a> Tensors<'a> {
         self.row(index).ok_or(EncodingError::Row { index, rows })?.write(observation)
     }
 
+    // What `player` sees of `duel`, as `write(index, Some(&duel.observe(player)))` writes it, without building the
+    // observation.
+    pub fn write_duel(&mut self, index: usize, duel: &Duel, player: u8) -> Result<(), EncodingError> {
+        let rows = self.len();
+        self.row(index).ok_or(EncodingError::Row { index, rows })?.write_duel(duel, player)
+    }
+
     fn row(&mut self, index: usize) -> Option<Row<'_>> {
         Some(Row {
             global: self.global.get_mut(index)?,
@@ -135,10 +142,10 @@ impl<'a> Tensors<'a> {
         })
     }
 
-    pub(crate) fn par_write<T: Send>(
+    // Each duel's observation for the player its prompt waits for, empty rows for None or no prompt.
+    pub(crate) fn par_write<'d>(
         &mut self,
-        items: impl IndexedParallelIterator<Item = T>,
-        observe: impl Fn(T) -> Option<Observation> + Sync,
+        duels: impl IndexedParallelIterator<Item = Option<&'d mut Duel>>,
     ) -> Result<(), (usize, EncodingError)> {
         let rows = self.global.par_iter_mut().zip(self.cards.par_iter_mut());
         let rows = rows.zip(self.chain.par_iter_mut()).zip(self.actions.par_iter_mut());
@@ -148,9 +155,14 @@ impl<'a> Tensors<'a> {
             chain,
             actions,
         });
-        rows.zip(items)
-            .enumerate()
-            .try_for_each(|(index, (row, item))| row.write(observe(item).as_ref()).map_err(|error| (index, error)))
+        rows.zip(duels).enumerate().try_for_each(|(index, (row, duel))| {
+            let prompted = duel.and_then(|duel| Some((duel.prompt()?.player(), duel)));
+            let written = match prompted {
+                Some((player, duel)) => row.write_duel(duel, player),
+                None => row.write(None),
+            };
+            written.map_err(|error| (index, error))
+        })
     }
 }
 
@@ -175,97 +187,160 @@ fn prompt_kind(prompt: Prompt) -> i32 {
     }
 }
 
-fn place(card: &SeenCard) -> [u8; 4] {
-    [card.controller, card.location, card.sequence, card.position]
-}
-
 fn split(description: u64) -> [i32; 2] {
     [(description >> 4) as i32, (description & 0xf) as i32]
 }
 
 impl Row<'_> {
     fn write(self, observation: Option<&Observation>) -> Result<(), EncodingError> {
-        let Self {
-            global,
-            cards,
-            chain,
-            actions,
-        } = self;
-        *global = [0; GLOBAL_FEATURES.len()];
-        cards.fill([0; CARD_FEATURES.len()]);
-        chain.fill([0; CHAIN_FEATURES.len()]);
-        actions.fill(NO_ACTION);
+        let mut writer = Writer::new(self, observation.map_or(0, |observation| observation.player));
         let Some(observation) = observation else { return Ok(()) };
-        let seen = &observation.cards;
-        if seen.len() > MAX_OBS_CARDS {
-            return Err(EncodingError::Cards(seen.len()));
+        observation.cards.iter().for_each(|&card| writer.card(card));
+        for link in &observation.chain {
+            writer.link(link);
+            link.targets.iter().for_each(|&card| writer.target(card));
         }
-        if observation.chain.len() > MAX_CHAIN {
-            return Err(EncodingError::Chain(observation.chain.len()));
+        observation.choices.iter().for_each(|&choice| writer.choice(choice));
+        writer.finish(observation)
+    }
+
+    fn write_duel(self, duel: &Duel, player: u8) -> Result<(), EncodingError> {
+        let mut writer = Writer::new(self, player);
+        let observation = duel.observe_into(player, &mut writer);
+        writer.finish(&observation)
+    }
+}
+
+// Encodes an observation as it streams in, counting what goes past the tables' rows.
+struct Writer<'a> {
+    row: Row<'a>,
+    player: u8,
+    cards: usize,
+    links: usize,
+    codes: usize,
+    overflow: Option<EncodingError>,
+}
+
+impl<'a> Writer<'a> {
+    fn new(row: Row<'a>, player: u8) -> Self {
+        *row.global = [0; GLOBAL_FEATURES.len()];
+        row.cards.fill([0; CARD_FEATURES.len()]);
+        row.chain.fill([0; CHAIN_FEATURES.len()]);
+        row.actions.fill(NO_ACTION);
+        Self {
+            row,
+            player,
+            cards: 0,
+            links: 0,
+            codes: 0,
+            overflow: None,
         }
-        let relative = |player: u8| i32::from(if player < 2 { player ^ observation.player } else { player });
-        for (row, card) in cards.iter_mut().zip(seen) {
-            let SeenCard {
+    }
+
+    fn relative(&self, player: u8) -> i32 {
+        i32::from(if player < 2 { player ^ self.player } else { player })
+    }
+
+    fn place(&self, card: &SeenCard) -> [i32; 4] {
+        let [location, sequence, position] = [card.location, card.sequence, card.position].map(i32::from);
+        [self.relative(card.controller), location, sequence, position]
+    }
+
+    fn finish(self, observation: &Observation) -> Result<(), EncodingError> {
+        if self.cards > MAX_OBS_CARDS {
+            return Err(EncodingError::Cards(self.cards));
+        }
+        if self.links > MAX_CHAIN {
+            return Err(EncodingError::Chain(self.links));
+        }
+        if let Some(error) = self.overflow {
+            return Err(error);
+        }
+        let [lp0, lp1] = observation.lp;
+        let (lp, opponent_lp) = if observation.player == 0 { (lp0, lp1) } else { (lp1, lp0) };
+        let result = observation.result;
+        *self.row.global = [
+            observation.turn.into(),
+            self.relative(observation.turn_player),
+            observation.phase.into(),
+            lp,
+            opponent_lp,
+            observation.acting.map_or(-1, |player| self.relative(player)),
+            observation.prompt.map_or(-1, prompt_kind),
+            self.links as i32,
+            result.map_or(-1, |(winner, _)| self.relative(winner)),
+            result.map_or(-1, |(_, reason)| reason.into()),
+        ];
+        Ok(())
+    }
+}
+
+impl ObservationSink for Writer<'_> {
+    fn card(&mut self, card: SeenCard) {
+        let [controller, location, sequence, position] = self.place(&card);
+        if let Some(row) = self.row.cards.get_mut(self.cards) {
+            *row = [
+                1,
                 controller,
                 location,
                 sequence,
                 position,
-                code,
-                attack,
-                defense,
-            } = *card;
-            let [location, sequence, position] = [location, sequence, position].map(i32::from);
-            *row = [1, relative(controller), location, sequence, position, code as i32, attack, defense];
+                card.code as i32,
+                card.attack,
+                card.defense,
+            ];
         }
-        for (row, link) in chain.iter_mut().zip(&observation.chain) {
-            let [description_code, description_index] = split(link.description);
+        self.cards += 1;
+    }
+
+    fn link(&mut self, link: &SeenLink) {
+        let [description_code, description_index] = split(link.description);
+        let controller = self.relative(link.controller);
+        if let Some(row) = self.row.chain.get_mut(self.links) {
             *row = [
                 1,
-                relative(link.controller),
+                controller,
                 link.code as i32,
                 link.location.into(),
                 link.sequence as i32,
                 description_code,
                 description_index,
-                link.targets.len() as i32,
+                0,
             ];
         }
-        let choices = &observation.choices;
-        let legal = || choices.iter().map(|choice| &choice.action);
-        for ((choice, (section, _)), index) in choices.iter().zip(slots(legal())).zip(indices(legal())) {
-            let card_row = choice
-                .card
-                .and_then(|card| seen.iter().position(|other| place(other) == place(&card)));
-            let code = match (choice.action, choice.card) {
-                (Action::Code(code), _) | (_, Some(SeenCard { code, .. })) => code as i32,
-                _ => 0,
-            };
-            let [description_code, description_index] = split(choice.description);
-            if let Some(row) = actions.get_mut(index?) {
-                *row = [
-                    section as i32,
-                    card_row.map_or(-1, |row| row as i32),
-                    code,
-                    description_code,
-                    description_index,
-                ];
-            }
+        self.links += 1;
+    }
+
+    fn target(&mut self, _: SeenCard) {
+        let row = self.links.checked_sub(1).and_then(|link| self.row.chain.get_mut(link));
+        if let Some(targets) = row.and_then(|row| row.last_mut()) {
+            *targets += 1;
         }
-        let [lp0, lp1] = observation.lp;
-        let (lp, opponent_lp) = if observation.player == 0 { (lp0, lp1) } else { (lp1, lp0) };
-        let result = observation.result;
-        *global = [
-            observation.turn.into(),
-            relative(observation.turn_player),
-            observation.phase.into(),
-            lp,
-            opponent_lp,
-            observation.acting.map_or(-1, relative),
-            observation.prompt.map_or(-1, prompt_kind),
-            observation.chain.len() as i32,
-            result.map_or(-1, |(winner, _)| relative(winner)),
-            result.map_or(-1, |(_, reason)| reason.into()),
-        ];
-        Ok(())
+    }
+
+    fn choice(&mut self, choice: Choice) {
+        let (section, slot) = slot(choice.action, self.codes);
+        self.codes += usize::from(matches!(choice.action, Action::Code(_)));
+        if slot >= section.slots() {
+            self.overflow.get_or_insert(EncodingError::Overflow { section, slot });
+            return;
+        }
+        let place = choice.card.map(|card| self.place(&card));
+        let mut seen = self.row.cards.iter().take(self.cards);
+        let card_row = place.and_then(|place| seen.position(|&[_, c, l, s, p, ..]| [c, l, s, p] == place));
+        let code = match (choice.action, choice.card) {
+            (Action::Code(code), _) | (_, Some(SeenCard { code, .. })) => code as i32,
+            _ => 0,
+        };
+        let [description_code, description_index] = split(choice.description);
+        if let Some(row) = self.row.actions.get_mut(section.start() + slot) {
+            *row = [
+                section as i32,
+                card_row.map_or(-1, |row| row as i32),
+                code,
+                description_code,
+                description_index,
+            ];
+        }
     }
 }

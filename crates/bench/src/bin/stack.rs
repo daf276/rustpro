@@ -63,7 +63,14 @@ static GLOBAL: Counting = Counting;
 const SAMPLE_EVERY: u64 = 16;
 const LEGAL_REPEATS: u32 = 16;
 const SPIN: u64 = 50_000_000;
-const OPS: [&str; 5] = ["legal_actions_into", "clone", "observe", "encode", "determinize"];
+const OPS: [&str; 6] = [
+    "legal_actions_into",
+    "clone",
+    "observe",
+    "encode",
+    "observe into tensors",
+    "determinize",
+];
 
 // Per call: the time (its result dropped included), allocations and bytes allocated.
 #[derive(Default)]
@@ -106,7 +113,8 @@ impl Op {
 type Ops = [Op; OPS.len()];
 
 // The calls at every SAMPLE_EVERY-th prompt of one duel: the legal actions, a clone, both players' observations and
-// their tensors, and a determinization for the player prompted, with the deck as the opponent's decklist.
+// their tensors, both written straight from the duel, and a determinization for the player prompted, with the deck as
+// the opponent's decklist.
 fn sample(seed: u64, cards: &'static CardDatabase, decks: &Decks, deck: &Deck) -> BenchResult<Ops> {
     let (mut duel, mut rng) = setup(seed, cards, decks)?;
     let mut ops = Ops::default();
@@ -120,7 +128,7 @@ fn sample(seed: u64, cards: &'static CardDatabase, decks: &Decks, deck: &Deck) -
     let mut actions = vec![0; ACTIONS * ACTION_FEATURES.len()];
     let mut tensors = Tensors::new(&mut global, &mut seen, &mut chain, &mut actions)?;
     play(&mut duel, &mut rng, |duel, _, action| {
-        let [legal_op, clone, observe, encode, determinize] = &mut ops;
+        let [legal_op, clone, observe, encode, straight, determinize] = &mut ops;
         if action % SAMPLE_EVERY != 0 {
             return;
         }
@@ -130,6 +138,7 @@ fn sample(seed: u64, cards: &'static CardDatabase, decks: &Decks, deck: &Deck) -
             observe.time(1, || duel.observe(player));
             let observation = duel.observe(player);
             encode.time(1, || tensors.write(0, Some(&observation)));
+            straight.time(1, || tensors.write_duel(0, duel, player));
         }
         let player = duel.prompt().map_or(0, Prompt::player);
         determinize.time(1, || duel.determinize(player, &mut sampler, deck));
@@ -302,9 +311,10 @@ fn main() -> BenchResult<()> {
         "5b mean 4.7-4.95 us in play",
         "5b median 4.7 us",
         "5d observe+encode ~5 us",
+        "5e observe 2.8 us, est. ~1.5 us",
         "5b median 22.5 us",
     ];
-    let targets = ["", "<= ~1 us", "", "", ""];
+    let targets = ["", "<= ~1 us", "", "", "", ""];
     for (((name, (one, many)), target), earlier) in OPS.iter().zip(one.iter().zip(&many)).zip(targets).zip(earlier) {
         row(
             out,

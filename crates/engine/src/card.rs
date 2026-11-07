@@ -11,7 +11,8 @@ use crate::effect::{Container, EffectId, EffectSet, Operation, Target, Value, co
 use crate::list::{List, Marks};
 use crate::script::{Args, Procedure};
 
-pub const MAX_CARDS: usize = 512;
+// Card 0 and two 60-card Main and 15-card Extra Decks leave 105 ids for tokens (Side Decks are not in a duel).
+pub const MAX_CARDS: usize = 256;
 
 // The card's index in creation order, which orders cards as ocgcore's `cardid` does. Card 0 is the core's temp_card,
 // the owner of global effects. Stored plus one, so that an Option<CardId> takes no more space.
@@ -481,6 +482,9 @@ impl Duel {
     // condition comes with its cards.
     pub(crate) fn get_code(&self, card: CardId) -> u32 {
         let data = &self.cards[card].data;
+        if !self.may_change_codes() {
+            return if data.alias != 0 { data.alias } else { data.code };
+        }
         let code = self
             .filter_effect(card, EFFECT_CHANGE_CODE, true)
             .last()
@@ -509,8 +513,16 @@ impl Duel {
         if code != self.cards[card].data.code {
             return Self::second_code(code);
         }
-        unported!(self, self.add_codes_without_condition(card));
+        if self.may_change_codes() {
+            unported!(self, self.add_codes_without_condition(card));
+        }
         0
+    }
+
+    // False when get_code's lookups would find nothing, which hot readers test before building their effect sets.
+    #[inline(always)]
+    fn may_change_codes(&self) -> bool {
+        self.may_have_effect(EFFECT_CHANGE_CODE) || self.may_have_effect(EFFECT_ADD_CODE)
     }
 
     fn add_codes_without_condition(&self, card: CardId) -> impl Iterator<Item = EffectId> + '_ {
@@ -585,13 +597,16 @@ impl Duel {
                 .filter_map(|code| self.is_affected_by_effect(card, code))
         );
         let (mut up, mut upc) = (0, 0);
-        for effect in self.filter_effects(card, &[EFFECT_UPDATE_LEVEL, EFFECT_CHANGE_LEVEL, EFFECT_CHANGE_LEVEL_FINAL]) {
-            let value = self.get_value(effect, card);
-            match self.effects[effect].code {
-                EFFECT_UPDATE_LEVEL if self.is_single_unranged(effect) => up += value,
-                EFFECT_UPDATE_LEVEL => upc += value,
-                EFFECT_CHANGE_LEVEL => (level, up) = (value, 0),
-                _ => (level, up, upc) = (value, 0, 0),
+        let codes = [EFFECT_UPDATE_LEVEL, EFFECT_CHANGE_LEVEL, EFFECT_CHANGE_LEVEL_FINAL];
+        if codes.iter().any(|&code| self.may_have_effect(code)) {
+            for effect in self.filter_effects(card, &codes) {
+                let value = self.get_value(effect, card);
+                match self.effects[effect].code {
+                    EFFECT_UPDATE_LEVEL if self.is_single_unranged(effect) => up += value,
+                    EFFECT_UPDATE_LEVEL => upc += value,
+                    EFFECT_CHANGE_LEVEL => (level, up) = (value, 0),
+                    _ => (level, up, upc) = (value, 0, 0),
+                }
             }
         }
         level += up + upc;
@@ -732,8 +747,11 @@ impl Duel {
 
     // card::get_set_card: the card's archetypes, 0 in unused slots.
     pub(crate) fn get_set_card(&self, card: CardId) -> [u16; 5] {
-        unported!(self, self.filter_effect(card, EFFECT_ADD_SETCODE, true));
         let data = &self.cards[card].data;
+        if data.alias == 0 && !self.may_change_codes() && !self.may_have_effect(EFFECT_ADD_SETCODE) {
+            return data.setcodes;
+        }
+        unported!(self, self.filter_effect(card, EFFECT_ADD_SETCODE, true));
         let code = self.get_code(card);
         let own = if code == data.code {
             data.setcodes
@@ -1274,9 +1292,7 @@ impl Duel {
             self.is_affected_by_effect(card, EFFECT_CANNOT_DISABLE).is_none() && self.is_affected_by_effect(card, EFFECT_DISABLE).is_some();
         self.immune_effects.retain(|(cached, _)| *cached != card);
         let immune_effects = self.filter_immune_effect(card);
-        if !immune_effects.is_empty() {
-            self.immune_effects.push((card, immune_effects));
-        }
+        self.immune_effects.extend(immune_effects.iter().map(|&effect| (card, effect)));
         let card = &mut self.cards[card];
         card.set_status(STATUS_FORBIDDEN, forbidden);
         card.set_status(STATUS_DISABLED, disabled);
@@ -1423,6 +1439,12 @@ impl Duel {
             return EffectSet::default();
         }
         self.filter_effect_lookup(card, code, sort)
+    }
+
+    // Whether filter_effect finds an effect, without building the set when no effect has the code.
+    #[inline(always)]
+    pub(crate) fn filter_effect_any(&self, card: CardId, code: u32) -> bool {
+        self.may_have_effect(code) && !self.filter_effect_lookup(card, code, false).is_empty()
     }
 
     fn filter_effect_lookup(&self, card: CardId, code: u32, sort: bool) -> EffectSet {
@@ -2597,7 +2619,7 @@ impl Duel {
         if self.get_type_for(card, scard, SUMMON_TYPE_SYNCHRO.into(), playerid) & TYPE_TUNER == 0 {
             return true;
         }
-        unported!(self, self.filter_effect(card, EFFECT_NONTUNER, true));
+        unported!(self, self.filter_effect_any(card, EFFECT_NONTUNER).then_some(()));
         false
     }
 
@@ -2612,7 +2634,7 @@ impl Duel {
         {
             return 0;
         }
-        unported!(self, self.filter_effect(card, EFFECT_SYNCHRO_LEVEL, true));
+        unported!(self, self.filter_effect_any(card, EFFECT_SYNCHRO_LEVEL).then_some(()));
         self.get_level(card)
     }
 
@@ -2655,16 +2677,18 @@ impl Duel {
 
     // The values of EFFECT_CANNOT_BE_MATERIAL: whether one forbids the card as material of `scard`.
     fn is_forbidden_material(&self, card: CardId, scard: Option<CardId>, sumtype: u64, playerid: u8) -> bool {
-        self.filter_effect(card, EFFECT_CANNOT_BE_MATERIAL, true)
-            .into_iter()
-            .any(|effect| match self.effects[effect].value {
-                Value::Int(value) => value != 0,
-                Value::Material(value) => value(self, effect, scard, sumtype, playerid),
-                _ => {
-                    debug_assert!(false, "a material limit read with the wrong parameters");
-                    false
-                }
-            })
+        self.may_have_effect(EFFECT_CANNOT_BE_MATERIAL)
+            && self
+                .filter_effect(card, EFFECT_CANNOT_BE_MATERIAL, true)
+                .into_iter()
+                .any(|effect| match self.effects[effect].value {
+                    Value::Int(value) => value != 0,
+                    Value::Material(value) => value(self, effect, scard, sumtype, playerid),
+                    _ => {
+                        debug_assert!(false, "a material limit read with the wrong parameters");
+                        false
+                    }
+                })
     }
 
     pub(crate) fn is_can_be_synchro_material(&self, card: CardId, scard: Option<CardId>, playerid: u8) -> bool {
@@ -2689,7 +2713,7 @@ impl Duel {
         if target.is_status(STATUS_FORBIDDEN) {
             return false;
         }
-        unported!(self, self.filter_effect(card, EFFECT_CANNOT_BE_SYNCHRO_MATERIAL, true));
+        unported!(self, self.filter_effect_any(card, EFFECT_CANNOT_BE_SYNCHRO_MATERIAL).then_some(()));
         !self.is_forbidden_material(card, scard, SUMMON_TYPE_SYNCHRO.into(), playerid)
     }
 

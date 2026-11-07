@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::buffer::{ProgressiveBuffer, Trace};
 use crate::card::{Card, CardId, CardSet, Cards, MAX_CARDS, StaticData};
 use crate::constants::*;
-use crate::effect::{EffectId, EffectSet, Effects, Event, FieldEffect};
+use crate::effect::{EffectId, Effects, Event, FieldEffect};
 use crate::field::{FieldInfo, PerPlayer, PlayerInfo, Processor, Relations, ReturnCards};
 use crate::list::List;
 use crate::processor::{OcgStatus, Startup};
@@ -88,7 +88,7 @@ pub struct Duel {
     // The database the duel's cards were read from, which Duel.CreateToken and Duel.AnnounceCard read at runtime.
     pub(crate) database: Option<&'static CardDatabase>,
     // The scripts' own state for this duel (s.xxx tables and aux.GlobalCheck), keyed by script and slot.
-    pub(crate) script_state: List<(u64, i64), 4>,
+    pub(crate) script_state: List<(u64, i64), 16>,
     pub(crate) script_groups: Vec<(u64, CardSet)>,
     // proc_fusion.lua's Fusion.CheckAdditional, a function value the scripts set around a Fusion Summon.
     pub(crate) fusion_check_additional: Option<FusionCheck>,
@@ -113,9 +113,9 @@ pub struct Duel {
     pub(crate) announced_cards: Vec<(CardId, u32, u8)>,
     // The cards equipped to a monster; card::equiping_cards of a card are those whose equiping_target it is.
     pub(crate) equip_cards: CardSet,
-    // card::immune_effect of the cards that have any: refreshed only by refresh_disable_status, so an effect registered
+    // card::immune_effect as (card, effect) pairs: refreshed only by refresh_disable_status, so an effect registered
     // since is not in it.
-    pub(crate) immune_effects: Vec<(CardId, EffectSet)>,
+    pub(crate) immune_effects: List<(CardId, EffectId), 16>,
     // The first unported call site an effect reached, set in checks that only read.
     pub(crate) unported: std::cell::Cell<Option<&'static str>>,
 }
@@ -166,7 +166,7 @@ impl Duel {
             card_targets: Vec::new(),
             card_relations: Vec::new(),
             announced_cards: Vec::new(),
-            immune_effects: Vec::new(),
+            immune_effects: List::default(),
             equip_cards: CardSet::default(),
             unported: std::cell::Cell::new(None),
         })

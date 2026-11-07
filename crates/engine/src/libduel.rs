@@ -1780,6 +1780,7 @@ impl Duel {
 
     // Not in the Lua API: false when no effect of this code is registered anywhere (true may be a false alarm), for
     // library shortcuts that hold only without such effects.
+    #[inline(always)]
     pub fn may_have_effect(&self, code: u32) -> bool {
         self.field_effects.registry.has_code(code)
     }

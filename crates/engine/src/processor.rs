@@ -2751,9 +2751,10 @@ impl Duel {
                     core.summon_count[p] = 0;
                     core.spsummon_once_map[p].clear();
                 }
-                for effect in self.core.reseted_effects.drain(..) {
+                for &effect in self.core.reseted_effects.iter() {
                     self.effects.delete(effect);
                 }
+                self.core.reseted_effects.clear();
                 self.core.effect_count_code.clear();
                 self.emplace_process(RefreshRelay::default());
                 false
@@ -2761,8 +2762,10 @@ impl Duel {
             1 => {
                 self.core.force_turn_end = false;
                 self.core.spsummon_rst = false;
-                for effect in self.field_effects.rechargeable.clone() {
-                    if !self.effects[effect].is_flag(EFFECT_FLAG_NO_TURN_RESET) {
+                for index in 0..self.field_effects.rechargeable.len() {
+                    if let Some(&effect) = self.field_effects.rechargeable.get(index)
+                        && !self.effects[effect].is_flag(EFFECT_FLAG_NO_TURN_RESET)
+                    {
                         self.recharge(effect);
                     }
                 }

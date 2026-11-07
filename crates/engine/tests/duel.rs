@@ -8,7 +8,8 @@ use engine::constants::{
     LOCATION_MZONE,
 };
 use engine::{
-    Action, CardId, DUEL_MODE_MR5, Duel, DuelOptions, InitialEffect, Library, PHASE_DAMAGE, PHASE_DAMAGE_CAL, PlayerOptions, Prompt, Status,
+    Action, CardId, DUEL_MODE_MR5, Duel, DuelError, DuelOptions, InitialEffect, Library, PHASE_DAMAGE, PHASE_DAMAGE_CAL, PlayerOptions,
+    Prompt, Status,
 };
 
 const CODES: std::ops::RangeInclusive<u32> = 1..=40;
@@ -146,6 +147,27 @@ fn should_finish_identically_when_cloned_at_a_prompt() {
             }
         }
     }
+}
+
+#[test]
+fn should_leave_room_for_105_tokens_beside_the_largest_decks() {
+    let player = PlayerOptions::default();
+    let mut duel = Duel::new(DuelOptions {
+        seed: [1, 2, 3, 4],
+        flags: DUEL_MODE_MR5,
+        team1: player,
+        team2: player,
+    })
+    .unwrap();
+    let deck = |main, extra| Deck {
+        main: vec![1; main],
+        extra: vec![1; extra],
+    };
+    for team in 0..2 {
+        duel.add_deck(team, &deck(60, 15), &CARDS).unwrap();
+    }
+    let room = (0..).take_while(|_| duel.add_deck(0, &deck(1, 0), &CARDS).is_ok()).count();
+    assert_eq!((room, duel.add_deck(0, &deck(1, 0), &CARDS)), (105, Err(DuelError::TooManyCards)));
 }
 
 // Every card gets EFFECT_CHANGE_BATTLE_STAT, which damage calculation does not apply yet.

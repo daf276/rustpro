@@ -320,7 +320,7 @@ impl Effect {
 pub struct Effects {
     list: Shared<Effect, CHUNK>,
     cells: Vec<Cell<[(u32, u16); CHUNK]>>,
-    free: List<EffectId, 8>,
+    free: List<EffectId, 32>,
     scratch: Effect,
 }
 
@@ -622,7 +622,7 @@ impl Registry {
 pub struct FieldEffect {
     pub registry: Registry,
     pub oath: List<(EffectId, Option<EffectId>), 2>,
-    pub pheff: List<EffectId, 4>,
+    pub pheff: List<EffectId, 8>,
     pub cheff: List<EffectId, 2>,
     pub rechargeable: List<EffectId, 8>,
     pub spsummon_count_eff: List<EffectId, 2>,
@@ -1318,7 +1318,6 @@ impl Duel {
     }
 
     pub(crate) fn is_immuned(&self, effect: EffectId, card: CardId) -> bool {
-        let cached = self.immune_effects.iter().find(|(cached, _)| *cached == card);
         let immune = |&immune: &EffectId| {
             self.is_available(immune)
                 && match self.effects[immune].value {
@@ -1330,7 +1329,10 @@ impl Duel {
                     }
                 }
         };
-        cached.is_some_and(|(_, immune_effects)| immune_effects.iter().any(immune))
+        self.immune_effects
+            .iter()
+            .filter(|&&(cached, _)| cached == card)
+            .any(|(_, immune_effect)| immune(immune_effect))
     }
 
     pub(crate) fn is_chainable(&self, effect: EffectId, tp: u8) -> bool {
@@ -1422,10 +1424,11 @@ impl Duel {
         }
     }
 
+    // Writes only a count that changed, so that a clone keeps sharing the chunks of unused effects.
     pub(crate) fn recharge(&mut self, effect: EffectId) {
-        let peffect = &mut self.effects[effect];
-        if peffect.is_flag(EFFECT_FLAG_COUNT_LIMIT) {
-            peffect.count_limit = peffect.count_limit_max;
+        let peffect = &self.effects[effect];
+        if peffect.is_flag(EFFECT_FLAG_COUNT_LIMIT) && peffect.count_limit != peffect.count_limit_max {
+            self.effects[effect].count_limit = peffect.count_limit_max;
         }
     }
 

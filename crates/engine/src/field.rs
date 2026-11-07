@@ -147,7 +147,7 @@ pub type Events = List<Event, 4>;
 // Event lists the step that fills them also empties, so they rarely hold an event at a prompt.
 pub type PendingEvents = List<Event, 1>;
 pub type FieldIds = List<u32, 8>;
-pub type Relations = List<Relation, 8>;
+pub type Relations = List<Relation, 16>;
 pub type CountCodes = List<(u64, u32), 8>;
 
 #[derive(Debug, Clone, Default)]
@@ -245,7 +245,7 @@ pub struct Processor {
     // shares that group between both units.
     pub battle_destroyed: CardSet,
     pub operated_set: CardSet,
-    pub reseted_effects: Vec<EffectId>,
+    pub reseted_effects: List<EffectId, 16>,
     // effect_count_code, effect_count_code_duel and effect_count_code_chain: hash maps in the core, only looked up.
     pub effect_count_code: CountCodes,
     pub effect_count_code_duel: CountCodes,
@@ -527,7 +527,7 @@ impl Processor {
             battle_destroy_rep: CardSet::default(),
             battle_destroyed: CardSet::default(),
             operated_set: CardSet::default(),
-            reseted_effects: Vec::new(),
+            reseted_effects: List::default(),
             effect_count_code: CountCodes::default(),
             effect_count_code_duel: CountCodes::default(),
             effect_count_code_chain: CountCodes::default(),

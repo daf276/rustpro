@@ -1891,6 +1891,7 @@ impl Duel {
                 }
                 if !self.core.attack_rollback {
                     self.cards[attacker].announce_count += 1;
+                    self.add_announced_card(attacker, attack_target);
                     self.attack_all_target_check();
                     arg.step = 18;
                     return false;
@@ -1925,6 +1926,7 @@ impl Duel {
                 let replays_stored = self.is_flag(DUEL_STORE_ATTACK_REPLAYS) && !self.core.chain_attack;
                 if self.cards[attacker].fieldid_r == self.core.pre_field[0] && (!replays_stored || canceled) {
                     self.cards[attacker].announce_count += 1;
+                    self.add_announced_card(attacker, attack_target);
                     self.attack_all_target_check();
                 }
                 self.core.chain_attack = false;
@@ -2317,10 +2319,14 @@ impl Duel {
         let Some(attacker) = self.core.attacker else {
             return (None, [false; 2]);
         };
-        let a = self.get_attack(attacker) as u32;
+        let mut a = self.get_attack(attacker) as u32;
         let pa = self.cards[attacker].current.controler;
-        if self.cards[attacker].is_position(POS_FACEUP_DEFENSE) {
-            unported!(self, self.is_affected_by_effect(attacker, EFFECT_DEFENSE_ATTACK));
+        if self.cards[attacker].is_position(POS_FACEUP_DEFENSE)
+            && self
+                .is_affected_by_effect(attacker, EFFECT_DEFENSE_ATTACK)
+                .is_some_and(|effect| self.get_value(effect, attacker) != 0)
+        {
+            a = self.get_defense(attacker) as u32;
         }
         unported!(self, self.is_affected_by_effect(attacker, EFFECT_CHANGE_BATTLE_STAT));
         let (mut damp, mut reason_card, mut destroyed, mut pierce) = (0, None, [false; 2], false);
@@ -2488,6 +2494,7 @@ impl Duel {
         let turn_player = arg.turn_player;
         match arg.step {
             0 => {
+                self.announced_cards.clear();
                 for p in 0..2 {
                     for card in self.player[p].list_mzone.into_iter().flatten() {
                         let card = &mut self.cards[card];
@@ -2700,6 +2707,7 @@ impl Duel {
                             card.attacked_count = 0;
                         }
                     }
+                    self.announced_cards.clear();
                     return false;
                 }
                 arg.has_performed_second_battle_phase = false;

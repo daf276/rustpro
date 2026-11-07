@@ -51,6 +51,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   An unported card in SUPPORT runs its Lua in the oracle but nothing in the engine, so the diff fails: port a
   needed support card first (it then has its own checks).
   Pendulum Normal Monsters have a script (`Pendulum.AddProcedure`), so they need a port too.
+  Before choosing SUPPORT, read the Lua's `listed_names`, material codes and searched names: port those cards
+  first (an unported card in the Deck shows up as an unexplained `MSG_SELECT_CHAIN` mismatch).
 - `pub const CHECKS: &[Check]` (`crate::testing::Check`), each needing a count above 0 in both the first 13 and all
   64 scenarios. Without `CHECKS` the card must resolve some effect (`Check::Resolves`). Others:
   `ResolvesEffect(aux::stringid(ID, n))`, `SpecialSummoned`, `SpecialSummonedCode(code)` (a token the card creates),
@@ -107,6 +109,9 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - Match EDOPro exactly, misrulings and Lua bugs included (an undefined global is nil, an upvalue the Lua reassigns
   stays reassigned). A mirrored bug gets a one-line comment.
 - Port line by line: the same checks, selections, hints, messages and random draws in the same order.
+- Lua nil for a numeric argument is 0 (`Duel.Remove(c, nil, r)` is position 0, not `POS_FACEUP`). The core
+  rounds Lua numbers it reads as integers (`atk/2` becomes `round(atk/2)`). `Duel.IsChainNegatable` is always true
+  in the core; the real check is `field_is_chain_negatable`, reached by `NegateActivation`.
 - An optimisation must never skip or add an effect lookup the Lua makes. A conditional effect gets a new id each
   time it becomes available and `filter_effect` orders effects by id, so a skipped or extra lookup renumbers effects
   later; random play rarely shows it. Skip only work that looks nothing up.

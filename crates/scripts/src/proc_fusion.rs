@@ -27,6 +27,8 @@ pub enum FusionMaterial {
     Code(u32),
     Filter(MaterialFilter),
     GroupFilter(GroupMaterialFilter),
+    // A Lua table of codes and filters, any of which fits (Fusion.ParseMaterialTable).
+    Table(&'static [FusionMaterial]),
 }
 
 // Fusion.AddProcMix(c, sub, insf, ...) and the procedures that call it (AddProcMixN, AddProcCode2, ...), with each
@@ -135,22 +137,36 @@ fn check_additional(duel: &Duel, tp: u8, sg: CardSet, fc: CardId) -> bool {
 }
 
 impl FusionMaterial {
+    // The codes mt.material lists for it.
+    fn codes(self) -> Vec<u32> {
+        match self {
+            Self::Code(code) => vec![code],
+            Self::Table(materials) => materials.iter().flat_map(|material| material.codes()).collect(),
+            Self::Filter(_) | Self::GroupFilter(_) => Vec::new(),
+        }
+    }
+
     // The material function the procedures build: fun(c, fc, sub, sub2, mg, sg, tp, contact, sumtype).
     fn check(self, duel: &Duel, c: CardId, fc: CardId, sub: bool, sub2: bool, tp: u8, sumtype: u64, sg: Option<CardSet>) -> bool {
         let any = |duel| sub2 && c.is_has_effect(duel, EFFECT_ANY_MATERIAL).is_some();
+        let usable = |duel| c.is_has_effect(duel, EFFECT_NOT_MATERIAL).is_none();
+        let passes = |material: Self| match material {
+            Self::Filter(f) => f(c, duel, fc, sumtype, tp),
+            Self::GroupFilter(f) => f(c, duel, fc, sumtype, tp, sg),
+            Self::Code(_) | Self::Table(_) => false,
+        };
+        let by_codes = |codes: &[u32]| {
+            c.is_summon_code(duel, Some(fc), sumtype, fc.get_controler(duel), codes)
+                || (sub && c.check_fusion_substitute(duel, fc))
+                || any(duel)
+        };
         match self {
-            Self::Filter(_) | Self::GroupFilter(_) => {
-                let passes = match self {
-                    Self::Filter(f) => f(c, duel, fc, sumtype, tp),
-                    Self::GroupFilter(f) => f(c, duel, fc, sumtype, tp, sg),
-                    Self::Code(_) => false,
-                };
-                (passes || any(duel)) && c.is_has_effect(duel, EFFECT_NOT_MATERIAL).is_none()
-            }
-            Self::Code(code) => {
-                c.is_summon_code(duel, Some(fc), sumtype, fc.get_controler(duel), &[code])
-                    || (sub && c.check_fusion_substitute(duel, fc))
-                    || any(duel)
+            Self::Filter(_) | Self::GroupFilter(_) => (passes(self) || any(duel)) && usable(duel),
+            Self::Code(code) => by_codes(&[code]),
+            Self::Table(materials) => {
+                let by_filter = |&material: &Self| passes(material) || (!matches!(material, Self::Code(_)) && any(duel));
+                let codes = self.codes();
+                (materials.iter().any(by_filter) && usable(duel)) || (!codes.is_empty() && by_codes(&codes))
             }
         }
     }
@@ -285,10 +301,8 @@ impl Fusion {
             return;
         }
         let mut codes = Vec::new();
-        for material in materials {
-            if let FusionMaterial::Code(code) = material
-                && !codes.contains(&code)
-            {
+        for code in materials.flat_map(FusionMaterial::codes) {
+            if !codes.contains(&code) {
                 codes.push(code);
             }
         }

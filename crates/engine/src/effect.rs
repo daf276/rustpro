@@ -101,6 +101,10 @@ pub enum Value {
     MaterialFor(fn(&Duel, EffectId, CardId, CardId) -> bool),
     // value(e, re, r, rp): EFFECT_DESTROY_SUBSTITUTE.
     Reason(fn(&Duel, EffectId, Option<EffectId>, u32, u8) -> bool),
+    // value(e, re), called for what it does when the card is activated: EFFECT_TRAP_ACT_IN_SET_TURN.
+    Activation(fn(&mut Duel, EffectId, EffectId)),
+    // value(e, damp, rc): EFFECT_CHANGE_BATTLE_DAMAGE.
+    BattleDamage(fn(&Duel, EffectId, u8, CardId) -> i64),
     // value(e, c, sc), which may register effects on c: EFFECT_HAND_SYNCHRO.
     HandSynchro(fn(&mut Duel, EffectId, CardId, CardId) -> bool),
     // value(chk, summon_type, e, ...) of EFFECT_EXTRA_MATERIAL, which registers and resets effects.
@@ -1139,6 +1143,8 @@ impl Duel {
             Value::Card(value) => value(self, effect, card),
             Value::EffectPlayer(_)
             | Value::Effect(_)
+            | Value::BattleDamage(_)
+            | Value::Activation(_)
             | Value::MaterialCheck(_)
             | Value::Material(_)
             | Value::SpSummonCondition(_)
@@ -1147,6 +1153,18 @@ impl Duel {
             | Value::HandSynchro(_)
             | Value::ExtraMaterial(_) => {
                 debug_assert!(false, "a value read with the wrong parameters");
+                0
+            }
+        }
+    }
+
+    // effect::get_value(2) of EFFECT_CHANGE_BATTLE_DAMAGE with the damaged player and the card dealing the damage.
+    pub(crate) fn get_battle_damage_value(&self, effect: EffectId, playerid: u8, reason_card: CardId) -> i64 {
+        match self.effects[effect].value {
+            Value::Int(value) => i64::from(value),
+            Value::BattleDamage(value) => value(self, effect, playerid, reason_card),
+            _ => {
+                debug_assert!(false, "a battle damage value read with the wrong parameters");
                 0
             }
         }

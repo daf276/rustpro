@@ -3,10 +3,11 @@ use crate::card::{CardId, CardSet};
 use crate::chain::ExecuteKind;
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{CounterFilter, CustomCounter, EffectId, EffectSet, Event, OpTarget, Value};
+use crate::effect::{Container, CounterFilter, CustomCounter, EffectId, EffectSet, Event, OpTarget, Value};
 
 use crate::field::FromEx;
-use crate::processor::{AnnounceRace, SelectCard, SelectOption, SelectYesNo};
+use crate::operations::PayLpCost;
+use crate::processor::{AnnounceAttribute, AnnounceRace, SelectCard, SelectOption, SelectYesNo, SortDeck};
 use crate::script::{FusionCheck, Procedure, Script};
 
 // What Duel.GetChainInfo pushes for one CHAININFO flag.
@@ -118,6 +119,18 @@ impl Duel {
 
     pub fn is_player_can_draw(&self, player: u8, count: usize) -> bool {
         player <= 1 && self.field_is_player_can_draw(player) && self.player[player].list_main.len() >= count
+    }
+
+    pub fn is_player_can_remove(&self, player: u8, card: Option<CardId>) -> bool {
+        self.is_player_can_remove_full(player, card, REASON_EFFECT)
+    }
+
+    pub fn is_player_can_remove_full(&self, player: u8, card: Option<CardId>, reason: u32) -> bool {
+        player <= 1
+            && match card {
+                Some(card) => self.is_player_can_remove_core(player, card, reason),
+                None => self.is_player_can_action(player, EFFECT_CANNOT_REMOVE),
+            }
     }
 
     pub fn equip(&mut self, player: u8, card: CardId, target: CardId) -> Script<bool> {
@@ -515,6 +528,20 @@ impl Duel {
         nolimit: bool,
         positions: u32,
     ) -> Script<i32> {
+        self.special_summon_full(targets, sumtype, sumplayer, target_player, nocheck, nolimit, positions, 0xff)
+    }
+
+    pub fn special_summon_full(
+        &mut self,
+        targets: impl Into<CardSet>,
+        sumtype: u32,
+        sumplayer: u8,
+        target_player: u8,
+        nocheck: bool,
+        nolimit: bool,
+        positions: u32,
+        zone: u32,
+    ) -> Script<i32> {
         if sumplayer >= PLAYER_NONE {
             return Ok(0);
         }
@@ -526,7 +553,7 @@ impl Duel {
             nocheck,
             nolimit,
             positions as u8,
-            0xff,
+            zone,
         );
         self.yield_script()?;
         Ok(self.returns.at_i32(0))
@@ -560,6 +587,24 @@ impl Duel {
         self.field_recover(reason_effect, reason, reason_player, player, amount);
         self.yield_script()?;
         Ok(self.returns.at_u32(0))
+    }
+
+    pub fn check_lp_cost(&self, player: u8, lp: u32) -> bool {
+        unported!(self, self.filter_player_effect(player, EFFECT_LPCOST_CHANGE, true));
+        unported!(self, self.field_effect_range(Container::Continuous, EFFECT_LPCOST_REPLACE));
+        player <= 1 && (lp == 0 || lp as i32 <= self.player[player].lp)
+    }
+
+    pub fn pay_lp_cost(&mut self, player: u8, cost: u32) -> Script<()> {
+        if player > 1 {
+            return Ok(());
+        }
+        self.emplace_process(PayLpCost {
+            step: 0,
+            playerid: player,
+            cost,
+        });
+        self.yield_script()
     }
 
     pub fn confirm_cards(&mut self, player: u8, targets: impl Into<CardSet>) -> Script<()> {
@@ -680,14 +725,39 @@ impl Duel {
         u32::from(self.infos.phase) == phase
     }
 
-    pub fn remove(&mut self, targets: impl Into<CardSet>, position: u32, reason: u32) -> Script<i32> {
+    pub fn change_position(&mut self, targets: impl Into<CardSet>, position: u32) -> Script<i32> {
+        self.change_position_full(targets, [position; 4], false)
+    }
+
+    // `positions` are the Lua's au, ad, du and dd.
+    pub fn change_position_full(&mut self, targets: impl Into<CardSet>, positions: [u32; 4], no_flip_effect: bool) -> Script<i32> {
         let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
+        let flag = if no_flip_effect { NO_FLIP_EFFECT } else { 0 };
+        self.field_change_positions(targets.into(), reason_effect, reason_player, positions, flag);
+        self.yield_script()?;
+        Ok(self.returns.at_i32(0))
+    }
+
+    pub fn remove(&mut self, targets: impl Into<CardSet>, position: u32, reason: u32) -> Script<i32> {
+        self.remove_full(targets, position, reason, PLAYER_NONE, None)
+    }
+
+    pub fn remove_full(
+        &mut self,
+        targets: impl Into<CardSet>,
+        position: u32,
+        reason: u32,
+        player: u8,
+        reason_player: Option<u8>,
+    ) -> Script<i32> {
+        let reason_effect = self.core.reason_effect.get();
+        let reason_player = reason_player.unwrap_or_else(|| self.core.reason_player.get());
         self.send_to(
             targets.into(),
             reason_effect,
             reason,
             reason_player,
-            PLAYER_NONE,
+            player,
             LOCATION_REMOVED,
             0,
             position as u8,
@@ -798,6 +868,65 @@ impl Duel {
         deck.iter().skip(deck.len().saturating_sub(count)).copied().collect()
     }
 
+    // The top `count` cards are shown to both players and returned.
+    pub fn confirm_decktop(&mut self, player: u8, count: usize) -> Script<CardSet> {
+        if player > 1 {
+            return Ok(CardSet::default());
+        }
+        let deck = &self.player[player].list_main;
+        let count = count.min(deck.len());
+        unported!(self, (count < deck.len() && self.core.deck_reversed).then_some(player));
+        let mut message = self.trace.message(MSG_CONFIRM_DECKTOP);
+        message.u8(player).u32(count as u32);
+        for &card in deck.iter().rev().take(count) {
+            let card = &self.cards[card];
+            message
+                .u32(card.data.code)
+                .u8(card.current.controler)
+                .u8(card.current.location)
+                .u32(card.current.sequence);
+        }
+        drop(message);
+        self.yield_script()?;
+        Ok(self.get_decktop_group(player, count))
+    }
+
+    // Duel.SortDeckbottom: the player sorts the bottom `count` cards of the target player's Deck.
+    pub fn sort_deckbottom(&mut self, sort_player: u8, target_player: u8, count: u16) -> Script<()> {
+        if sort_player > 1 || target_player > 1 || !(1..=64).contains(&count) {
+            return Ok(());
+        }
+        self.emplace_process(SortDeck {
+            sort_player,
+            target_player,
+            count,
+            bottom: true,
+            ..SortDeck::default()
+        });
+        self.yield_script()
+    }
+
+    // Duel.MoveSequence for a card in the Deck; the sequences of other locations come with the cards that move them.
+    pub fn move_sequence(&mut self, card: CardId, sequence: u8) -> Script<bool> {
+        let location = self.cards[card].current.location;
+        unported!(self, (location != LOCATION_DECK).then_some(card));
+        let reason_effect = self.core.reason_effect.get();
+        if !self.is_affect_by_effect(card, reason_effect) {
+            return Ok(false);
+        }
+        let player = self.cards[card].current.controler;
+        let moved = self.move_card(player, card, location, sequence, false);
+        if moved {
+            let reason_player = self.core.reason_player.get();
+            self.raise_single_event(card, EVENT_MOVE, reason_effect, 0, reason_player, player, 0);
+            self.raise_event(Some(card.into()), EVENT_MOVE, reason_effect, 0, reason_player, player, 0);
+            self.process_single_event();
+            self.process_instant_event();
+        }
+        self.yield_script()?;
+        Ok(moved)
+    }
+
     pub fn get_operated_group(&self) -> CardSet {
         self.core.operated_set
     }
@@ -818,6 +947,14 @@ impl Duel {
 
     pub fn disable_shuffle_check(&mut self, disable: bool) {
         self.core.shuffle_check_disabled = disable;
+    }
+
+    pub fn shuffle_deck(&mut self, player: u8) -> Script<()> {
+        if player > 1 {
+            return Ok(());
+        }
+        self.shuffle(player, LOCATION_DECK);
+        self.yield_script()
     }
 
     pub fn shuffle_extra(&mut self, player: u8) -> Script<()> {
@@ -897,6 +1034,20 @@ impl Duel {
         });
         self.yield_script()?;
         Ok(self.returns.at_u64(0))
+    }
+
+    pub fn announce_attribute(&mut self, player: u8, count: u8, available: u32) -> Script<u32> {
+        if available & !ATTRIBUTE_ALL != 0 {
+            self.reach_unported(concat!(file!(), ":", line!(), " (Duel.AnnounceAttribute raises a Lua error)"));
+        }
+        self.emplace_process(AnnounceAttribute {
+            playerid: player,
+            count: count.min(available.count_ones() as u8),
+            available,
+            ..AnnounceAttribute::default()
+        });
+        self.yield_script()?;
+        Ok(self.returns.at_u32(0))
     }
 
     // The index of the chosen option, announced to the opponent (the default sel_hint).
@@ -982,6 +1133,17 @@ impl Duel {
     }
 
     pub fn get_location_count_from_ex(&self, player: u8, uplayer: u8, excluded: Option<CardSet>, summoned: impl Into<ExtraSummon>) -> i32 {
+        self.get_location_count_from_ex_full(player, uplayer, excluded, summoned, 0xff)
+    }
+
+    pub fn get_location_count_from_ex_full(
+        &self,
+        player: u8,
+        uplayer: u8,
+        excluded: Option<CardSet>,
+        summoned: impl Into<ExtraSummon>,
+        zone: u32,
+    ) -> i32 {
         if player > 1 {
             return 0;
         }
@@ -990,7 +1152,7 @@ impl Duel {
             ExtraSummon::Card(card) => FromEx::card(self, Some(card)),
             ExtraSummon::Type(card_type) => FromEx::card_type(card_type),
         };
-        self.get_useable_count_fromex_in(&zones, summoned, player, uplayer, 0xff).0
+        self.get_useable_count_fromex_in(&zones, summoned, player, uplayer, zone).0
     }
 
     pub fn get_usable_mzone_count(&self, player: u8) -> i32 {
@@ -1542,6 +1704,10 @@ impl Duel {
 
     pub fn get_attacker(&self) -> Option<CardId> {
         self.core.attacker
+    }
+
+    pub fn get_attack_target(&self) -> Option<CardId> {
+        self.core.attack_target
     }
 
     // The AttackDisable unit in one. core.effect_damage_step is set only by Duel.CalculateDamage, which no port calls.

@@ -5,8 +5,8 @@ use crate::constants::*;
 use crate::duel::Duel;
 use crate::list::List;
 use crate::processor::{
-    AnnounceRace, SelectBattleCmd, SelectCard, SelectChain, SelectEffectYesNo, SelectIdleCmd, SelectOption, SelectPlace, SelectPosition,
-    SelectSum, SelectTributeP, SelectUnselectCard, SelectYesNo,
+    AnnounceAttribute, AnnounceRace, SelectBattleCmd, SelectCard, SelectChain, SelectEffectYesNo, SelectIdleCmd, SelectOption, SelectPlace,
+    SelectPosition, SelectSum, SelectTributeP, SelectUnselectCard, SelectYesNo, SortCard,
 };
 
 impl Duel {
@@ -246,6 +246,68 @@ impl Duel {
             return false;
         }
         self.trace.message(MSG_HINT).u8(HINT_RACE).u8(arg.playerid).u64(selected);
+        true
+    }
+
+    pub(crate) fn process_announce_attribute(&mut self, arg: &mut AnnounceAttribute) -> bool {
+        if arg.step == 0 {
+            if arg.count == 0 {
+                self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(arg.playerid).u64(0);
+                return true;
+            }
+            self.trace
+                .message(MSG_ANNOUNCE_ATTRIB)
+                .u8(arg.playerid)
+                .u8(arg.count)
+                .u32(arg.available);
+            self.returns.clear();
+            return false;
+        }
+        let selected = self.returns.at_u32(0);
+        if selected & !arg.available != 0 || selected.count_ones() != u32::from(arg.count) {
+            self.trace.message(MSG_RETRY);
+            return false;
+        }
+        self.trace
+            .message(MSG_HINT)
+            .u8(HINT_ATTRIB)
+            .u8(arg.playerid)
+            .u64(u64::from(selected));
+        true
+    }
+
+    pub(crate) fn process_sort_card(&mut self, arg: &mut SortCard) -> bool {
+        let playerid = arg.playerid;
+        if arg.step == 0 {
+            self.returns.clear();
+            if self.core.select_cards.is_empty() {
+                self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(playerid).u64(0);
+                return true;
+            }
+            let mut message = self.trace.message(MSG_SORT_CARD);
+            message.u8(playerid).u32(self.core.select_cards.len() as u32);
+            for &card in &self.core.select_cards {
+                let card = &self.cards[card];
+                message
+                    .u32(card.data.code)
+                    .u8(card.current.controler)
+                    .u32(u32::from(card.current.location))
+                    .u32(card.current.sequence);
+            }
+            return false;
+        }
+        if self.returns.at_u8(0) == u8::MAX {
+            return true;
+        }
+        let count = self.core.select_cards.len();
+        let mut used = vec![false; count];
+        for index in 0..count {
+            let Some(slot) = used.get_mut(usize::from(self.returns.at_u8(index))).filter(|slot| !**slot) else {
+                self.trace.message(MSG_RETRY);
+                return false;
+            };
+            *slot = true;
+        }
         true
     }
 

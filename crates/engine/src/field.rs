@@ -2029,7 +2029,7 @@ impl Duel {
 
     // Fills direct_attackable and returns the monsters the card can attack, with the core's atype 3 for monsters that
     // must attack a monster and 4 otherwise; one attack per turn.
-    pub(crate) fn get_attack_target(&mut self, card: CardId, chain_attack: bool, select_target: bool) -> Cards16 {
+    pub(crate) fn field_get_attack_target(&mut self, card: CardId, chain_attack: bool, select_target: bool) -> Cards16 {
         self.cards[card].direct_attackable = 0;
         let p = self.cards[card].current.controler;
         let opponent = self.player[1 - p].list_mzone;
@@ -2115,7 +2115,7 @@ impl Duel {
 
     pub(crate) fn confirm_attack_target(&mut self) -> bool {
         let Some(attacker) = self.core.attacker else { return false };
-        let targets = self.get_attack_target(attacker, self.core.chain_attack, false);
+        let targets = self.field_get_attack_target(attacker, self.core.chain_attack, false);
         match self.core.attack_target {
             Some(target) => targets.contains(&target),
             None => self.cards[attacker].direct_attackable != 0,
@@ -2335,8 +2335,15 @@ impl Duel {
         self.is_player_can(playerid, EFFECT_CANNOT_TO_DECK, card)
     }
 
-    pub(crate) fn is_player_can_remove(&self, playerid: u8, card: CardId, _reason: u32) -> bool {
+    pub(crate) fn is_player_can_remove_core(&self, playerid: u8, card: CardId, _reason: u32) -> bool {
         self.is_player_can(playerid, EFFECT_CANNOT_REMOVE, card)
+    }
+
+    // field::is_player_can_action: no player effect of `actionlimit` without a target function applies.
+    pub(crate) fn is_player_can_action(&self, playerid: u8, actionlimit: u32) -> bool {
+        self.filter_player_effect(playerid, actionlimit, true)
+            .into_iter()
+            .all(|effect| !matches!(self.effects[effect].target, Target::None))
     }
 
     pub(crate) fn is_player_can_discard_hand(&self, playerid: u8, card: CardId) -> bool {

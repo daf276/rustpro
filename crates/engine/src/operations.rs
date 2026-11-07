@@ -92,6 +92,14 @@ pub struct Recover {
     pub reason_effect: Option<EffectId>,
 }
 
+// The LP cost changes and replacements come with the effects that register them.
+#[derive(Debug, Clone)]
+pub struct PayLpCost {
+    pub step: u16,
+    pub playerid: u8,
+    pub cost: u32,
+}
+
 #[derive(Debug, Clone)]
 pub struct SpellSet {
     pub step: u16,
@@ -569,7 +577,7 @@ impl Duel {
                 }
                 if self.cards[equip_card].current.location == LOCATION_SZONE {
                     if arg.faceup && self.cards[equip_card].is_position(POS_FACEDOWN) {
-                        self.change_position(equip_card, None, equip_player, POS_FACEUP, 0, false);
+                        self.field_change_position(equip_card, None, equip_player, POS_FACEUP, 0, false);
                     }
                     return false;
                 }
@@ -835,6 +843,33 @@ impl Duel {
         }
     }
 
+    pub(crate) fn process_pay_lp_cost(&mut self, arg: &mut PayLpCost) -> bool {
+        let (playerid, cost) = (arg.playerid, arg.cost);
+        if arg.step == 0 {
+            unported!(self, self.filter_player_effect(playerid, EFFECT_LPCOST_CHANGE, true));
+            if cost == 0 {
+                return true;
+            }
+            self.core.select_options.clear();
+            self.core.select_effects.clear();
+            if cost as i32 <= self.player[playerid].lp {
+                self.core.select_options.push(11);
+            }
+            unported!(self, self.field_effect_range(Container::Continuous, EFFECT_LPCOST_REPLACE));
+            if self.core.select_options.is_empty() {
+                return true;
+            }
+            self.returns.set_i32(0, 0);
+            return false;
+        }
+        self.player[playerid].lp -= cost as i32;
+        self.trace.message(MSG_PAY_LPCOST).u8(playerid).u32(cost);
+        let reason_effect = self.core.reason_effect.get();
+        self.raise_event(None, EVENT_PAY_LPCOST, reason_effect, 0, playerid, playerid, cost);
+        self.process_instant_event();
+        true
+    }
+
     // field::destroy: cards already confirmed for destruction are left out, unless a substitute canceled it.
     pub(crate) fn field_destroy(
         &mut self,
@@ -923,8 +958,17 @@ impl Duel {
                             continue;
                         }
                     }
-                    let codes = [EFFECT_INDESTRUCTABLE, EFFECT_INDESTRUCTABLE_COUNT];
-                    unported!(self, codes.into_iter().flat_map(|code| self.filter_effect(card, code, true)));
+                    unported!(self, self.filter_effect(card, EFFECT_INDESTRUCTABLE, true));
+                    let counted = self.indestructable_by_count(card);
+                    for &effect in &counted {
+                        if !indestructable_effects.contains(&effect) {
+                            indestructable_effects.push(effect);
+                        }
+                    }
+                    if !counted.is_empty() {
+                        indestructable.insert(card);
+                        continue;
+                    }
                     let substitutes = self.destroy_substitutes(card);
                     if !substitutes.is_empty() {
                         extra.merge(substitutes);
@@ -1071,8 +1115,19 @@ impl Duel {
                         arg.targets.remove(card);
                         continue;
                     }
-                    let codes = [EFFECT_INDESTRUCTABLE, EFFECT_INDESTRUCTABLE_COUNT];
-                    unported!(self, codes.into_iter().flat_map(|code| self.filter_effect(card, code, true)));
+                    unported!(self, self.filter_effect(card, EFFECT_INDESTRUCTABLE, true));
+                    let counted = self.indestructable_by_count(card);
+                    for &effect in &counted {
+                        self.dec_count(effect, PLAYER_NONE);
+                        let code = self.cards[self.effects[effect].owner].data.code;
+                        self.trace.message(MSG_HINT).u8(HINT_CARD).u8(0).u64(u64::from(code));
+                    }
+                    if !counted.is_empty() {
+                        self.restore_reason(card);
+                        self.cards[card].set_status(STATUS_DESTROY_CONFIRMED, false);
+                        arg.targets.remove(card);
+                        continue;
+                    }
                     let substitutes = self.destroy_substitutes(card);
                     if !substitutes.is_empty() {
                         self.core.battle_destroy_rep.merge(substitutes);
@@ -1524,19 +1579,38 @@ impl Duel {
 
     // The handlers of the card's EFFECT_DESTROY_SUBSTITUTE effects whose value (e, re, r, rp) accepts its destruction.
     fn destroy_substitutes(&self, card: CardId) -> CardSet {
-        let current = self.cards[card].current;
         self.filter_effect(card, EFFECT_DESTROY_SUBSTITUTE, true)
             .into_iter()
-            .filter(|&effect| match self.effects[effect].value {
-                Value::Int(value) => value != 0,
-                Value::Reason(value) => value(self, effect, current.reason_effect, current.reason, current.reason_player),
-                _ => {
-                    debug_assert!(false, "a value read with the wrong parameters");
-                    false
-                }
-            })
+            .filter(|&effect| self.check_value_reason(effect, card))
             .map(|effect| self.get_handler(effect))
             .collect()
+    }
+
+    // check_value_condition(3) with (re, r, rp) of the card's destruction.
+    fn check_value_reason(&self, effect: EffectId, card: CardId) -> bool {
+        let current = self.cards[card].current;
+        match self.effects[effect].value {
+            Value::Int(value) => value != 0,
+            Value::Reason(value) => value(self, effect, current.reason_effect, current.reason, current.reason_player),
+            _ => {
+                debug_assert!(false, "a value read with the wrong parameters");
+                false
+            }
+        }
+    }
+
+    // The EFFECT_INDESTRUCTABLE_COUNT effects with a count limit that keep the card from being destroyed; those
+    // counting by their value come with the cards that register them.
+    fn indestructable_by_count(&self, card: CardId) -> EffectSet {
+        let mut counted = EffectSet::default();
+        for effect in self.filter_effect(card, EFFECT_INDESTRUCTABLE_COUNT, true) {
+            let peffect = &self.effects[effect];
+            unported!(self, (!peffect.is_flag(EFFECT_FLAG_COUNT_LIMIT)).then_some(effect));
+            if peffect.is_flag(EFFECT_FLAG_COUNT_LIMIT) && peffect.count_limit != 0 && self.check_value_reason(effect, card) {
+                counted.push(effect);
+            }
+        }
+        counted
     }
 
     fn restore_reason(&mut self, card: CardId) {
@@ -2157,7 +2231,38 @@ impl Duel {
         self.emplace_process(MoveToField { zone, pzone, ..unit });
     }
 
-    pub(crate) fn change_position(
+    // field::change_position for a group: each card takes the position for its current one, `positions` being the
+    // Lua's au, ad, du and dd.
+    pub(crate) fn field_change_positions(
+        &mut self,
+        targets: CardSet,
+        reason_effect: Option<EffectId>,
+        reason_player: u8,
+        positions: [u32; 4],
+        flag: u32,
+    ) {
+        let [au, ad, du, dd] = positions;
+        for card in targets {
+            let npos = match self.cards[card].current.position {
+                POS_FACEUP_ATTACK => au,
+                POS_FACEDOWN_DEFENSE => dd,
+                POS_FACEUP_DEFENSE => du,
+                _ => ad,
+            };
+            self.cards[card].position_param = npos | flag;
+        }
+        self.emplace_process(ChangePos {
+            step: 0,
+            reason_player,
+            enable: true,
+            oppo_selection: false,
+            reason_effect,
+            targets,
+            to_grave_set: CardSet::default(),
+        });
+    }
+
+    pub(crate) fn field_change_position(
         &mut self,
         target: CardId,
         reason_effect: Option<EffectId>,
@@ -2903,6 +3008,9 @@ impl Duel {
         let param = self.cards[target].to_field_param;
         let (move_player, playerid, location, positions) = ((param >> 24) as u8, (param >> 16) as u8, (param >> 8) as u8, param as u8);
         let reason = arg.location_reason;
+        let data_type = self.cards[target].data.card_type;
+        let is_field_spell =
+            location == LOCATION_SZONE && arg.zone == 1 << 5 && data_type & TYPE_FIELD != 0 && data_type & (TYPE_SPELL | TYPE_TRAP) != 0;
         match arg.step {
             0 => {
                 self.returns.set_i32(0, 0);
@@ -2913,11 +3021,18 @@ impl Duel {
                         return true;
                     }
                 }
-                let data_type = self.cards[target].data.card_type;
-                unported!(
-                    self,
-                    (location == LOCATION_SZONE && arg.zone == 1 << 5 && data_type & TYPE_FIELD != 0).then_some(target)
-                );
+                if is_field_spell {
+                    if let Some(old) = self.field_card(playerid, LOCATION_SZONE.into(), 5) {
+                        let controler = self.cards[old].current.controler;
+                        if self.is_flag(DUEL_1_FACEUP_FIELD) {
+                            self.field_destroy(old.into(), None, REASON_RULE, controler, PLAYER_NONE, 0, 0);
+                        } else {
+                            self.send_to(old.into(), None, REASON_RULE, controler, PLAYER_NONE, LOCATION_GRAVE, 0, 0, false);
+                        }
+                        self.adjust_all();
+                    }
+                    return false;
+                }
                 if arg.pzone && location == LOCATION_SZONE && data_type & TYPE_PENDULUM != 0 && self.is_flag(DUEL_PZONE) {
                     let mut flag = 0u32;
                     for index in 0..2 {
@@ -3022,7 +3137,7 @@ impl Duel {
                 false
             }
             1 => {
-                let sequence = u32::from(self.returns.at_u8(2));
+                let sequence = if is_field_spell { 5 } else { u32::from(self.returns.at_u8(2)) };
                 let current = self.cards[target].current;
                 if arg.ret != 1 && location != current.location {
                     let mut resetflag = 0;

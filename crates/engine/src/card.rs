@@ -560,13 +560,18 @@ impl Duel {
         {
             return 0;
         }
-        unported!(
-            self,
-            [EFFECT_ADD_ATTRIBUTE, EFFECT_REMOVE_ATTRIBUTE, EFFECT_CHANGE_ATTRIBUTE]
-                .into_iter()
-                .flat_map(|code| self.filter_effect(card, code, true))
-        );
-        self.cards[card].data.attribute
+        let mut attribute = self.cards[card].data.attribute;
+        for effect in self.filter_effects(card, &[EFFECT_ADD_ATTRIBUTE, EFFECT_REMOVE_ATTRIBUTE, EFFECT_CHANGE_ATTRIBUTE]) {
+            let peffect = &self.effects[effect];
+            unported!(self, peffect.operation.is_some().then_some(effect));
+            let value = self.get_value(effect, card) as u32;
+            match peffect.code {
+                EFFECT_ADD_ATTRIBUTE => attribute |= value,
+                EFFECT_REMOVE_ATTRIBUTE => attribute &= !value,
+                _ => attribute = value,
+            }
+        }
+        attribute
     }
 
     pub(crate) fn get_race(&self, card: CardId) -> u64 {
@@ -2136,7 +2141,7 @@ impl Duel {
                     && self.is_player_can_send_to_deck(player, card))
                 || (redirect & u32::from(LOCATION_REMOVED) != 0
                     && self.is_affected_by_effect(card, EFFECT_CANNOT_REMOVE).is_none()
-                    && self.is_player_can_remove(player, card, REASON_EFFECT))
+                    && self.is_player_can_remove_core(player, card, REASON_EFFECT))
             {
                 redirects |= redirect;
             }
@@ -2183,7 +2188,7 @@ impl Duel {
     }
 
     pub(crate) fn is_removeable(&self, card: CardId, playerid: u8, position: u8, reason: u32) -> bool {
-        self.is_player_can_remove(playerid, card, reason)
+        self.is_player_can_remove_core(playerid, card, reason)
             && self.is_affected_by_effect(card, EFFECT_CANNOT_REMOVE).is_none()
             && !(self.cards[card].data.card_type & TYPE_TOKEN != 0 && u32::from(position) & POS_FACEDOWN != 0)
     }

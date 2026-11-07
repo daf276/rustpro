@@ -62,6 +62,17 @@ pub trait DuelWorkaround {
     fn swap_sequence(&mut self, card1: CardId, card2: CardId) -> bool;
     fn move_to_field(&mut self, card: CardId, move_player: u8, player: u8, destination: u32, positions: u32, enable: bool) -> Script<bool>;
     fn is_damage_step(&self) -> bool;
+    fn get_target_group(
+        &self,
+        filter: impl Fn(CardId, &Duel) -> bool,
+        player: u8,
+        location1: u32,
+        location2: u32,
+        exception: Option<CardSet>,
+    ) -> CardSet;
+    // Duel.IsMainPhase(player) and Duel.IsStandbyPhase(player): the phase, and that it is the player's turn.
+    fn is_main_phase_full(&self, player: Option<u8>) -> bool;
+    fn is_standby_phase_full(&self, player: Option<u8>) -> bool;
 }
 
 impl DuelWorkaround for Duel {
@@ -84,6 +95,29 @@ impl DuelWorkaround for Duel {
     fn is_damage_step(&self) -> bool {
         let current_phase = self.get_current_phase();
         current_phase == PHASE_DAMAGE || current_phase == PHASE_DAMAGE_CAL
+    }
+
+    // Duel.GetTargetGroup: the matching cards the reason effect can target.
+    fn get_target_group(
+        &self,
+        filter: impl Fn(CardId, &Duel) -> bool,
+        player: u8,
+        location1: u32,
+        location2: u32,
+        exception: Option<CardSet>,
+    ) -> CardSet {
+        let re = self.get_reason_effect();
+        unported!(self, re.is_none());
+        let g = self.get_matching_group(filter, player, location1, location2, exception);
+        re.map_or(g, |re| g.filter(self, |c, duel| c.is_can_be_effect_target(duel, re), None))
+    }
+
+    fn is_main_phase_full(&self, player: Option<u8>) -> bool {
+        self.is_main_phase() && player.is_none_or(|player| self.is_turn_player(player))
+    }
+
+    fn is_standby_phase_full(&self, player: Option<u8>) -> bool {
+        self.get_current_phase() == PHASE_STANDBY && player.is_none_or(|player| self.is_turn_player(player))
     }
 }
 

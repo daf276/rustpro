@@ -7,7 +7,7 @@ use crate::duel::Duel;
 use crate::effect::{Chain, Container, EffectId};
 use crate::field::PerPlayer;
 use crate::operations::{
-    ChangePos, Damage, Destroy, DiscardDeck, Draw, Equip, FlipSummon, MonsterSet, MoveToField, Recover, Release, RemoveCounter,
+    ChangePos, Damage, Destroy, DiscardDeck, Draw, Equip, FlipSummon, MonsterSet, MoveToField, PayLpCost, Recover, Release, RemoveCounter,
     RemoveOverlay, SelectTribute, SendTo, SpSummon, SpSummonRule, SpSummonStep, SpellSet, SpellSetGroup, SummonRule, XyzOverlay,
 };
 use crate::script::Procedure;
@@ -84,6 +84,30 @@ pub struct AnnounceRace {
     pub playerid: u8,
     pub count: u8,
     pub available: u64,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct AnnounceAttribute {
+    pub step: u16,
+    pub playerid: u8,
+    pub count: u8,
+    pub available: u32,
+}
+
+// SortCard of a chain's order, MSG_SORT_CHAIN, comes with the triggers that need it.
+#[derive(Debug, Clone, Default)]
+pub struct SortCard {
+    pub step: u16,
+    pub playerid: u8,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct SortDeck {
+    pub step: u16,
+    pub sort_player: u8,
+    pub target_player: u8,
+    pub count: u16,
+    pub bottom: bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -216,6 +240,9 @@ pub enum Unit {
     SelectYesNo(SelectYesNo),
     SelectOption(SelectOption),
     AnnounceRace(AnnounceRace),
+    AnnounceAttribute(AnnounceAttribute),
+    SortCard(SortCard),
+    SortDeck(SortDeck),
     SelectCard(SelectCard),
     SelectUnselectCard(SelectUnselectCard),
     SelectSum(SelectSum),
@@ -250,6 +277,7 @@ pub enum Unit {
     Equip(Equip),
     Damage(Damage),
     Recover(Recover),
+    PayLpCost(PayLpCost),
     Execute(Execute),
     AddChain(AddChain),
     SolveChain(SolveChain),
@@ -289,6 +317,9 @@ units!(
     SelectYesNo,
     SelectOption,
     AnnounceRace,
+    AnnounceAttribute,
+    SortCard,
+    SortDeck,
     SelectCard,
     SelectUnselectCard,
     SelectSum,
@@ -323,6 +354,7 @@ units!(
     Equip,
     Damage,
     Recover,
+    PayLpCost,
     Execute,
     AddChain,
     SolveChain,
@@ -359,6 +391,9 @@ impl Duel {
             Unit::SelectYesNo(arg) => self.run_steps(arg, Self::process_select_yes_no, true),
             Unit::SelectOption(arg) => self.run_steps(arg, Self::process_select_option, true),
             Unit::AnnounceRace(arg) => self.run_steps(arg, Self::process_announce_race, true),
+            Unit::AnnounceAttribute(arg) => self.run_steps(arg, Self::process_announce_attribute, true),
+            Unit::SortCard(arg) => self.run_steps(arg, Self::process_sort_card, true),
+            Unit::SortDeck(arg) => self.run_steps(arg, Self::process_sort_deck, false),
             Unit::SelectCard(arg) => self.run_steps(arg, Self::process_select_card, true),
             Unit::SelectUnselectCard(arg) => self.run_steps(arg, Self::process_select_unselect_card, true),
             Unit::SelectSum(arg) => self.run_steps(arg, Self::process_select_sum, true),
@@ -393,6 +428,7 @@ impl Duel {
             Unit::Equip(arg) => self.run_steps(arg, Self::process_equip, false),
             Unit::Damage(arg) => self.run_steps(arg, Self::process_damage, false),
             Unit::Recover(arg) => self.run_steps(arg, Self::process_recover, false),
+            Unit::PayLpCost(arg) => self.run_steps(arg, Self::process_pay_lp_cost, false),
             Unit::Execute(arg) => self.run_steps(arg, Self::process_execute, false),
             Unit::AddChain(arg) => self.run_steps(arg, Self::process_add_chain, false),
             Unit::SolveChain(arg) => self.run_steps(arg, Self::process_solve_chain, false),
@@ -1481,7 +1517,7 @@ impl Duel {
     // IdleCommand's change of position by the turn player, followed by an adjust and a chain window.
     fn reposition(&mut self, target: CardId, npos: u32) {
         self.core.phase_action = true;
-        self.change_position(target, None, self.infos.turn_player, npos, 0, false);
+        self.field_change_position(target, None, self.infos.turn_player, npos, 0, false);
         self.adjust_all();
         self.emplace_process(PointEvent::default());
     }
@@ -1513,7 +1549,7 @@ impl Duel {
                             continue;
                         }
                         let chain_attack = self.core.chain_attack && self.core.chain_attacker_id == self.cards[card].fieldid;
-                        if self.get_attack_target(card, chain_attack, true).is_empty() && self.cards[card].direct_attackable == 0 {
+                        if self.field_get_attack_target(card, chain_attack, true).is_empty() && self.cards[card].direct_attackable == 0 {
                             continue;
                         }
                         self.core.attackable_cards.push(card);
@@ -1651,7 +1687,7 @@ impl Duel {
             4 => {
                 self.core.attack_player = false;
                 self.return_cards.clear();
-                self.core.select_cards = self.get_attack_target(attacker, self.core.chain_attack, true);
+                self.core.select_cards = self.field_get_attack_target(attacker, self.core.chain_attack, true);
                 // EFFECT_PATRICIAN_OF_DARKNESS hands the choices to the opponent.
                 let patrician = self.is_player_affected_by_effect(turn_player, EFFECT_PATRICIAN_OF_DARKNESS);
                 if self.cards[attacker].direct_attackable != 0 {
@@ -1783,7 +1819,7 @@ impl Duel {
                     arg.step = 18;
                     return false;
                 }
-                let targets = self.get_attack_target(attacker, self.core.chain_attack, true);
+                let targets = self.field_get_attack_target(attacker, self.core.chain_attack, true);
                 if targets.is_empty() && self.cards[attacker].direct_attackable == 0 {
                     arg.step = 12;
                     return false;
@@ -1862,7 +1898,7 @@ impl Duel {
                     self.cards[card].temp.position = self.cards[card].current.position;
                 }
                 if self.cards[target].is_position(POS_FACEDOWN) {
-                    self.change_position(target, None, PLAYER_NONE, self.cards[target].current.position >> 1, 0, true);
+                    self.field_change_position(target, None, PLAYER_NONE, self.cards[target].current.position >> 1, 0, true);
                     self.adjust_all();
                 }
                 false
@@ -2314,7 +2350,6 @@ impl Duel {
                     self,
                     card_codes.into_iter().filter_map(|code| self.is_affected_by_effect(card, code))
                 );
-                unported!(self, self.filter_effect(card, EFFECT_CHANGE_BATTLE_DAMAGE, true));
             }
             for p in [damp, 1 - damp] {
                 let player_codes = [EFFECT_REFLECT_BATTLE_DAMAGE, EFFECT_ALSO_BATTLE_DAMAGE, EFFECT_AVOID_BATTLE_DAMAGE];
@@ -2324,13 +2359,102 @@ impl Duel {
                         .into_iter()
                         .filter_map(|code| self.is_player_affected_by_effect(p, code)),
                 );
-                unported!(self, self.filter_player_effect(p, EFFECT_CHANGE_BATTLE_DAMAGE, false));
             }
+            self.change_battle_damage(reason, dam_card, damp);
         }
         if self.core.battle_damage[damp] == 0 && self.core.battle_damage[1 - damp] == 0 {
             reason_card = None;
         }
         (reason_card, destroyed)
+    }
+
+    // The EFFECT_CHANGE_BATTLE_DAMAGE effects of the cards and players, in id order, double, halve or set the damage.
+    fn change_battle_damage(&mut self, reason_card: CardId, dam_card: Option<CardId>, damp: u8) {
+        let mut effects = self.filter_effect(reason_card, EFFECT_CHANGE_BATTLE_DAMAGE, false);
+        if let Some(dam_card) = dam_card {
+            effects.extend(self.filter_effect(dam_card, EFFECT_CHANGE_BATTLE_DAMAGE, false));
+        }
+        effects.extend(self.filter_player_effect(damp, EFFECT_CHANGE_BATTLE_DAMAGE, false));
+        effects.extend(self.filter_player_effect(1 - damp, EFFECT_CHANGE_BATTLE_DAMAGE, false));
+        effects.sort_by_key(|&effect| self.effects.id(effect));
+        for p in 0..2 {
+            let (mut double_dam, mut half_dam, mut dam_value) = (false, false, -1);
+            for &effect in &effects {
+                let player_target = self.effects[effect].is_flag(EFFECT_FLAG_PLAYER_TARGET);
+                unported!(self, (player_target && self.is_target_player(effect, p)).then_some(effect));
+                let val = if player_target {
+                    -1
+                } else {
+                    self.get_battle_damage_value(effect, p, reason_card)
+                };
+                if val == i64::from(DOUBLE_DAMAGE) {
+                    double_dam = true;
+                } else if val == i64::from(HALF_DAMAGE) {
+                    half_dam = true;
+                } else if val > 0 {
+                    dam_value = val as i32;
+                } else if val == 0 {
+                    dam_value = 0;
+                    break;
+                }
+            }
+            let damage = &mut self.core.battle_damage[p];
+            if double_dam != half_dam {
+                *damage = if double_dam { *damage * 2 } else { *damage / 2 };
+            }
+            if dam_value >= 0 && *damage > 0 {
+                *damage = dam_value;
+            }
+        }
+    }
+
+    // The first `count` cards from the bottom or the top of the deck are put in the order the sort player chooses.
+    fn process_sort_deck(&mut self, arg: &mut SortDeck) -> bool {
+        let target = arg.target_player;
+        let count = usize::from(arg.count).min(self.player[target].list_main.len());
+        if arg.step == 0 {
+            let deck = &self.player[target].list_main;
+            self.core.select_cards = if arg.bottom {
+                deck.iter().take(count).copied().collect()
+            } else {
+                deck.iter().rev().take(count).copied().collect()
+            };
+            self.emplace_process(SortCard {
+                playerid: arg.sort_player,
+                ..SortCard::default()
+            });
+            return false;
+        }
+        if self.returns.at_u8(0) == u8::MAX || count == 0 {
+            return true;
+        }
+        let selected = self.core.select_cards.clone();
+        let mut sorted = vec![None; selected.len()];
+        for (index, &card) in selected.iter().enumerate().take(count) {
+            if let Some(slot) = sorted.get_mut(usize::from(self.returns.at_u8(index))) {
+                *slot = Some(card);
+            }
+        }
+        for index in 0..count {
+            let position = if arg.bottom { index } else { count - index - 1 };
+            let Some(Some(card)) = sorted.get(position).copied() else {
+                continue;
+            };
+            let from = self.cards.get_info_location(card);
+            let sequence = self.cards[card].current.sequence as usize;
+            let deck = &mut self.player[target].list_main;
+            deck.remove(sequence);
+            if arg.bottom {
+                deck.insert(0, card);
+            } else {
+                deck.push(card);
+            }
+            self.reset_sequence(target, LOCATION_DECK);
+            let (to, reason) = (self.cards.get_info_location(card), self.cards[card].current.reason);
+            self.trace.message(MSG_MOVE).u32(0).loc(from).loc(to).u32(reason);
+        }
+        unported!(self, (self.core.global_flag & GLOBALFLAG_DECK_REVERSE_CHECK != 0).then_some(target));
+        true
     }
 
     fn process_turn(&mut self, arg: &mut Turn) -> bool {

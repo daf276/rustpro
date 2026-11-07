@@ -160,8 +160,11 @@ impl Duel {
         }
         let (snapshot, mute) = match self.core.replay.snapshot.take() {
             Some(mut snapshot) => {
-                let answer = self.returns.data.clone();
-                self.core.replay.log.push(answer);
+                // No answer is empty; an empty one reruns to the prompt that waits (Duel::rerun_to_prompt).
+                if !self.returns.data.is_empty() {
+                    let answer = self.returns.data.clone();
+                    self.core.replay.log.push(answer);
+                }
                 self.copy_from(&mut snapshot);
                 (snapshot, self.trace.count - self.core.replay.messages)
             }

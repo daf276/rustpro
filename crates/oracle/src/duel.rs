@@ -25,6 +25,22 @@ pub enum Status {
     Continue,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct QueriedCard {
+    pub code: u32,
+    pub position: u32,
+    pub attack: i32,
+    pub defense: i32,
+    pub public: bool,
+}
+
+const QUERY_CODE: u32 = 0x1;
+const QUERY_POSITION: u32 = 0x2;
+const QUERY_ATTACK: u32 = 0x100;
+const QUERY_DEFENSE: u32 = 0x200;
+const QUERY_IS_PUBLIC: u32 = 0x10_0000;
+const QUERY_END: u32 = 0x8000_0000;
+
 #[derive(Debug, Default)]
 struct ErrorLog {
     errors: Vec<String>,
@@ -148,6 +164,59 @@ impl<'a> Duel<'a> {
     pub fn set_response(&mut self, response: &[u8]) {
         // SAFETY: handle is a live duel; the core copies the buffer.
         unsafe { ffi::OCG_DuelSetResponse(self.handle, response.as_ptr().cast(), response.len() as u32) }
+    }
+
+    // OCG_DuelQueryLocation of one location for the code, position, ATK, DEF and QUERY_IS_PUBLIC (which the core always
+    // adds): a card per sequence, None for an empty zone.
+    pub fn query_location(&mut self, con: u8, loc: u32) -> Vec<Option<QueriedCard>> {
+        let info = ffi::QueryInfo {
+            flags: QUERY_CODE | QUERY_POSITION | QUERY_ATTACK | QUERY_DEFENSE,
+            con,
+            loc,
+            seq: 0,
+            overlay_seq: 0,
+        };
+        let mut length = 0;
+        // SAFETY: handle is a live duel; the core owns the buffer until the next call on this duel, which needs &mut self.
+        let buffer = unsafe {
+            let buffer = ffi::OCG_DuelQueryLocation(self.handle, &mut length, &info);
+            if buffer.is_null() {
+                &[][..]
+            } else {
+                std::slice::from_raw_parts(buffer.cast::<u8>(), length as usize)
+            }
+        };
+        let mut rest = buffer.get(4..).unwrap_or_default();
+        let mut cards = Vec::new();
+        while let Some((&size, after)) = rest.split_first_chunk::<2>() {
+            if u16::from_ne_bytes(size) == 0 {
+                cards.push(None);
+                rest = after;
+                continue;
+            }
+            let mut card = QueriedCard::default();
+            while let Some((&size, after)) = rest.split_first_chunk::<2>() {
+                let Some((record, after)) = after.split_at_checked(usize::from(u16::from_ne_bytes(size))) else {
+                    return cards;
+                };
+                rest = after;
+                let Some((&flag, value)) = record.split_first_chunk::<4>() else {
+                    break;
+                };
+                let word = value.first_chunk::<4>().map_or(0, |&word| u32::from_ne_bytes(word));
+                match u32::from_ne_bytes(flag) {
+                    QUERY_CODE => card.code = word,
+                    QUERY_POSITION => card.position = word,
+                    QUERY_ATTACK => card.attack = word as i32,
+                    QUERY_DEFENSE => card.defense = word as i32,
+                    QUERY_IS_PUBLIC => card.public = value.first().is_some_and(|&public| public != 0),
+                    QUERY_END => break,
+                    _ => {}
+                }
+            }
+            cards.push(Some(card));
+        }
+        cards
     }
 
     // Each error is followed by the Lua traceback the core logged just before it, if any.

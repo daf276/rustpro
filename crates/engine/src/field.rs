@@ -605,7 +605,7 @@ impl Duel {
         }
     }
 
-    fn list_mut(&mut self, playerid: u8, location: u8) -> Option<&mut Pile> {
+    pub(crate) fn list_mut(&mut self, playerid: u8, location: u8) -> Option<&mut Pile> {
         let player = &mut self.player[playerid];
         match location {
             LOCATION_DECK => Some(&mut player.list_main),

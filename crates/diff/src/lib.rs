@@ -78,6 +78,8 @@ pub enum DiffError {
     Unported { seed: u64, site: &'static str },
     #[error("{0}")]
     Mismatch(Box<Mismatch>),
+    #[error("seed {seed}: {message}")]
+    Probe { seed: u64, message: String },
 }
 
 // The first message the engines disagree on, at `index` in the stream: the last messages both wrote, then each
@@ -452,21 +454,38 @@ impl Vendor {
 // Plays one seeded duel in the oracle and the engine with the same decks and random responses and compares every
 // message up to MSG_WIN.
 pub fn diff_duel(vendor: &'static Vendor, seed: u64) -> Result<Report, DiffError> {
-    play(vendor, seed, None, None)
+    play(vendor, seed, None, None, &mut |_, _| Ok(()))
 }
 
 // Scenario `index` of `card`, seeded by both alone, so that adding ports changes no other card's scenarios.
 pub fn diff_scenario(vendor: &'static Vendor, card: u32, index: u32) -> Result<Report, DiffError> {
-    play(vendor, u64::from(card) << 32 | u64::from(index), Some(card), None)
+    diff_scenario_probed(vendor, card, index, &mut |_, _| Ok(()))
+}
+
+// A check of both engines at every prompt, once their messages agree.
+pub type Probe<'a> = dyn FnMut(&mut oracle::Duel<'_>, &engine::Duel) -> Result<(), String> + 'a;
+
+pub fn diff_duel_probed(vendor: &'static Vendor, seed: u64, probe: &mut Probe) -> Result<Report, DiffError> {
+    play(vendor, seed, None, None, probe)
+}
+
+pub fn diff_scenario_probed(vendor: &'static Vendor, card: u32, index: u32, probe: &mut Probe) -> Result<Report, DiffError> {
+    play(vendor, u64::from(card) << 32 | u64::from(index), Some(card), None, probe)
 }
 
 // A duel both engines set up from `position` alone, which must start the duel (see scenario::lua).
 pub fn diff_position(vendor: &'static Vendor, seed: u64, position: &Position) -> Result<Report, DiffError> {
-    play(vendor, seed, None, Some(position))
+    play(vendor, seed, None, Some(position), &mut |_, _| Ok(()))
 }
 
 // Both engines start from one position: the decks, the scenario of `card` if any on top, or `position` if given.
-fn play(vendor: &'static Vendor, seed: u64, card: Option<u32>, position: Option<&Position>) -> Result<Report, DiffError> {
+fn play(
+    vendor: &'static Vendor,
+    seed: u64,
+    card: Option<u32>,
+    position: Option<&Position>,
+    probe: &mut Probe,
+) -> Result<Report, DiffError> {
     let mut rng = StdRng::seed_from_u64(seed);
     let duel_seed: [u64; 4] = rng.random();
     let scenario = card.map(|card| Scenario::generate(card, &vendor.scenario_others, &vendor.cards, &mut rng));
@@ -557,6 +576,7 @@ fn play(vendor: &'static Vendor, seed: u64, card: Option<u32>, position: Option<
         let Some(Message::Prompt(prompt)) = expected.last().map(|message| parse(message)).transpose()? else {
             return Err(DiffError::MissingPrompt { seed });
         };
+        probe(&mut oracle, &engine).map_err(|message| DiffError::Probe { seed, message })?;
         let response = respond(&prompt, &vendor.cards, &mut rng).ok_or(DiffError::Unanswerable { seed, prompt })?;
         oracle.set_response(&response);
         let actions = engine

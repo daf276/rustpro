@@ -12,6 +12,7 @@ oracle = { path = "../oracle" }
 rand = { version = "0.9", default-features = false, features = ["alloc", "std_rng"] }
 rayon = { version = "1", default-features = false }
 scripts = { path = "../scripts" }
+sim = { path = "../sim" }
 
 [lints]
 workspace = true

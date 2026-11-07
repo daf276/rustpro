@@ -91,6 +91,7 @@ Hand-port the `proc_*` summon procedures, each verified through a few carrier ca
   - [x] O1. Copy-on-write effect arena (chunks shared between clones, copied on first write): clone and determinize; mimalloc for the Python module, see findings
   - [x] O2. Snapshot cost: script snapshots and restores copy only the cards marked as changed and the registry only if it changed; clones share a waiting function's snapshot and keep the count codes inline; resumable steps, an undo log and promptless declarations measured and declined, see findings
   - [x] O3. Code, set-card, level and material reads answer from the registry's bitmap before building effect sets (set-card reads 3.3% to 0.9% of the profile), `MAX_CARDS` 256 (smaller `CardSet`, `Chain`, `Event`), inline lists for the clone, recharges that write only a changed count, PGO as `tools/pgo.py`, see findings
+  - [ ] O4. After O3 (Elfnote ~260k actions/s, ~318k with PGO): the non-lookup cost of QuickEffect (10%), `is_activateable` (8.8%), Adjust (5.8%) and the step bodies (12% self); an allocation-free observe writing `sim::Tensors` straight from the duel (5e candidate 8); PGO for the Python module
 - [x] Default test cost: the 13-scenarios-per-card suite grew with the pool (380 s at 173 cards); the default run now takes a sample of about 200 cards by a hash of the code (173 s for all diff suites at 219 cards on 7 threads), the ignored suite keeps every card at 64 scenarios and the Ritual sum-mode assertion
 
 ### 6. Maintenance

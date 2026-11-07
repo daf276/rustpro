@@ -1602,11 +1602,12 @@ impl Duel {
                     return true;
                 }
                 // Phase 2: cards leaving the field also snapshot their previous code, type, stats and set codes here; only
-                // the type is kept so far.
+                // the code and the type are kept so far.
                 let mut leave_p = CardSet::default();
                 let targets = arg.targets;
                 for card in targets.iter() {
                     if self.cards[card].current.location & LOCATION_ONFIELD != 0 {
+                        (self.cards[card].previous_code, self.cards[card].previous_code2) = self.snapshot_codes(card);
                         self.cards[card].previous_type = if self.cards[card].current.position & POS_FACEUP != 0 {
                             self.get_type(card)
                         } else {
@@ -1973,6 +1974,21 @@ impl Duel {
             }
             _ => true,
         }
+    }
+
+    // The previous code and the second code a card on the field leaves with.
+    fn snapshot_codes(&self, card: CardId) -> (u32, u32) {
+        let data = &self.cards[card].data;
+        if self.cards[card].current.position & POS_FACEUP != 0 {
+            return (self.get_code(card), self.get_another_code(card));
+        }
+        let added = self.filter_effect(card, EFFECT_ADD_CODE, true);
+        let code = if data.alias != 0 && added.is_empty() {
+            data.alias
+        } else {
+            data.code
+        };
+        (code, added.last().map_or(0, |&effect| self.get_value(effect, card) as u32))
     }
 
     fn is_leaving_field(&self, card: CardId) -> bool {

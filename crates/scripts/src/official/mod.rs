@@ -32,3 +32,11 @@ pub fn listed_names(code: u32) -> &'static [u32] {
     let index = LISTED_NAMES.binary_search_by_key(&code, |&(code, _)| code).ok();
     index.and_then(|index| LISTED_NAMES.get(index)).map_or(&[], |&(_, names)| names)
 }
+
+// s.material_setcode, which Card.ListsArchetypeAsMaterial reads.
+pub fn material_setcode(code: u32) -> &'static [u16] {
+    let index = MATERIAL_SETCODE.binary_search_by_key(&code, |&(code, _)| code).ok();
+    index
+        .and_then(|index| MATERIAL_SETCODE.get(index))
+        .map_or(&[], |&(_, setcodes)| setcodes)
+}

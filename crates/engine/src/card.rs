@@ -342,6 +342,8 @@ pub struct Card {
     pub data: StaticData,
     pub previous: CardState,
     pub previous_type: u32,
+    pub previous_code: u32,
+    pub previous_code2: u32,
     pub temp: CardState,
     pub current: CardState,
     pub owner: u8,
@@ -362,6 +364,7 @@ pub struct Card {
     pub fieldid: u32,
     pub fieldid_r: u32,
     pub turnid: u16,
+    pub turn_counter: u16,
     pub overlay_target: Option<CardId>,
     pub pre_overlay_target: Option<CardId>,
     pub equiping_target: Option<CardId>,
@@ -1062,11 +1065,27 @@ impl Duel {
         peffect.card_key = NonZeroU64::new(key);
         peffect.handler = Some(card);
         let reason_effect = self.core.reason_effect.get();
+        if self.cards[card].get_status(STATUS_COPYING_EFFECT) {
+            peffect.copy_id = self.infos.copy_id;
+            peffect.reset_flag |= self.core.copy_reset;
+            peffect.reset_count = u16::from(self.core.copy_reset_count);
+        }
+        if peffect.is_flag(EFFECT_FLAG_COPY_INHERIT)
+            && let Some(reason) = reason_effect
+        {
+            let (copy_id, reset_flag, reset_count) = {
+                let reason = &self.effects[reason];
+                (reason.copy_id, reason.reset_flag, reason.reset_count)
+            };
+            if copy_id != 0 {
+                let peffect = &mut self.effects[effect];
+                peffect.copy_id = copy_id;
+                peffect.reset_flag |= reset_flag;
+                peffect.reset_count = peffect.reset_count.min(reset_count);
+            }
+        }
+        let peffect = &self.effects[effect];
         let (reset_flag, flag) = (peffect.reset_flag, peffect.flag[0]);
-        unported!(
-            self,
-            (flag & EFFECT_FLAG_COPY_INHERIT != 0 && reason_effect.is_some()).then_some(effect)
-        );
         if effect_type & EFFECT_TYPE_FIELD != 0 {
             let controler = self.cards[card].current.controler;
             if self.in_range(effect, card)
@@ -1111,6 +1130,33 @@ impl Duel {
             }
         }
         id
+    }
+
+    // card::copy_effect: the effects the script of `code` registers for the card, with the given reset; returns the copy id,
+    // or -1 for a Normal Monster. The effects the script marks uncopyable are never added. A copying card that is a
+    // non-Effect Monster also gets EFFECT_ADD_TYPE, which comes with the cards that reach it.
+    pub(crate) fn card_copy_effect(&mut self, card: CardId, code: u32, reset: u32, count: u8) -> i32 {
+        let database = self.database;
+        if database
+            .and_then(|database| database.get(code))
+            .is_some_and(|data| data.card_type & TYPE_NORMAL != 0)
+        {
+            return -1;
+        }
+        self.cards[card].set_status(STATUS_COPYING_EFFECT, true);
+        let (copy_reset, copy_reset_count) = (self.core.copy_reset, self.core.copy_reset_count);
+        (self.core.copy_reset, self.core.copy_reset_count) = (reset, count);
+        if let Some(initial_effect) = self.library.and_then(|library| (library.card_script)(code)) {
+            initial_effect(self, card);
+        }
+        self.infos.copy_id += 1;
+        self.cards[card].set_status(STATUS_COPYING_EFFECT, false);
+        (self.core.copy_reset, self.core.copy_reset_count) = (copy_reset, copy_reset_count);
+        let data_type = self.cards[card].data.card_type;
+        if data_type & TYPE_MONSTER != 0 && data_type & TYPE_EFFECT == 0 {
+            self.reach_unported(concat!(file!(), ":", line!()));
+        }
+        i32::from(self.infos.copy_id) - 1
     }
 
     pub(crate) fn card_remove_effect(&mut self, card: CardId, effect: EffectId) {

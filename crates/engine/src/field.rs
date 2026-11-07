@@ -120,6 +120,7 @@ pub struct FieldInfo {
     pub turn_player: u8,
     pub priorities: PerPlayer<u8>,
     pub can_shuffle: bool,
+    pub copy_id: u16,
 }
 
 impl Default for FieldInfo {
@@ -133,6 +134,7 @@ impl Default for FieldInfo {
             turn_player: 0,
             priorities: PerPlayer::default(),
             can_shuffle: true,
+            copy_id: 1,
         }
     }
 }
@@ -313,6 +315,9 @@ pub struct Processor {
     // The group of the SpSummon running, which its failed steps leave.
     pub spsummon_group: CardSet,
     pub fusion_materials: CardSet,
+    // The reset the effects registered by Card.CopyEffect get.
+    pub copy_reset: u32,
+    pub copy_reset_count: u8,
     // Set and cleared by scripts from checks that only read.
     pub must_select_cards: std::cell::Cell<CardSet>,
 }
@@ -448,6 +453,8 @@ clone_by_field!(Processor {
     summoning_card,
     spsummon_group,
     fusion_materials,
+    copy_reset,
+    copy_reset_count,
     must_select_cards
 });
 
@@ -584,6 +591,8 @@ impl Processor {
             summoning_card: None,
             spsummon_group: CardSet::default(),
             fusion_materials: CardSet::default(),
+            copy_reset: 0,
+            copy_reset_count: 0,
             must_select_cards: Default::default(),
         }
     }

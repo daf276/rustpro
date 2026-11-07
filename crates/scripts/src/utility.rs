@@ -4,6 +4,7 @@ use engine::{Args, CardId, CardSet, CostFn, Duel, EffectId, Script, Value};
 
 use crate::chain::EffectChain;
 use crate::constant::*;
+use crate::proc_fusion::Fusion;
 use crate::proc_workaround::{CardWorkaround, DuelWorkaround};
 
 // The chain data slots of cd.cost_detached_materials and cd.cost_discarded_cards, above those card ports use.
@@ -440,6 +441,19 @@ pub mod aux {
         e: EffectId,
         tp: u8,
     ) -> Option<EffectId> {
+        delayed_operation_reset::<O>(duel, g, phase, RESET_PHASE | phase, flag, e, tp)
+    }
+
+    // `reset` is the Lua's reset argument; 0 is not nil there, so the effect never resets.
+    pub fn delayed_operation_reset<O: DelayedOperation>(
+        duel: &mut Duel,
+        g: CardSet,
+        phase: u32,
+        reset: u32,
+        flag: u32,
+        e: EffectId,
+        tp: u8,
+    ) -> Option<EffectId> {
         if g.is_empty() {
             return None;
         }
@@ -449,7 +463,7 @@ pub mod aux {
         e1.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
         e1.set_property(duel, EFFECT_FLAG_IGNORE_IMMUNE);
         e1.set_code(duel, EVENT_PHASE | phase);
-        e1.set_reset(duel, RESET_PHASE | phase);
+        e1.set_reset(duel, reset);
         e1.set_count_limit(duel, 1, 0);
         e1.set_labels(duel, &[fid, flag.into()]);
         e1.set_label_object_group(duel, Some(g));
@@ -930,6 +944,8 @@ pub trait CardUtility: Copy {
     fn has_level(self, duel: &Duel) -> bool;
     fn is_original_level(self, duel: &Duel, level: u32) -> bool;
     fn lists_code(self, duel: &Duel, code: u32) -> bool;
+    fn lists_code_as_material(self, duel: &Duel, codes: &[u32]) -> bool;
+    fn lists_archetype_as_material(self, duel: &Duel, setcodes: &[u16]) -> bool;
     fn is_negatable_monster(self, duel: &Duel) -> bool;
     fn is_negatable_spell_trap(self, duel: &Duel) -> bool;
     fn is_negatable(self, duel: &Duel) -> bool;
@@ -1189,6 +1205,19 @@ impl CardUtility for CardId {
 
     fn lists_code(self, duel: &Duel, code: u32) -> bool {
         crate::official::listed_names(self.get_original_code(duel)).contains(&code)
+    }
+
+    fn lists_code_as_material(self, duel: &Duel, codes: &[u32]) -> bool {
+        let material = Fusion::material(duel, self.get_original_code(duel));
+        codes.iter().any(|code| material.contains(code))
+    }
+
+    fn lists_archetype_as_material(self, duel: &Duel, setcodes: &[u16]) -> bool {
+        let listed = crate::official::material_setcode(self.get_original_code(duel));
+        let matches = |setcode: u16, to_match: u16| setcode & 0xfff == to_match & 0xfff && setcode & to_match == setcode;
+        setcodes
+            .iter()
+            .any(|&setcode| listed.iter().any(|&to_match| matches(setcode, to_match)))
     }
 
     fn is_negatable_monster(self, duel: &Duel) -> bool {

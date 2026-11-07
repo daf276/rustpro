@@ -84,6 +84,11 @@ Hand-port the `proc_*` summon procedures, each verified through a few carrier ca
   - [x] 5c. Fixed action encoding with legality masks over every prompt kind, auto-advance of single-option decisions as an option, and a rayon batch runner (many duels stepped in lockstep from a policy callback)
   - [x] 5d. pyo3 bindings with batched stepping (numpy observations and masks), a Python smoke test: fixed-size observation tensors in `sim` (`Tensors`, `Batch::observe`), the Python module `ygo_sim` in `crates/py` (maturin, abi3 for Python >= 3.10), see findings
   - [x] 5e. Benchmarks vs the phase 0 target for the full stack (step, clone, observe, sample): `cargo run --profile sim -p bench --bin stack` (`--features mimalloc` for the other allocator), profile and ranked candidates, see findings
+- [x] `observe` and `determinize` leave the duel as they found it: their effect lookups moved the field id counter (4,871 times in the replays of the observation suite), which orders later effects; they now put back the ids, statuses and counter (`should_play_the_same_whether_observed_or_not`)
+- [ ] Engine optimization, in 5e's ranking (Elfnote mirror 1 thread: 180-240k actions/s against 1M, clone 6-8 us against 1 us):
+  - [ ] O1. Copy-on-write effect arena (chunks shared between clones, copied on first write): clone and determinize; mimalloc for the Python module
+  - [ ] O2. Snapshot cost: resumable steps or an undo log for the prompting functions that rerun most, or skip snapshots of functions that cannot prompt
+  - [ ] O3. `is_special_summonable` (21% of the profile) without skipping a lookup, smaller `Chain`/`Event`, `MAX_CARDS` if the pool allows it, PGO
 - [x] Default test cost: the 13-scenarios-per-card suite grew with the pool (380 s at 173 cards); the default run now takes a sample of about 200 cards by a hash of the code (173 s for all diff suites at 219 cards on 7 threads), the ignored suite keeps every card at 64 scenarios and the Ritual sum-mode assertion
 
 ### 6. Maintenance

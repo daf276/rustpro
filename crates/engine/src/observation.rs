@@ -127,6 +127,24 @@ fn same_place(a: &CardState, b: &CardState) -> bool {
 
 impl Duel {
     pub fn observe(&self, player: u8) -> Observation {
+        self.unchanged(|| self.observe_now(player))
+    }
+
+    // Runs `read`, then puts back the effect ids and statuses and the field id counter its effect lookups changed, here
+    // and in a waiting function's snapshot: a condition becoming available takes a new id, which orders later lookups.
+    fn unchanged<T>(&self, read: impl FnOnce() -> T) -> T {
+        let saved = |duel: &Duel| (duel.infos.field_id.get(), duel.effects.cells());
+        let snapshot = self.core.replay.snapshot.as_deref();
+        let (own, waiting) = (saved(self), snapshot.map(saved));
+        let result = read();
+        for (duel, (field_id, cells)) in std::iter::once((self, own)).chain(snapshot.zip(waiting)) {
+            duel.infos.field_id.set(field_id);
+            duel.effects.restore_cells(&cells);
+        }
+        result
+    }
+
+    fn observe_now(&self, player: u8) -> Observation {
         let seen = |card| self.seen(card, player, false);
         let chain = self.core.current_chain.iter().map(|chain| {
             let effect = chain.triggering_effect;
@@ -266,7 +284,7 @@ impl Duel {
             return Ok(duel);
         };
         if self.core.replay.snapshot.is_none() {
-            let changes = self.sample(player, rng, pool, database)?;
+            let changes = self.unchanged(|| self.sample(player, rng, pool, database))?;
             let trace = std::mem::take(&mut duel.trace);
             duel.change(&changes);
             duel.trace = trace;
@@ -275,7 +293,7 @@ impl Duel {
         }
         let observation = self.observe(player);
         for _ in 0..RERUN_ATTEMPTS {
-            let changes = self.sample(player, rng, pool, database)?;
+            let changes = self.unchanged(|| self.sample(player, rng, pool, database))?;
             if let Some(snapshot) = duel.core.replay.snapshot.as_deref_mut() {
                 snapshot.change(&changes);
             }

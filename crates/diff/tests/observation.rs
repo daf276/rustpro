@@ -119,6 +119,38 @@ fn should_determinize_into_duels_that_show_the_same_and_play_on() {
     }
 }
 
+// The messages of a record's replay, observing and determinizing for both players at every prompt if `looking`.
+fn replayed_trace(vendor: &'static Vendor, record: &DuelRecord, looking: bool) -> Result<Vec<u8>> {
+    let mut duel = Duel::from_position(&record.position, &vendor.cards, &LIBRARY, record.seed)?;
+    duel.set_trace(true);
+    duel.process();
+    let mut sampler = Xoshiro256StarStar::new(record.seed);
+    for &action in &record.actions {
+        for player in (0..2).filter(|_| looking) {
+            duel.observe(player);
+            duel.determinize(player, &mut sampler, &pool(vendor, &record.position, 1 - player))
+                .ok();
+        }
+        duel.apply(action)?;
+    }
+    Ok(duel.take_trace())
+}
+
+#[test]
+fn should_play_the_same_whether_observed_or_not() {
+    let elfnote = Vendor::leak(Vendor::elfnote).unwrap();
+    let scenarios = Vendor::leak(Vendor::scenarios).unwrap();
+    for (vendor, records) in [
+        (elfnote, records(elfnote).unwrap()),
+        (scenarios, scenario_records(scenarios).unwrap()),
+    ] {
+        records.par_iter().enumerate().for_each(|(index, record)| {
+            let [observed, unobserved] = [true, false].map(|looking| replayed_trace(vendor, record, looking).unwrap());
+            assert!(observed == unobserved, "record {index} plays differently when observed");
+        });
+    }
+}
+
 // The duel at player 0's first prompt, player 1 passing (or taking its first action) until then.
 fn first_prompt_of_player_0(vendor: &'static Vendor, position: &Position, seed: [u64; 4]) -> Result<Duel> {
     let mut duel = Duel::from_position(position, &vendor.cards, &LIBRARY, seed)?;

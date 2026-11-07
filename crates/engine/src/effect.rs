@@ -372,6 +372,16 @@ impl Effects {
         }
     }
 
+    pub fn cells(&self) -> Vec<(u32, u16)> {
+        self.list.iter().map(|(_, cell)| cell.get()).collect()
+    }
+
+    pub fn restore_cells(&self, cells: &[(u32, u16)]) {
+        for (index, &value) in cells.iter().enumerate() {
+            self.set_cell(EffectId::new(index as u16), |_| value);
+        }
+    }
+
     // The ids and statuses of a copy of these effects, for the effects both hold.
     pub fn copy_cells_from(&self, source: &Self) {
         for (index, (_, cell)) in source.list.iter().enumerate().take(self.list.len()) {

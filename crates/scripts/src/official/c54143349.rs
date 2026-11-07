@@ -39,7 +39,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.register_effect(duel, e2b);
 }
 
-fn selfspcon(duel: &Duel, a: &Args) -> bool {
+pub fn selfspcon(duel: &Duel, a: &Args) -> bool {
     let Some(c) = a.c else { return true };
     let tp = c.get_controler(duel);
     duel.get_location_count(tp, LOCATION_MZONE) > 0

@@ -592,6 +592,10 @@ impl CardId {
         duel.is_capable_cost_to_grave(self, duel.core.reason_player.get())
     }
 
+    pub fn is_able_to_hand_as_cost(self, duel: &Duel) -> bool {
+        duel.is_capable_cost_to_hand(self, duel.core.reason_player.get())
+    }
+
     pub fn is_able_to_deck_as_cost(self, duel: &Duel) -> bool {
         duel.is_capable_cost_to_deck(self, duel.core.reason_player.get())
     }

@@ -1098,7 +1098,42 @@ impl Duel {
                         }
                     }
                 }
-                unported!(self, self.core.new_ochain_h.iter().map(|chain| chain.triggering_effect));
+                for index in 0..self.core.new_ochain_h.len() {
+                    let Some(mut chain) = self.core.new_ochain_h.get(index).copied() else {
+                        break;
+                    };
+                    let effect = chain.triggering_effect;
+                    let handler = self.get_handler(effect);
+                    let peffect = &self.effects[effect];
+                    if !peffect.is_flag(EFFECT_FLAG_FIELD_ONLY)
+                        && peffect.effect_type & EFFECT_TYPE_FIELD != 0
+                        && peffect.range & u16::from(LOCATION_HAND) != 0
+                        && self.cards[handler].current.location == LOCATION_HAND
+                    {
+                        let controler = self.cards[handler].current.controler;
+                        if !self.is_has_relation(handler, effect, chain.chain_id) && self.is_condition_check(effect, controler, &chain.evt)
+                        {
+                            self.create_relation(handler, effect, chain.chain_id);
+                        }
+                        self.set_activate_location(effect);
+                        chain.triggering_player = controler;
+                        self.set_triggering_state(&mut chain, handler);
+                        if let Some(stored) = self.core.new_ochain_h.get_mut(index) {
+                            *stored = chain;
+                        }
+                    }
+                    if chain.triggering_player == priority
+                        && !self.cards[handler].is_status(STATUS_CHAINING)
+                        && ((chain.triggering_location == u16::from(LOCATION_HAND) && self.cards[handler].is_position(POS_FACEDOWN))
+                            || chain.triggering_location == u16::from(LOCATION_DECK))
+                        && self.is_has_relation(handler, effect, chain.chain_id)
+                        && self.is_chainable(effect, priority)
+                        && self.is_activateable(effect, priority, &chain.evt, true, false, false, false, false)
+                        && self.check_spself_from_hand_trigger(&chain)
+                    {
+                        self.core.select_chains.push(chain);
+                    }
+                }
                 for index in 0..self.core.full_event.len() {
                     let Some(event) = self.core.full_event.get(index).copied() else {
                         break;

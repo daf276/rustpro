@@ -1,15 +1,24 @@
 // Surge Blitzclique
 use crate::prelude::*;
-use crate::testing::{Check, HAND, MZONE, OPPONENT};
+use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 22912101;
 
 pub const LISTED_NAMES: &[u32] = &[ID];
 
-// In the hand with a Thunder Normal Monster (LaLa Li-oon) and a monster to destroy. No Normal Monster or ported card is
-// another "Blitzclique" monster, so the search trigger never resolves.
-pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (9430387, HAND), (15025844, MZONE | OPPONENT)];
-pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];
+// In the hand and on the field, with a Thunder Normal Monster (LaLa Li-oon) and a monster to destroy, and another Blitzclique
+// monster (Crackle Blitzclique) in the Deck to search.
+pub const SUPPORT: &[(u32, u16)] = &[
+    (ID, HAND),
+    (ID, MZONE),
+    (9430387, HAND),
+    (15025844, MZONE | OPPONENT),
+    (58916810, DECK),
+];
+pub const CHECKS: &[Check] = &[
+    Check::ResolvesEffect(aux::stringid(ID, 0)),
+    Check::ResolvesEffect(aux::stringid(ID, 1)),
+];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e1 = duel.create_effect(c);
@@ -43,7 +52,7 @@ fn desfilter(c: CardId, duel: &Duel, tp: u8) -> bool {
     duel.get_mzone_count(tp, Some(c.into())) > 0
 }
 
-fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
+pub fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
     c.is_race(duel, RACE_THUNDER) && c.is_can_be_special_summoned(duel, e, 0, tp, false, false)
 }
 
@@ -66,9 +75,16 @@ fn destg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bo
 }
 
 fn desop(duel: &mut Duel, a: &Args) -> Script<()> {
+    let tc = duel.get_first_target();
+    destroy_and_special_summon(duel, a, tc, a.e, aux::stringid(ID, 2))
+}
+
+// The operation of the Blitzclique monsters that destroy a card, Special Summon a Thunder monster from the hand if they did,
+// and then bar Special Summons of Effect Monsters except from the hand.
+pub fn destroy_and_special_summon(duel: &mut Duel, a: &Args, tc: Option<CardId>, related: EffectId, description: u64) -> Script<()> {
     let (e, tp) = (a.e, a.tp);
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, e)
+    if let Some(tc) = tc
+        && tc.is_relate_to_effect(duel, related)
         && duel.destroy(tc, REASON_EFFECT)? > 0
         && duel.get_location_count(tp, LOCATION_MZONE) > 0
     {
@@ -78,8 +94,13 @@ fn desop(duel: &mut Duel, a: &Args) -> Script<()> {
             duel.special_summon(g, 0, tp, tp, false, false, POS_FACEUP)?;
         }
     }
-    let e1 = duel.create_effect(e.get_handler(duel));
-    e1.set_description(duel, aux::stringid(ID, 2));
+    register_effect_monster_lock(duel, e.get_handler(duel), tp, description);
+    Ok(())
+}
+
+pub fn register_effect_monster_lock(duel: &mut Duel, c: CardId, tp: u8, description: u64) {
+    let e1 = duel.create_effect(c);
+    e1.set_description(duel, description);
     e1.set_type(duel, EFFECT_TYPE_FIELD);
     e1.set_property(duel, EFFECT_FLAG_PLAYER_TARGET + EFFECT_FLAG_CLIENT_HINT);
     e1.set_code(duel, EFFECT_CANNOT_SPECIAL_SUMMON);
@@ -89,7 +110,6 @@ fn desop(duel: &mut Duel, a: &Args) -> Script<()> {
     });
     e1.set_reset(duel, RESET_PHASE | PHASE_END);
     duel.register_effect(e1, tp);
-    Ok(())
 }
 
 fn thfilter(c: CardId, duel: &Duel) -> bool {

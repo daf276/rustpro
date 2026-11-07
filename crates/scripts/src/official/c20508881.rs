@@ -21,18 +21,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_operation(duel, effop);
     e1.set_hint_timing(duel, 0, TIMING_STANDBY_PHASE | TIMING_MAIN_END | TIMINGS_CHECK_MONSTER_E);
     c.register_effect(duel, e1);
-    let e2 = duel.create_effect(c);
-    e2.set_description(duel, aux::stringid(ID, 1));
-    e2.set_category(duel, CATEGORY_SET);
-    e2.set_type(duel, EFFECT_TYPE_SINGLE + EFFECT_TYPE_TRIGGER_O);
-    e2.set_property(duel, EFFECT_FLAG_DELAY);
-    e2.set_code(duel, EVENT_DESTROYED);
-    e2.set_condition(duel, |duel, a| {
-        a.re.is_some_and(|re| re.get_handler(duel).is_code(duel, CARD_MYSTICAL_SPACE_TYPHOON))
-    });
-    e2.set_target(duel, settg);
-    e2.set_operation(duel, setop);
-    c.register_effect(duel, e2);
+    add_set_effect(duel, c, aux::stringid(ID, 1));
 }
 
 fn thfilter(c: CardId, duel: &Duel) -> bool {
@@ -96,6 +85,22 @@ fn effop(duel: &mut Duel, a: &Args) -> Script<()> {
         _ => {}
     }
     Ok(())
+}
+
+// The "if destroyed by Mystical Space Typhoon, Set this card" effect of the Radiant Typhoon Spells and Traps.
+pub fn add_set_effect(duel: &mut Duel, c: CardId, description: u64) {
+    let e2 = duel.create_effect(c);
+    e2.set_description(duel, description);
+    e2.set_category(duel, CATEGORY_SET);
+    e2.set_type(duel, EFFECT_TYPE_SINGLE + EFFECT_TYPE_TRIGGER_O);
+    e2.set_property(duel, EFFECT_FLAG_DELAY);
+    e2.set_code(duel, EVENT_DESTROYED);
+    e2.set_condition(duel, |duel, a| {
+        a.re.is_some_and(|re| re.get_handler(duel).is_code(duel, CARD_MYSTICAL_SPACE_TYPHOON))
+    });
+    e2.set_target(duel, settg);
+    e2.set_operation(duel, setop);
+    c.register_effect(duel, e2);
 }
 
 fn settg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {

@@ -2410,6 +2410,18 @@ impl Duel {
         self.cost_destination(card, LOCATION_GRAVE).0 == u32::from(LOCATION_GRAVE)
     }
 
+    pub(crate) fn is_capable_cost_to_hand(&self, card: CardId, playerid: u8) -> bool {
+        if self.cards[card].data.card_type & TYPE_TOKEN != 0
+            || self.is_extra_deck_monster(card)
+            || self.cards[card].current.location == LOCATION_HAND
+            || self.is_affected_by_effect(card, EFFECT_CANNOT_USE_AS_COST).is_some()
+            || !self.is_capable_send_to_hand(card, playerid)
+        {
+            return false;
+        }
+        self.cost_destination(card, LOCATION_HAND).0 == u32::from(LOCATION_HAND)
+    }
+
     pub(crate) fn is_capable_cost_to_deck(&self, card: CardId, playerid: u8) -> bool {
         if self.cards[card].data.card_type & TYPE_TOKEN != 0
             || self.is_extra_deck_monster(card)

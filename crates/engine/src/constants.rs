@@ -90,6 +90,7 @@ pub const MSG_SELECT_UNSELECT_CARD: u8 = 26;
 pub const MSG_CONFIRM_CARDS: u8 = 31;
 pub const MSG_SHUFFLE_DECK: u8 = 32;
 pub const MSG_SHUFFLE_HAND: u8 = 33;
+pub const MSG_SHUFFLE_SET_CARD: u8 = 36;
 pub const MSG_DECK_TOP: u8 = 38;
 pub const MSG_SHUFFLE_EXTRA: u8 = 39;
 pub const MSG_NEW_TURN: u8 = 40;

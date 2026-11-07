@@ -5,7 +5,7 @@ use carddata::{
     OPCODE_OR, OPCODE_RSHIFT, OPCODE_SUB,
 };
 
-use crate::card::{CardId, CardSet, StaticData};
+use crate::card::{CardId, CardSet, LocInfo, StaticData};
 use crate::chain::ExecuteKind;
 use crate::constants::*;
 use crate::duel::Duel;
@@ -1004,6 +1004,56 @@ impl Duel {
         self.yield_script()
     }
 
+    // Duel.ShuffleSetCard: at most 5 face-down cards in one zone of one player's swap places at random.
+    pub fn shuffle_set_card(&mut self, targets: impl Into<CardSet>) -> Script<()> {
+        let targets: CardSet = targets.into();
+        let Some(first) = targets.get_first().map(|card| self.cards[card].current) else {
+            return Ok(());
+        };
+        let (location, tp) = (first.location, first.controler);
+        let shuffleable = |card: CardId| {
+            let current = self.cards[card].current;
+            current.location == location && current.controler == tp && current.position & POS_FACEUP == 0 && current.sequence <= 4
+        };
+        if targets.len() > 5 || (location != LOCATION_MZONE && location != LOCATION_SZONE) || tp > 1 || !targets.iter().all(shuffleable) {
+            return Ok(());
+        }
+        let mut shuffled: Vec<CardId> = targets.iter().collect();
+        let sequences: Vec<u32> = shuffled.iter().map(|&card| self.cards[card].current.sequence).collect();
+        for i in (1..shuffled.len()).rev() {
+            let swap = self.random.get_next_integer(0, i as i32) as usize;
+            shuffled.swap(i, swap);
+        }
+        let infos: Vec<LocInfo> = targets.iter().map(|card| self.cards.get_info_location(card)).collect();
+        for (&card, sequence) in shuffled.iter().zip(sequences) {
+            if let Some(slot) = self.player[tp].zone_mut(location, sequence) {
+                *slot = Some(card);
+            }
+            let current = &mut self.cards[card].current;
+            current.sequence = sequence;
+            let (reason_effect, reason, reason_player) = (current.reason_effect, current.reason, current.reason_player);
+            self.field_raise_single_event(card, EVENT_MOVE, reason_effect, reason, reason_player, tp, 0);
+        }
+        let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
+        self.field_raise_event(Some(targets), EVENT_MOVE, reason_effect, 0, reason_player, tp, 0);
+        self.process_single_event();
+        self.process_instant_event();
+        let materials: Vec<LocInfo> = targets
+            .iter()
+            .map(|card| match self.xyz_materials(card).is_empty() {
+                true => LocInfo::default(),
+                false => self.cards.get_info_location(card),
+            })
+            .collect();
+        let mut message = self.trace.message(MSG_SHUFFLE_SET_CARD);
+        message.u8(location).u8(targets.len() as u8);
+        for info in infos.into_iter().chain(materials) {
+            message.loc(info);
+        }
+        drop(message);
+        self.yield_script()
+    }
+
     // The values a script keeps in Lua locals across calls, per duel; 0 until set.
     pub fn get_script_state(&self, key: u64) -> i64 {
         self.script_state
@@ -1381,6 +1431,37 @@ impl Duel {
         self.adjust_instant();
     }
 
+    pub fn skip_phase(&mut self, player: u8, phase: u32, reset: u32, count: u16) {
+        self.skip_phase_full(player, phase, reset, count, 0);
+    }
+
+    pub fn skip_phase_full(&mut self, player: u8, phase: u32, reset: u32, count: u16, value: u32) {
+        let code = match phase as u16 {
+            PHASE_DRAW => EFFECT_SKIP_DP,
+            PHASE_STANDBY => EFFECT_SKIP_SP,
+            PHASE_MAIN1 => EFFECT_SKIP_M1,
+            PHASE_BATTLE => EFFECT_SKIP_BP,
+            PHASE_MAIN2 => EFFECT_SKIP_M2,
+            PHASE_END => EFFECT_SKIP_EP,
+            _ => return,
+        };
+        if player > 1 {
+            return;
+        }
+        let effect = self.global_effect();
+        let peffect = &mut self.effects[effect];
+        peffect.effect_owner = player;
+        peffect.effect_type = EFFECT_TYPE_FIELD;
+        peffect.code = code;
+        peffect.reset_flag = (reset & 0x3ff) | RESET_PHASE | RESET_SELF_TURN;
+        peffect.flag[0] = EFFECT_FLAG_CANNOT_DISABLE | EFFECT_FLAG_PLAYER_TARGET;
+        peffect.s_range = 1;
+        peffect.o_range = 0;
+        peffect.reset_count = count.max(1);
+        peffect.value = Value::Int(value as i32);
+        self.add_effect(effect, player);
+    }
+
     pub fn disable_shuffle_check(&mut self, disable: bool) {
         self.core.shuffle_check_disabled = disable;
     }
@@ -1753,6 +1834,32 @@ impl Duel {
                 .find(|&card| self.cards[card].current.controler == player)
         };
         (monster(player), monster(1 - player))
+    }
+
+    pub fn summon(&mut self, player: u8, card: CardId, ignore_count: bool, procedure: Option<EffectId>) -> Script<()> {
+        self.summon_full(player, card, ignore_count, procedure, 0, 0x1f)
+    }
+
+    // During a chain the summon waits until the chain link has resolved.
+    pub fn summon_full(
+        &mut self,
+        player: u8,
+        card: CardId,
+        ignore_count: bool,
+        procedure: Option<EffectId>,
+        min_tribute: u8,
+        zone: u32,
+    ) -> Script<()> {
+        if self.core.effect_damage_step != 0 || player > 1 {
+            return Ok(());
+        }
+        self.core.summon_cancelable = false;
+        self.field_summon(player, card, procedure, ignore_count, min_tribute, zone);
+        if !self.core.current_chain.is_empty() {
+            self.core.reserved = self.core.subunits.pop().map(Box::new);
+            self.core.summoning_card = Some(card);
+        }
+        self.yield_script()
     }
 
     pub fn synchro_summon(&mut self, player: u8, card: CardId, must: Option<CardSet>, materials: Option<CardSet>) -> Script<()> {

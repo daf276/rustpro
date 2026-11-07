@@ -478,6 +478,10 @@ impl CardId {
         duel.filter_effect(self, code, true).first().copied()
     }
 
+    pub fn get_previous_equip_target(self, duel: &Duel) -> Option<CardId> {
+        duel.cards[self].pre_equip_target
+    }
+
     pub fn get_equip_target(self, duel: &Duel) -> Option<CardId> {
         duel.cards[self].equiping_target
     }
@@ -729,6 +733,15 @@ impl CardId {
 
     pub fn is_link_summonable_full(self, duel: &Duel, must: Option<CardSet>, materials: Option<CardSet>, min: u16, max: u16) -> bool {
         duel.spsummonable_rule(self, TYPE_LINK, SUMMON_TYPE_LINK, must, materials, min, max)
+    }
+
+    pub fn is_summonable(self, duel: &Duel, ignore_count: bool, procedure: Option<EffectId>) -> bool {
+        self.is_summonable_full(duel, ignore_count, procedure, 0, 0x1f)
+    }
+
+    pub fn is_summonable_full(self, duel: &Duel, ignore_count: bool, procedure: Option<EffectId>, min_tribute: u16, zone: u16) -> bool {
+        let player = duel.core.reason_player.get();
+        duel.is_can_be_summoned(self, player, ignore_count, procedure, min_tribute as u8, u32::from(zone))
     }
 
     pub fn set_reason_player(self, duel: &mut Duel, player: u8) {

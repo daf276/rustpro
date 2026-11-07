@@ -365,6 +365,7 @@ pub struct Card {
     pub overlay_target: Option<CardId>,
     pub pre_overlay_target: Option<CardId>,
     pub equiping_target: Option<CardId>,
+    pub pre_equip_target: Option<CardId>,
 }
 
 impl Card {
@@ -1240,6 +1241,9 @@ impl Duel {
                 self.reset_effect_count(card);
             }
             self.reset_counters(card, id);
+            if id & RESET_TOFIELD != 0 {
+                self.cards[card].pre_equip_target = None;
+            }
             self.card_relations
                 .retain(|&(owner, _, reset)| owner != card || reset & 0xffff_0000 & id == 0);
         }
@@ -1429,6 +1433,7 @@ impl Duel {
         if self.equip_effects_disable_related(card) {
             self.add_to_disable_check_list(target);
         }
+        self.cards[card].pre_equip_target = Some(target);
         self.cards[card].equiping_target = None;
         self.equip_cards.remove(card);
     }
@@ -1607,7 +1612,7 @@ impl Duel {
     // TRUE/FALSE for the ordinary summon, or -1/-2 when a limiting procedure decides alone. Summon procedures come
     // with the cards that register them.
     pub(crate) fn filter_summon_procedure(
-        &mut self,
+        &self,
         card: CardId,
         playerid: u8,
         ignore_count: bool,
@@ -1783,7 +1788,7 @@ impl Duel {
 
     // Whether playerid can normal summon the card; `procedure` restricts to one summon procedure (c80921533).
     pub(crate) fn is_can_be_summoned(
-        &mut self,
+        &self,
         card: CardId,
         playerid: u8,
         ignore_count: bool,

@@ -704,15 +704,6 @@ impl Cost {
         Ok(false)
     }
 
-    pub fn self_reveal(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
-        let c = args.e.get_handler(duel);
-        if chk == 0 {
-            return Ok(!c.is_public(duel));
-        }
-        duel.confirm_cards(1 - args.tp, c)?;
-        Ok(false)
-    }
-
     pub fn self_banish(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         let c = args.e.get_handler(duel);
         if chk == 0 {
@@ -1201,19 +1192,6 @@ impl CardUtility for CardId {
             Value::SpSummonCondition(|duel, e, _, _, sum_type, _, _| {
                 !e.get_handler(duel).is_location(duel, LOCATION_EXTRA) || sum_type & SUMMON_TYPE_FUSION == SUMMON_TYPE_FUSION
             }),
-        );
-        self.register_effect(duel, e0);
-        e0
-    }
-
-    fn add_must_be_fusion_summoned(self, duel: &mut Duel) -> EffectId {
-        let e0 = duel.create_effect(self);
-        e0.set_type(duel, EFFECT_TYPE_SINGLE);
-        e0.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
-        e0.set_code(duel, EFFECT_SPSUMMON_CONDITION);
-        e0.set_value(
-            duel,
-            Value::SpSummonCondition(|_, _, _, _, sum_type, _, _| sum_type & SUMMON_TYPE_FUSION == SUMMON_TYPE_FUSION),
         );
         self.register_effect(duel, e0);
         e0

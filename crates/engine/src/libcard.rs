@@ -870,19 +870,6 @@ impl CardId {
         duel.cards[self].data.card_type & TYPE_LINK == 0 && self.is_monster_now(duel) && duel.get_defense(self) >= defense
     }
 
-    pub fn is_defense_below(self, duel: &Duel, defense: i32) -> bool {
-        let card = &duel.cards[self];
-        if card.data.card_type & TYPE_LINK != 0
-            || (card.data.card_type & TYPE_MONSTER == 0
-                && duel.get_type(self) & TYPE_MONSTER == 0
-                && card.current.location != LOCATION_MZONE)
-        {
-            return false;
-        }
-        let current = duel.get_defense(self);
-        current >= 0 && current <= defense
-    }
-
     // Lua passes the values to match as further arguments.
     pub fn is_attack(self, duel: &Duel, attacks: &[i32]) -> bool {
         self.is_monster_now(duel) && attacks.contains(&duel.get_attack(self))

@@ -78,7 +78,13 @@ Hand-port the `proc_*` summon procedures, each verified through a few carrier ca
 
 ### 5. Mass port and simulation layer
 - [ ] Port the Advanced pool in waves ordered by popularity (replay/decklist frequency)
-- [ ] In parallel: gamestate format, hidden-card sampling, observation/action encoding, pyo3 bindings, rayon batch runner, benchmarks vs target
+- [ ] In parallel, the simulation layer:
+  - [ ] 5a. Gamestate format: versioned binary dump/load of a whole duel (all dynamic state, incl. once-per-turn flags, lingering effects, counters, script state, the pending processor stack) that round-trips exactly (a loaded duel continues message for message like the original)
+  - [ ] 5b. Per-player observations (what that player may know, nothing hidden leaks) and hidden-card sampling (determinize the opponent's hand, face-down cards and deck orders consistent with the observation)
+  - [ ] 5c. Fixed action encoding with legality masks over every prompt kind, auto-advance of single-option decisions as an option, and a rayon batch runner (many duels stepped in lockstep from a policy callback)
+  - [ ] 5d. pyo3 bindings with batched stepping (numpy observations and masks), a Python smoke test
+  - [ ] 5e. Benchmarks vs the phase 0 target for the full stack (step, clone, observe, sample)
+- [ ] Default test cost: the 13-scenarios-per-card suite grows with the pool (380 s at 173 cards); before ~1,000 cards switch the default run to a sample, keeping the full sweep in the ignored suite
 
 ### 6. Maintenance
 - [ ] Run the pipeline on each new set and banlist change (Forbidden cards can return)

@@ -1146,6 +1146,26 @@ impl CardId {
         duel.is_can_add_counter(self, duel.core.reason_player.get(), counter_type, count, false, 0)
     }
 
+    pub fn is_can_remove_counter(self, duel: &Duel, player: u8, counter_type: u16, count: u16, _reason: u32) -> bool {
+        player <= 1 && duel.is_player_can_remove_counter(player, Some(self), 0, 0, counter_type, count)
+    }
+
+    pub fn remove_counter(self, duel: &mut Duel, player: u8, counter_type: u16, count: u16, reason: u32) -> Script<bool> {
+        unported!(duel, (counter_type == 0).then_some(()));
+        duel.field_remove_counter(reason, Some(self), player, 0, 0, counter_type, count);
+        duel.yield_script()?;
+        Ok(duel.returns.at_i32(0) != 0)
+    }
+
+    pub fn set_counter_limit(self, duel: &mut Duel, counter_type: u16, limit: u32) {
+        let effect = duel.new_effect(self);
+        let peffect = &mut duel.effects[effect];
+        peffect.effect_type = EFFECT_TYPE_SINGLE;
+        peffect.code = EFFECT_COUNTER_LIMIT | u32::from(counter_type);
+        peffect.value = crate::effect::Value::Int(limit as i32);
+        duel.card_add_effect(self, effect);
+    }
+
     pub fn enable_counter_permit(self, duel: &mut Duel, counter_type: u16) {
         self.enable_counter_permit_full(duel, counter_type, None);
     }

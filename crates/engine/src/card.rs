@@ -2985,17 +2985,29 @@ impl Duel {
             return false;
         }
         let counter_type = counter_type & !COUNTER_NEED_ENABLE;
-        unported!(self, self.filter_effect(card, EFFECT_COUNTER_LIMIT + u32::from(counter_type), true));
-        let _ = singly;
-        true
+        let count = if singly { 1 } else { count };
+        self.counter_limit(card, counter_type)
+            .is_none_or(|limit| u32::from(self.get_counter(card, counter_type)) + u32::from(count) <= limit)
+    }
+
+    // The lowest EFFECT_COUNTER_LIMIT value of the card for this counter, None where no effect limits it.
+    fn counter_limit(&self, card: CardId, counter_type: u16) -> Option<u32> {
+        self.filter_effect(card, EFFECT_COUNTER_LIMIT + u32::from(counter_type), true)
+            .into_iter()
+            .map(|effect| u32::from(self.get_value(effect, card) as u16))
+            .min()
     }
 
     pub(crate) fn add_counter(&mut self, card: CardId, playerid: u8, counter_type: u16, count: u16, singly: bool) -> bool {
         if !self.is_can_add_counter(card, playerid, counter_type, count, singly, 0) {
             return false;
         }
-        self.debug_pre_add_counter(card, counter_type, count);
         let cttype = counter_type & !COUNTER_NEED_ENABLE;
+        let mut count = count;
+        if singly && let Some(limit) = self.counter_limit(card, cttype) {
+            count = count.min((limit as u16).wrapping_sub(self.get_counter(card, cttype)));
+        }
+        self.debug_pre_add_counter(card, counter_type, count);
         let current = self.cards[card].current;
         self.trace
             .message(MSG_ADD_COUNTER)

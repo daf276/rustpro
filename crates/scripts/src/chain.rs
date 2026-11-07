@@ -2,6 +2,7 @@
 use engine::{CardId, CardSet, Duel, EffectId};
 
 use crate::constant::*;
+use crate::proc_workaround::CardWorkaround;
 
 // Chain.IsTriggeringLocation: the real or the symbolic triggering location of the chain link has common bits.
 pub fn is_triggering_location(duel: &Duel, ch: u8, location: u32) -> bool {
@@ -26,6 +27,25 @@ pub fn is_triggering_setcode(duel: &Duel, ch: u8, setcodes: &[u16]) -> bool {
                 .iter()
                 .any(|&sa| setcodes.iter().any(|&sb| (sa & 0xfff) == (sb & 0xfff) && (sa & sb) == sb))
         })
+}
+
+// Chain.IsSetcode(ch, setcodes), false where it returns nil. The resolving properties are recorded only in puzzles, so a card
+// that is no longer related to its effect or face-up falls back to the triggering properties.
+pub fn is_setcode(duel: &Duel, ch: u8, setcodes: &[u16]) -> bool {
+    if duel.get_current_chain() == 0 {
+        return false;
+    }
+    let Some(eff) = duel.get_chain_info::<Option<EffectId>>(ch, CHAININFO_TRIGGERING_EFFECT) else {
+        return false;
+    };
+    if eff.is_has_property(duel, EFFECT_FLAG_FIELD_ONLY) {
+        return properties_card(duel, eff).is_some_and(|card| card.is_set_card(duel, setcodes));
+    }
+    let ec = eff.get_handler(duel);
+    if ec.is_relate_to_effect(duel, eff) && ec.is_faceup(duel) {
+        return ec.is_set_card(duel, setcodes);
+    }
+    is_triggering_setcode(duel, ch, setcodes)
 }
 
 // e:GetChainData() of the current chain link, keyed by its chain id and the effect; a `slot` per field of the table.

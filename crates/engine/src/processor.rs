@@ -44,6 +44,8 @@ pub struct RefreshLoc {
 #[derive(Debug, Clone, Default)]
 pub struct Startup {
     pub step: u16,
+    // The turn the duel starts with: the first player's first turn, or the one a position starts at.
+    pub turn: Turn,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -3115,7 +3117,7 @@ impl Duel {
                         self.field_draw(None, REASON_RULE, PLAYER_NONE, p, start_count as u16);
                     }
                 }
-                self.emplace_process(Turn::default());
+                self.emplace_process(std::mem::take(&mut arg.turn));
                 true
             }
             _ => true,

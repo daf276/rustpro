@@ -2856,20 +2856,8 @@ impl Duel {
         if !self.is_can_add_counter(card, playerid, counter_type, count, singly, 0) {
             return false;
         }
+        self.debug_pre_add_counter(card, counter_type, count);
         let cttype = counter_type & !COUNTER_NEED_ENABLE;
-        let slot = match self.counter_slot(card, cttype) {
-            Ok(slot) => slot,
-            Err(slot) => {
-                self.counters.insert(slot, (card, cttype, [0, 0]));
-                slot
-            }
-        };
-        if let Some(counter) = self.counters.get_mut(slot) {
-            let permanent = counter_type & COUNTER_WITHOUT_PERMIT != 0 && counter_type & COUNTER_NEED_ENABLE == 0;
-            if let Some(slot) = counter.2.get_mut(usize::from(!permanent)) {
-                *slot += count;
-            }
-        }
         let current = self.cards[card].current;
         self.trace
             .message(MSG_ADD_COUNTER)
@@ -2890,6 +2878,24 @@ impl Duel {
         );
         self.process_single_event();
         true
+    }
+
+    // Debug.PreAddCounter, the storing part of card::add_counter.
+    pub(crate) fn debug_pre_add_counter(&mut self, card: CardId, counter_type: u16, count: u16) {
+        let cttype = counter_type & !COUNTER_NEED_ENABLE;
+        let slot = match self.counter_slot(card, cttype) {
+            Ok(slot) => slot,
+            Err(slot) => {
+                self.counters.insert(slot, (card, cttype, [0, 0]));
+                slot
+            }
+        };
+        if let Some(counter) = self.counters.get_mut(slot) {
+            let permanent = counter_type & COUNTER_WITHOUT_PERMIT != 0 && counter_type & COUNTER_NEED_ENABLE == 0;
+            if let Some(slot) = counter.2.get_mut(usize::from(!permanent)) {
+                *slot = slot.wrapping_add(count);
+            }
+        }
     }
 
     pub(crate) fn card_remove_counter(&mut self, card: CardId, counter_type: u16, count: u16) -> bool {

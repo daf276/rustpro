@@ -1,6 +1,6 @@
 use carddata::{Card, CardDatabase, TYPE_EXTRA};
-use engine::NewCardInfo;
 use engine::constants::*;
+use engine::{NewCardInfo, PlacedCard, Position};
 use rand::Rng;
 use rand::seq::IndexedRandom;
 use scripts::testing::{DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT, REMOVED, SZONE};
@@ -8,12 +8,12 @@ use scripts::testing::{DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT, REMOVED, SZONE
 const OTHER_CARDS_MAX: usize = 3;
 const XYZ_MATERIALS_MAX: usize = 3;
 
-// A position built as a puzzle builds one: the LP of both players and the cards Debug.AddCard places before the duel
-// starts, on top of the decks.
+// What a scenario places on top of the decks, as a puzzle does: the LP of both players and the cards Debug.AddCard
+// places before the duel starts.
 #[derive(Debug, Clone)]
 pub struct Scenario {
     pub lp: [u32; 2],
-    pub cards: Vec<NewCardInfo>,
+    pub cards: Vec<PlacedCard>,
 }
 
 impl Scenario {
@@ -52,32 +52,21 @@ impl Scenario {
             }
         }
         let lp = [0, 1].map(|_| if rng.random() { 8000 } else { rng.random_range(1..=80) * 100 });
+        let cards = cards
+            .into_iter()
+            .map(|info| PlacedCard {
+                proc_complete: proc_complete(&info),
+                info,
+                counters: Vec::new(),
+            })
+            .collect();
         Self { lp, cards }
-    }
-
-    pub fn lua(&self) -> String {
-        let players = (0..2)
-            .zip(self.lp)
-            .map(|(player, lp)| format!("Debug.SetPlayerInfo({player},{lp},5,1)\n"));
-        let cards = self.cards.iter().map(|info| {
-            let NewCardInfo {
-                code,
-                team,
-                con,
-                loc,
-                seq,
-                pos,
-                ..
-            } = *info;
-            format!("Debug.AddCard({code},{team},{con},{loc},{seq},{pos},{})\n", proc_complete(info))
-        });
-        players.chain(cards).collect()
     }
 
     // Where each card is as messages give it (controller, location, sequence), with its code; the Pendulum and Field
     // Zones are Spell & Trap Zones there.
     pub fn places(&self) -> impl Iterator<Item = ((u8, u8, u32), u32)> {
-        self.cards.iter().map(|info| {
+        self.cards.iter().map(|PlacedCard { info, .. }| {
             let (location, sequence) = match info.loc as u16 {
                 LOCATION_PZONE => (SZONE, info.seq * 4),
                 LOCATION_FZONE => (SZONE, 5),
@@ -86,12 +75,36 @@ impl Scenario {
             ((info.con, location as u8, sequence), info.code)
         })
     }
+}
 
-    pub fn place(&self, duel: &mut engine::Duel, database: &'static CardDatabase) -> Result<(), engine::DuelError> {
-        self.cards
-            .iter()
-            .try_for_each(|&info| duel.debug_add_card(info, proc_complete(&info), database))
-    }
+// The Debug calls that set up a position in the oracle, which has none for the turn: the position must start the duel
+// (Position::new).
+pub fn lua(position: &Position) -> String {
+    let players = position.players.iter().enumerate().map(|(player, options)| {
+        let (lp, start, draw) = (options.starting_lp, options.starting_draw_count, options.draw_count_per_turn);
+        format!("Debug.SetPlayerInfo({player},{lp},{start},{draw})\n")
+    });
+    let cards = position.cards.iter().map(|card| {
+        let NewCardInfo {
+            code,
+            team,
+            con,
+            loc,
+            seq,
+            pos,
+            ..
+        } = card.info;
+        let add = format!("Debug.AddCard({code},{team},{con},{loc},{seq},{pos},{})", card.proc_complete);
+        if card.counters.is_empty() {
+            return add + "\n";
+        }
+        let counters = card.counters.iter().map(|&(counter_type, [permanent, negatable])| {
+            let negatable_type = counter_type | COUNTER_NEED_ENABLE;
+            format!(" Debug.PreAddCounter(c,{counter_type},{permanent}) Debug.PreAddCounter(c,{negatable_type},{negatable})")
+        });
+        format!("do local c={add}{} end\n", counters.collect::<String>())
+    });
+    players.chain(cards).collect()
 }
 
 // A monster on the field, in the GY, banished or face-up in the Extra Deck got there with its summon procedure complete

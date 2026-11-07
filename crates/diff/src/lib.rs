@@ -4,7 +4,7 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 use carddata::{CardDatabase, CardsError, Deck, Pool, TYPE_NORMAL, TYPE_PENDULUM, banlist_limits};
-use engine::{DUEL_MODE_MR5, DuelOptions, PlayerOptions};
+use engine::{DUEL_MODE_MR5, DuelRecord, PlayerOptions, Position};
 use oracle::{Message, Prompt, Scripts, Status, parse, respond};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -62,6 +62,8 @@ pub enum DiffError {
     Message(#[from] oracle::MessageError),
     #[error(transparent)]
     Engine(#[from] engine::DuelError),
+    #[error(transparent)]
+    Position(#[from] engine::PositionError),
     #[error("seed {seed}: {error}")]
     Action { seed: u64, error: engine::ActionError },
     #[error("seed {seed}: the oracle awaits a response without sending a prompt")]
@@ -139,6 +141,7 @@ pub struct Report {
     pub winner: u8,
     pub reason: u8,
     pub tally: Tally,
+    pub record: DuelRecord,
 }
 
 // How often a duel's messages show the actions phases 1b and 1c added, and the chain links that resolved per card
@@ -382,6 +385,12 @@ pub struct Vendor {
 }
 
 impl Vendor {
+    // One of the constructors below on the vendored data, leaked for the 'static lifetime the engine takes.
+    pub fn leak(kind: fn(&Path) -> Result<Self, DiffError>) -> Result<&'static Self, DiffError> {
+        let vendor = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../vendor");
+        Ok(Box::leak(Box::new(kind(&vendor)?)))
+    }
+
     // The Advanced pool reduced to Normal Monsters, which have no scripts; Normal Pendulums do.
     pub fn normal_monsters(vendor: &Path) -> Result<Self, DiffError> {
         let cards = CardDatabase::load(&vendor.join("BabelCDB"))?;
@@ -443,45 +452,52 @@ impl Vendor {
 // Plays one seeded duel in the oracle and the engine with the same decks and random responses and compares every
 // message up to MSG_WIN.
 pub fn diff_duel(vendor: &'static Vendor, seed: u64) -> Result<Report, DiffError> {
-    play(vendor, seed, None)
+    play(vendor, seed, None, None)
 }
 
 // Scenario `index` of `card`, seeded by both alone, so that adding ports changes no other card's scenarios.
 pub fn diff_scenario(vendor: &'static Vendor, card: u32, index: u32) -> Result<Report, DiffError> {
-    play(vendor, u64::from(card) << 32 | u64::from(index), Some(card))
+    play(vendor, u64::from(card) << 32 | u64::from(index), Some(card), None)
 }
 
-fn play(vendor: &'static Vendor, seed: u64, card: Option<u32>) -> Result<Report, DiffError> {
+// A duel both engines set up from `position` alone, which must start the duel (see scenario::lua).
+pub fn diff_position(vendor: &'static Vendor, seed: u64, position: &Position) -> Result<Report, DiffError> {
+    play(vendor, seed, None, Some(position))
+}
+
+// Both engines start from one position: the decks, the scenario of `card` if any on top, or `position` if given.
+fn play(vendor: &'static Vendor, seed: u64, card: Option<u32>, position: Option<&Position>) -> Result<Report, DiffError> {
     let mut rng = StdRng::seed_from_u64(seed);
     let duel_seed: [u64; 4] = rng.random();
     let scenario = card.map(|card| Scenario::generate(card, &vendor.scenario_others, &vendor.cards, &mut rng));
+    let position = match position {
+        Some(position) => position.clone(),
+        None => {
+            let lp = scenario.as_ref().map_or([8000; 2], |scenario| scenario.lp);
+            let players = lp.map(|starting_lp| PlayerOptions {
+                starting_lp,
+                ..PlayerOptions::default()
+            });
+            let mut position = Position::new(DUEL_MODE_MR5, players);
+            for team in 0..2 {
+                position.add_deck(team, &vendor.deck(&mut rng));
+            }
+            position
+                .cards
+                .extend(scenario.iter().flat_map(|scenario| scenario.cards.iter().cloned()));
+            position
+        }
+    };
     let mut oracle = oracle::Duel::new(&vendor.cards, &vendor.scripts, duel_seed)?;
-    let [team1, team2] = scenario
-        .as_ref()
-        .map_or([8000; 2], |scenario| scenario.lp)
-        .map(|starting_lp| PlayerOptions {
-            starting_lp,
-            ..PlayerOptions::default()
-        });
-    let mut engine = engine::Duel::new(DuelOptions {
-        seed: duel_seed,
-        flags: DUEL_MODE_MR5,
-        team1,
-        team2,
-    })?;
+    oracle.run_lua(&scenario::lua(&position))?;
+    let mut engine = engine::Duel::from_position(&position, &vendor.cards, &scripts::LIBRARY, duel_seed)?;
     engine.set_trace(true);
-    engine.load_library(&scripts::LIBRARY);
-    for team in 0..2 {
-        let deck = vendor.deck(&mut rng);
-        oracle.add_deck(team, &deck);
-        engine.add_deck(team, &deck, &vendor.cards)?;
-    }
-    if let Some(scenario) = &scenario {
-        oracle.run_lua(&scenario.lua())?;
-        scenario.place(&mut engine, &vendor.cards)?;
-    }
+    let mut record = DuelRecord {
+        seed: duel_seed,
+        position,
+        actions: Vec::new(),
+    };
     oracle.start();
-    engine.start();
     engine.process();
     let (mut compared, mut decisions, mut tally): (Vec<Vec<u8>>, u32, Tally) = (Vec::new(), 0, Tally::default());
     for (place, code) in scenario.iter().flat_map(Scenario::places) {
@@ -526,6 +542,7 @@ fn play(vendor: &'static Vendor, seed: u64, card: Option<u32>) -> Result<Report,
                     winner: *winner,
                     reason: *reason,
                     tally,
+                    record,
                 });
             }
         }
@@ -547,6 +564,7 @@ fn play(vendor: &'static Vendor, seed: u64, card: Option<u32>) -> Result<Report,
             .map_err(|error| DiffError::Action { seed, error })?;
         for action in actions {
             engine.apply(action).map_err(|error| DiffError::Action { seed, error })?;
+            record.actions.push(action);
         }
         decisions += 1;
     }

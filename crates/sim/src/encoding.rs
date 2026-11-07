@@ -81,6 +81,14 @@ pub const ACTIONS: usize = total(&Section::ALL);
 pub enum EncodingError {
     #[error("slot {slot} is beyond the {} slots of section {section:?}", section.slots())]
     Overflow { section: Section, slot: usize },
+    #[error("{0} cards are beyond the {max} rows of the card table", max = crate::MAX_OBS_CARDS)]
+    Cards(usize),
+    #[error("a chain of {0} links is beyond the {max} rows of the chain table", max = crate::MAX_CHAIN)]
+    Chain(usize),
+    #[error("the buffers do not hold the same whole number of observations")]
+    Buffers,
+    #[error("observation {index} of buffers for {rows}")]
+    Row { index: usize, rows: usize },
 }
 
 fn slot(action: Action, code: usize) -> (Section, usize) {

@@ -1,0 +1,27 @@
+[package]
+name = "py"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = """Python module ygo_sim: batched duels with numpy masks and observations. \
+Build into a virtualenv with `maturin develop --release -m crates/py/Cargo.toml`; \
+`Batch(Database(), [(deck, deck)], size).step(actions)`, see tests/test_smoke.py."""
+
+[lib]
+name = "ygo_sim"
+crate-type = ["cdylib"]
+# The module links Python, which a Rust test binary would need on its path; tests/test_smoke.py tests it.
+test = false
+doctest = false
+
+[dependencies]
+carddata = { path = "../carddata" }
+engine = { path = "../engine" }
+numpy = { version = "0.30", default-features = false }
+pyo3 = { version = "0.30", default-features = false, features = ["macros", "abi3-py310"] }
+rand = { version = "0.9", default-features = false, features = ["alloc", "std_rng"] }
+scripts = { path = "../scripts" }
+sim = { path = "../sim" }
+
+[lints]
+workspace = true

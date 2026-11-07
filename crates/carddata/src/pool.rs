@@ -34,21 +34,25 @@ impl Deck {
     // Lines `main`, `extra` and `side` followed by comma-separated codes; alternate arts become their original, as the
     // pool has no alternate arts. The side deck is left out.
     pub fn parse(text: &str, cards: &CardDatabase) -> Self {
-        let section = |name: &str| -> Vec<u32> {
+        let section = |name: &str| {
             let codes = text.lines().find_map(|line| line.strip_prefix(name)?.strip_prefix(' '));
-            codes
-                .unwrap_or_default()
-                .split(',')
-                .filter_map(|code| code.trim().parse().ok())
-                .map(|code| match cards.get(code) {
-                    Some(card) if card.is_alternate_art() => card.alias,
-                    _ => code,
-                })
-                .collect()
+            original(codes.unwrap_or_default().split(','), cards)
         };
         Self {
             main: section("main"),
             extra: section("extra"),
+        }
+    }
+
+    // EDOPro's .ydk: a code per line after `#main` and `#extra`, the side deck after `!side`, other `#` lines comments.
+    pub fn parse_ydk(text: &str, cards: &CardDatabase) -> Self {
+        let section = |name: &str| {
+            let lines = text.lines().map(str::trim).skip_while(|&line| line != name).skip(1);
+            original(lines.take_while(|line| !line.starts_with(['#', '!'])), cards)
+        };
+        Self {
+            main: section("#main"),
+            extra: section("#extra"),
         }
     }
 
@@ -57,6 +61,16 @@ impl Deck {
         deck.main.shuffle(rng);
         deck
     }
+}
+
+fn original<'a>(codes: impl Iterator<Item = &'a str>, cards: &CardDatabase) -> Vec<u32> {
+    codes
+        .filter_map(|code| code.trim().parse().ok())
+        .map(|code| match cards.get(code) {
+            Some(card) if card.is_alternate_art() => card.alias,
+            _ => code,
+        })
+        .collect()
 }
 
 #[derive(Debug, Clone)]
@@ -127,5 +141,25 @@ impl Pool {
             cards.extend(std::iter::repeat_n(code, copies));
         }
         cards
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_read_the_main_and_extra_deck_of_a_ydk() {
+        let ydk = "#created by someone
+#main
+10
+20
+#extra
+30
+!side
+40
+";
+        let deck = Deck::parse_ydk(ydk, &CardDatabase::default());
+        assert_eq!((deck.main, deck.extra), (vec![10, 20], vec![30]));
     }
 }

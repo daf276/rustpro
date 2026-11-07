@@ -82,6 +82,7 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   with its Lua name and the type the API takes (`WIN_REASON_NUMBER_iC1000` is upper-cased); never add constants.
 - Cards use `set_operation`; `set_promptless_operation` is for library code that provably cannot prompt.
 - A core function a library replaces keeps a `_core` suffix in the engine; the scripts-crate trait takes the Lua name.
+- An internal engine function whose name a new Lua mirror needs is renamed with a `field_` prefix (`field_raise_event`).
 
 ## Fidelity
 

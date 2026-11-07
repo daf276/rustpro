@@ -71,6 +71,7 @@ Hand-port the `proc_*` summon procedures, each verified through a few carrier ca
 
 ### 4. Porting pipeline pilot
 - [x] 4a. Infrastructure for parallel porting: card registry generated from the files in `official/`, per-card test metadata (support cards, checks) in each card's file, fixed seeds per card (adding cards no longer reshuffles scenarios) with per-card tallies and checks, all of `constant.lua` ported up front, a single-card diff command for agents, and a porting queue of the TCG pool ordered by popularity (ygoprodeck weekly views)
+- [ ] 4b. Engine mechanisms the pilot found missing that many cards need: tokens (`Duel.CreateToken`, temp card stats for `IsPlayerCanSpecialSummonMonster`, `IsPlayerCanSpecialSummonCount`, tokens leaving the field), coin tosses, dice, `Duel.AnnounceCard` with its opcode filter; carriers Nibiru, Scapegoat, Gatling Dragon, Snipe Hunter, Crossout Designator; `--context N` for the card command
 - [ ] Agent pipeline: port card, port any library functions it needs that are still missing, generate scenarios, diff, iterate
 - [ ] Pilot ~200 cards; measure pass rate, cost per card, API gaps
 

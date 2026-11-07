@@ -70,9 +70,30 @@ pub trait DuelWorkaround {
         location2: u32,
         exception: Option<CardSet>,
     ) -> CardSet;
-    // Duel.IsMainPhase(player) and Duel.IsStandbyPhase(player): the phase, and that it is the player's turn.
+    // Duel.IsMainPhase(player), Duel.IsStandbyPhase(player) and Duel.IsBattlePhase(player): the phase, and that it is the player's turn.
     fn is_main_phase_full(&self, player: Option<u8>) -> bool;
     fn is_standby_phase_full(&self, player: Option<u8>) -> bool;
+    fn is_battle_phase_full(&self, player: Option<u8>) -> bool;
+    fn get_release_group(&self, player: u8) -> CardSet;
+    fn get_release_group_full(&self, player: u8, use_hand: bool, use_oppo: bool, reason: u32) -> CardSet;
+    fn check_release_group_cost(
+        &self,
+        tp: u8,
+        f: impl Fn(CardId, &Duel) -> bool,
+        counts: (usize, usize),
+        use_hand: bool,
+        check: Option<ReleaseCheck>,
+        ex: Option<CardSet>,
+    ) -> bool;
+    fn select_release_group_cost(
+        &mut self,
+        tp: u8,
+        f: impl Fn(CardId, &Duel) -> bool,
+        counts: (usize, usize),
+        use_hand: bool,
+        check: Option<ReleaseCheck>,
+        ex: Option<CardSet>,
+    ) -> Script<CardSet>;
 }
 
 impl DuelWorkaround for Duel {
@@ -119,6 +140,157 @@ impl DuelWorkaround for Duel {
     fn is_standby_phase_full(&self, player: Option<u8>) -> bool {
         self.get_current_phase() == PHASE_STANDBY && player.is_none_or(|player| self.is_turn_player(player))
     }
+
+    fn is_battle_phase_full(&self, player: Option<u8>) -> bool {
+        self.is_battle_phase() && player.is_none_or(|player| self.is_turn_player(player))
+    }
+
+    fn get_release_group(&self, player: u8) -> CardSet {
+        self.get_release_group_full(player, false, false, REASON_COST)
+    }
+
+    // Duel.GetReleaseGroup, which also offers the Extra Deck cards EFFECT_EXTRA_RELEASE_NONSUM allows to be released.
+    fn get_release_group_full(&self, player: u8, use_hand: bool, use_oppo: bool, reason: u32) -> CardSet {
+        let g = self.get_release_group_core(player, use_hand, use_oppo, reason);
+        let exg = self.get_matching_group(
+            |c, duel| c.is_has_effect(duel, EFFECT_EXTRA_RELEASE_NONSUM).is_some() && c.is_releasable_full(duel, reason, None),
+            player,
+            LOCATION_EXTRA,
+            0,
+            None,
+        );
+        unported!(self, !exg.is_empty());
+        g
+    }
+
+    // Duel.CheckReleaseGroupCost with `maxc` given; a nil `check` is None and a nil `ex` None.
+    fn check_release_group_cost(
+        &self,
+        tp: u8,
+        f: impl Fn(CardId, &Duel) -> bool,
+        counts: (usize, usize),
+        use_hand: bool,
+        check: Option<ReleaseCheck>,
+        ex: Option<CardSet>,
+    ) -> bool {
+        let search = ReleaseSearch::new(self, tp, f, counts, use_hand, check, ex);
+        search.mg.includes(search.mustg)
+            && search
+                .mg
+                .is_exists(self, |c, duel| search.recursive(duel, c, CardSet::default(), 0), 1, None)
+    }
+
+    fn select_release_group_cost(
+        &mut self,
+        tp: u8,
+        f: impl Fn(CardId, &Duel) -> bool,
+        counts: (usize, usize),
+        use_hand: bool,
+        check: Option<ReleaseCheck>,
+        ex: Option<CardSet>,
+    ) -> Script<CardSet> {
+        let search = ReleaseSearch::new(self, tp, f, counts, use_hand, check, ex);
+        let mut sg = search.mustg;
+        while sg.len() < search.maxc {
+            let cg = search.mg.filter(self, |c, duel| search.recursive(duel, c, sg, sg.len()), Some(sg));
+            if cg.is_empty() {
+                break;
+            }
+            let cancel = search.goal(self, sg, sg.len()).0;
+            self.hint(HINT_SELECTMSG, tp, HINTMSG_RELEASE);
+            let Some(tc) = cg.select_unselect(self, Some(sg), tp, cancel, cancel, 1, 1)? else {
+                break;
+            };
+            if search.mustg.is_empty() || !search.mustg.contains(tc) {
+                if sg.contains(tc) {
+                    sg.remove(tc);
+                } else {
+                    sg.insert(tc);
+                }
+            }
+        }
+        unported!(self, !sg.intersection(search.exg).is_empty());
+        Ok(sg)
+    }
+}
+
+// The check (sg, tp, exg) -> (res, stop) of Duel.CheckReleaseGroupCost and Duel.SelectReleaseGroupCost.
+pub type ReleaseCheck<'a> = &'a dyn Fn(&Duel, CardSet, u8, CardSet) -> (bool, bool);
+
+// What the recursive search of Duel.CheckReleaseGroupCost and Duel.SelectReleaseGroupCost shares: the releasable cards
+// and those that are extra releases (exg) or must be released (mustg).
+struct ReleaseSearch<'a> {
+    tp: u8,
+    mg: CardSet,
+    exg: CardSet,
+    mustg: CardSet,
+    minc: usize,
+    maxc: usize,
+    check: Option<ReleaseCheck<'a>>,
+}
+
+impl ReleaseSearch<'_> {
+    fn new<'a>(
+        duel: &Duel,
+        tp: u8,
+        f: impl Fn(CardId, &Duel) -> bool,
+        (minc, maxc): (usize, usize),
+        use_hand: bool,
+        check: Option<ReleaseCheck<'a>>,
+        ex: Option<CardSet>,
+    ) -> ReleaseSearch<'a> {
+        let mg = duel.get_release_group_full(tp, use_hand, false, REASON_COST).filter(duel, f, ex);
+        let (g, exg) = mg.split(duel, |c, duel| release_cost_filter(c, duel, tp), None);
+        let mustg = g.filter(
+            duel,
+            |c, duel| c.is_has_effect(duel, EFFECT_EXTRA_RELEASE).is_some() && c.is_controler(duel, 1 - tp),
+            None,
+        );
+        unported!(duel, !(exg.is_empty() && mustg.is_empty()));
+        ReleaseSearch {
+            tp,
+            mg,
+            exg,
+            mustg,
+            minc,
+            maxc,
+            check,
+        }
+    }
+
+    // aux.MakeSpecialCheck(check, tp, exg) applied to sg, with aux.ReleaseCheckSingleUse.
+    fn special_check(&self, duel: &Duel, sg: CardSet) -> (bool, bool) {
+        let (res, stop) = self.check.map_or((true, false), |check| check(duel, sg, self.tp, self.exg));
+        let extra_releases = sg.intersection(self.exg).len();
+        (res && extra_releases <= 1, stop || extra_releases > 1)
+    }
+
+    // aux.RelCheckGoal.
+    fn goal(&self, duel: &Duel, sg: CardSet, ct: usize) -> (bool, bool) {
+        if ct < self.minc || ct > self.maxc {
+            return (false, ct > self.maxc);
+        }
+        let (res, stop) = self.special_check(duel, sg);
+        (res && sg.includes(self.mustg), stop)
+    }
+
+    // aux.RelCheckRecursive, with sg and ct as they are before the card is added.
+    fn recursive(&self, duel: &Duel, c: CardId, mut sg: CardSet, ct: usize) -> bool {
+        sg.insert(c);
+        let ct = ct + 1;
+        let (mut res, stop) = self.goal(duel, sg, ct);
+        if !res && !stop {
+            res = ct < self.maxc && self.mg.is_exists(duel, |c, duel| self.recursive(duel, c, sg, ct), 1, Some(sg));
+        }
+        res
+    }
+}
+
+// aux.ReleaseCostFilter.
+fn release_cost_filter(c: CardId, duel: &Duel, tp: u8) -> bool {
+    let eff = c.is_has_effect(duel, EFFECT_EXTRA_RELEASE_NONSUM);
+    !(c.is_controler(duel, 1 - tp) && eff.is_some_and(|eff| eff.check_count_limit(duel, tp)))
+        && c.is_has_effect(duel, EFFECT_EXTRA_RELEASE).is_none()
 }
 
 // player_table: whether a player's hand was already shuffled in the current chain, as script state per player.

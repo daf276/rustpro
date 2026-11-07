@@ -2482,6 +2482,7 @@ impl Duel {
                         count[p] = 0;
                     }
                     core.summon_count[p] = 0;
+                    core.spsummon_once_map[p].clear();
                 }
                 for effect in self.core.reseted_effects.drain(..) {
                     self.effects.delete(effect);

@@ -346,6 +346,7 @@ pub struct Card {
     pub position_param: u32,
     pub release_param: u32,
     pub spsummon_param: u32,
+    pub spsummon_code: u32,
     pub attack_announce_count: u8,
     pub announce_count: u8,
     pub attacked_count: u8,

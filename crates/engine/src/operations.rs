@@ -2212,7 +2212,6 @@ impl Duel {
                     self.core.operated_set.clear();
                     return true;
                 }
-                // The once-per-turn summons come with the cards that limit special summons.
                 let turn_player = self.infos.turn_player;
                 let by_turn_player = |duel: &Self, card: CardId| duel.cards[card].summon.player == turn_player;
                 if arg.targets.iter().any(|card| by_turn_player(self, card)) {
@@ -2220,6 +2219,15 @@ impl Duel {
                 }
                 if arg.targets.iter().any(|card| !by_turn_player(self, card)) {
                     self.set_spsummon_counter(1 - turn_player);
+                }
+                for player in [0, 1] {
+                    let codes = arg
+                        .targets
+                        .iter()
+                        .filter(|&card| self.cards[card].summon.player == player)
+                        .map(|card| self.cards[card].spsummon_code)
+                        .filter(|&code| code != 0);
+                    self.add_spsummon_once_codes(player, codes.collect());
                 }
                 for card in arg.targets {
                     self.cards[card].set_status(STATUS_SPSUMMON_STEP, false);
@@ -4055,6 +4063,7 @@ impl Duel {
             }
             17 => {
                 self.set_spsummon_counter(sumplayer);
+                self.add_spsummon_once(sumplayer, self.cards[target].spsummon_code);
                 self.raise_single_event(target, EVENT_SPSUMMON_SUCCESS, Some(proc), 0, sumplayer, sumplayer, 0);
                 self.process_single_event();
                 self.field_raise_event(Some(target.into()), EVENT_SPSUMMON_SUCCESS, Some(proc), 0, sumplayer, sumplayer, 0);
@@ -4231,6 +4240,8 @@ impl Duel {
                 let group = arg.proc_g.cards;
                 self.trace.message(MSG_SPSUMMONED);
                 self.set_spsummon_counter(sumplayer);
+                let codes = group.iter().map(|card| self.cards[card].spsummon_code).filter(|&code| code != 0);
+                self.add_spsummon_once_codes(sumplayer, codes.collect());
                 for card in group {
                     let current = self.cards[card].current;
                     let summon_player = self.cards[card].summon.player;

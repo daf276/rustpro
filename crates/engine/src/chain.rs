@@ -120,7 +120,7 @@ impl Duel {
         });
     }
 
-    pub(crate) fn check_event(&self, code: u32) -> Option<Event> {
+    pub(crate) fn field_check_event(&self, code: u32) -> Option<Event> {
         self.core
             .point_event
             .iter()

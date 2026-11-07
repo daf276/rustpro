@@ -2204,15 +2204,18 @@ impl Duel {
                     target.current.reason = REASON_BATTLE;
                     target.current.reason_card = Some(other);
                     target.current.reason_player = other_controler;
-                    if self.cards[card].data.card_type & TYPE_MONSTER != 0 {
-                        unported!(self, self.is_affected_by_effect(other, EFFECT_BATTLE_DESTROY_REDIRECT));
+                    let mut destination = u32::from(LOCATION_GRAVE);
+                    if let Some(redirect) = self.is_affected_by_effect(other, EFFECT_BATTLE_DESTROY_REDIRECT)
+                        && self.cards[card].data.card_type & TYPE_MONSTER != 0
+                    {
+                        destination = self.get_value(redirect, card) as u32;
                     }
                     let target = &mut self.cards[card];
                     target.sendto_param = SendtoParam {
                         playerid: target.owner,
                         position: POS_FACEUP as u8,
-                        location: LOCATION_GRAVE,
-                        sequence: 0,
+                        location: destination as u8,
+                        sequence: (destination >> 16) as u8,
                     };
                     target.set_status(STATUS_DESTROY_CONFIRMED, true);
                 }

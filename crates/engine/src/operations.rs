@@ -2601,7 +2601,7 @@ impl Duel {
         });
     }
 
-    pub(crate) fn mset(
+    pub(crate) fn field_mset(
         &mut self,
         setplayer: u8,
         target: CardId,

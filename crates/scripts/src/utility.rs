@@ -1049,6 +1049,8 @@ pub trait CardUtility: Copy {
     fn negate_effects(self, duel: &mut Duel, c: CardId, reset: u32, negates_cards: bool);
     fn is_fusion_monster(self, duel: &Duel) -> bool;
     fn is_link_monster(self, duel: &Duel) -> bool;
+    fn is_tribute_summoned(self, duel: &Duel) -> bool;
+    fn can_summon_or_set(self, duel: &Duel, ignore_count: bool, procedure: Option<EffectId>, min_tribute: u16) -> bool;
     fn is_fusion_summoned(self, duel: &Duel) -> bool;
     fn is_synchro_summoned(self, duel: &Duel) -> bool;
     fn is_link_summoned(self, duel: &Duel) -> bool;
@@ -1079,6 +1081,16 @@ impl CardUtility for CardId {
 
     fn is_link_monster(self, duel: &Duel) -> bool {
         self.is_composite_type(duel, TYPE_MONSTER | TYPE_LINK)
+    }
+
+    fn is_tribute_summoned(self, duel: &Duel) -> bool {
+        self.is_summon_type(duel, &[SUMMON_TYPE_TRIBUTE])
+    }
+
+    // Card.CanSummonOrSet with the arguments (ignore_count, procedure, min_tribute) given.
+    fn can_summon_or_set(self, duel: &Duel, ignore_count: bool, procedure: Option<EffectId>, min_tribute: u16) -> bool {
+        self.is_summonable_full(duel, ignore_count, procedure, min_tribute, 0x1f)
+            || self.is_msetable_full(duel, ignore_count, procedure, min_tribute, 0xff)
     }
 
     fn is_fusion_summoned(self, duel: &Duel) -> bool {
@@ -1468,6 +1480,7 @@ pub trait DuelUtility {
     fn move_to_deck_top(&mut self, targets: CardSet) -> Script<()>;
     fn place_field_spell(&mut self, c: CardId, tp: u8) -> Script<bool>;
     fn count_heads(&self, results: &[u8]) -> usize;
+    fn summon_or_set(&mut self, tp: u8, c: CardId, ignore_count: bool, procedure: Option<EffectId>, min_tribute: u8) -> Script<()>;
 }
 
 impl DuelUtility for Duel {
@@ -1502,6 +1515,16 @@ impl DuelUtility for Duel {
 
     fn has_flag_effect_full(&self, tp: u8, id: u32, ct: usize) -> bool {
         self.get_flag_effect(tp, id) >= ct
+    }
+
+    fn summon_or_set(&mut self, tp: u8, c: CardId, ignore_count: bool, procedure: Option<EffectId>, min_tribute: u8) -> Script<()> {
+        let s1 = c.is_summonable_full(self, ignore_count, procedure, u16::from(min_tribute), 0x1f);
+        let s2 = c.is_msetable_full(self, ignore_count, procedure, u16::from(min_tribute), 0xff);
+        if (s1 && s2 && self.select_position(tp, c, (POS_FACEUP_ATTACK | POS_FACEDOWN_DEFENSE) as u8)? == POS_FACEUP_ATTACK) || !s2 {
+            self.summon_full(tp, c, ignore_count, procedure, min_tribute, 0x1f)
+        } else {
+            self.mset_full(tp, c, ignore_count, procedure, min_tribute, 0x1f)
+        }
     }
 
     // Duel.PlaceFieldSpell(c, tp, target_p) with target_p left out.

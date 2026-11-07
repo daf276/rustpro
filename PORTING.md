@@ -87,8 +87,9 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - A rare Synchro/Xyz/Link path in the first 13 scenarios usually needs three Extra Deck copies and materials of each
   level. There are no Normal Monsters above Level 8: use ported Extra Deck monsters as higher-level materials.
   A Spell that Special Summons another card is checked by `SpecialSummonedCode(code)`.
-  A trigger on its own destruction needs a ported single-target destroyer in `SUPPORT` (Raigeki or Dark Hole also
-  clear what the trigger needs). Test several cards per card command run: each rebuild takes over a minute.
+  A trigger on its own destruction needs a destroyer that can hit the card (Raigeki only hits the opponent; Dark Hole
+  also clears what the trigger needs, so a single-target destroyer is best). An effect without `SetDescription` is
+  `ResolvesEffect(0)`. A Link whose effect needs its materials to qualify gets only qualifying materials. Test several cards per card command run: each rebuild takes over a minute.
 
 ## Mirror API
 
@@ -117,6 +118,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - `Duel.IsPlayerCanSpecialSummonMonster(p, code, setcode, type, atk, def, lv, race, att)` is
   `is_player_can_special_summon_monster(p, code, MonsterStats::new(...))`, with the struct's fields for nil arguments.
   It takes `&mut Duel` (the core's temp card takes the stats), so a condition calls it through `check_mut`.
+  So does any other `&mut Duel` mirror a condition or filter needs (`can_chain_attack`, see c70405001). A path where the
+  oracle's Lua errors (a nil index, an undefined function) is `unported!`; an erroring `chkc` check is `false`.
 - `s.listed_names` is `pub const LISTED_NAMES: &[u32]`, `mt.fit_monster` is `pub const FIT_MONSTER: &[u32]`,
   `s.material_setcode` is `pub const MATERIAL_SETCODE: &[u16]` (read by `ListsArchetypeAsMaterial`),
   `s.dark_calling` is `pub const DARK_CALLING: bool = true` (read through `official::dark_calling(code)`).

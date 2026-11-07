@@ -8,7 +8,10 @@ registers every `c<code>.rs` and reads its `LISTED_NAMES`, `FIT_MONSTER`, `SUPPO
 
 ## Workflow
 
-1. Read the Lua and every library function it calls (`utility.lua`, `cards_specific_functions.lua`, `proc_*.lua`).
+1. Read the Lua and every library function it calls (`utility.lua`, `cards_specific_functions.lua`, `proc_*.lua`;
+   grep all of `vendor/CardScripts/*.lua` before taking a method for missing: `chain.lua` and others define some, and
+   a Lua error is not reported as such, only as a diff). `grep -rn "unported!" crates/engine/src` lists the mechanisms
+   still missing; one a card reaches is ported like any other core function.
    Read two or three ported cards with similar effects (`grep -l EVENT_SPSUMMON_SUCCESS crates/scripts/src/official`).
 2. Write the file: `// <card name>`, `use crate::prelude::*;`, `const ID: u32 = <code>;`, then
    `pub fn initial_effect(duel: &mut Duel, c: CardId)` and the script's functions in the Lua's order and names.
@@ -69,6 +72,10 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   reordering `SUPPORT` changes every scenario.
 - `ResolvesEffect` and `Message` count by code or by any card: a `SUPPORT` copy of the card can satisfy them, and
   `Message(MSG_ATTACK)` counts every attack. Check that the counted path is the card's own.
+- `Report` is only for a path no `SUPPORT` can reach (say why in one comment line), never for a reachable one that
+  is merely rare.
+- A rare Synchro/Xyz/Link path in the first 13 scenarios usually needs three Extra Deck copies and materials of each
+  level. There are no Normal Monsters above Level 8: use ported Extra Deck monsters as higher-level materials.
   A Spell that Special Summons another card is checked by `SpecialSummonedCode(code)`.
 
 ## Mirror API

@@ -1,5 +1,6 @@
 // Darklord Desire
 use crate::prelude::*;
+use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 55690251;
 
@@ -16,6 +17,10 @@ impl NormalProcedure for Procedure {
         c.is_race(duel, RACE_FAIRY) && (c.is_controler(duel, tp) || c.is_faceup(duel))
     }
 }
+
+// In the hand twice, to be Tribute Summoned or Set with a Fairy on the field: Medius the Pure.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (97556336, MZONE)];
+pub const CHECKS: &[Check] = &[Check::TributeSummoned(1), Check::TributeSet(1)];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e1 = duel.create_effect(c);

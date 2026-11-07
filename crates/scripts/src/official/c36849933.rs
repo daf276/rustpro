@@ -1,5 +1,6 @@
 // Megalith Och
 use crate::prelude::*;
+use crate::testing::{HAND, MZONE};
 
 const ID: u32 = 36849933;
 
@@ -8,6 +9,9 @@ struct Params;
 impl RitualParams for Params {
     const FORCEDSELECTION: Option<ForcedSelection> = Some(|duel, e, _, g, _| (g.is_contains(e.get_handler(duel)), false));
 }
+
+// On the field, it Ritual Summons the copy in the hand with itself, which then draws.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, HAND)];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.enable_revive_limit(duel);

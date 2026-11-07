@@ -1,5 +1,6 @@
 // Kuibelt the Blade Dragon
 use crate::prelude::*;
+use crate::testing::{EXTRA, HAND, MZONE};
 
 const ID: u32 = 87837090;
 
@@ -13,6 +14,9 @@ impl SynchroProcedure for Procedure {
         Synchro::non_tuner(c, duel, sc, tp, |_, _| true)
     }
 }
+
+// In the Extra Deck, with Revolution Synchron in the hand and a Level 4 monster, Kojikocy.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, EXTRA), (97682931, HAND), (97682931, HAND), (1184620, MZONE)];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.enable_revive_limit(duel);

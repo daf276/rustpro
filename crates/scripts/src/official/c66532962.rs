@@ -1,5 +1,6 @@
 // Magistus Chorozo
 use crate::prelude::*;
+use crate::testing::{EXTRA, MZONE};
 
 const ID: u32 = 66532962;
 
@@ -29,6 +30,9 @@ impl ContactFusion for Contact {
         duel.send_to_grave(g, REASON_COST | REASON_MATERIAL).map(|_| ())
     }
 }
+
+// In the Extra Deck for its contact fusion, and on the field for its attack trigger.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, EXTRA), (ID, MZONE)];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.enable_revive_limit(duel);

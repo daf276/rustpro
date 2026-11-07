@@ -1,5 +1,9 @@
 // Inaba White Rabbit
 use crate::prelude::*;
+use crate::testing::HAND;
+
+// In the hand, to be Normal Summoned and return in the End Phase.
+pub const SUPPORT: &[(u32, u16)] = &[(77084837, HAND)];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     Spirit::add_procedure(duel, c, &[EVENT_SUMMON_SUCCESS, EVENT_FLIP]);

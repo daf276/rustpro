@@ -1,5 +1,11 @@
 // Mono Synchron
 use crate::prelude::*;
+use crate::testing::{Check, EXTRA, MZONE};
+
+// On the field with a Level 4 Warrior, Kojikocy, for Formula Synchron in the Extra Deck.
+pub const SUPPORT: &[(u32, u16)] = &[(50091196, EXTRA), (56897896, MZONE), (1184620, MZONE)];
+// EFFECT_SYNCHRO_MATERIAL_CUSTOM and EFFECT_SYNCHRO_MAT_RESTRICTION.
+pub const CHECKS: &[Check] = &[Check::MaterialFrom(MZONE)];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e1 = duel.create_effect(c);

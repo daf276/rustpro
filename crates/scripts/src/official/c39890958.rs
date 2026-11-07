@@ -1,5 +1,6 @@
 // Heavy Mech Support Armor
 use crate::prelude::*;
+use crate::testing::{Check, MZONE};
 
 const ID: u32 = 39890958;
 
@@ -10,6 +11,11 @@ impl UnionProcedure for Procedure {
         c.is_race(duel, RACE_MACHINE)
     }
 }
+
+// On the field with a Machine monster to equip: Mechanicalchaser.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (7359741, MZONE)];
+// Destruction substitutions are too rare to assert.
+pub const CHECKS: &[Check] = &[Check::Resolves, Check::Report(&Check::Replaced)];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     Union::add_procedure::<Procedure>(duel, c);

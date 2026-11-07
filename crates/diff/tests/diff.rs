@@ -2,43 +2,12 @@ use std::io::Write;
 use std::ops::Range;
 use std::path::{Path, PathBuf};
 
-use diff::{DiffError, Report, Tally, Vendor, diff_duel};
+use diff::{DiffError, Report, SCENARIOS, SCENARIOS_FULL, Tally, Vendor, diff_cards, diff_duel, summarize};
 use rayon::prelude::*;
-use scripts::CLASSIC_CARDS;
+use scripts::{CARD_SCRIPTS, CLASSIC_CARDS};
 
 const WIN_BY_LP: u8 = 1;
 const WIN_BY_DECK_OUT: u8 = 2;
-// The card code and description (aux.Stringid(code, 0)) of effects that random mirror matches never resolve.
-const ECCLESIA_DARK_DRAGON_SUMMON: (u32, u64) = (78397661, 78397661 << 20);
-const DAWN_DRAGSTER_LEVEL_UP: (u32, u64) = (33158448, 33158448 << 20);
-const VIDOLIUM_BANISH: (u32, u64) = (70488851, (70488851 << 20) + 3);
-const ALBION_FUSION_SUMMON: (u32, u64) = (87746184, 87746184 << 20);
-// Ported cards whose effects scenarios do not resolve, checked by their Special Summons instead: Gaia Dragon, the
-// Thunder Charger has only a continuous effect, Drill Driver Vespenato's trigger needs it Xyz Summoned and then
-// destroyed by an opponent's card effect, Fusionist and Sea Monster of Theseus have no effect, and Extox Hydra's draw
-// needs 1000 or more battle damage from it; Magician of Black Chaos has no effect.
-const SUMMONED_ONLY: [u32; 6] = [91949988, 39317553, 1641882, 96334243, 26050548, 30208479];
-// Ritual Raven has only its Ritual level, checked by its use as a Ritual Summon material.
-const RITUAL_MATERIAL_ONLY: [u32; 1] = [34334692];
-const LOCATION_HAND: u8 = 0x2;
-const LOCATION_MZONE: u8 = 0x4;
-// Materials whose use exercises a procedure path of phase 3d, by card code and the location they leave: Mono Synchron
-// (EFFECT_SYNCHRO_MATERIAL_CUSTOM and EFFECT_SYNCHRO_MAT_RESTRICTION) and Revolution Synchron from the hand
-// (EFFECT_SYNCHRO_MAT_FROM_HAND).
-const MATERIAL_PATHS: [(u32, u8); 2] = [(56897896, LOCATION_MZONE), (97682931, LOCATION_HAND)];
-// Hints the core adds to a card when a procedure path of phase 3d runs, by the carrier and the description: Gemini
-// Lancer's second Normal Summon (64).
-const HINT_PATHS: [(u32, u64); 1] = [(26254876, 64)];
-// Messages only a procedure path of phase 3d writes, by the carrier and the message type: Fiendish Chain's card target
-// (MSG_CARD_TARGET), Demotion's and Salamandra's equips (MSG_EQUIP).
-const MESSAGE_PATHS: [(u32, u8); 3] = [(50078509, 96), (72575145, 93), (32268901, 93)];
-// Normal Summons and Sets by a procedure, by the carrier and the number of tributes: Blizzard Princess and Darklord
-// Desire with 1.
-const SUMMON_PATHS: [(u32, u32); 2] = [(28348537, 1), (55690251, 1)];
-const SET_PATHS: [(u32, u32); 1] = [(55690251, 1)];
-// Union monsters destroyed in place of the monster they equip (EFFECT_DESTROY_SUBSTITUTE): Metallizing Parasite -
-// Lunatite (by battle only) and Heavy Mech Support Armor. Written out only: too rare to assert in 1000 scenarios.
-const REPLACE_PATHS: [u32; 2] = [7369217, 39890958];
 
 fn load(vendor: fn(&Path) -> Result<Vendor, DiffError>) -> Result<&'static Vendor, DiffError> {
     Ok(Box::leak(Box::new(vendor(
@@ -147,84 +116,39 @@ fn should_match_the_oracle_in_5000_elfnote_mirror_matches() {
     assert_elfnote_clean(0..5000).unwrap();
 }
 
-// Writes per card under test how many of its scenarios resolved one of its effects, how often it was Special Summoned
-// and used as a Ritual material, and checks that every ported card resolves some effect, including the effects only
-// scenarios reach, and that Ritual materials are selected by both kinds of sum.
-fn assert_scenarios_clean(seeds: Range<u64>) -> Result<(), DiffError> {
+// Writes each card's scenarios out and checks that they diff clean and pass the card's checks, and that Ritual
+// materials are selected by both kinds of sum.
+fn assert_scenarios_clean(count: u32) -> Result<(), DiffError> {
     let vendor = load(Vendor::scenarios)?;
-    let (tally, reports) = diff_duels(vendor, seeds.clone())?;
-    write_tally(&tally);
+    let cards: Vec<u32> = CARD_SCRIPTS.iter().map(|card| card.code).collect();
+    let runs = diff_cards(vendor, &cards, count);
     let out = &mut std::io::stdout().lock();
-    for &card in &vendor.scenario_cards {
-        let own = seeds
-            .clone()
-            .zip(&reports)
-            .filter(|&(seed, _)| vendor.scenario_card(seed) == Some(card));
-        let resolving = own.clone().filter(|(_, report)| report.tally.resolutions(card) > 0).count();
-        let summons = tally.special_summons.get(&card).copied().unwrap_or(0);
-        let materials = tally.ritual_materials.get(&card).copied().unwrap_or(0);
-        writeln!(
-            out,
-            "{card}: {resolving} of {} scenarios resolve its effects, {summons} Special Summons, {materials} Ritual materials",
-            own.count()
-        )
-        .ok();
+    let mut failed = Vec::new();
+    for (&card, results) in cards.iter().zip(&runs) {
+        let (passed, summary) = summarize(card, results);
+        write!(out, "{summary}").ok();
+        if !passed {
+            failed.push(card);
+        }
     }
-    let materials = MATERIAL_PATHS.map(|key| (key, tally.materials.get(&key).copied().unwrap_or(0)));
-    writeln!(out, "material paths: {materials:?}").ok();
-    let hints = HINT_PATHS.map(|(card, description)| ((card, description), tally.card_hints.get(&description).copied().unwrap_or(0)));
-    let messages = MESSAGE_PATHS.map(|(card, kind)| ((card, kind), tally.messages.get(&kind).copied().unwrap_or(0)));
-    writeln!(out, "message paths: {messages:?}").ok();
-    let summons = SUMMON_PATHS.map(|key| (key, tally.summon_tributes.get(&key).copied().unwrap_or(0)));
-    writeln!(out, "summon paths: {summons:?}").ok();
-    let sets = SET_PATHS.map(|key| (key, tally.set_tributes.get(&key).copied().unwrap_or(0)));
-    writeln!(out, "set paths: {sets:?}").ok();
-    let replaced = REPLACE_PATHS.map(|card| (card, tally.replaced.get(&card).copied().unwrap_or(0)));
-    writeln!(out, "replace paths: {replaced:?}").ok();
-    let paths: Vec<(u32, u32)> = (materials.iter().map(|&((card, _), count)| (card, count)))
-        .chain(hints.iter().map(|&((card, _), count)| (card, count)))
-        .chain(messages.iter().map(|&((card, _), count)| (card, count)))
-        .chain(summons.iter().map(|&((card, _), count)| (card, count)))
-        .chain(sets.iter().map(|&((card, _), count)| (card, count)))
-        .collect();
-    let exercised = |code: u32| paths.iter().any(|&(card, count)| card == code && count > 0);
-    writeln!(out, "hint paths: {hints:?}").ok();
-    let unresolved: Vec<u32> = vendor
-        .scenario_cards
-        .iter()
-        .copied()
-        .filter(
-            |&code| match (SUMMONED_ONLY.contains(&code), RITUAL_MATERIAL_ONLY.contains(&code)) {
-                (true, _) => !tally.special_summons.contains_key(&code),
-                (_, true) => !tally.ritual_materials.contains_key(&code),
-                _ => tally.resolutions(code) == 0 && !exercised(code),
-            },
-        )
-        .collect();
-    let only_in_scenarios = [
-        ECCLESIA_DARK_DRAGON_SUMMON,
-        DAWN_DRAGSTER_LEVEL_UP,
-        VIDOLIUM_BANISH,
-        ALBION_FUSION_SUMMON,
-    ]
-    .map(|effect| tally.effects.get(&effect));
+    let reports = runs.iter().flatten().flatten();
+    let tally = reports.fold(Tally::default(), |tally, report| tally + report.tally.clone());
+    writeln!(out, "sum selections (exact, reaching): {:?}", tally.sum_prompts).ok();
     assert!(
-        unresolved.is_empty()
-            && only_in_scenarios.iter().all(Option::is_some)
-            && tally.sum_prompts.iter().all(|&count| count > 0)
-            && paths.iter().all(|&(_, count)| count > 0),
-        "{unresolved:?} {tally:?}"
+        failed.is_empty() && tally.sum_prompts.iter().all(|&count| count > 0),
+        "failing cards {failed:?}, sum selections {:?}",
+        tally.sum_prompts
     );
     Ok(())
 }
 
 #[test]
 fn should_match_the_oracle_message_for_message_in_per_card_scenarios() {
-    assert_scenarios_clean(0..1000).unwrap();
+    assert_scenarios_clean(SCENARIOS).unwrap();
 }
 
 #[test]
-#[ignore = "phase 2d exit, run with --release -- --ignored"]
-fn should_match_the_oracle_in_5000_per_card_scenarios() {
-    assert_scenarios_clean(0..5000).unwrap();
+#[ignore = "phase 4a, run with --release -- --ignored"]
+fn should_match_the_oracle_in_64_scenarios_per_card() {
+    assert_scenarios_clean(SCENARIOS_FULL).unwrap();
 }

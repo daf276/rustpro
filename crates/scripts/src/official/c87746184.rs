@@ -1,5 +1,6 @@
 // Albion the Branded Dragon
 use crate::prelude::*;
+use crate::testing::{Check, EXTRA, HAND};
 
 const ID: u32 = 87746184;
 
@@ -48,6 +49,10 @@ impl FusionSummonParams for Params {
         Ok(false)
     }
 }
+
+// Fusion Summoned by Polymerization, so that its effect Fusion Summons Magistus Chorozo with it and a Spellcaster.
+pub const SUPPORT: &[(u32, u16)] = &[(68468459, HAND), (24094653, HAND), (38142739, HAND), (66532962, EXTRA)];
+pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.enable_revive_limit(duel);

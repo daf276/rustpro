@@ -1,5 +1,6 @@
 // Gaia Dragon, the Thunder Charger
 use crate::prelude::*;
+use crate::testing::Check;
 
 const ID: u32 = 91949988;
 
@@ -11,6 +12,11 @@ impl XyzProcedure for Procedure {
     const ALTERF: Option<AlterFilter> = Some(ovfilter);
     const DESC: u64 = aux::stringid(ID, 0);
 }
+
+// Xyz Summoned on a Rank 5 or 6 Xyz Monster: Gauntlet Launcher.
+pub const SUPPORT: &[(u32, u16)] = &[(15561463, 0)];
+// No activated effect.
+pub const CHECKS: &[Check] = &[Check::SpecialSummoned];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     Xyz::add_procedure::<Procedure>(duel, c);

@@ -1,5 +1,6 @@
 // Fallen of Albaz
 use crate::prelude::*;
+use crate::testing::{HAND, MZONE, OPPONENT};
 
 const ID: u32 = 68468459;
 
@@ -20,6 +21,9 @@ impl FusionSummonParams for Params {
         Some(Fusion::forced_handler(duel, e))
     }
 }
+
+// In the hand to Normal Summon, and the opponent's LIGHT monster for Albion the Branded Dragon: Elfnote Fortuna.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (85976588, MZONE | OPPONENT)];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e1a = duel.create_effect(c);

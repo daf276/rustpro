@@ -637,7 +637,6 @@ impl CardUtility for CardId {
         self.has_level(duel) && self.get_original_level(duel) == level
     }
 
-    // s.listed_names of the card's script; no ported script sets fit_monster.
     fn lists_code(self, duel: &Duel, code: u32) -> bool {
         crate::official::listed_names(self.get_original_code(duel)).contains(&code)
     }

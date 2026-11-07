@@ -1,7 +1,11 @@
 // Norito the Moral Leader
 use crate::prelude::*;
+use crate::testing::{MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 14152862;
+
+// On the field, to negate the opponent's set Mystical Space Typhoon.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (5318639, SZONE | OPPONENT)];
 
 struct Procedure;
 

@@ -1,5 +1,6 @@
 // Ecclesia and the Dark Dragon
 use crate::prelude::*;
+use crate::testing::Check;
 
 const ID: u32 = 78397661;
 
@@ -15,6 +16,10 @@ impl SynchroProcedure for Procedure {
         Synchro::non_tuner(c, duel, sc, tp, aux::TRUE)
     }
 }
+
+// The banish-and-summon needs a Level 4 or lower monster that lists Fallen of Albaz: Guiding Quem.
+pub const SUPPORT: &[(u32, u16)] = &[(45883110, 0)];
+pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.enable_revive_limit(duel);

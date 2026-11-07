@@ -1,7 +1,13 @@
 // Revolution Synchron
 use crate::prelude::*;
+use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 97682931;
+
+// In the hand, Synchro material for Kuibelt the Blade Dragon with a Level 4 monster, Kojikocy.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (87837090, EXTRA), (1184620, MZONE)];
+// EFFECT_SYNCHRO_MAT_FROM_HAND.
+pub const CHECKS: &[Check] = &[Check::MaterialFrom(HAND)];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e1 = duel.create_effect(c);

@@ -1,7 +1,11 @@
 // Golden Cloud Beast - Malong
 use crate::prelude::*;
+use crate::testing::{GRAVE, HAND};
 
 const ID: u32 = 93125329;
+
+// In the GY, to be Special Summoned by Monster Reborn.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, GRAVE), (83764718, HAND)];
 
 struct Procedure;
 

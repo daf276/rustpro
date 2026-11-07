@@ -1,5 +1,6 @@
 // Formula Synchron
 use crate::prelude::*;
+use crate::testing::{EXTRA, MZONE};
 
 const ID: u32 = 50091196;
 
@@ -13,6 +14,9 @@ impl SynchroProcedure for Procedure {
         Synchro::non_tuner(c, duel, sc, tp, |_, _| true)
     }
 }
+
+// In the Extra Deck, Synchro Summoned with Mono Synchron and a Level 4 Warrior, Kojikocy.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, EXTRA), (56897896, MZONE), (1184620, MZONE)];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     Synchro::add_procedure::<Procedure>(duel, c);

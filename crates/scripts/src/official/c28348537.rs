@@ -1,5 +1,6 @@
 // Blizzard Princess
 use crate::prelude::*;
+use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 28348537;
 
@@ -16,6 +17,10 @@ impl NormalProcedure for Procedure {
         c.is_race(duel, RACE_SPELLCASTER) && (c.is_controler(duel, tp) || c.is_faceup(duel))
     }
 }
+
+// In the hand twice, to be Tribute Summoned with a Spellcaster on the field: Elfnote Lucina.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (13597785, MZONE)];
+pub const CHECKS: &[Check] = &[Check::TributeSummoned(1)];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     Normal::add_summon_procedure::<Procedure>(duel, c);

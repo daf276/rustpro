@@ -295,6 +295,25 @@ pub mod aux {
         false
     }
 
+    // Group.CheckDifferentProperty: whether the cards can each take a different one of the properties f returns.
+    pub fn check_different_property(duel: &Duel, g: CardSet, f: &dyn Fn(CardId, &Duel) -> Vec<u32>) -> bool {
+        fn checkrec(duel: &Duel, c: CardId, g: CardSet, taken: &mut Vec<u32>, f: &dyn Fn(CardId, &Duel) -> Vec<u32>) -> bool {
+            for prop in f(c, duel) {
+                if taken.contains(&prop) {
+                    continue;
+                }
+                taken.push(prop);
+                let rest = g.difference(c.into());
+                if g.len() < 2 || rest.into_iter().any(|other| checkrec(duel, other, rest, taken, f)) {
+                    return true;
+                }
+                taken.retain(|&other| other != prop);
+            }
+            false
+        }
+        g.len() < 2 || g.into_iter().any(|c| checkrec(duel, c, g, &mut Vec::new(), f))
+    }
+
     pub fn select_unselect_group(
         duel: &mut Duel,
         g: CardSet,

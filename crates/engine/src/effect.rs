@@ -6,7 +6,7 @@ use std::ops::{Index, IndexMut};
 use crate::card::{CardId, CardSet};
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::list::{List, Tracked};
+use crate::list::{List, Shared};
 use crate::script::{Args, Script};
 
 // The effect's index in the duel's arena. Slots of effects the core deletes are reused, as the core reuses memory.
@@ -210,6 +210,12 @@ pub struct Effect {
     pub field_key: Option<NonZeroU64>,
 }
 
+impl Default for Effect {
+    fn default() -> Self {
+        Self::new(CardId::default())
+    }
+}
+
 impl Effect {
     pub fn new(owner: CardId) -> Self {
         Self {
@@ -308,45 +314,49 @@ impl Effect {
     }
 }
 
-// effect::id and effect::status change while effects are only read (is_available), so they are a Cell beside each
-// effect, which keeps Effect itself Copy.
-#[derive(Debug, Clone)]
+// effect::id and effect::status change while effects are only read (is_available), so they are Cells beside the
+// effects, which keeps Effect itself Copy and lets clones share the effects' chunks.
+#[derive(Debug, Clone, Default)]
 pub struct Effects {
-    list: Tracked<(Effect, Cell<(u32, u16)>)>,
+    list: Shared<Effect, CHUNK>,
+    cells: Vec<Cell<[(u32, u16); CHUNK]>>,
     free: List<EffectId, 8>,
     scratch: Effect,
 }
 
-impl Default for Effects {
-    fn default() -> Self {
-        Self {
-            list: Tracked::default(),
-            free: List::default(),
-            scratch: Effect::new(CardId::default()),
-        }
-    }
-}
+const CHUNK: usize = 32;
 
 impl Effects {
     pub fn push(&mut self, effect: Effect) -> EffectId {
         if let Some(id) = self.free.pop() {
             if let Some(slot) = self.list.get_mut(id.index()) {
-                *slot = (effect, Cell::default());
+                *slot = effect;
             }
+            self.set_cell(id, |_| (0, 0));
             return id;
         }
         let id = EffectId::new(self.list.len() as u16);
-        self.list.push((effect, Cell::default()));
+        if self.list.len().is_multiple_of(CHUNK) {
+            self.cells.push(Cell::new([(0, 0); CHUNK]));
+        }
+        self.list.push(effect);
         id
     }
 
-    pub fn sync_from(&mut self, source: &mut Self) {
-        self.list.sync_from(&mut source.list);
+    pub fn sync_from(&mut self, source: &Self) {
+        self.list.sync_from(&source.list);
+        self.cells.clone_from(&source.cells);
         self.free.clone_from(&source.free);
     }
 
     fn cell(&self, effect: EffectId) -> Option<&Cell<(u32, u16)>> {
-        self.list.get(effect.index()).map(|(_, cell)| cell)
+        let index = effect.index();
+        let chunk = self.cells.get(index / CHUNK)?.as_array_of_cells();
+        chunk.get(index % CHUNK).filter(|_| index < self.list.len())
+    }
+
+    fn all_cells(&self) -> impl Iterator<Item = &Cell<(u32, u16)>> {
+        self.cells.iter().flat_map(Cell::as_array_of_cells).take(self.list.len())
     }
 
     pub fn id(&self, effect: EffectId) -> u32 {
@@ -367,35 +377,29 @@ impl Effects {
 
     fn set_cell(&self, effect: EffectId, update: impl FnOnce((u32, u16)) -> (u32, u16)) {
         if let Some(cell) = self.cell(effect) {
-            let value = update(cell.get());
-            if cell.replace(value) != value {
-                self.list.mark(effect.index());
-            }
+            cell.set(update(cell.get()));
         }
     }
 
     pub fn cells(&self) -> Vec<(u32, u16)> {
-        self.list.iter().map(|(_, cell)| cell.get()).collect()
+        self.all_cells().map(Cell::get).collect()
     }
 
     pub fn restore_cells(&self, cells: &[(u32, u16)]) {
-        for (index, &value) in cells.iter().enumerate() {
-            self.set_cell(EffectId::new(index as u16), |_| value);
-        }
+        self.all_cells().zip(cells).for_each(|(cell, &value)| cell.set(value));
     }
 
     // The ids and statuses of a copy of these effects, for the effects both hold.
     pub fn copy_cells_from(&self, source: &Self) {
-        for (index, (_, cell)) in source.list.iter().enumerate().take(self.list.len()) {
-            let value = cell.get();
-            self.set_cell(EffectId::new(index as u16), |_| value);
-        }
+        self.all_cells()
+            .zip(source.all_cells())
+            .for_each(|(cell, value)| cell.set(value.get()));
     }
 
     // The card effects registered here that are not in `other`, a copy of these effects.
     pub fn added_since<'a>(&'a self, other: &'a Self) -> impl Iterator<Item = EffectId> + 'a {
-        let registered = |effects: &Self, index: usize| effects.list.get(index).is_some_and(|(effect, _)| effect.card_key.is_some());
-        (0..self.list.len())
+        let registered = |effects: &Self, index: usize| effects.list.get(index).is_some_and(|effect| effect.card_key.is_some());
+        (self.list.unshared(&other.list))
             .filter(move |&index| registered(self, index) && !registered(other, index))
             .map(|index| EffectId::new(index as u16))
     }
@@ -403,12 +407,12 @@ impl Effects {
     // duel::delete_effect: the slot is reused by the next new effect. Label objects are the only references to an
     // effect that scripts keep, so they are the ones that turn into the deleted object.
     pub fn delete(&mut self, id: EffectId) {
-        for index in 0..self.list.len() {
-            if self.list.get(index).is_some_and(|(effect, _)| effect.label_object == Some(id))
-                && let Some((effect, _)) = self.list.get_mut(index)
-            {
-                effect.label_object = Some(EffectId::DELETED);
-            }
+        let holders: EffectSet = (self.list.iter().enumerate())
+            .filter(|(_, effect)| effect.label_object == Some(id))
+            .map(|(index, _)| EffectId::new(index as u16))
+            .collect();
+        for holder in holders {
+            self[holder].label_object = Some(EffectId::DELETED);
         }
         self.free.push(id);
     }
@@ -443,14 +447,14 @@ impl Index<EffectId> for Effects {
     type Output = Effect;
 
     fn index(&self, id: EffectId) -> &Effect {
-        self.list.get(id.index()).map_or(&self.scratch, |(effect, _)| effect)
+        self.list.get(id.index()).unwrap_or(&self.scratch)
     }
 }
 
 impl IndexMut<EffectId> for Effects {
     fn index_mut(&mut self, id: EffectId) -> &mut Effect {
         let Self { list, scratch, .. } = self;
-        list.get_mut(id.index()).map_or(scratch, |(effect, _)| effect)
+        list.get_mut(id.index()).unwrap_or(scratch)
     }
 }
 
@@ -1459,8 +1463,7 @@ impl Duel {
         copy
     }
 
-    pub(crate) fn get_real_handler(&self, effect: EffectId) -> Option<CardId> {
-        let peffect = &self.effects[effect];
+    fn get_real_handler(&self, peffect: &Effect) -> Option<CardId> {
         if peffect.active_handler.is_some() {
             return peffect.active_handler;
         }
@@ -1472,7 +1475,8 @@ impl Duel {
     }
 
     pub(crate) fn get_owner(&self, effect: EffectId) -> CardId {
-        self.get_real_handler(effect).unwrap_or(self.effects[effect].owner)
+        let peffect = &self.effects[effect];
+        self.get_real_handler(peffect).unwrap_or(peffect.owner)
     }
 
     pub(crate) fn get_owner_player(&self, effect: EffectId) -> u8 {
@@ -1485,7 +1489,8 @@ impl Duel {
 
     // An effect not registered yet reads the temporary card, where the core would dereference null.
     pub(crate) fn get_handler(&self, effect: EffectId) -> CardId {
-        self.get_real_handler(effect).or(self.effects[effect].handler).unwrap_or_default()
+        let peffect = &self.effects[effect];
+        self.get_real_handler(peffect).or(peffect.handler).unwrap_or_default()
     }
 
     pub(crate) fn get_handler_player(&self, effect: EffectId) -> u8 {

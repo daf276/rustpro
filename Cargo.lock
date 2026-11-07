@@ -360,6 +360,7 @@ version = "0.1.0"
 dependencies = [
  "carddata",
  "engine",
+ "mimalloc",
  "numpy",
  "pyo3",
  "rand",

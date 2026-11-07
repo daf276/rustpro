@@ -20,6 +20,9 @@ use sim::{
 
 create_exception!(ygo_sim, Error, PyException);
 
+#[global_allocator]
+static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 fn fail(error: impl std::fmt::Display) -> PyErr {
     Error::new_err(error.to_string())
 }

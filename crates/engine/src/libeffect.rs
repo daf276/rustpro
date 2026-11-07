@@ -268,6 +268,10 @@ impl EffectId {
         }
     }
 
+    pub fn get_activate_location(self, duel: &Duel) -> u32 {
+        duel.effects[self].active_location.into()
+    }
+
     pub fn get_owner_player(self, duel: &Duel) -> u8 {
         duel.get_owner_player(self)
     }

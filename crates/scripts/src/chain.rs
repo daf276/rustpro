@@ -9,6 +9,25 @@ pub fn is_triggering_location(duel: &Duel, ch: u8, location: u32) -> bool {
         || duel.get_chain_info::<u32>(ch, CHAININFO_TRIGGERING_LOCATION_SYMBOLIC) & location != 0
 }
 
+// Chain.IsTriggeringControler, IsTriggeringType and IsTriggeringSetcode, false where they return nil (no such link).
+pub fn is_triggering_controler(duel: &Duel, ch: u8, player: u8) -> bool {
+    duel.get_chain_info::<Option<u8>>(ch, CHAININFO_TRIGGERING_CONTROLER) == Some(player)
+}
+
+pub fn is_triggering_type(duel: &Duel, ch: u8, card_type: u32) -> bool {
+    duel.get_chain_info::<Option<u32>>(ch, CHAININFO_TRIGGERING_TYPE)
+        .is_some_and(|triggering| triggering & card_type > 0)
+}
+
+pub fn is_triggering_setcode(duel: &Duel, ch: u8, setcodes: &[u16]) -> bool {
+    duel.get_chain_info::<Option<[u16; 5]>>(ch, CHAININFO_TRIGGERING_SETCODES)
+        .is_some_and(|triggering| {
+            triggering
+                .iter()
+                .any(|&sa| setcodes.iter().any(|&sb| (sa & 0xfff) == (sb & 0xfff) && (sa & sb) == sb))
+        })
+}
+
 // e:GetChainData() of the current chain link, keyed by its chain id and the effect; a `slot` per field of the table.
 fn chain_data_key(duel: &Duel, e: EffectId, slot: u8) -> u64 {
     let chain_id = u64::from(duel.get_chain_info::<u32>(duel.get_current_chain(), CHAININFO_CHAIN_ID));

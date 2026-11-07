@@ -7,8 +7,9 @@ use crate::duel::Duel;
 use crate::effect::{Chain, Container, EffectId};
 use crate::field::PerPlayer;
 use crate::operations::{
-    ChangePos, Damage, Destroy, DiscardDeck, Draw, Equip, FlipSummon, MonsterSet, MoveToField, PayLpCost, Recover, Release, RemoveCounter,
-    RemoveOverlay, SelectTribute, SendTo, SpSummon, SpSummonRule, SpSummonStep, SpellSet, SpellSetGroup, SummonRule, XyzOverlay,
+    ChangePos, Damage, Destroy, DiscardDeck, Draw, Equip, FlipSummon, GetControl, MonsterSet, MoveToField, PayLpCost, Recover, Release,
+    RemoveCounter, RemoveOverlay, SelectTribute, SendTo, SpSummon, SpSummonRule, SpSummonStep, SpellSet, SpellSetGroup, SummonRule,
+    XyzOverlay,
 };
 use crate::script::Procedure;
 
@@ -94,11 +95,11 @@ pub struct AnnounceAttribute {
     pub available: u32,
 }
 
-// SortCard of a chain's order, MSG_SORT_CHAIN, comes with the triggers that need it.
 #[derive(Debug, Clone, Default)]
 pub struct SortCard {
     pub step: u16,
     pub playerid: u8,
+    pub is_chain: bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -275,6 +276,7 @@ pub enum Unit {
     Draw(Draw),
     DiscardDeck(DiscardDeck),
     Equip(Equip),
+    GetControl(GetControl),
     Damage(Damage),
     Recover(Recover),
     PayLpCost(PayLpCost),
@@ -352,6 +354,7 @@ units!(
     Draw,
     DiscardDeck,
     Equip,
+    GetControl,
     Damage,
     Recover,
     PayLpCost,
@@ -426,6 +429,7 @@ impl Duel {
             Unit::Draw(arg) => self.run_steps(arg, Self::process_draw, false),
             Unit::DiscardDeck(arg) => self.run_steps(arg, Self::process_discard_deck, false),
             Unit::Equip(arg) => self.run_steps(arg, Self::process_equip, false),
+            Unit::GetControl(arg) => self.run_steps(arg, Self::process_get_control, false),
             Unit::Damage(arg) => self.run_steps(arg, Self::process_damage, false),
             Unit::Recover(arg) => self.run_steps(arg, Self::process_recover, false),
             Unit::PayLpCost(arg) => self.run_steps(arg, Self::process_pay_lp_cost, false),
@@ -553,7 +557,7 @@ impl Duel {
                     for (container, cteffect) in [(Container::Activate, true), (Container::QuickO, false)] {
                         for effect in self.field_effect_range(container, EVENT_FREE_CHAIN) {
                             self.set_activate_location(effect);
-                            if !self.is_chainable(effect)
+                            if !self.is_chainable(effect, check_player)
                                 || !self.is_activateable(effect, check_player, &nil_event, false, false, false, false, false)
                             {
                                 continue;
@@ -599,7 +603,7 @@ impl Duel {
                             .map(|chain| chain.triggering_effect)
                             .unwrap_or_default();
                         let handler = self.get_handler(effect);
-                        self.select_effect_yes_no(check_player, 0, handler);
+                        self.field_select_effect_yes_no(check_player, 0, handler);
                     } else {
                         let spe_count = self.core.spe_effect[check_player] as u8;
                         self.emplace_process(SelectChain {
@@ -671,6 +675,7 @@ impl Duel {
                 false
             }
             3 => {
+                self.core.chain_limit.clear();
                 self.clear_chaining_status();
                 self.emplace_process(SolveChain::default());
                 arg.step = RESTART;
@@ -750,8 +755,7 @@ impl Duel {
         }
     }
 
-    // The chains that just were built stop being STATUS_CHAINING before they solve (core.chain_limit holds no
-    // functions while Duel.SetChainLimit is not ported).
+    // The chains that just were built stop being STATUS_CHAINING before they solve.
     fn clear_chaining_status(&mut self) {
         for index in 0..self.core.current_chain.len() {
             if let Some(chain) = self.core.current_chain.get(index) {
@@ -845,7 +849,7 @@ impl Duel {
                         .map(|chain| chain.triggering_effect)
                         .unwrap_or_default();
                     let handler = self.get_handler(effect);
-                    self.select_effect_yes_no(playerid, 221, handler);
+                    self.field_select_effect_yes_no(playerid, 221, handler);
                 } else {
                     self.emplace_process(SelectChain {
                         playerid,
@@ -946,6 +950,7 @@ impl Duel {
                 self.core.new_ochain_h.clear();
                 self.core.full_event.clear();
                 self.core.delayed_quick.clear();
+                self.core.chain_limit.clear();
                 if self.core.current_chain.is_empty() {
                     self.core.point_event.clear();
                     self.reset_chain();
@@ -1060,7 +1065,7 @@ impl Duel {
                         for effect in self.field_effect_range(container, event.event_code) {
                             self.set_activate_location(effect);
                             if !self.effects[effect].is_flag(EFFECT_FLAG_DELAY)
-                                && self.is_chainable(effect)
+                                && self.is_chainable(effect, priority)
                                 && self.is_activateable(effect, priority, &event, false, false, false, false, false)
                             {
                                 let chain = self.chain_candidate(effect, event, priority);
@@ -1077,7 +1082,7 @@ impl Duel {
                     for effect in self.field_effect_range(Container::Activate, event.event_code) {
                         self.set_activate_location(effect);
                         if self.effects[effect].is_flag(EFFECT_FLAG_DELAY)
-                            && self.is_chainable(effect)
+                            && self.is_chainable(effect, priority)
                             && self.is_activateable(effect, priority, &event, false, false, false, false, false)
                         {
                             let chain = self.chain_candidate(effect, event, priority);
@@ -1085,7 +1090,15 @@ impl Duel {
                         }
                     }
                 }
-                unported!(self, self.core.delayed_quick.iter().map(|&(effect, _)| effect));
+                for (effect, event) in self.core.delayed_quick.clone() {
+                    self.set_activate_location(effect);
+                    if self.is_chainable(effect, priority)
+                        && self.is_activateable(effect, priority, &event, true, false, false, false, false)
+                    {
+                        let chain = self.chain_candidate(effect, event, priority);
+                        self.core.select_chains.push(chain);
+                    }
+                }
                 self.core.spe_effect[priority] = self.core.select_chains.len() as i32;
                 if !arg.skip_freechain {
                     self.nil_event.event_code = EVENT_FREE_CHAIN;
@@ -1093,7 +1106,7 @@ impl Duel {
                     for (container, cteffect) in [(Container::Activate, true), (Container::QuickO, false)] {
                         for effect in self.field_effect_range(container, EVENT_FREE_CHAIN) {
                             self.set_activate_location(effect);
-                            if !self.is_chainable(effect)
+                            if !self.is_chainable(effect, priority)
                                 || !self.is_activateable(effect, priority, &nil_event, false, false, false, false, false)
                             {
                                 continue;
@@ -1383,6 +1396,7 @@ impl Duel {
                 }
             }
             2 => {
+                self.core.chain_limit.clear();
                 self.clear_chaining_status();
                 self.emplace_process(SolveChain::default());
                 arg.step = RESTART;
@@ -1479,6 +1493,7 @@ impl Duel {
                 false
             }
             10 => {
+                self.core.chain_limit.clear();
                 if !self.core.current_chain.is_empty() {
                     self.clear_chaining_status();
                     self.emplace_process(SolveChain::default());
@@ -1616,6 +1631,7 @@ impl Duel {
                 false
             }
             2 => {
+                self.core.chain_limit.clear();
                 self.clear_chaining_status();
                 self.emplace_process(SolveChain::default());
                 arg.step = RESTART;
@@ -1632,6 +1648,7 @@ impl Duel {
                 self.process_attack(arg, attacker)
             }
             40 => {
+                self.core.chain_limit.clear();
                 if !self.core.current_chain.is_empty() {
                     self.clear_chaining_status();
                     self.emplace_process(SolveChain::default());
@@ -1763,13 +1780,13 @@ impl Duel {
                     .loc(target_location);
                 if let Some(target) = attack_target {
                     self.raise_single_event(target, EVENT_BE_BATTLE_TARGET, None, 0, 0, 1 - turn_player, 0);
-                    self.raise_event(Some(target.into()), EVENT_BE_BATTLE_TARGET, None, 0, 0, 1 - turn_player, 0);
+                    self.field_raise_event(Some(target.into()), EVENT_BE_BATTLE_TARGET, None, 0, 0, 1 - turn_player, 0);
                 }
                 self.core.attack_rollback = false;
                 self.core.opp_mzone = self.opponent_field_ids();
                 if !arg.is_replaying_attack {
                     self.raise_single_event(attacker, EVENT_ATTACK_ANNOUNCE, None, 0, 0, turn_player, 0);
-                    self.raise_event(Some(attacker.into()), EVENT_ATTACK_ANNOUNCE, None, 0, 0, turn_player, 0);
+                    self.field_raise_event(Some(attacker.into()), EVENT_ATTACK_ANNOUNCE, None, 0, 0, turn_player, 0);
                 }
                 let card = &mut self.cards[attacker];
                 card.attack_controler = card.current.controler;
@@ -1997,7 +2014,7 @@ impl Duel {
                     for battler in [Some(attacker), attack_target].into_iter().flatten() {
                         self.raise_single_event(battler, EVENT_PRE_BATTLE_DAMAGE, None, 0, reason_player, p, amount);
                     }
-                    self.raise_event(Some(card.into()), EVENT_PRE_BATTLE_DAMAGE, None, 0, reason_player, p, amount);
+                    self.field_raise_event(Some(card.into()), EVENT_PRE_BATTLE_DAMAGE, None, 0, reason_player, p, amount);
                 }
                 self.process_single_event();
                 self.process_instant_event();
@@ -2113,7 +2130,7 @@ impl Duel {
                     battled.insert(target);
                     self.raise_single_event(target, EVENT_BATTLED, None, 0, PLAYER_NONE, 0, 1);
                 }
-                self.raise_event(Some(battled), EVENT_BATTLED, None, 0, PLAYER_NONE, 0, 0);
+                self.field_raise_event(Some(battled), EVENT_BATTLED, None, 0, PLAYER_NONE, 0, 0);
                 self.process_single_event();
                 self.process_instant_event();
                 arg.step = 32;
@@ -2166,11 +2183,11 @@ impl Duel {
                     destroyed.insert(card);
                 }
                 if !destroying.is_empty() {
-                    self.raise_event(Some(destroying), EVENT_BATTLE_DESTROYING, None, 0, 0, 0, 0);
+                    self.field_raise_event(Some(destroying), EVENT_BATTLE_DESTROYING, None, 0, 0, 0, 0);
                 }
                 if !destroyed.is_empty() {
-                    self.raise_event(Some(destroyed), EVENT_BATTLE_DESTROYED, None, 0, 0, 0, 0);
-                    self.raise_event(Some(destroyed), EVENT_DESTROYED, None, 0, 0, 0, 0);
+                    self.field_raise_event(Some(destroyed), EVENT_BATTLE_DESTROYED, None, 0, 0, 0, 0);
+                    self.field_raise_event(Some(destroyed), EVENT_DESTROYED, None, 0, 0, 0, 0);
                 }
                 for card in [Some(attacker), attack_target].into_iter().flatten() {
                     self.cards[card].set_status(STATUS_BATTLE_DESTROYED, false);
@@ -2230,7 +2247,7 @@ impl Duel {
         if let Some(target) = attack_target {
             self.raise_single_event(target, code, None, 0, 0, 0, 1);
         }
-        self.raise_event(None, code, None, 0, 0, 0, 0);
+        self.field_raise_event(None, code, None, 0, 0, 0, 0);
         self.process_single_event();
         self.process_instant_event();
     }
@@ -2408,55 +2425,6 @@ impl Duel {
         }
     }
 
-    // The first `count` cards from the bottom or the top of the deck are put in the order the sort player chooses.
-    fn process_sort_deck(&mut self, arg: &mut SortDeck) -> bool {
-        let target = arg.target_player;
-        let count = usize::from(arg.count).min(self.player[target].list_main.len());
-        if arg.step == 0 {
-            let deck = &self.player[target].list_main;
-            self.core.select_cards = if arg.bottom {
-                deck.iter().take(count).copied().collect()
-            } else {
-                deck.iter().rev().take(count).copied().collect()
-            };
-            self.emplace_process(SortCard {
-                playerid: arg.sort_player,
-                ..SortCard::default()
-            });
-            return false;
-        }
-        if self.returns.at_u8(0) == u8::MAX || count == 0 {
-            return true;
-        }
-        let selected = self.core.select_cards.clone();
-        let mut sorted = vec![None; selected.len()];
-        for (index, &card) in selected.iter().enumerate().take(count) {
-            if let Some(slot) = sorted.get_mut(usize::from(self.returns.at_u8(index))) {
-                *slot = Some(card);
-            }
-        }
-        for index in 0..count {
-            let position = if arg.bottom { index } else { count - index - 1 };
-            let Some(Some(card)) = sorted.get(position).copied() else {
-                continue;
-            };
-            let from = self.cards.get_info_location(card);
-            let sequence = self.cards[card].current.sequence as usize;
-            let deck = &mut self.player[target].list_main;
-            deck.remove(sequence);
-            if arg.bottom {
-                deck.insert(0, card);
-            } else {
-                deck.push(card);
-            }
-            self.reset_sequence(target, LOCATION_DECK);
-            let (to, reason) = (self.cards.get_info_location(card), self.cards[card].current.reason);
-            self.trace.message(MSG_MOVE).u32(0).loc(from).loc(to).u32(reason);
-        }
-        unported!(self, (self.core.global_flag & GLOBALFLAG_DECK_REVERSE_CHECK != 0).then_some(target));
-        true
-    }
-
     fn process_turn(&mut self, arg: &mut Turn) -> bool {
         let turn_player = arg.turn_player;
         match arg.step {
@@ -2525,7 +2493,7 @@ impl Duel {
                 self.infos.phase = PHASE_DRAW;
                 self.core.phase_action = false;
                 self.core.hand_adjusted = false;
-                self.raise_event(None, EVENT_PHASE_START + u32::from(PHASE_DRAW), None, 0, 0, turn_player, 0);
+                self.field_raise_event(None, EVENT_PHASE_START + u32::from(PHASE_DRAW), None, 0, 0, turn_player, 0);
                 self.process_instant_event();
                 self.adjust_all();
                 false
@@ -2539,7 +2507,7 @@ impl Duel {
                     return false;
                 }
                 self.trace.message(MSG_NEW_PHASE).u16(self.infos.phase);
-                self.raise_event(None, EVENT_PREDRAW, None, 0, 0, turn_player, 0);
+                self.field_raise_event(None, EVENT_PREDRAW, None, 0, 0, turn_player, 0);
                 self.process_instant_event();
                 self.trace.message(MSG_HINT).u8(HINT_EVENT).u8(turn_player).u64(27);
                 if !self.core.new_fchain.is_empty() || !self.core.new_ochain.is_empty() {
@@ -2582,7 +2550,7 @@ impl Duel {
                     return false;
                 }
                 self.trace.message(MSG_NEW_PHASE).u16(self.infos.phase);
-                self.raise_event(None, EVENT_PHASE_START + u32::from(PHASE_STANDBY), None, 0, 0, turn_player, 0);
+                self.field_raise_event(None, EVENT_PHASE_START + u32::from(PHASE_STANDBY), None, 0, 0, turn_player, 0);
                 self.process_instant_event();
                 false
             }
@@ -2604,7 +2572,7 @@ impl Duel {
             7 => {
                 self.infos.phase = PHASE_MAIN1;
                 self.core.phase_action = false;
-                self.raise_event(None, EVENT_PHASE_START + u32::from(PHASE_MAIN1), None, 0, 0, turn_player, 0);
+                self.field_raise_event(None, EVENT_PHASE_START + u32::from(PHASE_MAIN1), None, 0, 0, turn_player, 0);
                 self.process_instant_event();
                 self.adjust_all();
                 false
@@ -2634,7 +2602,7 @@ impl Duel {
                     self.adjust_all();
                     return false;
                 }
-                self.raise_event(None, EVENT_PHASE_START + u32::from(PHASE_BATTLE_START), None, 0, 0, turn_player, 0);
+                self.field_raise_event(None, EVENT_PHASE_START + u32::from(PHASE_BATTLE_START), None, 0, 0, turn_player, 0);
                 self.process_instant_event();
                 self.adjust_all();
                 false
@@ -2683,7 +2651,7 @@ impl Duel {
                 self.core.skip_m2 = self.returns.at_i32(0) == 3 || self.core.force_turn_end;
                 self.infos.phase = PHASE_MAIN2;
                 self.core.phase_action = false;
-                self.raise_event(None, EVENT_PHASE_START + u32::from(PHASE_MAIN2), None, 0, 0, turn_player, 0);
+                self.field_raise_event(None, EVENT_PHASE_START + u32::from(PHASE_MAIN2), None, 0, 0, turn_player, 0);
                 self.process_instant_event();
                 self.adjust_all();
                 false
@@ -2711,7 +2679,7 @@ impl Duel {
                     return false;
                 }
                 self.trace.message(MSG_NEW_PHASE).u16(self.infos.phase);
-                self.raise_event(None, EVENT_PHASE_START + u32::from(PHASE_END), None, 0, 0, turn_player, 0);
+                self.field_raise_event(None, EVENT_PHASE_START + u32::from(PHASE_END), None, 0, 0, turn_player, 0);
                 self.process_instant_event();
                 self.adjust_all();
                 false
@@ -2725,7 +2693,7 @@ impl Duel {
                 false
             }
             19 => {
-                self.raise_event(None, EVENT_TURN_END, None, 0, 0, turn_player, 0);
+                self.field_raise_event(None, EVENT_TURN_END, None, 0, 0, turn_player, 0);
                 self.process_instant_event();
                 self.adjust_all();
                 false
@@ -2780,6 +2748,72 @@ impl Duel {
             self.win(winp, rea);
         } else if self.core.win_player != 5 {
             self.win(self.core.win_player, self.core.win_reason);
+        }
+    }
+
+    pub(crate) fn process_sort_deck(&mut self, arg: &mut SortDeck) -> bool {
+        let (target_player, bottom) = (arg.target_player, arg.bottom);
+        let count = usize::from(arg.count).min(self.player[target_player].list_main.len());
+        match arg.step {
+            0 => {
+                let list = &self.player[target_player].list_main;
+                self.core.select_cards = if bottom {
+                    list.iter().take(count).copied().collect()
+                } else {
+                    list.iter().rev().take(count).copied().collect()
+                };
+                self.emplace_process(SortCard {
+                    playerid: arg.sort_player,
+                    is_chain: false,
+                    ..SortCard::default()
+                });
+                false
+            }
+            1 => {
+                if self.returns.at_u8(0) == u8::MAX || count == 0 {
+                    return true;
+                }
+                let mut sorted = vec![CardId::default(); self.core.select_cards.len()];
+                for index in 0..count {
+                    if let (Some(slot), Some(&card)) = (
+                        sorted.get_mut(usize::from(self.returns.at_u8(index))),
+                        self.core.select_cards.get(index),
+                    ) {
+                        *slot = card;
+                    }
+                }
+                for index in 0..count {
+                    let Some(&card) = sorted.get(if bottom { index } else { count - index - 1 }) else {
+                        continue;
+                    };
+                    let from = self.cards.get_info_location(card);
+                    let list = &mut self.player[target_player].list_main;
+                    list.remove(self.cards[card].current.sequence as usize);
+                    if bottom {
+                        list.insert(0, card);
+                    } else {
+                        list.push(card);
+                    }
+                    self.reset_sequence(target_player, LOCATION_DECK);
+                    let to = self.cards.get_info_location(card);
+                    self.trace
+                        .message(MSG_MOVE)
+                        .u32(0)
+                        .loc(from)
+                        .loc(to)
+                        .u32(self.cards[card].current.reason);
+                }
+                if self.core.global_flag & GLOBALFLAG_DECK_REVERSE_CHECK != 0
+                    && let Some(&top) = self.player[target_player].list_main.last()
+                {
+                    let (code, position) = (self.cards[top].data.code, self.cards[top].current.position);
+                    if self.core.deck_reversed || position == POS_FACEUP_DEFENSE {
+                        self.trace.message(MSG_DECK_TOP).u8(target_player).u32(0).u32(code).u32(position);
+                    }
+                }
+                true
+            }
+            _ => true,
         }
     }
 
@@ -2885,7 +2919,7 @@ impl Duel {
                 false
             }
             15 => {
-                self.raise_event(None, EVENT_ADJUST, None, 0, PLAYER_NONE, PLAYER_NONE, 0);
+                self.field_raise_event(None, EVENT_ADJUST, None, 0, PLAYER_NONE, PLAYER_NONE, 0);
                 self.process_instant_event();
                 false
             }
@@ -3000,7 +3034,7 @@ impl Duel {
             0 => {
                 self.core.shuffle_hand_check = PerPlayerBool::default();
                 self.core.shuffle_deck_check = PerPlayerBool::default();
-                self.raise_event(None, EVENT_STARTUP, None, 0, 0, 0, 0);
+                self.field_raise_event(None, EVENT_STARTUP, None, 0, 0, 0, 0);
                 self.process_instant_event();
                 false
             }

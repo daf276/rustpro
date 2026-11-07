@@ -143,10 +143,6 @@ impl CardId {
         duel.is_capable_turn_set(self, duel.core.reason_player.get())
     }
 
-    pub fn get_owner(self, duel: &Duel) -> u8 {
-        duel.cards[self].owner
-    }
-
     pub fn get_previous_location(self, duel: &Duel) -> u32 {
         u32::from(duel.cards[self].previous.location)
     }
@@ -166,6 +162,10 @@ impl CardId {
     // cards that change a code or add an archetype; until then they are the archetypes it has.
     pub fn is_previous_set_card(self, duel: &Duel, setcodes: &[u16]) -> bool {
         self.is_set_card(duel, setcodes)
+    }
+
+    pub fn get_previous_sequence(self, duel: &Duel) -> u32 {
+        duel.cards[self].previous.sequence
     }
 
     pub fn is_previous_position(self, duel: &Duel, position: u32) -> bool {
@@ -209,6 +209,10 @@ impl CardId {
         }
     }
 
+    pub fn get_owner(self, duel: &Duel) -> u8 {
+        duel.cards[self].owner
+    }
+
     pub fn get_controler(self, duel: &Duel) -> u8 {
         duel.cards[self].current.controler
     }
@@ -232,8 +236,14 @@ impl CardId {
     }
 
     pub fn is_discardable(self, duel: &Duel) -> bool {
-        duel.is_affected_by_effect(self, EFFECT_CANNOT_USE_AS_COST).is_none()
-            && duel.is_player_can_discard_hand(duel.core.reason_player.get(), self)
+        self.is_discardable_full(duel, REASON_COST, None)
+    }
+
+    // `player` None is the reason player.
+    pub fn is_discardable_full(self, duel: &Duel, reason: u32, player: Option<u8>) -> bool {
+        let player = player.unwrap_or_else(|| duel.core.reason_player.get());
+        (reason != REASON_COST || duel.is_affected_by_effect(self, EFFECT_CANNOT_USE_AS_COST).is_none())
+            && duel.is_player_can_discard_hand(player, self)
     }
 }
 
@@ -368,6 +378,10 @@ impl CardId {
             ..crate::card::CardState::default()
         };
         state.is_location(location as u16)
+    }
+
+    pub fn get_summon_player(self, duel: &Duel) -> u8 {
+        duel.cards[self].summon.player
     }
 
     pub fn is_summon_player(self, duel: &Duel, player: u8) -> bool {
@@ -507,6 +521,10 @@ impl CardId {
 
     pub fn is_able_to_grave_as_cost(self, duel: &Duel) -> bool {
         duel.is_capable_cost_to_grave(self, duel.core.reason_player.get())
+    }
+
+    pub fn is_able_to_deck_as_cost(self, duel: &Duel) -> bool {
+        duel.is_capable_cost_to_deck(self, duel.core.reason_player.get())
     }
 
     pub fn is_able_to_extra_as_cost(self, duel: &Duel) -> bool {

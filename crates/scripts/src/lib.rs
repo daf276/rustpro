@@ -35,7 +35,7 @@ use engine::{Duel, Library};
 pub use official::{CARD_SCRIPTS, CLASSIC_CARDS, CardScript, card, card_script};
 
 pub mod prelude {
-    pub use engine::{Args, CardId, CardSet, CounterFilter, Duel, EffectId, ExtraMaterialCall, FusionCheck, Script, Value};
+    pub use engine::{Args, CardId, CardSet, ChainLimitFn, CounterFilter, Duel, EffectId, ExtraMaterialCall, FusionCheck, Script, Value};
 
     pub use crate::chain::{self, DuelChain, EffectChain};
     pub use crate::constant::*;

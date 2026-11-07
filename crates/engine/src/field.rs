@@ -4,7 +4,7 @@ use std::ops::{Index, IndexMut};
 use crate::card::{CardId, CardSet, LocInfo, Relation};
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{Chain, Container, CustomCounter, EffectId, EffectSet, Event, Target, container_key, remove_item};
+use crate::effect::{Chain, ChainLimit, Container, CustomCounter, EffectId, EffectSet, Event, Target, container_key, remove_item};
 use crate::list::List;
 use crate::processor::{Adjust, Unit};
 use crate::script::Replay;
@@ -214,6 +214,8 @@ pub struct Processor {
     pub delayed_quick: Vec<(EffectId, Event)>,
     // std::map from effect to chain in the core, ordered by address; only filled by EFFECT_TYPE_QUICK_F effects.
     pub quick_f_chain: Vec<(EffectId, Chain)>,
+    pub chain_limit: Vec<ChainLimit>,
+    pub chain_limit_p: Vec<ChainLimit>,
     pub leave_confirmed: CardSet,
     pub special_summoning: CardSet,
     pub ss_tograve_set: CardSet,
@@ -347,6 +349,8 @@ clone_by_field!(Processor {
     delayed_quick_tmp,
     delayed_quick,
     quick_f_chain,
+    chain_limit,
+    chain_limit_p,
     leave_confirmed,
     special_summoning,
     ss_tograve_set,
@@ -474,6 +478,8 @@ impl Processor {
             delayed_quick_tmp: Vec::new(),
             delayed_quick: Vec::new(),
             quick_f_chain: Vec::new(),
+            chain_limit: Vec::new(),
+            chain_limit_p: Vec::new(),
             leave_confirmed: CardSet::default(),
             special_summoning: CardSet::default(),
             ss_tograve_set: CardSet::default(),
@@ -1779,6 +1785,7 @@ impl Duel {
     }
 
     pub(crate) fn reset_chain(&mut self) {
+        self.core.chain_limit_p.clear();
         self.core.effect_count_code_chain.clear();
         for effect in self.field_effects.cheff.clone() {
             self.remove_registered_effect(effect);
@@ -2335,7 +2342,7 @@ impl Duel {
         self.is_player_can(playerid, EFFECT_CANNOT_TO_DECK, card)
     }
 
-    pub(crate) fn is_player_can_remove_core(&self, playerid: u8, card: CardId, _reason: u32) -> bool {
+    pub(crate) fn field_is_player_can_remove(&self, playerid: u8, card: CardId, _reason: u32) -> bool {
         self.is_player_can(playerid, EFFECT_CANNOT_REMOVE, card)
     }
 

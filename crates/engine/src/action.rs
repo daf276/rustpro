@@ -32,7 +32,7 @@ pub enum Prompt {
     AnnounceRace { player: u8, count: u8, available: u64 },
     // Picked one attribute at a time until `count` are picked.
     AnnounceAttribute { player: u8, count: u8, available: u32 },
-    // The new position of each card of `count` in turn.
+    // MSG_SORT_CARD: one Card per answer, the next card of the new order, until all `count` are ordered.
     Sort { player: u8, count: u8 },
 }
 
@@ -78,8 +78,6 @@ pub enum Action {
     Race(u8),
     // An attribute by its bit index.
     Attribute(u8),
-    // The position, from 0, the next card of a Sort prompt takes.
-    Sort(u8),
 }
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -309,9 +307,9 @@ impl Duel {
             }
             Prompt::Sort { count, .. } => {
                 actions.extend(
-                    (0..count)
-                        .filter(|&position| !self.returns.data.contains(&position))
-                        .map(Action::Sort),
+                    (0..u16::from(count))
+                        .filter(|&index| !self.returns.data.contains(&(index as u8)))
+                        .map(Action::Card),
                 );
             }
             Prompt::AnnounceAttribute { available, .. } => {
@@ -366,7 +364,7 @@ impl Duel {
             (Prompt::AnnounceRace { available, .. }, Action::Race(bit)) => {
                 bit < 64 && (available & !self.returns.at_u64(0)) & (1 << bit) != 0
             }
-            (Prompt::Sort { count, .. }, Action::Sort(position)) => position < count && !self.returns.data.contains(&position),
+            (Prompt::Sort { count, .. }, Action::Card(index)) => index < u16::from(count) && !self.returns.data.contains(&(index as u8)),
             (Prompt::AnnounceAttribute { available, .. }, Action::Attribute(bit)) => {
                 bit < 32 && (available & !self.returns.at_u32(0)) & (1 << bit) != 0
             }
@@ -470,6 +468,20 @@ impl Duel {
                 self.respond(1);
                 self.returns.set_i32(1, i32::from(index));
             }
+            // The picks are kept in order until the last one, then become each card's position.
+            Action::Card(index) if matches!(prompt, Prompt::Sort { .. }) => {
+                let Prompt::Sort { count, .. } = prompt else {
+                    return Err(ActionError::Illegal(action));
+                };
+                self.returns.data.push(index as u8);
+                if self.returns.data.len() < usize::from(count) {
+                    return Ok(Status::Awaiting);
+                }
+                let order = std::mem::take(&mut self.returns.data);
+                for (position, &card) in order.iter().enumerate() {
+                    self.returns.set_u8(usize::from(card), position as u8);
+                }
+            }
             Action::Card(index) => {
                 let count = self.returns.at_u32(1);
                 self.returns.set_i32(0, 0);
@@ -504,15 +516,6 @@ impl Duel {
                 let races = self.returns.at_u64(0) | 1 << bit;
                 self.returns.set_u64(0, races);
                 if races.count_ones() < u32::from(count) {
-                    return Ok(Status::Awaiting);
-                }
-            }
-            Action::Sort(position) => {
-                let Prompt::Sort { count, .. } = prompt else {
-                    return Err(ActionError::Illegal(action));
-                };
-                self.returns.data.push(position);
-                if self.returns.data.len() < usize::from(count) {
                     return Ok(Status::Awaiting);
                 }
             }
@@ -596,11 +599,12 @@ impl Duel {
                 let races = buffer.at_u64(0);
                 (0..64).filter(|bit| races & 1 << bit != 0).map(Action::Race).collect()
             }
-            Prompt::Sort { count, .. } => response
-                .iter()
-                .take(usize::from(count))
-                .map(|&position| Action::Sort(position))
-                .collect(),
+            Prompt::Sort { count, .. } => (0..count)
+                .map(|position| {
+                    let card = (0..count).find(|&card| buffer.at_u8(usize::from(card)) == position);
+                    card.map(|card| Action::Card(u16::from(card))).ok_or_else(undecodable)
+                })
+                .collect::<Result<_, _>>()?,
             Prompt::AnnounceAttribute { .. } => {
                 let attributes = buffer.at_u32(0);
                 (0..32).filter(|bit| attributes & 1 << bit != 0).map(Action::Attribute).collect()

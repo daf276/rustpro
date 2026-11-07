@@ -47,7 +47,7 @@ pub struct SolveContinuous {
 }
 
 impl Duel {
-    pub(crate) fn raise_event(
+    pub(crate) fn field_raise_event(
         &mut self,
         event_cards: Option<CardSet>,
         event_code: u32,
@@ -155,6 +155,7 @@ impl Duel {
             race: self.get_race(card),
             attack: self.get_attack(card),
             defense: self.get_defense(card),
+            setcodes: self.get_set_card(card),
         };
     }
 
@@ -242,13 +243,26 @@ impl Duel {
             for effect in self.field_effect_range(Container::QuickO, event.event_code) {
                 let controler = self.cards[self.get_handler(effect)].current.controler;
                 if self.effects[effect].is_flag(EFFECT_FLAG_DELAY) && self.is_condition_check(effect, controler, &event) {
-                    unported!(self, Some(effect));
+                    self.insert_delayed_quick(effect, event);
                 }
             }
         }
         self.push_continuous(tp, ntp);
         let core = &mut self.core;
         core.instant_event.append(&mut core.queue_event);
+    }
+
+    // The core keeps delayed quick effects in a set ordered by effect address then event; effect id and event id
+    // stand in for the addresses, which follow allocation order.
+    fn insert_delayed_quick(&mut self, effect: EffectId, event: Event) {
+        let key = |duel: &Self, (effect, event): (EffectId, Event)| (duel.effects.id(effect), event.global_id);
+        let new_key = key(self, (effect, event));
+        let delayed = &self.core.delayed_quick_tmp;
+        if delayed.contains(&(effect, event)) {
+            return;
+        }
+        let index = delayed.partition_point(|&entry| key(self, entry) <= new_key);
+        self.core.delayed_quick_tmp.insert(index, (effect, event));
     }
 
     // A copy of a field container's equal range, for loops whose bodies may change the containers.
@@ -633,6 +647,7 @@ impl Duel {
                     .u32(chain.triggering_sequence)
                     .u64(description)
                     .u32(self.core.current_chain.len() as u32 + 1);
+                self.core.chain_limit.clear();
                 let mut card_type = self.get_type(handler);
                 if card_type & (TYPE_TRAP | TYPE_MONSTER) == TYPE_TRAP | TYPE_MONSTER {
                     card_type -= TYPE_TRAP;
@@ -692,7 +707,7 @@ impl Duel {
                     return false;
                 }
                 let handler = self.get_handler(effect);
-                self.select_effect_yes_no(player, 94, handler);
+                self.field_select_effect_yes_no(player, 94, handler);
                 false
             }
             4 => {
@@ -788,7 +803,7 @@ impl Duel {
                         .and_then(|chain| chain.target_cards)
                         .filter(|t| !t.is_empty())
                     {
-                        self.raise_event(
+                        self.field_raise_event(
                             Some(targets),
                             EVENT_BECOME_TARGET,
                             Some(effect),
@@ -830,7 +845,7 @@ impl Duel {
                     );
                 }
                 self.trace.message(MSG_CHAINED).u8(chain.chain_count);
-                self.raise_event(
+                self.field_raise_event(
                     Some(CardSet::from(handler)),
                     EVENT_CHAINING,
                     Some(effect),
@@ -1040,7 +1055,7 @@ impl Duel {
                 self.trace.message(MSG_CHAIN_SOLVING).u8(count);
                 self.add_to_disable_check_list(self.get_handler(effect));
                 self.adjust_instant();
-                self.raise_event(None, EVENT_CHAIN_ACTIVATING, Some(effect), 0, player, player, u32::from(count));
+                self.field_raise_event(None, EVENT_CHAIN_ACTIVATING, Some(effect), 0, player, player, u32::from(count));
                 self.process_instant_event();
                 false
             }
@@ -1056,7 +1071,7 @@ impl Duel {
                     let negated = |other: &Chain| other.evt.event_code == EVENT_CHAINING && other.evt.event_value == u32::from(count);
                     self.core.new_fchain.retain(|other| !negated(other));
                     self.core.new_ochain.retain(|other| !negated(other));
-                    self.raise_event(None, EVENT_CHAIN_NEGATED, Some(effect), 0, player, player, u32::from(count));
+                    self.field_raise_event(None, EVENT_CHAIN_NEGATED, Some(effect), 0, player, player, u32::from(count));
                     self.process_instant_event();
                     arg.step = 9;
                     return false;
@@ -1064,7 +1079,7 @@ impl Duel {
                 self.release_oath_relation(effect);
                 self.field_break_effect(true);
                 self.core.chain_solving = true;
-                self.raise_event(None, EVENT_CHAIN_SOLVING, Some(effect), 0, player, player, u32::from(count));
+                self.field_raise_event(None, EVENT_CHAIN_SOLVING, Some(effect), 0, player, player, u32::from(count));
                 self.process_instant_event();
                 false
             }
@@ -1088,7 +1103,7 @@ impl Duel {
                     if chain.flag & CHAIN_DISABLE_EFFECT == 0 {
                         self.trace.message(MSG_CHAIN_DISABLED).u8(count);
                     }
-                    self.raise_event(None, EVENT_CHAIN_DISABLED, Some(effect), 0, player, player, u32::from(count));
+                    self.field_raise_event(None, EVENT_CHAIN_DISABLED, Some(effect), 0, player, player, u32::from(count));
                     self.process_instant_event();
                     arg.step = 3;
                 }
@@ -1141,7 +1156,7 @@ impl Duel {
                 } else {
                     self.core.conti_player = PLAYER_NONE;
                 }
-                self.raise_event(None, EVENT_CHAIN_SOLVED, Some(effect), 0, player, player, u32::from(count));
+                self.field_raise_event(None, EVENT_CHAIN_SOLVED, Some(effect), 0, player, player, u32::from(count));
                 self.adjust_disable_check_list();
                 self.process_instant_event();
                 arg.step = 9;
@@ -1180,6 +1195,7 @@ impl Duel {
                 self.core.current_chain.pop();
                 self.core.real_chain_count = (self.core.real_chain_count - 1).max(0);
                 if self.core.current_chain.is_empty() {
+                    self.core.chain_limit.clear();
                     return false;
                 }
                 self.run_reserved();
@@ -1219,7 +1235,7 @@ impl Duel {
             }
             13 => {
                 self.core.just_sent_cards.clear();
-                self.raise_event(None, EVENT_CHAIN_END, None, 0, 0, 0, 0);
+                self.field_raise_event(None, EVENT_CHAIN_END, None, 0, 0, 0, 0);
                 self.process_instant_event();
                 self.adjust_all();
                 if !arg.skip_trigger || !arg.skip_new {
@@ -1327,7 +1343,7 @@ impl Duel {
             let keep = (!chain.was_just_sent || self.cards[handler].current.location == LOCATION_HAND)
                 && (forced || private || self.check_nonpublic_trigger(&mut chain))
                 && self.check_trigger_effect(&chain)
-                && self.is_chainable(effect)
+                && self.is_chainable(effect, tp)
                 && self.is_activateable(effect, tp, &chain.evt, true, false, false, private, private)
                 && (forced || self.check_spself_from_hand_trigger(&chain));
             if keep {
@@ -1397,7 +1413,7 @@ impl Duel {
         }
     }
 
-    pub(crate) fn select_effect_yes_no(&mut self, playerid: u8, description: u64, card: CardId) {
+    pub(crate) fn field_select_effect_yes_no(&mut self, playerid: u8, description: u64, card: CardId) {
         self.emplace_process(SelectEffectYesNo {
             playerid,
             description,

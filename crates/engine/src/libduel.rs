@@ -3,7 +3,7 @@ use crate::card::{CardId, CardSet};
 use crate::chain::ExecuteKind;
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{Container, CounterFilter, CustomCounter, EffectId, EffectSet, Event, OpTarget, Value};
+use crate::effect::{ChainLimit, ChainLimitFn, Container, CounterFilter, CustomCounter, EffectId, EffectSet, Event, OpTarget, Value};
 
 use crate::field::FromEx;
 use crate::operations::PayLpCost;
@@ -16,6 +16,7 @@ pub enum ChainInfo {
     Int(i64),
     Effect(EffectId),
     Cards(Option<CardSet>),
+    Setcodes([u16; 5]),
 }
 
 // The Lua value a script reads a CHAININFO flag as; a missing chain or another kind of value reads as the default.
@@ -54,6 +55,16 @@ macro_rules! optional_int_chain_info {
 
 optional_int_chain_info!(u8, u32);
 
+// CHAININFO_TRIGGERING_SETCODES, a table of the archetypes; unused slots are 0.
+impl FromChainInfo for Option<[u16; 5]> {
+    fn from_chain_info(info: ChainInfo) -> Self {
+        match info {
+            ChainInfo::Setcodes(setcodes) => Some(setcodes),
+            _ => None,
+        }
+    }
+}
+
 impl FromChainInfo for Option<EffectId> {
     fn from_chain_info(info: ChainInfo) -> Self {
         match info {
@@ -85,6 +96,7 @@ const CHAININFO_TARGET_PARAM: u32 = 10;
 const CHAININFO_DISABLE_REASON: u32 = 11;
 const CHAININFO_DISABLE_PLAYER: u32 = 12;
 const CHAININFO_CHAIN_ID: u32 = 13;
+const CHAININFO_TRIGGERING_SETCODES: u32 = 30;
 
 impl Duel {
     pub fn is_turn_player(&self, player: u8) -> bool {
@@ -104,7 +116,47 @@ impl Duel {
     }
 
     pub fn get_current_chain(&self) -> u8 {
-        self.core.current_chain.len() as u8
+        self.get_current_chain_full(false)
+    }
+
+    pub fn get_current_chain_full(&self, real: bool) -> u8 {
+        if real {
+            self.core.real_chain_count as u8
+        } else {
+            self.core.current_chain.len() as u8
+        }
+    }
+
+    pub fn get_lp(&self, player: u8) -> i32 {
+        if player > 1 {
+            return 0;
+        }
+        self.player[player].lp
+    }
+
+    pub fn negate_summon(&mut self, targets: impl Into<CardSet>) {
+        let targets = targets.into();
+        let mut sumplayer = PLAYER_NONE;
+        for card in targets {
+            let target = &mut self.cards[card];
+            sumplayer = target.summon.player;
+            target.set_status(STATUS_SUMMONING, false);
+            target.set_status(STATUS_SUMMON_DISABLED, true);
+            if target.summon.summon_type & SUMMON_TYPE_PENDULUM != SUMMON_TYPE_PENDULUM {
+                target.set_status(STATUS_PROC_COMPLETE, false);
+            }
+        }
+        let event_code = [
+            (EVENT_SUMMON, EVENT_SUMMON_NEGATED),
+            (EVENT_FLIP_SUMMON, EVENT_FLIP_SUMMON_NEGATED),
+            (EVENT_SPSUMMON, EVENT_SPSUMMON_NEGATED),
+        ]
+        .into_iter()
+        .find(|&(event, _)| self.check_event(event).is_some())
+        .map_or(0, |(_, negated)| negated);
+        let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
+        self.field_raise_event(Some(targets), event_code, reason_effect, REASON_EFFECT, reason_player, sumplayer, 0);
+        self.process_instant_event();
     }
 
     pub fn is_chain_solving(&self) -> bool {
@@ -128,7 +180,7 @@ impl Duel {
     pub fn is_player_can_remove_full(&self, player: u8, card: Option<CardId>, reason: u32) -> bool {
         player <= 1
             && match card {
-                Some(card) => self.is_player_can_remove_core(player, card, reason),
+                Some(card) => self.field_is_player_can_remove(player, card, reason),
                 None => self.is_player_can_action(player, EFFECT_CANNOT_REMOVE),
             }
     }
@@ -207,12 +259,14 @@ impl Duel {
     }
 
     pub fn get_location_count(&self, player: u8, location: u32) -> i32 {
+        self.get_location_count_full(player, location, self.core.reason_player.get(), LOCATION_REASON_TOFIELD, 0xff)
+    }
+
+    pub fn get_location_count_full(&self, player: u8, location: u32, uplayer: u8, reason: u32, zone: u32) -> i32 {
         if player > 1 {
             return 0;
         }
-        let uplayer = self.core.reason_player.get();
-        self.get_useable_count(None, player, location as u8, uplayer, LOCATION_REASON_TOFIELD, 0xff)
-            .0
+        self.get_useable_count(None, player, location as u8, uplayer, reason, zone).0
     }
 
     // The matching cards of `filter`; Lua's extra filter arguments are captures of the closure.
@@ -458,6 +512,7 @@ impl Duel {
             CHAININFO_DISABLE_REASON => chain.disable_reason.map_or(ChainInfo::Cards(None), ChainInfo::Effect),
             CHAININFO_DISABLE_PLAYER => int(chain.disable_player.into()),
             CHAININFO_CHAIN_ID => int(chain.chain_id.into()),
+            CHAININFO_TRIGGERING_SETCODES => ChainInfo::Setcodes(chain.triggering_state.setcodes),
             // The other flags come with the scripts that read them.
             _ => {
                 debug_assert!(false, "unported CHAININFO flag {info}");
@@ -642,7 +697,7 @@ impl Duel {
                 hand.insert(card);
             }
         }
-        self.raise_event(
+        self.field_raise_event(
             Some(targets),
             EVENT_CONFIRM,
             reason_effect,
@@ -652,7 +707,7 @@ impl Duel {
             0,
         );
         if !hand.is_empty() {
-            self.raise_event(
+            self.field_raise_event(
                 Some(hand),
                 EVENT_TOHAND_CONFIRM,
                 reason_effect,
@@ -719,6 +774,10 @@ impl Duel {
     pub fn is_main_phase(&self) -> bool {
         let phase = self.infos.phase;
         phase == PHASE_MAIN1 || phase == PHASE_MAIN2
+    }
+
+    pub fn is_damage_calculated(&self) -> bool {
+        self.core.damage_calculated
     }
 
     pub fn is_phase(&self, phase: u32) -> bool {
@@ -834,7 +893,7 @@ impl Duel {
         for card in [card1, card2] {
             self.raise_single_event(card, EVENT_MOVE, reason_effect, 0, reason_player, player, 0);
         }
-        self.raise_event(
+        self.field_raise_event(
             Some(CardSet::from_iter([card1, card2])),
             EVENT_MOVE,
             reason_effect,
@@ -891,21 +950,6 @@ impl Duel {
         Ok(self.get_decktop_group(player, count))
     }
 
-    // Duel.SortDeckbottom: the player sorts the bottom `count` cards of the target player's Deck.
-    pub fn sort_deckbottom(&mut self, sort_player: u8, target_player: u8, count: u16) -> Script<()> {
-        if sort_player > 1 || target_player > 1 || !(1..=64).contains(&count) {
-            return Ok(());
-        }
-        self.emplace_process(SortDeck {
-            sort_player,
-            target_player,
-            count,
-            bottom: true,
-            ..SortDeck::default()
-        });
-        self.yield_script()
-    }
-
     // Duel.MoveSequence for a card in the Deck; the sequences of other locations come with the cards that move them.
     pub fn move_sequence(&mut self, card: CardId, sequence: u8) -> Script<bool> {
         let location = self.cards[card].current.location;
@@ -919,7 +963,7 @@ impl Duel {
         if moved {
             let reason_player = self.core.reason_player.get();
             self.raise_single_event(card, EVENT_MOVE, reason_effect, 0, reason_player, player, 0);
-            self.raise_event(Some(card.into()), EVENT_MOVE, reason_effect, 0, reason_player, player, 0);
+            self.field_raise_event(Some(card.into()), EVENT_MOVE, reason_effect, 0, reason_player, player, 0);
             self.process_single_event();
             self.process_instant_event();
         }
@@ -933,9 +977,95 @@ impl Duel {
 
     pub fn break_effect(&mut self) -> Script<()> {
         self.field_break_effect(true);
-        self.raise_event(None, EVENT_BREAK_EFFECT, None, 0, PLAYER_NONE, PLAYER_NONE, 0);
+        self.field_raise_event(None, EVENT_BREAK_EFFECT, None, 0, PLAYER_NONE, PLAYER_NONE, 0);
         self.process_instant_event();
         self.yield_script()
+    }
+
+    pub fn raise_event(
+        &mut self,
+        targets: impl Into<CardSet>,
+        code: u32,
+        reason_effect: Option<EffectId>,
+        reason: u32,
+        reason_player: u8,
+        event_player: u8,
+        event_value: u32,
+    ) -> Script<()> {
+        self.field_raise_event(
+            Some(targets.into()),
+            code,
+            reason_effect,
+            reason,
+            reason_player,
+            event_player,
+            event_value,
+        );
+        self.process_instant_event();
+        self.yield_script()
+    }
+
+    // `capture` is the value the Lua closure captures, which the function receives last (0 for none).
+    pub fn set_chain_limit(&mut self, function: ChainLimitFn, capture: i64) {
+        let player = self.core.reason_player.get();
+        self.core.chain_limit.push(ChainLimit { function, capture, player });
+    }
+
+    pub fn set_chain_limit_till_chain_end(&mut self, function: ChainLimitFn, capture: i64) {
+        let player = self.core.reason_player.get();
+        self.core.chain_limit_p.push(ChainLimit { function, capture, player });
+    }
+
+    pub fn sort_decktop(&mut self, sort_player: u8, target_player: u8, count: u16) -> Script<()> {
+        self.sort_deck(sort_player, target_player, count, false)
+    }
+
+    pub fn sort_deckbottom(&mut self, sort_player: u8, target_player: u8, count: u16) -> Script<()> {
+        self.sort_deck(sort_player, target_player, count, true)
+    }
+
+    fn sort_deck(&mut self, sort_player: u8, target_player: u8, count: u16, bottom: bool) -> Script<()> {
+        if sort_player > 1 || target_player > 1 || !(1..=64).contains(&count) {
+            return Ok(());
+        }
+        self.emplace_process(SortDeck {
+            sort_player,
+            target_player,
+            count,
+            bottom,
+            ..SortDeck::default()
+        });
+        self.yield_script()
+    }
+
+    pub fn get_control(&mut self, targets: impl Into<CardSet>, player: u8) -> Script<i32> {
+        self.get_control_full(targets, player, 0, 0, 0xff, self.core.reason_player.get())
+    }
+
+    pub fn get_control_full(
+        &mut self,
+        targets: impl Into<CardSet>,
+        player: u8,
+        reset_phase: u16,
+        reset_count: u8,
+        zone: u32,
+        chose_player: u8,
+    ) -> Script<i32> {
+        if player > 1 {
+            return Ok(0);
+        }
+        self.emplace_process(crate::operations::GetControl {
+            reason_effect: self.core.reason_effect.get(),
+            chose_player,
+            targets: targets.into(),
+            playerid: player,
+            reset_phase: reset_phase & 0x3ff,
+            reset_count,
+            zone,
+            ..Default::default()
+        });
+        self.yield_script()?;
+        Ok(self.returns.at_i32(0))
     }
 
     pub fn adjust_instantly(&mut self, card: Option<CardId>) {
@@ -1006,6 +1136,19 @@ impl Duel {
         );
         self.yield_script()?;
         Ok(self.returns.at_i32(0))
+    }
+
+    pub fn select_effect_yes_no(&mut self, player: u8, card: CardId) -> Script<bool> {
+        self.select_effect_yes_no_full(player, card, 95)
+    }
+
+    pub fn select_effect_yes_no_full(&mut self, player: u8, card: CardId, description: u64) -> Script<bool> {
+        if player > 1 {
+            return Ok(false);
+        }
+        self.field_select_effect_yes_no(player, description, card);
+        self.yield_script()?;
+        Ok(self.returns.at_i32(0) != 0)
     }
 
     pub fn select_yes_no(&mut self, player: u8, description: u64) -> Script<bool> {
@@ -1729,7 +1872,7 @@ impl Duel {
         self.card_add_effect(attacker, effect);
         self.cards[attacker].set_status(STATUS_ATTACK_CANCELED, true);
         let reason_player = self.core.reason_player.get();
-        self.raise_event(
+        self.field_raise_event(
             Some(attacker.into()),
             EVENT_ATTACK_DISABLED,
             reason_effect,

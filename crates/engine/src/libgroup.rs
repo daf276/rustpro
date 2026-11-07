@@ -178,6 +178,20 @@ impl CardSet {
         self.iter().fold(0, |total, card| total | value(card, duel))
     }
 
+    // Group.GetMaxGroup: the cards with the highest value and that value, None for an empty group.
+    pub fn get_max_group(&self, duel: &Duel, value: impl Fn(CardId, &Duel) -> i64) -> Option<(CardSet, i64)> {
+        let mut max: Option<(CardSet, i64)> = None;
+        for card in self.iter() {
+            let op = value(card, duel);
+            match &mut max {
+                Some((group, max)) if op == *max => group.insert(card),
+                Some((_, max)) if op < *max => {}
+                _ => max = Some((CardSet::from(card), op)),
+            }
+        }
+        max
+    }
+
     pub fn get_sum(&self, duel: &Duel, value: impl Fn(CardId, &Duel) -> i64) -> i64 {
         self.iter().map(|card| value(card, duel)).sum()
     }

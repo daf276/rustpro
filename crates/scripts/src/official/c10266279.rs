@@ -81,7 +81,7 @@ fn junoraspfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8, hc: Option<CardId
         && c.is_can_be_special_summoned(duel, e, SUMMON_TYPE_SYNCHRO, tp, false, false)
 }
 
-fn mdescost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+pub fn mdescost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     let g = duel.get_decktop_group(a.tp, 3);
     if chk == 0 {
         return Ok(g.is_exists(duel, |c, duel| c.is_able_to_remove_as_cost_full(duel, POS_FACEDOWN), 3, None));

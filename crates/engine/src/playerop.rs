@@ -276,6 +276,7 @@ impl Duel {
         true
     }
 
+    // The answer is the new position of each card, one byte per card.
     pub(crate) fn process_sort_card(&mut self, arg: &mut SortCard) -> bool {
         let playerid = arg.playerid;
         if arg.step == 0 {
@@ -284,15 +285,20 @@ impl Duel {
                 self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(playerid).u64(0);
                 return true;
             }
-            let mut message = self.trace.message(MSG_SORT_CARD);
-            message.u8(playerid).u32(self.core.select_cards.len() as u32);
-            for &card in &self.core.select_cards {
-                let card = &self.cards[card];
+            let cards: Vec<_> = self
+                .core
+                .select_cards
+                .iter()
+                .map(|&card| (self.cards[card].data.code, self.cards[card].current))
+                .collect();
+            let mut message = self.trace.message(if arg.is_chain { MSG_SORT_CHAIN } else { MSG_SORT_CARD });
+            message.u8(playerid).u32(cards.len() as u32);
+            for (code, current) in cards {
                 message
-                    .u32(card.data.code)
-                    .u8(card.current.controler)
-                    .u32(u32::from(card.current.location))
-                    .u32(card.current.sequence);
+                    .u32(code)
+                    .u8(current.controler)
+                    .u32(current.location.into())
+                    .u32(current.sequence);
             }
             return false;
         }
@@ -300,13 +306,16 @@ impl Duel {
             return true;
         }
         let count = self.core.select_cards.len();
-        let mut used = vec![false; count];
+        let mut seen = vec![false; count];
         for index in 0..count {
-            let Some(slot) = used.get_mut(usize::from(self.returns.at_u8(index))).filter(|slot| !**slot) else {
-                self.trace.message(MSG_RETRY);
-                return false;
-            };
-            *slot = true;
+            let position = usize::from(self.returns.at_u8(index));
+            match seen.get_mut(position) {
+                Some(slot) if !*slot => *slot = true,
+                _ => {
+                    self.trace.message(MSG_RETRY);
+                    return false;
+                }
+            }
         }
         true
     }

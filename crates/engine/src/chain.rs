@@ -485,7 +485,7 @@ impl Duel {
                         duel.core.cards_to_summon_g = group;
                         0
                     }
-                    Some(Operation::SynchroMaterial(_)) | None => 0,
+                    Some(Operation::SynchroMaterial(_) | Operation::ExtraMaterial(_)) | None => 0,
                 },
             };
             duel.returns.set_i32(0, value);

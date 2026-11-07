@@ -16,16 +16,22 @@ const ALBION_FUSION_SUMMON: (u32, u64) = (87746184, 87746184 << 20);
 // Ported cards whose effects scenarios do not resolve, checked by their Special Summons instead: Gaia Dragon, the
 // Thunder Charger has only a continuous effect, Drill Driver Vespenato's trigger needs it Xyz Summoned and then
 // destroyed by an opponent's card effect, Fusionist and Sea Monster of Theseus have no effect, and Extox Hydra's draw
-// needs 1000 or more battle damage from it; Magician of Black Chaos has no effect.
-const SUMMONED_ONLY: [u32; 6] = [91949988, 39317553, 1641882, 96334243, 26050548, 30208479];
+// needs 1000 or more battle damage from it; Magician of Black Chaos and Code Talker have no activated effect.
+const SUMMONED_ONLY: [u32; 7] = [91949988, 39317553, 1641882, 96334243, 26050548, 30208479, 53413628];
 // Ritual Raven has only its Ritual level, checked by its use as a Ritual Summon material.
 const RITUAL_MATERIAL_ONLY: [u32; 1] = [34334692];
 const LOCATION_HAND: u8 = 0x2;
 const LOCATION_MZONE: u8 = 0x4;
 // Materials whose use exercises a procedure path of phase 3d, by card code and the location they leave: Mono Synchron
 // (EFFECT_SYNCHRO_MATERIAL_CUSTOM and EFFECT_SYNCHRO_MAT_RESTRICTION) and Revolution Synchron from the hand
-// (EFFECT_SYNCHRO_MAT_FROM_HAND).
-const MATERIAL_PATHS: [(u32, u8); 2] = [(56897896, LOCATION_MZONE), (97682931, LOCATION_HAND)];
+// (EFFECT_SYNCHRO_MAT_FROM_HAND); of phase 3f, Kewl Tune Mix from the hand (EFFECT_HAND_SYNCHRO) and Code Generator from
+// the hand (EFFECT_EXTRA_MATERIAL).
+const MATERIAL_PATHS: [(u32, u8); 4] = [
+    (56897896, LOCATION_MZONE),
+    (97682931, LOCATION_HAND),
+    (16509007, LOCATION_HAND),
+    (30114823, LOCATION_HAND),
+];
 // Hints the core adds to a card when a procedure path of phase 3d runs, by the carrier and the description: Gemini
 // Lancer's second Normal Summon (64).
 const HINT_PATHS: [(u32, u64); 1] = [(26254876, 64)];
@@ -181,6 +187,7 @@ fn assert_scenarios_clean(seeds: Range<u64>) -> Result<(), DiffError> {
     writeln!(out, "set paths: {sets:?}").ok();
     let replaced = REPLACE_PATHS.map(|card| (card, tally.replaced.get(&card).copied().unwrap_or(0)));
     writeln!(out, "replace paths: {replaced:?}").ok();
+    writeln!(out, "Synchro materials after a race declaration: {}", tally.declared_race_materials).ok();
     let paths: Vec<(u32, u32)> = (materials.iter().map(|&((card, _), count)| (card, count)))
         .chain(hints.iter().map(|&((card, _), count)| (card, count)))
         .chain(messages.iter().map(|&((card, _), count)| (card, count)))

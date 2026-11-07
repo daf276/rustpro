@@ -1,8 +1,7 @@
-// Port of proc_synchro.lua: Synchro.AddProcedure with its condition, target and operation. The paths for materials
-// with EFFECT_SYNCHRO_CHECK or EFFECT_HAND_SYNCHRO (whose checks register and reset effects or assume properties), a
-// Synchro Monster's EFFECT_MATERIAL_CHECK operation, the Majestic and Dark Synchro procedures and Synchro.Send come with
-// the cards that use them.
-use engine::{Args, CardId, CardSet, Duel, EffectId, Operation, Script, Value};
+// Port of proc_synchro.lua: Synchro.AddProcedure with its condition, target and operation, and
+// Synchro.AddHandMaterialEffect. A Synchro Monster's EFFECT_MATERIAL_CHECK operation, the Majestic and Dark Synchro
+// procedures and Synchro.Send come with the cards that use them.
+use engine::{Args, CardId, CardSet, Duel, EffectId, Operation, Script, Target, Value};
 
 use crate::constant::*;
 use crate::utility::aux;
@@ -35,6 +34,20 @@ pub trait SynchroProcedure {
     }
 }
 
+// The parameters of Synchro.AddHandMaterialEffect (id, material_filter, synchro_filter); no official script passes
+// banish_mats or rc.
+pub trait HandMaterial {
+    const ID: u32;
+
+    fn material_filter(_c: CardId, _duel: &Duel) -> bool {
+        true
+    }
+
+    fn synchro_filter(_sc: CardId, _duel: &Duel) -> bool {
+        true
+    }
+}
+
 // req1, req2 or reqm: whether the chosen Tuners, non-Tuners or all materials (g, sc, tp) may be used.
 pub type Requirement = fn(&Duel, CardSet, CardId, u8) -> bool;
 
@@ -43,6 +56,7 @@ fn req(requirement: Option<Requirement>, duel: &Duel, g: CardSet, sc: CardId, tp
 }
 
 const SYNCHRO_MATERIAL: u64 = SUMMON_TYPE_SYNCHRO as u64 | MATERIAL_SYNCHRO;
+const HAND_CHECK: u32 = EFFECT_HAND_SYNCHRO + EFFECT_SYNCHRO_CHECK;
 
 // What the recursive checks share: the Synchro Monster's level, the monster and its controller, the materials it must
 // use, whether only given materials may be used, and the forced minimum and maximum (0 for nil).
@@ -102,6 +116,69 @@ impl Synchro {
         e1
     }
 
+    // Synchro.AddHandMaterialEffect: while c is on the field and a Synchro material, a hand card that passes the filters
+    // can be another.
+    pub fn add_hand_material_effect<H: HandMaterial>(duel: &mut Duel, c: CardId) -> EffectId {
+        let e1 = duel.create_effect(c);
+        e1.set_type(duel, EFFECT_TYPE_SINGLE);
+        e1.set_property(duel, EFFECT_FLAG_SINGLE_RANGE + EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
+        e1.set_code(duel, EFFECT_HAND_SYNCHRO);
+        e1.set_range(duel, LOCATION_MZONE);
+        e1.set_label(duel, H::ID.into());
+        e1.set_value(duel, Value::HandSynchro(Synchro::hand_material_value::<H>));
+        c.register_effect(duel, e1);
+        e1
+    }
+
+    // synval of Synchro.CreateHandMaterialEffect.
+    fn hand_material_value<H: HandMaterial>(duel: &mut Duel, e: EffectId, c: CardId, sc: CardId) -> bool {
+        if !c.is_location(duel, LOCATION_HAND) || !H::material_filter(c, duel) || !H::synchro_filter(sc, duel) {
+            return false;
+        }
+        let e1 = duel.create_effect(e.get_handler(duel));
+        e1.set_type(duel, EFFECT_TYPE_SINGLE);
+        e1.set_code(duel, HAND_CHECK);
+        e1.set_label(duel, H::ID.into());
+        e1.set_synchro_check_target(duel, Synchro::hand_material_check::<H>);
+        c.register_effect(duel, e1);
+        true
+    }
+
+    // synchktg of Synchro.CreateHandMaterialEffect.
+    fn hand_material_check<H: HandMaterial>(
+        duel: &Duel,
+        _e: EffectId,
+        c: Option<CardId>,
+        sg: CardSet,
+        tg: CardSet,
+        ntg: CardSet,
+        _tsg: CardSet,
+        _ntsg: CardSet,
+    ) -> (bool, CardSet, CardSet) {
+        let none = CardSet::default();
+        let Some(c) = c else { return (true, none, none) };
+        let id = i64::from(H::ID);
+        let matfilter1 = |c: CardId, duel: &Duel| {
+            let effs = c.get_card_effect(duel, HAND_CHECK);
+            effs.iter().all(|&te| te.get_label(duel) == id) && !effs.is_empty()
+        };
+        let matfilter2 = |c: CardId, duel: &Duel| {
+            c.is_has_effect(duel, HAND_CHECK).is_none()
+                && c.get_card_effect(duel, EFFECT_HAND_SYNCHRO)
+                    .iter()
+                    .any(|&te| te.get_label(duel) == id)
+        };
+        let others = Some(c.into());
+        if sg.is_exists(duel, matfilter1, 1, others)
+            || !(tg.is_exists(duel, matfilter2, 1, others)
+                || ntg.is_exists(duel, matfilter2, 1, others)
+                || sg.is_exists(duel, matfilter2, 1, others))
+        {
+            return (false, none, none);
+        }
+        (true, tg.filter(duel, matfilter1, None), ntg.filter(duel, matfilter1, None))
+    }
+
     // sub1 as the condition and target extend it: also a card that can be treated as a Tuner and passes f1.
     fn sub1<P: SynchroProcedure>(c: CardId, duel: &Duel, sc: CardId, sumtype: u64, tp: u8) -> bool {
         P::sub1(c, duel, sc, sumtype, tp)
@@ -143,32 +220,111 @@ impl Synchro {
         (dg, g, pg, mgchk, levels)
     }
 
-    // The materials with EFFECT_SYNCHRO_CHECK or EFFECT_HAND_SYNCHRO, whose search the oracle runs instead.
-    fn unported_materials(duel: &Duel, g: CardSet, mgchk: bool) {
-        unported!(
-            duel,
-            g.is_exists(duel, |c, duel| c.is_has_effect(duel, EFFECT_SYNCHRO_CHECK).is_some(), 1, None)
-        );
-        unported!(
-            duel,
-            !mgchk && g.is_exists(duel, |c, duel| c.is_has_effect(duel, EFFECT_HAND_SYNCHRO).is_some(), 1, None)
-        );
+    // Whether an effect may have EFFECT_HAND_SYNCHRO, or EFFECT_HAND_SYNCHRO+EFFECT_SYNCHRO_CHECK (which a cancelled
+    // Synchro.Target leaves on hand cards); without them a check registers and resets nothing.
+    fn hand_synchro_possible(duel: &Duel) -> bool {
+        duel.may_have_effect(EFFECT_HAND_SYNCHRO) || duel.may_have_effect(HAND_CHECK)
     }
 
-    // The cards of the hand and GY with these effects get them reset at the end; none of the ported ones has them. Not
-    // in the Lua: the cards are not searched while no effect has the code.
-    fn reset_hand_synchro(duel: &Duel, tp: u8) {
-        if !duel.may_have_effect(EFFECT_HAND_SYNCHRO + EFFECT_SYNCHRO_CHECK) {
+    fn hand_group(duel: &Duel, c: CardId, tp: u8) -> CardSet {
+        let can_be_material = |mc: CardId, duel: &Duel| mc.is_can_be_synchro_material(duel, c);
+        duel.get_matching_group(can_be_material, tp, LOCATION_HAND + LOCATION_GRAVE, 0, Some(c.into()))
+    }
+
+    // The cards of hg that pass `filter` and value(te, mc, sc) of te, an EFFECT_HAND_SYNCHRO effect, which registers
+    // EFFECT_HAND_SYNCHRO+EFFECT_SYNCHRO_CHECK on each hand material.
+    fn hand_synchro(duel: &mut Duel, te: EffectId, hg: CardSet, sc: CardId, filter: impl Fn(CardId, &Duel) -> bool) -> CardSet {
+        let Value::HandSynchro(val) = te.get_value(duel) else {
+            return CardSet::default();
+        };
+        let mut ag = CardSet::default();
+        for mc in hg {
+            if filter(mc, duel) && val(duel, te, mc, sc) {
+                ag.insert(mc);
+            }
+        }
+        ag
+    }
+
+    // The cards of tg and ntg with EFFECT_HAND_SYNCHRO. Not in the Lua: none are looked for while no effect has the code.
+    fn hand_synchro_cards(duel: &Duel, tg: CardSet, ntg: CardSet) -> CardSet {
+        if !duel.may_have_effect(EFFECT_HAND_SYNCHRO) {
+            return CardSet::default();
+        }
+        let has = |mc: CardId, duel: &Duel| mc.is_has_effect(duel, EFFECT_HAND_SYNCHRO).is_some();
+        tg.filter(duel, has, None).union(ntg.filter(duel, has, None))
+    }
+
+    // tg and ntg with the hand materials the EFFECT_HAND_SYNCHRO effects of the cards of thg add.
+    fn add_hand_materials<P: SynchroProcedure>(
+        duel: &mut Duel,
+        c: CardId,
+        tp: u8,
+        thg: CardSet,
+        tg: CardSet,
+        ntg: CardSet,
+    ) -> (CardSet, CardSet) {
+        let hg = Synchro::hand_group(duel, c, tp);
+        let (mut tg, mut ntg) = (tg, ntg);
+        for thc in thg {
+            let Some(&te) = thc.get_card_effect(duel, EFFECT_HAND_SYNCHRO).first() else {
+                continue;
+            };
+            let thag = Synchro::hand_synchro(duel, te, hg, c, |mc, duel| Synchro::tuner_filter::<P>(mc, duel, c, tp));
+            let nthag = Synchro::hand_synchro(duel, te, hg, c, |mc, duel| Synchro::non_tuner_filter::<P>(mc, duel, c, tp));
+            tg.merge(thag);
+            ntg.merge(nthag);
+        }
+        (tg, ntg)
+    }
+
+    // aux.ResetEffects over the hand and GY cards with EFFECT_HAND_SYNCHRO+EFFECT_SYNCHRO_CHECK. Not in the Lua: the cards
+    // are not searched while no effect has the code.
+    fn reset_hand_synchro(duel: &mut Duel, tp: u8) {
+        if !duel.may_have_effect(HAND_CHECK) {
             return;
         }
-        let hg = duel.get_matching_group(
-            |c, duel| c.is_has_effect(duel, EFFECT_HAND_SYNCHRO + EFFECT_SYNCHRO_CHECK).is_some(),
-            tp,
-            LOCATION_HAND + LOCATION_GRAVE,
-            0,
-            None,
-        );
-        unported!(duel, !hg.is_empty());
+        let has = |c: CardId, duel: &Duel| c.is_has_effect(duel, HAND_CHECK).is_some();
+        for c in duel.get_matching_group(has, tp, LOCATION_HAND + LOCATION_GRAVE, 0, None) {
+            for te in c.get_card_effect(duel, HAND_CHECK) {
+                te.reset(duel);
+            }
+        }
+    }
+
+    // Synchro.CheckFilterChk: a material with EFFECT_SYNCHRO_CHECK that passes some filter once the effect's value, which
+    // may assume properties, ran.
+    fn check_filter_chk<P: SynchroProcedure>(c: CardId, duel: &Duel, sc: CardId, tp: u8) -> bool {
+        let Some(&te) = c.get_card_effect(duel, EFFECT_SYNCHRO_CHECK).first() else {
+            return false;
+        };
+        let reset = Synchro::synchro_check(duel, te, c);
+        let res = (c.is_type_full(duel, TYPE_TUNER, Some(sc), SYNCHRO_MATERIAL, tp) && P::f1(c, duel, sc, SYNCHRO_MATERIAL, tp))
+            || P::f2(c, duel, sc, SYNCHRO_MATERIAL, tp)
+            || Synchro::sub1::<P>(c, duel, sc, SYNCHRO_MATERIAL, tp)
+            || P::sub2(c, duel, sc, SYNCHRO_MATERIAL, tp);
+        if reset {
+            duel.assume_reset();
+        }
+        res
+    }
+
+    // Not in the Lua: the cards are not searched while no effect has the code.
+    fn any_synchro_check<P: SynchroProcedure>(duel: &Duel, g: CardSet, sc: CardId, tp: u8) -> bool {
+        duel.may_have_effect(EFFECT_SYNCHRO_CHECK) && g.is_exists(duel, |c, duel| Synchro::check_filter_chk::<P>(c, duel, sc, tp), 1, None)
+    }
+
+    // value(e, c) of EFFECT_SYNCHRO_CHECK.
+    fn synchro_check(duel: &Duel, te: EffectId, c: CardId) -> bool {
+        matches!(te.get_value(duel), Value::Card(val) if val(duel, te, c) != 0)
+    }
+
+    // The end of CheckP31, CheckP32 and the target's deselection: the assumptions stay while a chosen material has
+    // EFFECT_SYNCHRO_CHECK.
+    fn assume_reset_unless_checked(duel: &Duel, sg: CardSet) {
+        if !sg.is_exists(duel, |c, duel| c.is_has_effect(duel, EFFECT_SYNCHRO_CHECK).is_some(), 1, None) {
+            duel.assume_reset();
+        }
     }
 
     fn condition<P: SynchroProcedure>(duel: &Duel, a: &Args) -> bool {
@@ -190,10 +346,7 @@ impl Synchro {
             pg.merge(smat);
             g.merge(smat);
         }
-        Synchro::unported_materials(duel, g, mgchk);
-        let tg = g.filter(duel, |mc, duel| Synchro::tuner_filter::<P>(mc, duel, c, tp), None);
-        let ntg = g.filter(duel, |mc, duel| Synchro::non_tuner_filter::<P>(mc, duel, c, tp), None);
-        let search = Search {
+        let mut s = Search {
             lv: c.get_level(duel),
             sc: c,
             tp,
@@ -202,18 +355,67 @@ impl Synchro {
             min: usize::from(a.min),
             max: usize::from(a.max),
             levels,
-            plain: Synchro::is_plain::<P>(duel),
+            plain: false,
         };
         let none = CardSet::default();
-        let res = Synchro::level_reachable::<P>(duel, tg.union(ntg), &search)
-            && tg.is_exists(
-                duel,
-                |tc, duel| Synchro::check_p41::<P>(duel, tc, tg, ntg, none, none, none, &search),
-                1,
-                None,
-            );
-        Synchro::reset_hand_synchro(duel, tp);
-        res
+        let hand_synchro = Synchro::hand_synchro_possible(duel);
+        if Synchro::any_synchro_check::<P>(duel, g, c, tp) {
+            let search = |duel: &Duel, g2: CardSet| {
+                g2.is_exists(
+                    duel,
+                    |mc, duel| Synchro::check_p31::<P>(duel, mc, g2, none, none, none, &s),
+                    1,
+                    None,
+                )
+            };
+            let res = if hand_synchro {
+                duel.check_mut(|duel| {
+                    let mut g2 = g;
+                    if !mgchk {
+                        let hg = Synchro::hand_group(duel, c, tp);
+                        for thc in g {
+                            if let Some(&te) = thc.get_card_effect(duel, EFFECT_HAND_SYNCHRO).first() {
+                                g2.merge(Synchro::hand_synchro(duel, te, hg, c, |_, _| true));
+                            }
+                        }
+                    }
+                    let res = search(duel, g2);
+                    Synchro::reset_hand_synchro(duel, tp);
+                    res
+                })
+            } else {
+                search(duel, g)
+            };
+            duel.assume_reset();
+            return res;
+        }
+        let tg = g.filter(duel, |mc, duel| Synchro::tuner_filter::<P>(mc, duel, c, tp), None);
+        let ntg = g.filter(duel, |mc, duel| Synchro::non_tuner_filter::<P>(mc, duel, c, tp), None);
+        let search = |duel: &Duel, tg: CardSet, ntg: CardSet, s: &mut Search| {
+            s.plain = Synchro::is_plain::<P>(duel);
+            Synchro::level_reachable::<P>(duel, tg.union(ntg), s)
+                && tg.is_exists(
+                    duel,
+                    |tc, duel| Synchro::check_p41::<P>(duel, tc, tg, ntg, none, none, none, s),
+                    1,
+                    None,
+                )
+        };
+        let thg = if mgchk { none } else { Synchro::hand_synchro_cards(duel, tg, ntg) };
+        // Not in the Lua: the copy of the duel the Lua needs to register and reset effects is made only when it does.
+        if thg.is_empty() && !duel.may_have_effect(HAND_CHECK) {
+            return search(duel, tg, ntg, &mut s);
+        }
+        duel.check_mut(|duel| {
+            let (tg, ntg) = if mgchk {
+                (tg, ntg)
+            } else {
+                Synchro::add_hand_materials::<P>(duel, c, tp, thg, tg, ntg)
+            };
+            let res = search(duel, tg, ntg, &mut s);
+            Synchro::reset_hand_synchro(duel, tp);
+            res
+        })
     }
 
     // Not in the Lua: CheckP43 needs all of a selection to add up to the level and more materials only raise the sum, so
@@ -221,11 +423,7 @@ impl Synchro {
     // short only when what it skips looks up no effect, since is_available numbers an effect that becomes available: no
     // requirements, and no effect of the codes CheckP41 to CheckP43 look up.
     fn is_plain<P: SynchroProcedure>(duel: &Duel) -> bool {
-        let codes = [
-            EFFECT_SYNCHRO_MAT_RESTRICTION,
-            EFFECT_HAND_SYNCHRO + EFFECT_SYNCHRO_CHECK,
-            EFFECT_SYNCHRO_MATERIAL_CUSTOM,
-        ];
+        let codes = [EFFECT_SYNCHRO_MAT_RESTRICTION, HAND_CHECK, EFFECT_SYNCHRO_MATERIAL_CUSTOM];
         P::REQ1.is_none() && P::REQ2.is_none() && P::REQM.is_none() && !codes.iter().any(|&code| duel.may_have_effect(code))
     }
 
@@ -241,21 +439,30 @@ impl Synchro {
         s.plain && sg.iter().map(|c| least(s.levels.get(duel, c, s.sc))).sum::<u32>() > s.lv
     }
 
-    // The restrictions EFFECT_SYNCHRO_MAT_RESTRICTION puts on c and on the cards already chosen: false if one rules out
-    // adding c to sg, else the cards the restrictions of c rule out are taken out of tg and ntg. Then the checks of hand
-    // materials.
-    fn restrictions(duel: &Duel, c: CardId, sg: CardSet, tg: &mut CardSet, ntg: &mut CardSet, mgchk: bool) -> bool {
+    // The restrictions on adding c to sg, false if one rules it out, else the cards they rule out (trg, ntrg): those of
+    // rtg and rntg that the EFFECT_SYNCHRO_MAT_RESTRICTION effects of c reject, and those the first passing
+    // EFFECT_HAND_SYNCHRO+EFFECT_SYNCHRO_CHECK check of c returns for ctg and ntg. Not in the Lua: the lookups are
+    // skipped while no effect has the code, as they would find nothing.
+    fn restrictions(
+        duel: &Duel,
+        c: CardId,
+        sg: CardSet,
+        [rtg, rntg]: [CardSet; 2],
+        [ctg, cntg]: [CardSet; 2],
+        tsg: CardSet,
+        ntsg: CardSet,
+        mgchk: bool,
+    ) -> Option<(CardSet, CardSet)> {
         // Auxiliary.HarmonizingMagFilter(c, f, f:GetValue()).
         let rejects = |f: EffectId| move |c: CardId, duel: &Duel| matches!(f.get_value(duel), Value::Card(value) if value(duel, f, c) == 0);
-        // Not in the Lua: the lookups are skipped while no effect has the code, as they would find nothing.
+        let (mut trg, mut ntrg) = (CardSet::default(), CardSet::default());
         if duel.may_have_effect(EFFECT_SYNCHRO_MAT_RESTRICTION) {
-            let (mut trg, mut ntrg) = (CardSet::default(), CardSet::default());
             for f in c.get_card_effect(duel, EFFECT_SYNCHRO_MAT_RESTRICTION) {
                 if sg.is_exists(duel, rejects(f), 1, Some(c.into())) {
-                    return false;
+                    return None;
                 }
-                trg.merge(tg.filter(duel, rejects(f), None));
-                ntrg.merge(ntg.filter(duel, rejects(f), None));
+                trg.merge(rtg.filter(duel, rejects(f), None));
+                ntrg.merge(rntg.filter(duel, rejects(f), None));
             }
             for tc in sg {
                 if tc
@@ -263,14 +470,107 @@ impl Synchro {
                     .iter()
                     .any(|&f| rejects(f)(c, duel))
                 {
-                    return false;
+                    return None;
                 }
             }
-            (*tg, *ntg) = (tg.difference(trg), ntg.difference(ntrg));
         }
-        let hand = |c: CardId, duel: &Duel| c.is_has_effect(duel, EFFECT_HAND_SYNCHRO + EFFECT_SYNCHRO_CHECK).is_some();
-        unported!(duel, !mgchk && (hand(c, duel) || sg.is_exists(duel, hand, 1, None)));
-        true
+        if !mgchk && duel.may_have_effect(HAND_CHECK) {
+            let check = |card: CardId, c: Option<CardId>| {
+                let mut result = Some((CardSet::default(), CardSet::default()));
+                for te in card.get_card_effect(duel, HAND_CHECK) {
+                    let Target::SynchroCheck(check) = te.get_target(duel) else {
+                        continue;
+                    };
+                    let (ok, trg, ntrg) = check(duel, te, c, sg, ctg, cntg, tsg, ntsg);
+                    result = ok.then_some((trg, ntrg));
+                    if ok {
+                        break;
+                    }
+                }
+                result
+            };
+            let (trg2, ntrg2) = check(c, Some(c))?;
+            trg.merge(trg2);
+            ntrg.merge(ntrg2);
+            if sg.iter().any(|tc| check(tc, None).is_none()) {
+                return None;
+            }
+        }
+        Some((trg, ntrg))
+    }
+
+    fn check_p31<P: SynchroProcedure>(duel: &Duel, c: CardId, g: CardSet, tsg: CardSet, ntsg: CardSet, sg: CardSet, s: &Search) -> bool {
+        let (sc, tp) = (s.sc, s.tp);
+        let mut rg = CardSet::default();
+        for te in c.get_card_effect(duel, EFFECT_SYNCHRO_CHECK) {
+            let tg = g.filter(duel, |mc, duel| Synchro::synchro_check(duel, te, mc), None);
+            rg = tg.filter(
+                duel,
+                |mc, duel| !Synchro::tuner_filter::<P>(mc, duel, sc, tp) && !Synchro::non_tuner_filter::<P>(mc, duel, sc, tp),
+                None,
+            );
+        }
+        let none = CardSet::default();
+        let Some((trg, _)) = Synchro::restrictions(duel, c, sg, [g, none], [g, g], tsg, ntsg, s.mgchk) else {
+            return false;
+        };
+        rg.merge(trg);
+        let (g, tsg, sg) = (g.difference(rg), tsg.union(c.into()), sg.union(c.into()));
+        let tsg_count = tsg.len();
+        let tuners = |duel: &Duel| {
+            tsg.is_exists(duel, |tc, duel| Synchro::tuner_filter::<P>(tc, duel, sc, tp), tsg_count, None) && req(P::REQ1, duel, tsg, sc, tp)
+        };
+        let p31 = |tc, duel: &Duel| Synchro::check_p31::<P>(duel, tc, g, tsg, ntsg, sg, s);
+        let p32 = |tc, duel: &Duel| Synchro::check_p32::<P>(duel, tc, g, tsg, ntsg, sg, s);
+        let res = if s.max != 0 && (tsg_count > s.max || s.max - tsg_count < P::MIN2) {
+            false
+        } else if s.max != 0 && s.max - tsg_count == P::MIN2 {
+            tuners(duel) && g.is_exists(duel, p32, 1, Some(sg))
+        } else if tsg_count < P::MIN1 {
+            g.is_exists(duel, p31, 1, Some(sg))
+        } else if tsg_count < P::MAX1 {
+            g.is_exists(duel, p31, 1, Some(sg)) || (tuners(duel) && g.is_exists(duel, p32, 1, Some(sg)))
+        } else {
+            tuners(duel) && g.is_exists(duel, p32, 1, Some(sg))
+        };
+        Synchro::assume_reset_unless_checked(duel, sg.difference(c.into()));
+        res
+    }
+
+    fn check_p32<P: SynchroProcedure>(duel: &Duel, c: CardId, g: CardSet, tsg: CardSet, ntsg: CardSet, sg: CardSet, s: &Search) -> bool {
+        let (sc, tp) = (s.sc, s.tp);
+        let mut rg = CardSet::default();
+        for te in c.get_card_effect(duel, EFFECT_SYNCHRO_CHECK) {
+            let tg = g.filter(duel, |mc, duel| Synchro::synchro_check(duel, te, mc), None);
+            rg = tg.filter(duel, |mc, duel| !Synchro::non_tuner_filter::<P>(mc, duel, sc, tp), None);
+        }
+        let none = CardSet::default();
+        let Some((_, ntrg)) = Synchro::restrictions(duel, c, sg, [none, g], [none, g], tsg, ntsg, s.mgchk) else {
+            return false;
+        };
+        rg.merge(ntrg);
+        let (g, ntsg, sg) = (g.difference(rg), ntsg.union(c.into()), sg.union(c.into()));
+        let (tsg_count, ntsg_count) = (tsg.len(), ntsg.len());
+        let p32 = |tc, duel: &Duel| Synchro::check_p32::<P>(duel, tc, g, tsg, ntsg, sg, s);
+        let complete = || {
+            (s.min == 0 || tsg_count + ntsg_count >= s.min)
+                && req(P::REQ2, duel, ntsg, sc, tp)
+                && req(P::REQM, duel, sg, sc, tp)
+                && ntsg.is_exists(duel, |tc, duel| Synchro::non_tuner_filter::<P>(tc, duel, sc, tp), ntsg_count, None)
+                && sg.includes(s.pg)
+                && Synchro::check_p43(duel, tsg, ntsg, sg, s)
+        };
+        let res = if s.max != 0 && tsg_count + ntsg_count > s.max {
+            false
+        } else if ntsg_count < P::MIN2 {
+            g.is_exists(duel, p32, 1, Some(sg))
+        } else if ntsg_count < P::MAX2 {
+            g.is_exists(duel, p32, 1, Some(sg)) || complete()
+        } else {
+            complete()
+        };
+        Synchro::assume_reset_unless_checked(duel, sg.difference(c.into()));
+        res
     }
 
     fn check_p41<P: SynchroProcedure>(
@@ -283,10 +583,10 @@ impl Synchro {
         sg: CardSet,
         s: &Search,
     ) -> bool {
-        let (mut tg, mut ntg) = (tg, ntg);
-        if !Synchro::restrictions(duel, c, sg, &mut tg, &mut ntg, s.mgchk) {
+        let Some((trg, ntrg)) = Synchro::restrictions(duel, c, sg, [tg, ntg], [tg, ntg], tsg, ntsg, s.mgchk) else {
             return false;
-        }
+        };
+        let (tg, ntg) = (tg.difference(trg), ntg.difference(ntrg));
         let (tsg, sg) = (tsg.union(c.into()), sg.union(c.into()));
         let tsg_count = tsg.len();
         let p41 = |tc, duel: &Duel| Synchro::check_p41::<P>(duel, tc, tg, ntg, tsg, ntsg, sg, s);
@@ -305,10 +605,11 @@ impl Synchro {
     }
 
     fn check_p42<P: SynchroProcedure>(duel: &Duel, c: CardId, ntg: CardSet, tsg: CardSet, ntsg: CardSet, sg: CardSet, s: &Search) -> bool {
-        let mut ntg = ntg;
-        if !Synchro::restrictions(duel, c, sg, &mut CardSet::default(), &mut ntg, s.mgchk) {
+        let none = CardSet::default();
+        let Some((_, ntrg)) = Synchro::restrictions(duel, c, sg, [none, ntg], [none, ntg], tsg, ntsg, s.mgchk) else {
             return false;
-        }
+        };
+        let ntg = ntg.difference(ntrg);
         let (ntsg, sg) = (ntsg.union(c.into()), sg.union(c.into()));
         if Synchro::level_exceeded(duel, sg, s) {
             return false;
@@ -335,15 +636,22 @@ impl Synchro {
 
     fn check_p43(duel: &Duel, tsg: CardSet, ntsg: CardSet, sg: CardSet, s: &Search) -> bool {
         let (lv, sc, tp) = (s.lv, s.sc, s.tp);
-        unported!(
-            duel,
-            sg.is_exists(
-                duel,
-                |c, duel| c.is_has_effect(duel, EFFECT_HAND_SYNCHRO + EFFECT_SYNCHRO_CHECK).is_some(),
-                1,
-                None
-            )
-        );
+        // Synchro.CheckHand: a hand material whose EFFECT_HAND_SYNCHRO card (by label) is not among the materials.
+        let check_hand = |c: CardId, duel: &Duel| {
+            let teg = c.get_card_effect(duel, HAND_CHECK);
+            let check_label = |tc: CardId, duel: &Duel, label: i64| {
+                tc.get_card_effect(duel, EFFECT_HAND_SYNCHRO)
+                    .first()
+                    .is_some_and(|&eff| eff.get_label(duel) == label)
+            };
+            !teg.is_empty()
+                && teg
+                    .iter()
+                    .all(|&te| !sg.is_exists(duel, |tc, duel| check_label(tc, duel, te.get_label(duel)), 1, Some(c.into())))
+        };
+        if duel.may_have_effect(HAND_CHECK) && sg.is_exists(duel, check_hand, 1, None) {
+            return false;
+        }
         let mut lvchk = false;
         let custom = if duel.may_have_effect(EFFECT_SYNCHRO_MATERIAL_CUSTOM) {
             sg
@@ -367,6 +675,15 @@ impl Synchro {
                 || (!sc.is_location(duel, LOCATION_EXTRA) && duel.get_mzone_count(tp, Some(sg)) > 0))
     }
 
+    // Runs value(e, mc) of every EFFECT_SYNCHRO_CHECK of a chosen material for every card of g.
+    fn synchro_check_all(duel: &Duel, tc: CardId, g: CardSet) {
+        for te in tc.get_card_effect(duel, EFFECT_SYNCHRO_CHECK) {
+            for mc in g {
+                Synchro::synchro_check(duel, te, mc);
+            }
+        }
+    }
+
     fn target<P: SynchroProcedure>(duel: &mut Duel, a: &Args, _: i32, _: Option<CardId>) -> Script<bool> {
         let (e, tp, smat, mg) = (a.e, a.tp, a.must, a.materials);
         let Some(c) = a.c else { return Ok(false) };
@@ -378,7 +695,12 @@ impl Synchro {
         }
         let tg = g.filter(duel, |mc, duel| Synchro::tuner_filter::<P>(mc, duel, c, tp), None);
         let ntg = g.filter(duel, |mc, duel| Synchro::non_tuner_filter::<P>(mc, duel, c, tp), None);
-        Synchro::unported_materials(duel, g, mgchk);
+        let (tg, ntg) = if mgchk {
+            (tg, ntg)
+        } else {
+            let thg = Synchro::hand_synchro_cards(duel, tg, ntg);
+            Synchro::add_hand_materials::<P>(duel, c, tp, thg, tg, ntg)
+        };
         let s = Search {
             lv: c.get_level(duel),
             sc: c,
@@ -394,26 +716,27 @@ impl Synchro {
         let mut selectedastuner = CardSet::default();
         let mut ntsg = CardSet::default();
         let mut tune = true;
-        while ntsg.len() < P::MAX2 {
-            let p41 = |tc, duel: &Duel| Synchro::check_p41::<P>(duel, tc, tg, ntg, tsg, ntsg, sg, &s);
-            let p42 = |tc, duel: &Duel| Synchro::check_p42::<P>(duel, tc, ntg, tsg, ntsg, sg, &s);
-            if tune {
-                let cancel = !mgchk && duel.is_summon_cancelable() && tsg.is_empty();
-                let g3 = ntg.filter(duel, p42, Some(sg));
-                let mut g2 = tg.filter(duel, p41, Some(sg));
-                if !g3.is_empty() && tsg.len() >= P::MIN1 && req(P::REQ1, duel, tsg, c, tp) {
-                    g2.merge(g3);
-                }
-                duel.hint(HINT_SELECTMSG, tp, HINTMSG_SMATERIAL);
-                match g2.select_unselect(duel, Some(sg), tp, false, cancel, 1, 1)? {
-                    None => {
-                        if tsg.len() >= P::MIN1 && req(P::REQ1, duel, tsg, c, tp) && ntg.filter_count(duel, p42, Some(sg)) > 0 {
-                            tune = false;
-                        } else {
-                            return Ok(false);
-                        }
+        if Synchro::any_synchro_check::<P>(duel, g, c, tp) {
+            let tuners = |duel: &Duel, tsg: CardSet| {
+                tsg.is_exists(duel, |tc, duel| Synchro::tuner_filter::<P>(tc, duel, c, tp), tsg.len(), None)
+                    && req(P::REQ1, duel, tsg, c, tp)
+            };
+            while ntsg.len() < P::MAX2 {
+                let p31 = |tc, duel: &Duel| Synchro::check_p31::<P>(duel, tc, g, tsg, ntsg, sg, &s);
+                let p32 = |tc, duel: &Duel| Synchro::check_p32::<P>(duel, tc, g, tsg, ntsg, sg, &s);
+                if tune {
+                    let cancel = !mgchk && duel.is_summon_cancelable() && tsg.is_empty();
+                    let g3 = ntg.filter(duel, p32, Some(sg));
+                    let mut g2 = g.filter(duel, p31, Some(sg));
+                    if !g3.is_empty() && tsg.len() >= P::MIN1 && tuners(duel, tsg) {
+                        g2.merge(g3);
                     }
-                    Some(tc) if !sg.is_contains(tc) => {
+                    duel.hint(HINT_SELECTMSG, tp, HINTMSG_SMATERIAL);
+                    // Cancelling is offered only before a Tuner is chosen, when the Lua cannot go on with a nil card.
+                    let Some(tc) = g2.select_unselect(duel, Some(sg), tp, false, cancel, 1, 1)? else {
+                        return Ok(false);
+                    };
+                    if !sg.is_contains(tc) {
                         if g3.is_contains(tc) {
                             ntsg.insert(tc);
                             tune = false;
@@ -422,56 +745,147 @@ impl Synchro {
                         }
                         selectedastuner.insert(tc);
                         sg.insert(tc);
-                    }
-                    Some(tc) => {
+                        Synchro::synchro_check_all(duel, tc, g);
+                    } else {
                         selectedastuner.remove(tc);
+                        tsg.remove(tc);
+                        sg.remove(tc);
+                        Synchro::assume_reset_unless_checked(duel, sg);
+                    }
+                    let p31 = |tc, duel: &Duel| Synchro::check_p31::<P>(duel, tc, g, tsg, ntsg, sg, &s);
+                    if g.filter_count(duel, p31, Some(sg)) == 0 || tsg.len() >= P::MAX1 {
+                        tune = false;
+                    }
+                } else {
+                    let complete = |duel: &Duel| {
+                        ntsg.len() >= P::MIN2
+                            && req(P::REQ2, duel, ntsg, c, tp)
+                            && req(P::REQM, duel, sg, c, tp)
+                            && sg.includes(pg)
+                            && Synchro::check_p43(duel, tsg, ntsg, sg, &s)
+                    };
+                    let finish = ntsg.len() >= P::MIN2
+                        && req(P::REQ2, duel, ntsg, c, tp)
+                        && req(P::REQM, duel, sg, c, tp)
+                        && ntsg.is_exists(duel, |tc, duel| Synchro::non_tuner_filter::<P>(tc, duel, c, tp), ntsg.len(), None)
+                        && sg.includes(pg)
+                        && Synchro::check_p43(duel, tsg, ntsg, sg, &s);
+                    let cancel = !mgchk && duel.is_summon_cancelable() && sg.is_empty();
+                    let mut g2 = g.filter(duel, p32, Some(sg));
+                    if g2.is_empty() {
+                        break;
+                    }
+                    let g3 = g.filter(duel, p31, Some(sg));
+                    if !g3.is_empty() && ntsg.difference(selectedastuner).is_empty() && tsg.len() < P::MAX1 {
+                        g2.merge(g3);
+                    }
+                    duel.hint(HINT_SELECTMSG, tp, HINTMSG_SMATERIAL);
+                    let Some(tc) = g2.select_unselect(duel, Some(sg), tp, finish, cancel, 1, 1)? else {
+                        if complete(duel) {
+                            break;
+                        }
+                        return Ok(false);
+                    };
+                    if !selectedastuner.is_contains(tc) {
+                        if !sg.is_contains(tc) {
+                            ntsg.insert(tc);
+                            sg.insert(tc);
+                            Synchro::synchro_check_all(duel, tc, g);
+                        } else {
+                            ntsg.remove(tc);
+                            sg.remove(tc);
+                            Synchro::assume_reset_unless_checked(duel, sg);
+                        }
+                    } else if ntsg.difference(selectedastuner).is_empty() {
+                        tune = true;
+                        selectedastuner.remove(tc);
+                        ntsg.remove(tc);
                         tsg.remove(tc);
                         sg.remove(tc);
                     }
                 }
+            }
+            duel.assume_reset();
+        } else {
+            while ntsg.len() < P::MAX2 {
                 let p41 = |tc, duel: &Duel| Synchro::check_p41::<P>(duel, tc, tg, ntg, tsg, ntsg, sg, &s);
-                if tg.filter_count(duel, p41, Some(sg)) == 0 || tsg.len() >= P::MAX1 {
-                    tune = false;
-                }
-            } else {
-                let complete = |duel: &Duel| {
-                    ntsg.len() >= P::MIN2
-                        && req(P::REQ2, duel, ntsg, c, tp)
-                        && req(P::REQM, duel, sg, c, tp)
-                        && sg.includes(pg)
-                        && Synchro::check_p43(duel, tsg, ntsg, sg, &s)
-                };
-                let finish = complete(duel);
-                let cancel = !mgchk && duel.is_summon_cancelable() && sg.is_empty();
-                let mut g2 = ntg.filter(duel, p42, Some(sg));
-                if g2.is_empty() {
-                    break;
-                }
-                let g3 = tg.filter(duel, p41, Some(sg));
-                if !g3.is_empty() && ntsg.difference(selectedastuner).is_empty() && tsg.len() < P::MAX1 {
-                    g2.merge(g3);
-                }
-                duel.hint(HINT_SELECTMSG, tp, HINTMSG_SMATERIAL);
-                let Some(tc) = g2.select_unselect(duel, Some(sg), tp, finish, cancel, 1, 1)? else {
-                    if complete(duel) {
+                let p42 = |tc, duel: &Duel| Synchro::check_p42::<P>(duel, tc, ntg, tsg, ntsg, sg, &s);
+                if tune {
+                    let cancel = !mgchk && duel.is_summon_cancelable() && tsg.is_empty();
+                    let g3 = ntg.filter(duel, p42, Some(sg));
+                    let mut g2 = tg.filter(duel, p41, Some(sg));
+                    if !g3.is_empty() && tsg.len() >= P::MIN1 && req(P::REQ1, duel, tsg, c, tp) {
+                        g2.merge(g3);
+                    }
+                    duel.hint(HINT_SELECTMSG, tp, HINTMSG_SMATERIAL);
+                    match g2.select_unselect(duel, Some(sg), tp, false, cancel, 1, 1)? {
+                        None => {
+                            if tsg.len() >= P::MIN1 && req(P::REQ1, duel, tsg, c, tp) && ntg.filter_count(duel, p42, Some(sg)) > 0 {
+                                tune = false;
+                            } else {
+                                return Ok(false);
+                            }
+                        }
+                        Some(tc) if !sg.is_contains(tc) => {
+                            if g3.is_contains(tc) {
+                                ntsg.insert(tc);
+                                tune = false;
+                            } else {
+                                tsg.insert(tc);
+                            }
+                            selectedastuner.insert(tc);
+                            sg.insert(tc);
+                        }
+                        Some(tc) => {
+                            selectedastuner.remove(tc);
+                            tsg.remove(tc);
+                            sg.remove(tc);
+                        }
+                    }
+                    let p41 = |tc, duel: &Duel| Synchro::check_p41::<P>(duel, tc, tg, ntg, tsg, ntsg, sg, &s);
+                    if tg.filter_count(duel, p41, Some(sg)) == 0 || tsg.len() >= P::MAX1 {
+                        tune = false;
+                    }
+                } else {
+                    let complete = |duel: &Duel| {
+                        ntsg.len() >= P::MIN2
+                            && req(P::REQ2, duel, ntsg, c, tp)
+                            && req(P::REQM, duel, sg, c, tp)
+                            && sg.includes(pg)
+                            && Synchro::check_p43(duel, tsg, ntsg, sg, &s)
+                    };
+                    let finish = complete(duel);
+                    let cancel = !mgchk && duel.is_summon_cancelable() && sg.is_empty();
+                    let mut g2 = ntg.filter(duel, p42, Some(sg));
+                    if g2.is_empty() {
                         break;
                     }
-                    return Ok(false);
-                };
-                if !selectedastuner.is_contains(tc) {
-                    if !sg.is_contains(tc) {
-                        ntsg.insert(tc);
-                        sg.insert(tc);
-                    } else {
+                    let g3 = tg.filter(duel, p41, Some(sg));
+                    if !g3.is_empty() && ntsg.difference(selectedastuner).is_empty() && tsg.len() < P::MAX1 {
+                        g2.merge(g3);
+                    }
+                    duel.hint(HINT_SELECTMSG, tp, HINTMSG_SMATERIAL);
+                    let Some(tc) = g2.select_unselect(duel, Some(sg), tp, finish, cancel, 1, 1)? else {
+                        if complete(duel) {
+                            break;
+                        }
+                        return Ok(false);
+                    };
+                    if !selectedastuner.is_contains(tc) {
+                        if !sg.is_contains(tc) {
+                            ntsg.insert(tc);
+                            sg.insert(tc);
+                        } else {
+                            ntsg.remove(tc);
+                            sg.remove(tc);
+                        }
+                    } else if ntsg.difference(selectedastuner).is_empty() {
+                        tune = true;
+                        selectedastuner.remove(tc);
                         ntsg.remove(tc);
+                        tsg.remove(tc);
                         sg.remove(tc);
                     }
-                } else if ntsg.difference(selectedastuner).is_empty() {
-                    tune = true;
-                    selectedastuner.remove(tc);
-                    ntsg.remove(tc);
-                    tsg.remove(tc);
-                    sg.remove(tc);
                 }
             }
         }

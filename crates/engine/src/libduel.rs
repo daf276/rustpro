@@ -6,7 +6,7 @@ use crate::duel::Duel;
 use crate::effect::{CounterFilter, CustomCounter, EffectId, EffectSet, Event, OpTarget, Value};
 
 use crate::field::FromEx;
-use crate::processor::{SelectCard, SelectOption, SelectYesNo};
+use crate::processor::{AnnounceRace, SelectCard, SelectOption, SelectYesNo};
 use crate::script::{FusionCheck, Procedure, Script};
 
 // What Duel.GetChainInfo pushes for one CHAININFO flag.
@@ -884,6 +884,21 @@ impl Duel {
         Ok(self.returns.at_i32(0) != 0)
     }
 
+    // `count` is capped at the races available, which must be among RACE_ALL.
+    pub fn announce_race(&mut self, player: u8, count: u8, available: u64) -> Script<u64> {
+        if available & !RACE_ALL != 0 {
+            self.reach_unported(concat!(file!(), ":", line!(), " (Duel.AnnounceRace raises a Lua error)"));
+        }
+        self.emplace_process(AnnounceRace {
+            playerid: player,
+            count: count.min(available.count_ones() as u8),
+            available,
+            ..AnnounceRace::default()
+        });
+        self.yield_script()?;
+        Ok(self.returns.at_u64(0))
+    }
+
     // The index of the chosen option, announced to the opponent (the default sel_hint).
     pub fn select_option(&mut self, player: u8, options: &[u64]) -> Script<i32> {
         if player > 1 {
@@ -1250,8 +1265,9 @@ impl Duel {
         Ok(self.returns.at_i32(0) != 0)
     }
 
-    // Nothing is assumed until a card calls Card.AssumeProperty.
-    pub fn assume_reset(&self) {}
+    pub fn assume_reset(&self) {
+        self.assumes.borrow_mut().clear();
+    }
 }
 
 impl Duel {

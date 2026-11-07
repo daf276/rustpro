@@ -3,7 +3,8 @@ use crate::card::CardId;
 use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{
-    ConditionFn, CostFn, EffectId, GroupOperationFn, Label, Operation, OperationFn, SynchroMaterialFn, Target, TargetFn, Value,
+    ConditionFn, CostFn, EffectId, ExtraMaterialFn, GroupOperationFn, Label, Operation, OperationFn, SynchroCheckFn, SynchroMaterialFn,
+    Target, TargetFn, Value,
 };
 
 impl Duel {
@@ -171,6 +172,15 @@ impl EffectId {
         duel.effects[self].target = Target::Card(target);
     }
 
+    // Effect.SetTarget for the check of a hand Synchro material, which proc_synchro calls with its own parameters.
+    pub fn set_synchro_check_target(self, duel: &mut Duel, target: SynchroCheckFn) {
+        duel.effects[self].target = Target::SynchroCheck(target);
+    }
+
+    pub fn get_target(self, duel: &Duel) -> Target {
+        duel.effects[self].target
+    }
+
     pub fn set_cost(self, duel: &mut Duel, cost: CostFn) {
         duel.effects[self].cost = Some(cost);
     }
@@ -202,6 +212,11 @@ impl EffectId {
     // Effect.SetOperation for EFFECT_SYNCHRO_MATERIAL_CUSTOM, whose function proc_synchro calls with its own parameters.
     pub fn set_synchro_material_operation(self, duel: &mut Duel, operation: SynchroMaterialFn) {
         duel.effects[self].operation = Some(Operation::SynchroMaterial(operation));
+    }
+
+    // Effect.SetOperation for EFFECT_EXTRA_MATERIAL, whose function aux.GetExtraMaterials calls with its own parameters.
+    pub fn set_extra_material_operation(self, duel: &mut Duel, operation: ExtraMaterialFn) {
+        duel.effects[self].operation = Some(Operation::ExtraMaterial(operation));
     }
 
     pub fn get_value(self, duel: &Duel) -> Value {

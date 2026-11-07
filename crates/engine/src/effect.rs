@@ -57,7 +57,11 @@ pub enum Target {
     None,
     Action(TargetFn),
     Card(fn(&Duel, EffectId, CardId) -> bool),
+    // The check (e, c, sg, tg, ntg, tsg, ntsg) -> (ok, trg, ntrg) of a hand Synchro material, read only by proc_synchro.
+    SynchroCheck(SynchroCheckFn),
 }
+
+pub type SynchroCheckFn = fn(&Duel, EffectId, Option<CardId>, CardSet, CardSet, CardSet, CardSet, CardSet) -> (bool, CardSet, CardSet);
 
 #[derive(Debug, Clone, Copy)]
 pub enum Operation {
@@ -67,7 +71,11 @@ pub enum Operation {
     Group(GroupOperationFn),
     // op(e, tsg, ntsg, sg, lv, sc, tp) -> (ok, lvchk): EFFECT_SYNCHRO_MATERIAL_CUSTOM, read only by proc_synchro.
     SynchroMaterial(SynchroMaterialFn),
+    // efun(c, e, tp, sg, mg, lc, og, chk): EFFECT_EXTRA_MATERIAL, read only by aux.GetExtraMaterials.
+    ExtraMaterial(ExtraMaterialFn),
 }
+
+pub type ExtraMaterialFn = fn(&Duel, CardId, EffectId, u8, CardSet, CardSet, CardId, CardSet, i32) -> bool;
 
 pub type SynchroMaterialFn = fn(&Duel, EffectId, CardSet, CardSet, CardSet, u32, CardId, u8) -> (bool, bool);
 
@@ -93,6 +101,19 @@ pub enum Value {
     MaterialFor(fn(&Duel, EffectId, CardId, CardId) -> bool),
     // value(e, re, r, rp): EFFECT_DESTROY_SUBSTITUTE.
     Reason(fn(&Duel, EffectId, Option<EffectId>, u32, u8) -> bool),
+    // value(e, c, sc), which may register effects on c: EFFECT_HAND_SYNCHRO.
+    HandSynchro(fn(&mut Duel, EffectId, CardId, CardId) -> bool),
+    // value(chk, summon_type, e, ...) of EFFECT_EXTRA_MATERIAL, which registers and resets effects.
+    ExtraMaterial(fn(&mut Duel, EffectId, ExtraMaterialCall) -> CardSet),
+}
+
+// The calls aux.GetExtraMaterials and Link.Operation make: chk 0 (tp, sc) for the extra materials, chk 1 (sg, sc, tp)
+// once they are used, chk 2 (eg) when the procedure is done with them.
+#[derive(Debug, Clone, Copy)]
+pub enum ExtraMaterialCall {
+    Get { summon_type: u32, tp: u8, sc: CardId },
+    Use { summon_type: u32, sg: CardSet, sc: CardId, tp: u8 },
+    Delete { eg: CardSet },
 }
 
 impl Default for Value {
@@ -312,6 +333,22 @@ impl Effects {
                 self.list.mark(effect.index());
             }
         }
+    }
+
+    // The ids and statuses of a copy of these effects, for the effects both hold.
+    pub fn copy_cells_from(&self, source: &Self) {
+        for (index, (_, cell)) in source.list.iter().enumerate().take(self.list.len()) {
+            let value = cell.get();
+            self.set_cell(EffectId::new(index as u16), |_| value);
+        }
+    }
+
+    // The card effects registered here that are not in `other`, a copy of these effects.
+    pub fn added_since<'a>(&'a self, other: &'a Self) -> impl Iterator<Item = EffectId> + 'a {
+        let registered = |effects: &Self, index: usize| effects.list.get(index).is_some_and(|(effect, _)| effect.card_key.is_some());
+        (0..self.list.len())
+            .filter(move |&index| registered(self, index) && !registered(other, index))
+            .map(|index| EffectId::new(index as u16))
     }
 
     // duel::delete_effect: the slot is reused by the next new effect. Label objects are the only references to an
@@ -1087,7 +1124,7 @@ impl Duel {
         match self.effects[effect].target {
             Target::None => true,
             Target::Card(target) => target(self, effect, card),
-            Target::Action(_) => {
+            Target::Action(_) | Target::SynchroCheck(_) => {
                 debug_assert!(false, "a field effect has an activation target");
                 true
             }
@@ -1106,7 +1143,9 @@ impl Duel {
             | Value::Material(_)
             | Value::SpSummonCondition(_)
             | Value::MaterialFor(_)
-            | Value::Reason(_) => {
+            | Value::Reason(_)
+            | Value::HandSynchro(_)
+            | Value::ExtraMaterial(_) => {
                 debug_assert!(false, "a value read with the wrong parameters");
                 0
             }

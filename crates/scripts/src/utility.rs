@@ -11,7 +11,7 @@ const COST_DETACHED_MATERIALS: u8 = u8::MAX;
 const COST_DISCARDED_CARDS: u8 = u8::MAX - 1;
 
 pub mod aux {
-    use engine::{Args, CardId, CardSet, Duel, EffectId, Script};
+    use engine::{Args, CardId, CardSet, Duel, EffectId, ExtraMaterialCall, Operation, Script, Value};
 
     use crate::chain::DuelChain;
     use crate::constant::*;
@@ -22,6 +22,9 @@ pub mod aux {
 
     // The group check (sg, mg, c) of SelectUnselectGroup, whose e and tp are captures; returns (res, stop).
     pub type GroupCheck<'a> = &'a dyn Fn(&Duel, CardSet, CardSet, Option<CardId>) -> (bool, bool);
+
+    // The emt table of aux.GetExtraMaterials: per EFFECT_EXTRA_MATERIAL effect the extra materials it offers.
+    pub type ExtraMaterials = Vec<(CardSet, EffectId)>;
 
     pub const fn stringid(code: u32, id: u64) -> u64 {
         (id & 0xfffff) | ((code as u64) << 20)
@@ -344,9 +347,99 @@ pub mod aux {
         CardSet::default()
     }
 
-    // Auxiliary.GetExtraMaterials without the materials, as EFFECT_EXTRA_MATERIAL comes with the cards that register it.
-    pub fn get_extra_materials(duel: &Duel, tp: u8, _mustg: CardSet, _sc: CardId, _summon_type: u32) {
-        unported!(duel, !duel.get_player_effect(tp, EFFECT_EXTRA_MATERIAL).is_empty());
+    // Auxiliary.GetExtraMaterials: per EFFECT_EXTRA_MATERIAL effect whose count limit allows a use, the materials its
+    // value offers (chk 0, which may register effects), and all of them together.
+    pub fn get_extra_materials(duel: &mut Duel, tp: u8, mustg: CardSet, sc: CardId, summon_type: u32) -> (ExtraMaterials, CardSet) {
+        let (mut t, mut tg) = (ExtraMaterials::new(), CardSet::default());
+        for te in duel.get_player_effect(tp, EFFECT_EXTRA_MATERIAL) {
+            if te.check_count_limit(duel, tp) {
+                let Value::ExtraMaterial(value) = te.get_value(duel) else {
+                    continue;
+                };
+                let eg = value(duel, te, ExtraMaterialCall::Get { summon_type, tp, sc }).difference(mustg);
+                tg = tg.union(eg);
+                t.push((eg, te));
+            }
+        }
+        (t, tg)
+    }
+
+    // efun(c, e, tp, sg, mg, lc, og, chk) of an extra material entry; a missing operation is aux.TRUE.
+    pub fn extra_material_filter(
+        duel: &Duel,
+        (eg, te): (CardSet, EffectId),
+        c: CardId,
+        tp: u8,
+        sg: CardSet,
+        mg: CardSet,
+        lc: CardId,
+        chk: i32,
+    ) -> bool {
+        match te.get_operation(duel) {
+            Some(Operation::ExtraMaterial(efun)) => efun(duel, c, te, tp, sg, mg, lc, eg, chk),
+            _ => true,
+        }
+    }
+
+    // Auxiliary.CheckValidExtra: whether an extra material entry takes c, adding every such entry to `filt`.
+    pub fn check_valid_extra(
+        duel: &Duel,
+        c: CardId,
+        tp: u8,
+        sg: CardSet,
+        mg: CardSet,
+        lc: CardId,
+        emt: &ExtraMaterials,
+        filt: &mut Vec<usize>,
+    ) -> bool {
+        let mut res = false;
+        for (index, &ex) in emt.iter().enumerate() {
+            if ex.0.is_contains(c) && extra_material_filter(duel, ex, c, tp, sg, mg, lc, 0) {
+                res = true;
+                filt.push(index);
+            }
+        }
+        res
+    }
+
+    // Auxiliary.DeleteExtraMaterialGroups: value chk 2 of every entry, which resets what chk 0 registered.
+    pub fn delete_extra_material_groups(duel: &mut Duel, emt: &ExtraMaterials) {
+        for &(eg, te) in emt {
+            if let Value::ExtraMaterial(value) = te.get_value(duel) {
+                value(duel, te, ExtraMaterialCall::Delete { eg });
+            }
+        }
+    }
+
+    const KEPT_EXTRA_MATERIALS: u64 = 1 << 60;
+
+    // Link.Target keeps {sg, filters, emt} as the label object of e for Link.Operation: the filters (indices into emt,
+    // at most 15) packed into the script state, each entry's group in the script groups.
+    pub fn keep_extra_materials(duel: &mut Duel, e: EffectId, emt: &ExtraMaterials, filt: &[usize]) {
+        let key = KEPT_EXTRA_MATERIALS | (e.index() as u64) << 16;
+        for (index, &(eg, _)) in emt.iter().enumerate() {
+            duel.set_script_group(key | index as u64, Some(eg));
+        }
+        duel.set_script_state(key, filt.iter().rev().fold(0, |packed, &index| packed << 4 | (index as i64 + 1)));
+    }
+
+    // What keep_extra_materials kept. The effects are looked up again, in the state the target left.
+    pub fn kept_extra_materials(duel: &Duel, e: EffectId, tp: u8) -> (ExtraMaterials, Vec<usize>) {
+        let key = KEPT_EXTRA_MATERIALS | (e.index() as u64) << 16;
+        let effects = duel.get_player_effect(tp, EFFECT_EXTRA_MATERIAL);
+        let usable = effects.iter().filter(|te| te.check_count_limit(duel, tp));
+        let emt = usable
+            .enumerate()
+            .map(|(index, &te)| (duel.get_script_group(key | index as u64).unwrap_or_default(), te))
+            .collect();
+        let packed = std::iter::successors(Some(duel.get_script_state(key)), |packed| Some(packed >> 4));
+        (
+            emt,
+            packed
+                .take_while(|&packed| packed != 0)
+                .map(|packed| (packed & 0xf) as usize - 1)
+                .collect(),
+        )
     }
 
     // Auxiliary.dpcheck(fun): a SelectUnselectGroup check that the selected cards all differ in `fun`.

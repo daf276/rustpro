@@ -9,6 +9,7 @@ mod c14152862;
 mod c14558127;
 mod c15561463;
 mod c1641882;
+mod c16509007;
 mod c22850702;
 mod c24092792;
 mod c24094653;
@@ -18,6 +19,7 @@ mod c26202165;
 mod c26254876;
 mod c28348537;
 mod c29301450;
+mod c30114823;
 mod c30208479;
 mod c30271097;
 mod c31924889;
@@ -31,7 +33,9 @@ mod c39890958;
 mod c40139997;
 mod c4206964;
 mod c42141493;
+mod c42155488;
 mod c42302563;
+mod c42781164;
 mod c44095762;
 mod c45883110;
 mod c46014517;
@@ -42,6 +46,7 @@ mod c50091196;
 mod c50954680;
 mod c53129443;
 mod c5318639;
+mod c53413628;
 mod c53971455;
 mod c54652250;
 mod c55144522;
@@ -81,7 +86,7 @@ mod c97556336;
 mod c97682931;
 
 // Sorted by code.
-pub const CARD_SCRIPTS: [(u32, InitialEffect); 78] = [
+pub const CARD_SCRIPTS: [(u32, InitialEffect); 83] = [
     (1641882, c1641882::initial_effect),
     (4206964, c4206964::initial_effect),
     (5318639, c5318639::initial_effect),
@@ -96,6 +101,7 @@ pub const CARD_SCRIPTS: [(u32, InitialEffect); 78] = [
     (14152862, c14152862::initial_effect),
     (14558127, c14558127::initial_effect),
     (15561463, c15561463::initial_effect),
+    (16509007, c16509007::initial_effect),
     (22850702, c22850702::initial_effect),
     (24092792, c24092792::initial_effect),
     (24094653, c24094653::initial_effect),
@@ -105,6 +111,7 @@ pub const CARD_SCRIPTS: [(u32, InitialEffect); 78] = [
     (26254876, c26254876::initial_effect),
     (28348537, c28348537::initial_effect),
     (29301450, c29301450::initial_effect),
+    (30114823, c30114823::initial_effect),
     (30208479, c30208479::initial_effect),
     (30271097, c30271097::initial_effect),
     (31924889, c31924889::initial_effect),
@@ -117,7 +124,9 @@ pub const CARD_SCRIPTS: [(u32, InitialEffect); 78] = [
     (39890958, c39890958::initial_effect),
     (40139997, c40139997::initial_effect),
     (42141493, c42141493::initial_effect),
+    (42155488, c42155488::initial_effect),
     (42302563, c42302563::initial_effect),
+    (42781164, c42781164::initial_effect),
     (44095762, c44095762::initial_effect),
     (45883110, c45883110::initial_effect),
     (46014517, c46014517::initial_effect),
@@ -127,6 +136,7 @@ pub const CARD_SCRIPTS: [(u32, InitialEffect); 78] = [
     (50091196, c50091196::initial_effect),
     (50954680, c50954680::initial_effect),
     (53129443, c53129443::initial_effect),
+    (53413628, c53413628::initial_effect),
     (53971455, c53971455::initial_effect),
     (54652250, c54652250::initial_effect),
     (55144522, c55144522::initial_effect),

@@ -683,3 +683,9 @@ pub const TIMING_EQUIP: u32 = 0x200_0000;
 pub const EFFECT_EQUIP_LIMIT: u32 = 76;
 pub const EFFECT_UNION_STATUS: u32 = 347;
 pub const EFFECT_OLDUNION_STATUS: u32 = 348;
+
+pub const MSG_ANNOUNCE_RACE: u8 = 140;
+pub const HINT_RACE: u8 = 6;
+pub const RACE_ALL: u64 = 0x4000_0000_ffff_ffff;
+pub const EFFECT_CHANGE_SETCODE: u32 = 350;
+pub const ASSUME_RACE: u32 = 6;

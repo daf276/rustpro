@@ -28,6 +28,8 @@ pub enum Prompt {
     // `blocked` has a bit set per unavailable zone, as Action::Place numbers them.
     Place { player: u8, count: u8, blocked: u32 },
     Position { player: u8, positions: u8 },
+    // Picked one race at a time until `count` are picked.
+    AnnounceRace { player: u8, count: u8, available: u64 },
 }
 
 // Kinds in the order of their response codes (playerop.cpp); indices point into the prompt's lists.
@@ -68,6 +70,8 @@ pub enum Action {
     // A zone: the own monster zones 0-6 and spell zones 8-15, the opponent's at +16.
     Place(u8),
     Position(u8),
+    // A race by its bit index.
+    Race(u8),
 }
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -191,6 +195,11 @@ impl Duel {
                 player: arg.playerid,
                 positions: arg.positions,
             }),
+            Unit::AnnounceRace(arg) if arg.step > 0 => Some(Prompt::AnnounceRace {
+                player: arg.playerid,
+                count: arg.count,
+                available: arg.available,
+            }),
             _ => None,
         }
     }
@@ -277,6 +286,10 @@ impl Duel {
                     .filter(|&position| u32::from(positions) & position != 0)
                     .map(|position| Action::Position(position as u8)),
             ),
+            Prompt::AnnounceRace { available, .. } => {
+                let open = available & !self.returns.at_u64(0);
+                actions.extend((0..64).filter(|bit| open & 1 << bit != 0).map(Action::Race));
+            }
         }
     }
 
@@ -321,6 +334,9 @@ impl Duel {
             }
             (Prompt::Position { positions, .. }, Action::Position(position)) => {
                 POSITIONS.contains(&u32::from(position)) && positions & position != 0
+            }
+            (Prompt::AnnounceRace { available, .. }, Action::Race(bit)) => {
+                bit < 64 && (available & !self.returns.at_u64(0)) & (1 << bit) != 0
             }
             _ => false,
         }
@@ -449,6 +465,16 @@ impl Duel {
                 }
             }
             Action::Position(position) => self.respond(i32::from(position)),
+            Action::Race(bit) => {
+                let Prompt::AnnounceRace { count, .. } = prompt else {
+                    return Err(ActionError::Illegal(action));
+                };
+                let races = self.returns.at_u64(0) | 1 << bit;
+                self.returns.set_u64(0, races);
+                if races.count_ones() < u32::from(count) {
+                    return Ok(Status::Awaiting);
+                }
+            }
         }
         Ok(self.run())
     }
@@ -515,6 +541,10 @@ impl Duel {
                 .map(|&bytes| Action::Place(response_zone(player, bytes)))
                 .collect(),
             Prompt::Position { .. } => vec![Action::Position(u8::try_from(value).map_err(|_| undecodable())?)],
+            Prompt::AnnounceRace { .. } => {
+                let races = buffer.at_u64(0);
+                (0..64).filter(|bit| races & 1 << bit != 0).map(Action::Race).collect()
+            }
         })
     }
 }

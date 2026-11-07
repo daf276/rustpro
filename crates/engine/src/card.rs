@@ -67,6 +67,11 @@ impl CardSet {
         self
     }
 
+    pub fn intersection(mut self, other: CardSet) -> CardSet {
+        self.0.iter_mut().zip(other.0).for_each(|(word, other)| *word &= other);
+        self
+    }
+
     pub fn union(mut self, other: CardSet) -> CardSet {
         self.0.iter_mut().zip(other.0).for_each(|(word, other)| *word |= other);
         self
@@ -565,6 +570,15 @@ impl Duel {
     }
 
     pub(crate) fn get_race(&self, card: CardId) -> u64 {
+        let assumed = self
+            .assumes
+            .borrow()
+            .iter()
+            .find(|&&(other, kind, _)| (other, u32::from(kind)) == (card, ASSUME_RACE))
+            .map(|&(_, _, race)| race);
+        if let Some(race) = assumed {
+            return race;
+        }
         if self.cards[card].data.card_type & TYPE_MONSTER == 0
             && self.get_type(card) & TYPE_MONSTER == 0
             && self.is_affected_by_effect(card, EFFECT_PRE_MONSTER).is_none()
@@ -1983,13 +1997,14 @@ impl Duel {
         target.overlay_target.is_none() && target.current.location & (LOCATION_GRAVE | LOCATION_REMOVED) == 0
     }
 
-    // Values that are functions of (e, re, rp, c) come with the cards that register them.
-    pub(crate) fn check_indestructable_by_effect(&self, card: CardId, effect: Option<EffectId>, _playerid: u8) -> Option<EffectId> {
-        effect?;
+    // Values are functions of (e, re, rp), which ignore the card the core also passes.
+    pub(crate) fn check_indestructable_by_effect(&self, card: CardId, effect: Option<EffectId>, playerid: u8) -> Option<EffectId> {
+        let effect = effect?;
         self.filter_effect(card, EFFECT_INDESTRUCTABLE_EFFECT, true)
             .into_iter()
             .find(|&indestructable| match self.effects[indestructable].value {
                 Value::Int(value) => value != 0,
+                Value::EffectPlayer(value) => value(self, indestructable, effect, playerid),
                 _ => {
                     self.reach_unported(concat!(file!(), ":", line!()));
                     false

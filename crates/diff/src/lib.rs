@@ -42,6 +42,9 @@ const REASON_SUMMON: u32 = 0x10;
 const REASON_REPLACE: u32 = 0x100_0000;
 const REASON_BATTLE: u32 = 0x20;
 const REASON_RITUAL: u32 = 0x10_0000;
+const REASON_SYNCHRO: u32 = 0x8_0000;
+const MSG_NEW_TURN: u8 = 40;
+const CHINT_RACE: u8 = 3;
 const HINT_REPLAY: u64 = 30;
 
 #[derive(Debug, thiserror::Error)]
@@ -143,6 +146,10 @@ pub struct Tally {
     pub set_tributes: BTreeMap<(u32, u32), u32>,
     // Cards destroyed in place of others (MSG_MOVE with REASON_REPLACE) per card code.
     pub replaced: BTreeMap<u32, u32>,
+    // Synchro materials moved in a turn after a race was declared on a card (CHINT_RACE, Genomix Fighter's
+    // EFFECT_SYNCHRO_CHECK).
+    pub declared_race_materials: u32,
+    race_declared: bool,
     tributes_pending: u32,
     pub chain_disabled: u32,
     // The card code and effect description of the current chain's links.
@@ -188,6 +195,14 @@ impl Tally {
         }
         if let Some(&kind) = message.first() {
             *self.messages.entry(kind).or_default() += 1;
+        }
+        match message {
+            [MSG_NEW_TURN, ..] => self.race_declared = false,
+            [MSG_CARD_HINT, _, _, _, _, _, _, _, _, _, _, CHINT_RACE, ..] => self.race_declared = true,
+            [MSG_MOVE, .., r0, r1, r2, r3] if self.race_declared && u32::from_ne_bytes([*r0, *r1, *r2, *r3]) & REASON_SYNCHRO != 0 => {
+                self.declared_race_materials += 1;
+            }
+            _ => {}
         }
         if let [MSG_MOVE, a, b, c, d, .., e, f, g, h] = message
             && u32::from_ne_bytes([*e, *f, *g, *h]) & REASON_REPLACE != 0
@@ -279,6 +294,8 @@ impl std::ops::Add for Tally {
             summon_tributes: merge_counts(self.summon_tributes, other.summon_tributes),
             set_tributes: merge_counts(self.set_tributes, other.set_tributes),
             replaced: merge_counts(self.replaced, other.replaced),
+            declared_race_materials: self.declared_race_materials + other.declared_race_materials,
+            race_declared: false,
             tributes_pending: 0,
             chain_disabled: self.chain_disabled + other.chain_disabled,
             chain: [(0, 0); 16],

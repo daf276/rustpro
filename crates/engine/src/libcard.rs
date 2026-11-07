@@ -310,6 +310,14 @@ impl CardId {
         setcodes.iter().any(|&setcode| duel.is_set_card(self, setcode))
     }
 
+    // Card.IsSetCard as material: card::get_summon_set_card, whose code and archetype effects with an operation come with
+    // the cards that register them.
+    pub fn is_set_card_full(self, duel: &Duel, setcodes: &[u16], _scard: Option<CardId>, _sumtype: u64, _player: u8) -> bool {
+        let codes = [EFFECT_REMOVE_CODE, EFFECT_CHANGE_SETCODE];
+        unported!(duel, codes.into_iter().flat_map(|code| duel.filter_effect(self, code, true)));
+        self.is_set_card(duel, setcodes)
+    }
+
     pub fn get_left_scale(self, duel: &Duel) -> u32 {
         duel.get_scale(self, false)
     }
@@ -528,6 +536,58 @@ impl CardId {
 }
 
 impl CardId {
+    // Card.AssumeProperty, called inside checks. Only card::get_race reads an assumed property so far; the other kinds
+    // (and the invalid ones the core rejects with a Lua error) come with the cards that assume them.
+    pub fn assume_property(self, duel: &Duel, assume: u32, value: u64) {
+        if assume != ASSUME_RACE {
+            duel.reach_unported(concat!(file!(), ":", line!()));
+            return;
+        }
+        let mut assumes = duel.assumes.borrow_mut();
+        match assumes
+            .iter_mut()
+            .find(|(card, kind, _)| (*card, u32::from(*kind)) == (self, assume))
+        {
+            Some(entry) => entry.2 = value,
+            None => assumes.push((self, assume as u8, value)),
+        }
+    }
+
+    // card::get_linked_cards.
+    pub fn get_linked_group(self, duel: &Duel) -> CardSet {
+        let card = &duel.cards[self];
+        if card.data.card_type & TYPE_LINK == 0
+            || card.current.location & LOCATION_ONFIELD == 0
+            || card.get_status(STATUS_SUMMONING | STATUS_SPSUMMON_STEP)
+        {
+            return CardSet::default();
+        }
+        let (zone, p) = (duel.card_linked_zone(&duel.zones(), self), card.current.controler);
+        let mut cards = CardSet::default();
+        for (p, zone) in [(p, zone), (1 - p, zone >> 16)] {
+            let player = &duel.player[p];
+            let mzone = player.list_mzone.iter().enumerate().filter(|&(s, _)| zone & 1 << s != 0);
+            let szone = player.list_szone.iter().enumerate().filter(|&(s, _)| zone & 1 << (8 + s) != 0);
+            let szone = szone
+                .filter_map(|(_, card)| *card)
+                .filter(|&card| duel.get_type(card) & TYPE_LINK != 0);
+            mzone.filter_map(|(_, card)| *card).chain(szone).for_each(|card| cards.insert(card));
+        }
+        cards
+    }
+
+    pub fn get_reason_card(self, duel: &Duel) -> Option<CardId> {
+        duel.cards[self].current.reason_card
+    }
+
+    pub fn set_hint(self, duel: &mut Duel, hint_type: u8, value: u64) {
+        if hint_type >= CHINT_DESC_ADD {
+            return;
+        }
+        let location = duel.cards.get_info_location(self);
+        duel.trace.message(MSG_CARD_HINT).loc(location).u8(hint_type).u64(value);
+    }
+
     pub fn is_not_tuner(self, duel: &Duel, scard: CardId, player: u8) -> bool {
         duel.is_not_tuner(self, Some(scard), player)
     }

@@ -9,11 +9,13 @@ const XYZ_MATERIALS_MAX: usize = 3;
 
 // Cards an effect of the card under test needs, placed with it in the given location, or in a random zone for 0; for
 // the same player, or the opponent with OPPONENT.
-const SUPPORT: [(u32, &[(u32, u16)]); 31] = [
+const SUPPORT: [(u32, &[(u32, u16)]); 36] = [
     // Fusionist from the Extra Deck with its materials, Petit Angel and Mystical Sheep #2, and Polymerization.
     (1641882, &[(1641882, EXTRA), (24094653, HAND), (38142739, HAND), (83464209, HAND)]),
     // Metallizing Parasite - Lunatite on the field with a monster to equip: Elfnote Lucina.
     (7369217, &[(7369217, MZONE), (13597785, MZONE)]),
+    // Kewl Tune Mix on the field with another in the hand, its hand Synchro material for Kewl Tune Track Maker.
+    (16509007, &[(16509007, MZONE), (16509007, HAND), (42781164, EXTRA)]),
     // Polymerization's materials for Albion the Branded Dragon in the Elfnote Extra Deck: Fallen of Albaz and a LIGHT
     // monster, Petit Angel.
     (24094653, &[(68468459, HAND), (38142739, HAND)]),
@@ -23,6 +25,8 @@ const SUPPORT: [(u32, &[(u32, u16)]); 31] = [
     (26254876, &[(26254876, MZONE), (26254876, MZONE)]),
     // Blizzard Princess in the hand twice, to be Tribute Summoned with a Spellcaster on the field: Elfnote Lucina.
     (28348537, &[(28348537, HAND), (28348537, HAND), (13597785, MZONE)]),
+    // Code Generator on the field with another in the hand, its extra Link material for Code Talker.
+    (30114823, &[(30114823, MZONE), (30114823, HAND), (53413628, EXTRA)]),
     // Magician of Black Chaos Ritual Summoned by Black Magic Ritual.
     (30208479, &[(76792184, HAND)]),
     // Salamandra in the hand, to be activated on a FIRE monster: Elfnote Lucina.
@@ -37,6 +41,14 @@ const SUPPORT: [(u32, &[(u32, u16)]); 31] = [
     (39317553, &[(39317553, EXTRA), (6983839, MZONE)]),
     // Heavy Mech Support Armor on the field with a Machine monster to equip: Mechanicalchaser.
     (39890958, &[(39890958, MZONE), (7359741, MZONE)]),
+    // Genomix Fighter in the hand, Normal Summoned without tribute as a Level 3 Tuner for Kuibelt the Blade Dragon with a
+    // Level 4 monster, Kojikocy, and on the field to declare a race (its EFFECT_SYNCHRO_CHECK).
+    (
+        42155488,
+        &[(42155488, HAND), (42155488, MZONE), (1184620, MZONE), (87837090, EXTRA)],
+    ),
+    // Kewl Tune Track Maker from the Extra Deck with Kewl Tune Mix on the field and one in the hand.
+    (42781164, &[(42781164, EXTRA), (16509007, MZONE), (16509007, HAND)]),
     // Advanced Ritual Art in the hand Ritual Summons Magician of Black Chaos with Normal Monsters from the Deck: Mystical
     // Elf and Gene-Warped Warwolf (Level 4), Petit Angel (Level 3).
     (
@@ -53,6 +65,8 @@ const SUPPORT: [(u32, &[(u32, u16)]); 31] = [
     (50078509, &[(50078509, SZONE), (85976588, MZONE | OPPONENT)]),
     // Formula Synchron from the Extra Deck, Synchro Summoned with Mono Synchron and a Level 4 Warrior, Kojikocy.
     (50091196, &[(50091196, EXTRA), (56897896, MZONE), (1184620, MZONE)]),
+    // Code Talker from the Extra Deck with Code Generator on the field and one in the hand as extra material.
+    (53413628, &[(53413628, EXTRA), (30114823, MZONE), (30114823, HAND)]),
     // Darklord Desire in the hand twice, to be Tribute Summoned or Set with a Fairy on the field: Medius the Pure.
     (55690251, &[(55690251, HAND), (55690251, HAND), (97556336, MZONE)]),
     // Mono Synchron on the field with a Level 4 Warrior, Kojikocy, for Formula Synchron in the Extra Deck.

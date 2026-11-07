@@ -34,8 +34,8 @@ macro_rules! writers {
 }
 
 impl ProgressiveBuffer {
-    readers!(at_u8 u8, at_u16 u16, at_i16 i16, at_i32 i32, at_u32 u32);
-    writers!(set_u8 u8, set_i16 i16, set_i32 i32, set_u32 u32);
+    readers!(at_u8 u8, at_u16 u16, at_i16 i16, at_i32 i32, at_u32 u32, at_u64 u64);
+    writers!(set_u8 u8, set_i16 i16, set_i32 i32, set_u32 u32, set_u64 u64);
 
     pub fn bit_get(&self, position: usize) -> bool {
         self.data.get(position / 8).is_some_and(|byte| byte & (1 << (position % 8)) != 0)

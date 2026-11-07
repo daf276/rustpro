@@ -3,7 +3,7 @@ use carddata::{CardDatabase, Deck};
 use crate::buffer::{ProgressiveBuffer, Trace};
 use crate::card::{Card, CardId, CardSet, Cards, MAX_CARDS, StaticData};
 use crate::constants::*;
-use crate::effect::{Effects, Event, FieldEffect};
+use crate::effect::{EffectId, Effects, Event, FieldEffect};
 use crate::field::{FieldInfo, PerPlayer, PlayerInfo, Processor, Relations, ReturnCards};
 use crate::list::List;
 use crate::processor::{OcgStatus, Startup};
@@ -91,6 +91,11 @@ pub struct Duel {
     pub(crate) fusion_check_additional: Option<FusionCheck>,
     // proc_ritual.lua's Ritual.SummoningLevel, which Ritual.Filter sets while a check runs.
     pub(crate) ritual_summoning_level: std::cell::Cell<Option<u32>>,
+    // card::assume of the cards duel::assumes lists, as (card, ASSUME_ kind, value): what Card.AssumeProperty fixes until
+    // Duel.AssumeReset or the end of the outermost script call. Set in checks that only read.
+    pub(crate) assumes: std::cell::RefCell<List<(CardId, u8, u64), 2>>,
+    // Effects a check reset on a copy of this duel (check_mut), reset here at the next processor step.
+    pub(crate) pending_resets: std::cell::RefCell<List<EffectId, 2>>,
     // card::material_cards of the cards that have materials.
     pub(crate) material_cards: Vec<(CardId, CardSet)>,
     // The cards attached as Xyz materials; card::xyz_materials of a card are those whose overlay_target it is.
@@ -144,6 +149,8 @@ impl Duel {
             script_groups: Vec::new(),
             fusion_check_additional: None,
             ritual_summoning_level: Default::default(),
+            assumes: Default::default(),
+            pending_resets: Default::default(),
             material_cards: Vec::new(),
             overlay_cards: CardSet::default(),
             counters: Vec::new(),

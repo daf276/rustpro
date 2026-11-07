@@ -79,6 +79,14 @@ pub struct SelectOption {
 }
 
 #[derive(Debug, Clone, Default)]
+pub struct AnnounceRace {
+    pub step: u16,
+    pub playerid: u8,
+    pub count: u8,
+    pub available: u64,
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct SelectCard {
     pub step: u16,
     pub playerid: u8,
@@ -207,6 +215,7 @@ pub enum Unit {
     SelectEffectYesNo(SelectEffectYesNo),
     SelectYesNo(SelectYesNo),
     SelectOption(SelectOption),
+    AnnounceRace(AnnounceRace),
     SelectCard(SelectCard),
     SelectUnselectCard(SelectUnselectCard),
     SelectSum(SelectSum),
@@ -279,6 +288,7 @@ units!(
     SelectEffectYesNo,
     SelectYesNo,
     SelectOption,
+    AnnounceRace,
     SelectCard,
     SelectUnselectCard,
     SelectSum,
@@ -328,6 +338,9 @@ impl Duel {
     // field::process in processor_visit.cpp. `units` is core.units, taken out by `run` so the front unit runs in place,
     // or the stack of a script's nested run.
     pub(crate) fn process_unit(&mut self, units: &mut Vec<Unit>) -> OcgStatus {
+        if !self.pending_resets.get_mut().is_empty() {
+            self.reset_pending();
+        }
         if !self.core.subunits.is_empty() {
             self.core.subunits.reverse();
             units.append(&mut self.core.subunits);
@@ -345,6 +358,7 @@ impl Duel {
             Unit::SelectEffectYesNo(arg) => self.run_steps(arg, Self::process_select_effect_yes_no, true),
             Unit::SelectYesNo(arg) => self.run_steps(arg, Self::process_select_yes_no, true),
             Unit::SelectOption(arg) => self.run_steps(arg, Self::process_select_option, true),
+            Unit::AnnounceRace(arg) => self.run_steps(arg, Self::process_announce_race, true),
             Unit::SelectCard(arg) => self.run_steps(arg, Self::process_select_card, true),
             Unit::SelectUnselectCard(arg) => self.run_steps(arg, Self::process_select_unselect_card, true),
             Unit::SelectSum(arg) => self.run_steps(arg, Self::process_select_sum, true),

@@ -100,7 +100,8 @@ pub type Response = List<u8, 32>;
 pub struct Replay {
     pub log: Vec<Response>,
     pub cursor: usize,
-    // Messages the last attempt wrote, which the next one mutes.
+    // The trace count when the last attempt started: the next one mutes what was written since, which includes what the
+    // answered prompt wrote (MSG_HINT with the announced race), as its rerun writes that again.
     pub messages: u64,
     // The duel before the pending function's first attempt; set while one of its prompts waits.
     pub snapshot: Option<Box<Duel>>,
@@ -147,6 +148,9 @@ impl Duel {
             self.core.replay.stack.push((effect, player));
             let result = call(self);
             self.core.replay.stack.pop();
+            if !nested {
+                self.assumes.get_mut().clear();
+            }
             if result.is_err() && nested {
                 self.core.replay.interrupted = true;
             } else if result.is_err() && self.result.is_none() {
@@ -154,17 +158,17 @@ impl Duel {
             }
             return result.ok();
         }
-        let snapshot = match self.core.replay.snapshot.take() {
+        let (snapshot, mute) = match self.core.replay.snapshot.take() {
             Some(mut snapshot) => {
                 let answer = self.returns.data.clone();
                 self.core.replay.log.push(answer);
                 self.copy_from(&mut snapshot);
-                snapshot
+                (snapshot, self.trace.count - self.core.replay.messages)
             }
-            None => self.snapshot(),
+            None => (self.snapshot(), 0),
         };
         self.core.replay.cursor = 0;
-        self.trace.mute = self.core.replay.messages;
+        self.trace.mute = mute;
         let start = self.trace.count;
         self.core.replay.stack.push((effect, player));
         let result = call(self);
@@ -172,6 +176,8 @@ impl Duel {
         self.core.replay.interrupted = false;
         match result {
             Ok(value) => {
+                // duel::restore_assumes, which the core runs once the outermost Lua call returns.
+                self.assumes.get_mut().clear();
                 debug_assert_eq!(self.trace.mute, 0, "a rerun wrote fewer messages than its previous attempt");
                 self.core.replay.log.clear();
                 self.core.replay.messages = 0;
@@ -180,10 +186,45 @@ impl Duel {
             }
             Err(Interrupt) => {
                 if self.result.is_none() {
-                    self.core.replay.messages = self.trace.count - start;
+                    self.core.replay.messages = start;
                     self.core.replay.snapshot = Some(snapshot);
                 }
                 None
+            }
+        }
+    }
+
+    // A check whose Lua registers and resets effects (a summon procedure's condition) runs on a copy, since checks only
+    // read the duel. What it registers it resets again before it returns, so what later lookups can tell apart is
+    // brought back: the ids it took, the ids and statuses is_available changed, and the effects of this duel it reset,
+    // which are reset here at the next processor step (and on the copies of later checks before they start).
+    pub fn check_mut<T>(&self, check: impl FnOnce(&mut Duel) -> T) -> T {
+        let mut copy = self.clone();
+        copy.reset_pending();
+        let result = check(&mut copy);
+        debug_assert_eq!(copy.trace.count, self.trace.count, "a check wrote messages");
+        debug_assert!(
+            copy.effects.added_since(&self.effects).next().is_none(),
+            "a check kept an effect it registered"
+        );
+        self.infos.field_id.set(copy.infos.field_id.get());
+        self.effects.copy_cells_from(&copy.effects);
+        let mut pending = self.pending_resets.borrow_mut();
+        for effect in self.effects.added_since(&copy.effects) {
+            if !pending.contains(&effect) {
+                pending.push(effect);
+            }
+        }
+        if self.unported.get().is_none() {
+            self.unported.set(copy.unported.get());
+        }
+        result
+    }
+
+    pub(crate) fn reset_pending(&mut self) {
+        for effect in std::mem::take(self.pending_resets.get_mut()) {
+            if let Some(handler) = self.effects[effect].handler {
+                self.card_remove_effect(handler, effect);
             }
         }
     }
@@ -224,6 +265,8 @@ impl Duel {
             script_groups,
             fusion_check_additional,
             ritual_summoning_level,
+            assumes,
+            pending_resets,
             material_cards,
             overlay_cards,
             counters,
@@ -251,6 +294,8 @@ impl Duel {
         self.script_groups.clone_from(script_groups);
         self.fusion_check_additional = *fusion_check_additional;
         self.ritual_summoning_level.clone_from(ritual_summoning_level);
+        self.assumes.clone_from(assumes);
+        self.pending_resets.clone_from(pending_resets);
         self.material_cards.clone_from(material_cards);
         self.overlay_cards.clone_from(overlay_cards);
         self.counters.clone_from(counters);

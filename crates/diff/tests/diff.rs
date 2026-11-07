@@ -8,6 +8,7 @@ use scripts::{CARD_SCRIPTS, CLASSIC_CARDS};
 
 const WIN_BY_LP: u8 = 1;
 const WIN_BY_DECK_OUT: u8 = 2;
+const SAMPLE_CARDS: usize = 200;
 
 fn load(vendor: fn(&Path) -> Result<Vendor, DiffError>) -> Result<&'static Vendor, DiffError> {
     Ok(Box::leak(Box::new(vendor(
@@ -116,11 +117,21 @@ fn should_match_the_oracle_in_5000_elfnote_mirror_matches() {
     assert_elfnote_clean(0..5000).unwrap();
 }
 
-// Writes each card's scenarios out and checks that they diff clean and pass the card's checks, and that Ritual
-// materials are selected by both kinds of sum.
-fn assert_scenarios_clean(count: u32) -> Result<(), DiffError> {
+// Writes each card's scenarios out and checks that they diff clean and pass the card's checks, and with every card that
+// Ritual materials are selected by both kinds of sum. `sample` keeps about SAMPLE_CARDS cards, picked by a hash of the
+// code so that new ports rarely change the sample.
+fn assert_scenarios_clean(count: u32, sample: bool) -> Result<(), DiffError> {
     let vendor = load(Vendor::scenarios)?;
-    let cards: Vec<u32> = CARD_SCRIPTS.iter().map(|card| card.code).collect();
+    let stride = if sample {
+        CARD_SCRIPTS.len().div_ceil(SAMPLE_CARDS) as u64
+    } else {
+        1
+    };
+    let cards: Vec<u32> = CARD_SCRIPTS
+        .iter()
+        .map(|card| card.code)
+        .filter(|&code| (u64::from(code).wrapping_mul(0x9E37_79B9_7F4A_7C15) >> 32) % stride == 0)
+        .collect();
     let runs = diff_cards(vendor, &cards, count);
     let out = &mut std::io::stdout().lock();
     let mut failed = Vec::new();
@@ -135,7 +146,7 @@ fn assert_scenarios_clean(count: u32) -> Result<(), DiffError> {
     let tally = reports.fold(Tally::default(), |tally, report| tally + report.tally.clone());
     writeln!(out, "sum selections (exact, reaching): {:?}", tally.sum_prompts).ok();
     assert!(
-        failed.is_empty() && tally.sum_prompts.iter().all(|&count| count > 0),
+        failed.is_empty() && (sample || tally.sum_prompts.iter().all(|&count| count > 0)),
         "failing cards {failed:?}, sum selections {:?}",
         tally.sum_prompts
     );
@@ -144,11 +155,11 @@ fn assert_scenarios_clean(count: u32) -> Result<(), DiffError> {
 
 #[test]
 fn should_match_the_oracle_message_for_message_in_per_card_scenarios() {
-    assert_scenarios_clean(SCENARIOS).unwrap();
+    assert_scenarios_clean(SCENARIOS, true).unwrap();
 }
 
 #[test]
 #[ignore = "phase 4a, run with --release -- --ignored"]
 fn should_match_the_oracle_in_64_scenarios_per_card() {
-    assert_scenarios_clean(SCENARIOS_FULL).unwrap();
+    assert_scenarios_clean(SCENARIOS_FULL, false).unwrap();
 }

@@ -84,7 +84,7 @@ Hand-port the `proc_*` summon procedures, each verified through a few carrier ca
   - [ ] 5c. Fixed action encoding with legality masks over every prompt kind, auto-advance of single-option decisions as an option, and a rayon batch runner (many duels stepped in lockstep from a policy callback)
   - [ ] 5d. pyo3 bindings with batched stepping (numpy observations and masks), a Python smoke test
   - [ ] 5e. Benchmarks vs the phase 0 target for the full stack (step, clone, observe, sample)
-- [ ] Default test cost: the 13-scenarios-per-card suite grows with the pool (380 s at 173 cards); before ~1,000 cards switch the default run to a sample, keeping the full sweep in the ignored suite
+- [x] Default test cost: the 13-scenarios-per-card suite grew with the pool (380 s at 173 cards); the default run now takes a sample of about 200 cards by a hash of the code (173 s for all diff suites at 219 cards on 7 threads), the ignored suite keeps every card at 64 scenarios and the Ritual sum-mode assertion
 
 ### 6. Maintenance
 - [ ] Run the pipeline on each new set and banlist change (Forbidden cards can return)

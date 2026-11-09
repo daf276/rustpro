@@ -5,7 +5,9 @@ use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{Chain, Container, EffectId, EffectSet, Event, Target, Value};
 use crate::field::{Cards16, PerPlayer};
-use crate::processor::{PointEvent, SelectCard, SelectOption, SelectPlace, SelectPosition, SelectTributeP, SelectUnselectCard};
+use crate::processor::{
+    PointEvent, SelectCard, SelectCounter, SelectOption, SelectPlace, SelectPosition, SelectTributeP, SelectUnselectCard,
+};
 use crate::script::Procedure;
 
 #[derive(Debug, Clone, Default)]
@@ -4595,8 +4597,7 @@ impl Duel {
     }
 }
 
-// Counters removed from `card`, or chosen among the cards of the sides `self_side` and `oppo` (SelectCounter, inline:
-// the prompt only comes up with counters on more than one card).
+// Counters removed from `card`, or chosen among the cards of the sides `self_side` and `oppo`.
 #[derive(Debug, Clone, Default)]
 pub struct RemoveCounter {
     pub step: u16,
@@ -4655,30 +4656,14 @@ impl Duel {
                     arg.step = 3;
                     return false;
                 }
-                if count == 0 {
-                    return false;
-                }
-                let mut cards = Cards16::default();
-                let mut total = 0;
-                for (player, included) in [(arg.rplayer, arg.self_side), (1 - arg.rplayer, arg.oppo)] {
-                    if included == 0 {
-                        continue;
-                    }
-                    let info = &self.player[player];
-                    for other in info.list_mzone.into_iter().chain(info.list_szone).flatten() {
-                        let counters = self.get_counter(other, counter_type);
-                        if counters != 0 {
-                            cards.push(other);
-                            total += counters;
-                        }
-                    }
-                }
-                self.core.select_cards = cards;
-                if self.core.select_cards.len() == 1 {
-                    self.returns.set_i16(0, count.min(total) as i16);
-                } else {
-                    self.reach_unported(concat!(file!(), ":", line!(), " (MSG_SELECT_COUNTER)"));
-                }
+                self.emplace_process(SelectCounter {
+                    playerid: arg.rplayer,
+                    counter_type,
+                    count,
+                    self_side: arg.self_side,
+                    oppo: arg.oppo,
+                    ..SelectCounter::default()
+                });
                 false
             }
             2 => {

@@ -86,6 +86,7 @@ pub const MSG_SELECT_PLACE: u8 = 18;
 pub const MSG_SELECT_POSITION: u8 = 19;
 pub const MSG_SELECT_TRIBUTE: u8 = 20;
 pub const MSG_SORT_CHAIN: u8 = 21;
+pub const MSG_SELECT_COUNTER: u8 = 22;
 pub const MSG_SELECT_SUM: u8 = 23;
 pub const MSG_SORT_CARD: u8 = 25;
 pub const MSG_SELECT_UNSELECT_CARD: u8 = 26;

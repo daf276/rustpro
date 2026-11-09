@@ -869,6 +869,11 @@ pub mod aux {
         i32::from(!c.is_immune_to_effect(duel, e))
     }
 
+    // Auxiliary.imval2: imval1 for the opponent's attackers.
+    pub fn imval2(duel: &Duel, e: EffectId, c: CardId) -> i32 {
+        i32::from(imval1(duel, e, c) != 0 && c.get_controler(duel) != e.get_handler_player(duel))
+    }
+
     // Auxiliary.indoval: EFFECT_INDESTRUCTABLE_EFFECT for the opponent's effects.
     pub fn indoval(duel: &Duel, e: EffectId, _re: EffectId, rp: u8) -> bool {
         rp == 1 - e.get_handler_player(duel)

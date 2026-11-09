@@ -1132,6 +1132,7 @@ impl Duel {
                     self.effects[effect].operation = Some(operation);
                 }
                 self.core.special_summoning.clear();
+                self.core.equiping_cards.clear();
                 false
             }
             5 => {

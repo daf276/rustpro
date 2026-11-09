@@ -236,6 +236,7 @@ pub struct Processor {
     pub chain_limit_p: Vec<ChainLimit>,
     pub leave_confirmed: CardSet,
     pub special_summoning: CardSet,
+    pub equiping_cards: CardSet,
     pub ss_tograve_set: CardSet,
     pub delayed_enable_set: CardSet,
     pub destroy_canceled: CardSet,
@@ -387,6 +388,7 @@ clone_by_field!(Processor {
     chain_limit_p,
     leave_confirmed,
     special_summoning,
+    equiping_cards,
     ss_tograve_set,
     delayed_enable_set,
     destroy_canceled,
@@ -527,6 +529,7 @@ impl Processor {
             chain_limit_p: Vec::new(),
             leave_confirmed: CardSet::default(),
             special_summoning: CardSet::default(),
+            equiping_cards: CardSet::default(),
             ss_tograve_set: CardSet::default(),
             delayed_enable_set: CardSet::default(),
             destroy_canceled: CardSet::default(),
@@ -1274,7 +1277,7 @@ impl Duel {
     }
 
     // card::get_mutual_linked_zone: the linked cards (Link monsters only in the spell zones) that point back.
-    fn mutual_linked_zone(&self, zones: &Zones, card: CardId) -> u32 {
+    pub(crate) fn mutual_linked_zone(&self, zones: &Zones, card: CardId) -> u32 {
         let linked = self.card_linked_zone(zones, card);
         if linked == 0 {
             return 0;

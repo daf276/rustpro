@@ -37,8 +37,8 @@ pub use official::{CARD_SCRIPTS, CLASSIC_CARDS, CardScript, card, card_script};
 
 pub mod prelude {
     pub use engine::{
-        Args, CardId, CardSet, ChainLimitFn, CounterFilter, Duel, EffectId, ExtraMaterialCall, FusionCheck, MonsterStats, ReleaseOptions,
-        Script, Value,
+        Args, CardId, CardSet, ChainLimitFn, CostReplaceCall, CostReplaceCondition, CounterFilter, Duel, EffectId, ExtraMaterialCall,
+        FusionCheck, MonsterStats, ReleaseOptions, Script, Value,
     };
 
     pub use crate::chain::{self, DuelChain, EffectChain};

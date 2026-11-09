@@ -7,12 +7,18 @@ const ID: u32 = 30983281;
 
 pub const LISTED_NAMES: &[u32] = &[CARD_STARDUST_DRAGON];
 // In the Extra Deck, Synchro Summoned with Mono Synchron and Ignihorse Dragonis, a Level 7 Normal Monster, with a second Mono
-// Synchron in the Graveyard to Special Summon.
-pub const SUPPORT: &[(u32, u16)] = &[(ID, EXTRA), (56897896, MZONE), (28103028, MZONE), (56897896, GRAVE)];
-// The second effect needs Stardust Dragon in the Extra Deck, which is not ported.
+// Synchron in the Graveyard to Special Summon, a second copy in the Extra Deck, and Stardust Dragon there for the second effect.
+pub const SUPPORT: &[(u32, u16)] = &[
+    (ID, EXTRA),
+    (ID, EXTRA),
+    (56897896, MZONE),
+    (28103028, MZONE),
+    (56897896, GRAVE),
+    (44508094, EXTRA),
+];
 pub const CHECKS: &[Check] = &[
     Check::ResolvesEffect(aux::stringid(ID, 0)),
-    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 1))),
+    Check::ResolvesEffect(aux::stringid(ID, 1)),
 ];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
@@ -38,7 +44,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_hint_timing(duel, 0, TIMING_MAIN_END | TIMINGS_CHECK_MONSTER);
     e2.set_count_limit(duel, 1, (ID, 2));
     e2.set_condition(duel, |duel, _| duel.is_main_phase());
-    e2.set_cost(duel, |duel, a, chk| Cost::replaceable(duel, a, chk, extra_deck_cost));
+    e2.set_cost(duel, |duel, a, chk| Cost::replaceable_full(duel, a, chk, extra_deck_cost, extracon));
     e2.set_target(duel, exsptg);
     e2.set_operation(duel, exspop);
     c.register_effect(duel, e2);
@@ -105,7 +111,11 @@ fn exspcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     Ok(false)
 }
 
-// Cost.Replaceable's extracon only matters with EFFECT_COST_REPLACE effects, which are not ported.
+fn extracon(duel: &Duel, _: EffectId, a: &Args) -> bool {
+    let (e, tp) = (a.e, a.tp);
+    duel.is_existing_matching_card(|c, duel| exspfilter(c, duel, e, tp, None, false), tp, LOCATION_EXTRA, 0, 1, None)
+}
+
 fn extra_deck_cost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     Cost::and(duel, a, chk, &[Cost::self_tribute, exspcost])
 }

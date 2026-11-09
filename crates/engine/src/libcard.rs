@@ -211,6 +211,10 @@ impl CardId {
         duel.cards[self].previous_type
     }
 
+    pub fn get_previous_attribute_on_field(self, duel: &Duel) -> u32 {
+        duel.cards[self].previous_attribute
+    }
+
     pub fn reset_effect(self, duel: &mut Duel, code: u32, reset_type: u32) {
         duel.reset(self, code, reset_type);
     }

@@ -1815,10 +1815,6 @@ impl Duel {
         }
     }
 
-    pub fn check_location(&self, player: u8, location: u32, sequence: u32) -> bool {
-        player <= 1 && self.is_location_useable(player, location as u16, sequence)
-    }
-
     pub fn get_mzone_count(&self, player: u8, excluded: Option<CardSet>) -> i32 {
         self.get_mzone_count_full(player, excluded, self.core.reason_player.get(), LOCATION_REASON_TOFIELD, 0xff)
     }

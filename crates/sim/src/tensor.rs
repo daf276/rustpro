@@ -42,7 +42,7 @@ pub const CHAIN_FEATURES: [&str; 8] = [
 // A row per action index: the section, the card table row of the card picked, that card's code as the player picking
 // sees it or the code announced, and the description; -1 for section and row if not legal.
 pub const ACTION_FEATURES: [&str; 5] = ["section", "row", "code", "description_code", "description_index"];
-pub const PROMPTS: [&str; 16] = [
+pub const PROMPTS: [&str; 17] = [
     "IdleCommand",
     "BattleCommand",
     "YesNo",
@@ -59,6 +59,7 @@ pub const PROMPTS: [&str; 16] = [
     "AnnounceAttribute",
     "Sort",
     "AnnounceCard",
+    "Counter",
 ];
 // Legal decks put at most 150 cards in a duel, then tokens; see PLAN.md, 5d findings, for the counts measured.
 pub const MAX_OBS_CARDS: usize = 192;
@@ -184,6 +185,7 @@ fn prompt_kind(prompt: Prompt) -> i32 {
         Prompt::AnnounceAttribute { .. } => 13,
         Prompt::Sort { .. } => 14,
         Prompt::AnnounceCard { .. } => 15,
+        Prompt::Counter { .. } => 16,
     }
 }
 

@@ -3,10 +3,12 @@
 use crate::card::{CardId, LocInfo};
 use crate::constants::*;
 use crate::duel::Duel;
+use crate::field::Cards16;
 use crate::list::List;
 use crate::processor::{
-    AnnounceAttribute, AnnounceCard, AnnounceNumber, AnnounceRace, SelectBattleCmd, SelectCard, SelectChain, SelectEffectYesNo,
-    SelectIdleCmd, SelectOption, SelectPlace, SelectPosition, SelectSum, SelectTributeP, SelectUnselectCard, SelectYesNo, SortCard,
+    AnnounceAttribute, AnnounceCard, AnnounceNumber, AnnounceRace, SelectBattleCmd, SelectCard, SelectChain, SelectCounter,
+    SelectEffectYesNo, SelectIdleCmd, SelectOption, SelectPlace, SelectPosition, SelectSum, SelectTributeP, SelectUnselectCard,
+    SelectYesNo, SortCard,
 };
 
 impl Duel {
@@ -400,6 +402,63 @@ impl Duel {
         let count = self.return_cards.list.len();
         if count < usize::from(arg.min) || count > usize::from(arg.max) {
             self.return_cards.clear();
+            self.trace.message(MSG_RETRY);
+            return false;
+        }
+        true
+    }
+
+    // The answer is the counters to remove from each card, one i16 per card.
+    pub(crate) fn process_select_counter(&mut self, arg: &mut SelectCounter) -> bool {
+        let counter_type = arg.counter_type;
+        if arg.step == 0 {
+            if arg.count == 0 {
+                return true;
+            }
+            let mut cards = Cards16::default();
+            for (player, included) in [(arg.playerid, arg.self_side), (1 - arg.playerid, arg.oppo)] {
+                if included != 0 {
+                    let info = &self.player[player];
+                    let zones = info.list_mzone.into_iter().chain(info.list_szone).flatten();
+                    cards.extend(zones.filter(|&card| self.get_counter(card, counter_type) != 0));
+                }
+            }
+            let total: u32 = cards.iter().map(|&card| u32::from(self.get_counter(card, counter_type))).sum();
+            arg.capped = u32::from(arg.count).min(total) as u16;
+            if cards.len() == 1 {
+                self.core.select_cards = cards;
+                self.returns.set_i16(0, arg.capped as i16);
+                return true;
+            }
+            cards.sort_by(|&c1, &c2| self.card_operation_sort(c1, c2));
+            let counters: List<(CardId, u16), 16> = cards.iter().map(|&card| (card, self.get_counter(card, counter_type))).collect();
+            self.core.select_cards = cards;
+            let mut message = self.trace.message(MSG_SELECT_COUNTER);
+            message
+                .u8(arg.playerid)
+                .u16(counter_type)
+                .u16(arg.capped)
+                .u32(counters.len() as u32);
+            for &(card, count) in &counters {
+                let card = &self.cards[card];
+                let current = card.current;
+                message
+                    .u32(card.data.code)
+                    .u8(current.controler)
+                    .u8(current.location)
+                    .u8(current.sequence as u8)
+                    .u16(count);
+            }
+            self.returns.clear();
+            return false;
+        }
+        let answers = || {
+            let cards = self.core.select_cards.iter().enumerate();
+            cards.map(|(index, &card)| (self.get_counter(card, counter_type), self.returns.at_i16(index)))
+        };
+        let over = answers().any(|(counters, answer)| i32::from(counters) < i32::from(answer));
+        let total = answers().fold(0u16, |total, (_, answer)| total.wrapping_add(answer as u16));
+        if over || total != arg.count {
             self.trace.message(MSG_RETRY);
             return false;
         }

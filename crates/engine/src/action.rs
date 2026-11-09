@@ -36,6 +36,8 @@ pub enum Prompt {
     AnnounceAttribute { player: u8, count: u8, available: u32 },
     // MSG_SORT_CARD: one Card per answer, the next card of the new order, until all `count` are ordered.
     Sort { player: u8, count: u8 },
+    // MSG_SELECT_COUNTER: one Card per answer, removing one more counter from it, until `count` are removed.
+    Counter { player: u8, counter_type: u16, count: u16 },
     // A card code passing the filter of MSG_ANNOUNCE_CARD.
     AnnounceCard { player: u8 },
 }
@@ -113,6 +115,7 @@ impl Prompt {
             | Self::AnnounceRace { player, .. }
             | Self::AnnounceAttribute { player, .. }
             | Self::Sort { player, .. }
+            | Self::Counter { player, .. }
             | Self::AnnounceCard { player } => player,
         }
     }
@@ -245,6 +248,11 @@ impl Duel {
                 player: arg.playerid,
                 count: self.core.select_cards.len() as u8,
             }),
+            Unit::SelectCounter(arg) if arg.step > 0 => Some(Prompt::Counter {
+                player: arg.playerid,
+                counter_type: arg.counter_type,
+                count: arg.capped,
+            }),
             Unit::AnnounceCard(arg) if arg.step > 0 => Some(Prompt::AnnounceCard { player: arg.playerid }),
             _ => None,
         }
@@ -351,6 +359,11 @@ impl Duel {
                 let open = available & !self.returns.at_u32(0);
                 actions.extend((0..32).filter(|bit| open & 1 << bit != 0).map(Action::Attribute));
             }
+            Prompt::Counter { counter_type, count, .. } => actions.extend(
+                indices(self.core.select_cards.len())
+                    .filter(|&index| self.is_legal_counter_pick(counter_type, count, index))
+                    .map(Action::Card),
+            ),
             Prompt::AnnounceCard { .. } => {
                 let cards = self.database.into_iter().flat_map(|database| database.cards());
                 actions.extend(
@@ -411,6 +424,7 @@ impl Duel {
             (Prompt::AnnounceAttribute { available, .. }, Action::Attribute(bit)) => {
                 bit < 32 && (available & !self.returns.at_u32(0)) & (1 << bit) != 0
             }
+            (Prompt::Counter { counter_type, count, .. }, Action::Card(index)) => self.is_legal_counter_pick(counter_type, count, index),
             (Prompt::AnnounceCard { .. }, Action::Code(code)) => self.is_declarable(code),
             _ => false,
         }
@@ -474,6 +488,21 @@ impl Duel {
         }
     }
 
+    // A counter selection in progress lives in the response buffer as the answer: the counters removed per card.
+    fn is_legal_counter_pick(&self, counter_type: u16, count: u16, index: u16) -> bool {
+        let Some(&card) = self.core.select_cards.get(usize::from(index)) else {
+            return false;
+        };
+        self.removed_counters() < i32::from(count)
+            && i32::from(self.returns.at_i16(usize::from(index))) < i32::from(self.get_counter(card, counter_type))
+    }
+
+    fn removed_counters(&self) -> i32 {
+        (0..self.core.select_cards.len())
+            .map(|index| i32::from(self.returns.at_i16(index)))
+            .sum()
+    }
+
     // The zones picked so far, kept in the response buffer as the SelectPlace response, as a mask of Place numbers.
     fn picked_zones(&self, player: u8) -> u32 {
         self.returns
@@ -524,6 +553,16 @@ impl Duel {
                 let order = std::mem::take(&mut self.returns.data);
                 for (position, &card) in order.iter().enumerate() {
                     self.returns.set_u8(usize::from(card), position as u8);
+                }
+            }
+            Action::Card(index) if matches!(prompt, Prompt::Counter { .. }) => {
+                let Prompt::Counter { count, .. } = prompt else {
+                    return Err(ActionError::Illegal(action));
+                };
+                let index = usize::from(index);
+                self.returns.set_i16(index, self.returns.at_i16(index) + 1);
+                if self.removed_counters() < i32::from(count) {
+                    return Ok(Status::Awaiting);
                 }
             }
             Action::Card(index) => {
@@ -653,6 +692,14 @@ impl Duel {
             Prompt::AnnounceAttribute { .. } => {
                 let attributes = buffer.at_u32(0);
                 (0..32).filter(|bit| attributes & 1 << bit != 0).map(Action::Attribute).collect()
+            }
+            Prompt::Counter { .. } => {
+                let mut actions = Vec::new();
+                for index in indices(self.core.select_cards.len()) {
+                    let removed = usize::try_from(buffer.at_i16(usize::from(index))).map_err(|_| undecodable())?;
+                    actions.extend(std::iter::repeat_n(Action::Card(index), removed));
+                }
+                actions
             }
             Prompt::AnnounceCard { .. } => vec![Action::Code(value as u32)],
         })

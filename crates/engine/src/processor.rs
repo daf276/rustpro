@@ -160,6 +160,18 @@ pub struct SelectTributeP {
     pub max: u8,
 }
 
+// The answer must add up to `count`, though the message shows it capped at the counters on the cards (`capped`).
+#[derive(Debug, Clone, Default)]
+pub struct SelectCounter {
+    pub step: u16,
+    pub playerid: u8,
+    pub counter_type: u16,
+    pub count: u16,
+    pub capped: u16,
+    pub self_side: u8,
+    pub oppo: u8,
+}
+
 // The sum_param of the cards to choose from and of the must cards, which the core keeps on each card.
 #[derive(Debug, Clone, Default)]
 pub struct SelectSum {
@@ -273,6 +285,7 @@ pub enum Unit {
     SortDeck(SortDeck),
     SelectCard(SelectCard),
     SelectUnselectCard(SelectUnselectCard),
+    SelectCounter(SelectCounter),
     SelectSum(SelectSum),
     SelectChain(SelectChain),
     SelectPlace(SelectPlace),
@@ -358,6 +371,7 @@ units!(
     SortDeck,
     SelectCard,
     SelectUnselectCard,
+    SelectCounter,
     SelectSum,
     SelectChain,
     SelectPlace,
@@ -440,6 +454,7 @@ impl Duel {
             Unit::SortDeck(arg) => self.run_steps(arg, Self::process_sort_deck, false),
             Unit::SelectCard(arg) => self.run_steps(arg, Self::process_select_card, true),
             Unit::SelectUnselectCard(arg) => self.run_steps(arg, Self::process_select_unselect_card, true),
+            Unit::SelectCounter(arg) => self.run_steps(arg, Self::process_select_counter, true),
             Unit::SelectSum(arg) => self.run_steps(arg, Self::process_select_sum, true),
             Unit::SelectChain(arg) => self.run_steps(arg, Self::process_select_chain, true),
             Unit::SelectPlace(arg) => self.run_steps(arg, Self::process_select_place, true),

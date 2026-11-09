@@ -408,6 +408,12 @@ pub mod aux {
             .union(eg.filter(duel, |ec, duel| zptfilter(ec, duel, c), None))
     }
 
+    // Auxiliary.zptgroupcon, which aux.zptcon(filter) calls with the effect's handler.
+    pub fn zptgroupcon(duel: &Duel, eg: CardSet, filter: impl Fn(CardId, &Duel) -> bool, c: CardId) -> bool {
+        !eg.filter(duel, filter, None).intersection(c.get_linked_group(duel)).is_empty()
+            || eg.is_exists(duel, |ec, duel| zptfilter(ec, duel, c), 1, None)
+    }
+
     fn zptfilter(c: CardId, duel: &Duel, ec: CardId) -> bool {
         !c.is_location(duel, LOCATION_MZONE)
             && ec.get_linked_zone_full(duel, c.get_previous_controler(duel)) & (1 << c.get_previous_sequence(duel)) != 0

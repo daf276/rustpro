@@ -74,7 +74,9 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   An effect that needs the card in one zone gets a copy there (`(ID, SZONE)`), or more copies of what it reacts to.
   `SZONE` never places a Field Spell (that is the Field Zone); use 0, or `HAND` for one that must be activated. Placement draws random numbers in list order, so
   reordering `SUPPORT` changes every scenario.
-  `DECK` cards are often drawn into the opening hand: list 2-3 copies of what an effect needs in the Deck.
+  `DECK` cards are often drawn into the opening hand: list 2-3 copies of what an effect needs in the Deck (4 when it
+  needs two left there). An `(ID, MZONE)` copy defeats a "only monster you control" condition. A destroyed-trigger
+  fires far more often from the opponent's `Raigeki` / `Dark Hole` (`| OPPONENT`) than from your own hand.
   `| OPPONENT` is relative to the owner of the card under test. A card immune while a copy is in the GY never sees
   removal: put the second copy in the Extra Deck instead.
 - `ResolvesEffect` and `Message` count by code or by any card: a `SUPPORT` copy of the card can satisfy them, and

@@ -76,6 +76,13 @@ impl EffectId {
         peffect.flag[0] &= !EFFECT_FLAG_ABSOLUTE_TARGET;
     }
 
+    pub fn set_absolute_range(self, duel: &mut Duel, player: u8, s_range: u32, o_range: u32) {
+        let peffect = &mut duel.effects[self];
+        let (s_range, o_range) = (s_range as u16, o_range as u16);
+        (peffect.s_range, peffect.o_range) = if player == 0 { (s_range, o_range) } else { (o_range, s_range) };
+        peffect.flag[0] |= EFFECT_FLAG_ABSOLUTE_TARGET;
+    }
+
     pub fn set_count_limit(self, duel: &mut Duel, count: u8, code: impl Into<CountCode>) {
         self.set_count_limit_full(duel, count, code, 0);
     }

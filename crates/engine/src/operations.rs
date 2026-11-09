@@ -2006,32 +2006,41 @@ impl Duel {
     fn destroy_substitutes(&self, card: CardId) -> CardSet {
         self.filter_effect(card, EFFECT_DESTROY_SUBSTITUTE, true)
             .into_iter()
-            .filter(|&effect| self.check_value_reason(effect, card))
+            .filter(|&effect| self.value_reason(effect, card) != 0)
             .map(|effect| self.get_handler(effect))
             .collect()
     }
 
-    // check_value_condition(3) with (re, r, rp) of the card's destruction.
-    fn check_value_reason(&self, effect: EffectId, card: CardId) -> bool {
+    // get_value(3) with (re, r, rp) of the card's destruction.
+    fn value_reason(&self, effect: EffectId, card: CardId) -> i32 {
         let current = self.cards[card].current;
         match self.effects[effect].value {
-            Value::Int(value) => value != 0,
-            Value::Reason(value) => value(self, effect, current.reason_effect, current.reason, current.reason_player),
+            Value::Int(value) => value,
+            Value::Reason(value) => i32::from(value(self, effect, current.reason_effect, current.reason, current.reason_player)),
             _ => {
                 debug_assert!(false, "a value read with the wrong parameters");
-                false
+                0
             }
         }
     }
 
-    // The EFFECT_INDESTRUCTABLE_COUNT effects with a count limit that keep the card from being destroyed; those
-    // counting by their value come with the cards that register them.
-    fn indestructable_by_count(&self, card: CardId) -> EffectSet {
+    // The EFFECT_INDESTRUCTABLE_COUNT effects that keep the card from being destroyed: with a count limit while it lasts, without
+    // one as often as their value says, counting this destruction.
+    fn indestructable_by_count(&mut self, card: CardId) -> EffectSet {
         let mut counted = EffectSet::default();
         for effect in self.filter_effect(card, EFFECT_INDESTRUCTABLE_COUNT, true) {
-            let peffect = &self.effects[effect];
-            unported!(self, (!peffect.is_flag(EFFECT_FLAG_COUNT_LIMIT)).then_some(effect));
-            if peffect.is_flag(EFFECT_FLAG_COUNT_LIMIT) && peffect.count_limit != 0 && self.check_value_reason(effect, card) {
+            if self.effects[effect].is_flag(EFFECT_FLAG_COUNT_LIMIT) {
+                if self.effects[effect].count_limit != 0 && self.value_reason(effect, card) != 0 {
+                    counted.push(effect);
+                }
+                continue;
+            }
+            let times = self.value_reason(effect, card);
+            if times == 0 {
+                continue;
+            }
+            self.indestructable_effects.push((card, effect));
+            if self.indestructable_effects.iter().filter(|&&entry| entry == (card, effect)).count() as i32 <= times {
                 counted.push(effect);
             }
         }

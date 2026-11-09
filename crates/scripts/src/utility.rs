@@ -45,6 +45,25 @@ pub mod aux {
         }
     }
 
+    // aux.AddValuesReset: the first call creates the turn end effect that runs every function registered.
+    pub fn add_values_reset(duel: &mut Duel, resetfunc: fn(&mut Duel)) {
+        if duel.add_values_reset(resetfunc) {
+            let ge = duel.global_effect();
+            ge.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
+            ge.set_code(duel, EVENT_TURN_END);
+            ge.set_count_limit(duel, 1, 0);
+            ge.set_condition_mut(duel, values_reset);
+            duel.register_effect(ge, 0);
+        }
+    }
+
+    pub fn values_reset(duel: &mut Duel, _: &Args) -> bool {
+        for resetfunc in duel.get_values_reset() {
+            resetfunc(duel);
+        }
+        false
+    }
+
     // aux.GetAttributeStrings: the system string (1010 for EARTH to 1016 for DIVINE) of each attribute in v, lowest first.
     pub fn get_attribute_strings(v: u32) -> impl Iterator<Item = u64> {
         (0..7u64).filter(move |bit| v & 1 << bit != 0).map(|bit| 1010 + bit)

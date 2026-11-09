@@ -90,6 +90,8 @@ pub struct Duel {
     // The scripts' own state for this duel (s.xxx tables and aux.GlobalCheck), keyed by script and slot.
     pub(crate) script_state: List<(u64, i64), 16>,
     pub(crate) script_groups: Vec<(u64, CardSet)>,
+    // aux.ToResetFuncTable: the functions the turn end runs, in the order the scripts registered them.
+    pub(crate) values_reset: Vec<fn(&mut Duel)>,
     // proc_fusion.lua's Fusion.CheckAdditional, a function value the scripts set around a Fusion Summon.
     pub(crate) fusion_check_additional: Option<FusionCheck>,
     // proc_ritual.lua's Ritual.SummoningLevel, which Ritual.Filter sets while a check runs.
@@ -111,6 +113,8 @@ pub struct Duel {
     pub(crate) card_relations: Vec<(CardId, CardId, u32)>,
     // Card.announced_cards: per attacker, the fieldid_r of each target it announced an attack on (0 for a direct attack) and how often.
     pub(crate) announced_cards: Vec<(CardId, u32, u8)>,
+    // Card.indestructable_effects: one entry per time an EFFECT_INDESTRUCTABLE_COUNT effect without a count limit was spent on a card.
+    pub(crate) indestructable_effects: Vec<(CardId, EffectId)>,
     // Card.battled_cards: per card, the fieldid_r of each card it battled (0 for a direct attack).
     pub(crate) battled_cards: Vec<(CardId, u32)>,
     // The cards equipped to a monster; card::equiping_cards of a card are those whose equiping_target it is.
@@ -158,6 +162,7 @@ impl Duel {
             database: None,
             script_state: List::default(),
             script_groups: Vec::new(),
+            values_reset: Vec::new(),
             fusion_check_additional: None,
             ritual_summoning_level: Default::default(),
             assumes: Default::default(),
@@ -168,6 +173,7 @@ impl Duel {
             card_targets: Vec::new(),
             card_relations: Vec::new(),
             announced_cards: Vec::new(),
+            indestructable_effects: Vec::new(),
             battled_cards: Vec::new(),
             immune_effects: List::default(),
             equip_cards: CardSet::default(),

@@ -2745,6 +2745,9 @@ impl Duel {
             0 => {
                 self.announced_cards.clear();
                 self.battled_cards.clear();
+                let cards = &self.cards;
+                self.indestructable_effects
+                    .retain(|&(card, _)| cards[card].current.location & LOCATION_ONFIELD == 0);
                 for p in 0..2 {
                     for card in self.player[p].list_mzone.into_iter().flatten() {
                         let card = &mut self.cards[card];

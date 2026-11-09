@@ -174,6 +174,14 @@ impl CardSet {
         classes.chunk_by(|a, b| a == b).count()
     }
 
+    // Group.GetClass: the distinct values in ascending order.
+    pub fn get_class(&self, duel: &Duel, value: impl Fn(CardId, &Duel) -> i64) -> Vec<i64> {
+        let mut classes: Vec<i64> = self.iter().map(|card| value(card, duel)).collect();
+        classes.sort_unstable();
+        classes.dedup();
+        classes
+    }
+
     pub fn get_bitwise_or(&self, duel: &Duel, value: impl Fn(CardId, &Duel) -> u64) -> u64 {
         self.iter().fold(0, |total, card| total | value(card, duel))
     }

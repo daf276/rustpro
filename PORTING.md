@@ -87,6 +87,9 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   a cost needing several face-up Traps needs five or more copies.
 - `Report` is only for a path no `SUPPORT` can reach (say why in one comment line), never for a reachable one that
   is merely rare. An effect needing an empty hand is one: the opening hand is always drawn.
+- A continuous effect with an operation forms no chain link, so `ResolvesEffect` never counts it: check what it does
+  (`Message(MSG_DAMAGE)` and the like), as `Report` if other cards do the same. `aux.SpElimFilter(c, true)` with a nil
+  third argument accepts only Graveyard monsters.
 - `SpecialSummoned` counts the card under test being summoned; what a card summons is `SpecialSummonedCode`.
 - `Replaced` counts the card under test's own replaced move (a destruction replaced, or a `REASON_REPLACE` move such as
   a cost-replace banish): an effect that replaces another card's destruction is

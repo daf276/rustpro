@@ -618,6 +618,14 @@ impl CardId {
         duel.get_card_effect(self, code)
     }
 
+    // Card.GetOwnEffects: the effects registered on the card, in id order.
+    pub fn get_own_effects(self, duel: &Duel) -> EffectSet {
+        let mut effects = EffectSet::default();
+        effects.extend(duel.card_effects(self));
+        effects.sort_by_key(|&effect| duel.effects.id(effect));
+        effects
+    }
+
     pub fn get_effect_count(self, duel: &Duel, code: u32) -> usize {
         duel.filter_effect(self, code, true).len()
     }
@@ -994,6 +1002,11 @@ impl CardId {
         zone
     }
 
+    // Card.GetLinkedZone without a player.
+    pub fn get_linked_zone(self, duel: &Duel) -> u32 {
+        self.get_linked_zone_full(duel, duel.cards[self].current.controler)
+    }
+
     // Card.GetLinkedZone with the player the zones are seen from.
     pub fn get_linked_zone_full(self, duel: &Duel, player: u8) -> u32 {
         let zone = duel.card_linked_zone(&duel.zones(), self);
@@ -1045,6 +1058,11 @@ impl CardId {
 
     pub fn get_link(self, duel: &Duel) -> u32 {
         duel.get_link(self)
+    }
+
+    pub fn is_link_below(self, duel: &Duel, link: u32) -> bool {
+        let current = duel.get_link(self);
+        current > 0 && current <= link
     }
 
     pub fn get_ritual_level(self, duel: &Duel, rc: CardId) -> u32 {

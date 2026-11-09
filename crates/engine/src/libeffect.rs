@@ -212,6 +212,14 @@ impl EffectId {
         duel.effects[self].target
     }
 
+    pub fn get_condition(self, duel: &Duel) -> Option<Condition> {
+        duel.effects[self].condition
+    }
+
+    pub fn get_cost(self, duel: &Duel) -> Option<CostFn> {
+        duel.effects[self].cost
+    }
+
     pub fn set_cost(self, duel: &mut Duel, cost: CostFn) {
         duel.effects[self].cost = Some(cost);
     }

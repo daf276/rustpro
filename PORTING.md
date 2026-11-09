@@ -68,7 +68,7 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   than `Resolves` only for a card that has no effect a scenario can resolve, and say why in one comment line.
 - If a check fails at 13 but passes at 64, improve `SUPPORT` (place what the effect needs where it can be used).
   A second copy in the Extra Deck makes a Synchro/Xyz/Link Summon of the card far likelier. Normal Monsters by race
-  and level: query `vendor/BabelCDB/cards.cdb` with Python's `sqlite3` (`datas.type & 0x11 = 0x11`, minus Pendulums), keeping
+  and level: query `vendor/BabelCDB/cards.cdb` with Python's `sqlite3` (`C:\Users\Attila\AppData\Local\Programs\Python\Python310\python.exe -I` where `python` is the Store stub; `datas.type & 0x11 = 0x11`, minus Pendulums), keeping
   only codes `porting/queue.tsv` marks `no script` (the cdb also has tokens and cards outside the pool). A ported
   Effect Monster can stand in where no Normal Monster of a level exists.
   An effect that needs the card in one zone gets a copy there (`(ID, SZONE)`), or more copies of what it reacts to.

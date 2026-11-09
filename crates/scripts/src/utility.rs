@@ -331,6 +331,18 @@ pub mod aux {
         c.is_location(duel, if spirit_elimination { LOCATION_MZONE } else { LOCATION_GRAVE })
     }
 
+    // Auxiliary.zptgroup: `filter` is the Lua filter with its player argument, aux::TRUE for nil.
+    pub fn zptgroup(duel: &Duel, eg: CardSet, filter: impl Fn(CardId, &Duel) -> bool, c: CardId) -> CardSet {
+        let fil = eg.filter(duel, filter, None);
+        fil.intersection(c.get_linked_group(duel))
+            .union(eg.filter(duel, |ec, duel| zptfilter(ec, duel, c), None))
+    }
+
+    fn zptfilter(c: CardId, duel: &Duel, ec: CardId) -> bool {
+        !c.is_location(duel, LOCATION_MZONE)
+            && ec.get_linked_zone_full(duel, c.get_previous_controler(duel)) & (1 << c.get_previous_sequence(duel)) != 0
+    }
+
     pub fn register_client_hint(
         duel: &mut Duel,
         card: CardId,
@@ -1302,6 +1314,8 @@ pub trait CardUtility: Copy {
     fn is_synchro_summoned(self, duel: &Duel) -> bool;
     fn is_link_summoned(self, duel: &Duel) -> bool;
     fn is_xyz_summoned(self, duel: &Duel) -> bool;
+    fn is_pendulum_summoned(self, duel: &Duel) -> bool;
+    fn is_in_extra_mzone(self, duel: &Duel) -> bool;
     fn is_ritual_summoned(self, duel: &Duel) -> bool;
     fn is_special_summoned(self, duel: &Duel) -> bool;
     fn has_flag_effect(self, duel: &Duel, id: u32) -> bool;
@@ -1358,6 +1372,15 @@ impl CardUtility for CardId {
 
     fn is_xyz_summoned(self, duel: &Duel) -> bool {
         self.is_summon_type(duel, &[SUMMON_TYPE_XYZ])
+    }
+
+    fn is_pendulum_summoned(self, duel: &Duel) -> bool {
+        self.is_summon_type(duel, &[SUMMON_TYPE_PENDULUM])
+    }
+
+    // Card.IsInExtraMZone called without a player.
+    fn is_in_extra_mzone(self, duel: &Duel) -> bool {
+        self.is_location(duel, LOCATION_EMZONE)
     }
 
     fn is_ritual_summoned(self, duel: &Duel) -> bool {

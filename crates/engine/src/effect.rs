@@ -121,6 +121,8 @@ pub enum Value {
     EffectPlayer(fn(&Duel, EffectId, EffectId, u8) -> bool),
     // value(e, c): get_value(card).
     Card(fn(&Duel, EffectId, CardId) -> i32),
+    // value(e), read without a card: EFFECT_DRAW_COUNT.
+    Own(fn(&Duel, EffectId) -> i32),
     // value(e, te): EFFECT_IMMUNE_EFFECT.
     Effect(fn(&Duel, EffectId, EffectId) -> bool),
     // value(e, ct): EFFECT_CANNOT_INACTIVATE.
@@ -1284,7 +1286,21 @@ impl Duel {
             | Value::Reason(_)
             | Value::HandSynchro(_)
             | Value::ExtraMaterial(_)
-            | Value::CostReplace(_) => {
+            | Value::CostReplace(_)
+            | Value::Own(_) => {
+                debug_assert!(false, "a value read with the wrong parameters");
+                0
+            }
+        }
+    }
+
+    // effect::get_value(): the integer, or what the function returns for the effect alone.
+    pub(crate) fn get_own_value(&self, effect: EffectId) -> i32 {
+        match self.effects[effect].value {
+            Value::Int(value) => value,
+            Value::Values(values) => values.first().copied().unwrap_or(0),
+            Value::Own(value) => value(self, effect),
+            _ => {
                 debug_assert!(false, "a value read with the wrong parameters");
                 0
             }

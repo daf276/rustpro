@@ -8,8 +8,8 @@ use crate::effect::{Chain, Container, EffectId, Event, Value};
 use crate::field::PerPlayer;
 use crate::operations::{
     ChangePos, Damage, Destroy, DestroyReplace, DiscardDeck, Draw, Equip, FlipSummon, GetControl, MonsterSet, MoveToField,
-    OperationReplace, PayLpCost, Recover, Release, RemoveCounter, RemoveOverlay, SelectTribute, SendTo, SpSummon, SpSummonRule,
-    SpSummonStep, SpellSet, SpellSetGroup, SummonRule, TossCoin, TossDice, TrapMonsterAdjust, XyzOverlay,
+    OperationReplace, PayLpCost, Recover, Release, RemoveCounter, RemoveOverlay, SelectTribute, SelfDestroy, SendTo, SpSummon,
+    SpSummonRule, SpSummonStep, SpellSet, SpellSetGroup, SummonRule, TossCoin, TossDice, TrapMonsterAdjust, XyzOverlay,
 };
 use crate::script::Procedure;
 
@@ -321,6 +321,7 @@ pub enum Unit {
     Equip(Equip),
     GetControl(GetControl),
     TrapMonsterAdjust(TrapMonsterAdjust),
+    SelfDestroy(SelfDestroy),
     TossCoin(TossCoin),
     TossDice(TossDice),
     Damage(Damage),
@@ -408,6 +409,7 @@ units!(
     Equip,
     GetControl,
     TrapMonsterAdjust,
+    SelfDestroy,
     TossCoin,
     TossDice,
     Damage,
@@ -492,6 +494,7 @@ impl Duel {
             Unit::Equip(arg) => self.run_steps(arg, Self::process_equip, false),
             Unit::GetControl(arg) => self.run_steps(arg, Self::process_get_control, false),
             Unit::TrapMonsterAdjust(arg) => self.run_steps(arg, Self::process_trap_monster_adjust, false),
+            Unit::SelfDestroy(arg) => self.run_steps(arg, Self::process_self_destroy, false),
             Unit::TossCoin(arg) => self.run_steps(arg, Self::process_toss_coin, false),
             Unit::TossDice(arg) => self.run_steps(arg, Self::process_toss_dice, false),
             Unit::Damage(arg) => self.run_steps(arg, Self::process_damage, false),

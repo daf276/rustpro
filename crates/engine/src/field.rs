@@ -9,6 +9,7 @@ use crate::effect::{
 };
 use crate::libduel::ReleaseOptions;
 use crate::list::List;
+use crate::operations::SelfDestroy;
 use crate::processor::{Adjust, Unit};
 use crate::script::Replay;
 
@@ -281,6 +282,7 @@ pub struct Processor {
     pub chain_attack_target: Option<CardId>,
     pub attack_player: bool,
     pub selfdes_disabled: bool,
+    pub self_destroy_set: CardSet,
     pub overdraw: PerPlayer<bool>,
     pub shuffle_check_disabled: bool,
     pub shuffle_hand_check: PerPlayer<bool>,
@@ -429,6 +431,7 @@ clone_by_field!(Processor {
     chain_attack_target,
     attack_player,
     selfdes_disabled,
+    self_destroy_set,
     overdraw,
     shuffle_check_disabled,
     shuffle_hand_check,
@@ -571,6 +574,7 @@ impl Processor {
             chain_attack_target: None,
             attack_player: false,
             selfdes_disabled: false,
+            self_destroy_set: CardSet::default(),
             overdraw: PerPlayer::default(),
             shuffle_check_disabled: false,
             shuffle_hand_check: PerPlayer::default(),
@@ -2597,8 +2601,14 @@ impl Duel {
     }
 
     pub(crate) fn get_draw_count(&self, playerid: u8) -> i32 {
-        unported!(self, self.filter_player_effect(playerid, EFFECT_DRAW_COUNT, true));
-        self.player[playerid].draw_count
+        let mut count = self.player[playerid].draw_count;
+        for effect in self.filter_player_effect(playerid, EFFECT_DRAW_COUNT, true) {
+            match self.get_own_value(effect) {
+                0 => return 0,
+                value => count = count.max(value),
+            }
+        }
+        count
     }
 
     // The EFFECT_ADD_EXTRA_TRIBUTE position filter (`pos`) comes with the cards that register it.
@@ -2881,10 +2891,10 @@ impl Duel {
         }
     }
 
-    // EFFECT_SELF_DESTROY and EFFECT_SELF_TOGRAVE come with the cards that use them, and so does the destruction of
-    // a card with more than one SetUniqueOnField target (Processors::SelfDestroyUnique).
+    // EFFECT_SELF_TOGRAVE comes with the cards that use it, and so does the destruction of a card with more than one
+    // SetUniqueOnField target (Processors::SelfDestroyUnique).
     pub(crate) fn adjust_self_destroy_set(&mut self) {
-        if self.core.selfdes_disabled {
+        if self.core.selfdes_disabled || !self.core.self_destroy_set.is_empty() {
             return;
         }
         let mut p = self.infos.turn_player;
@@ -2921,12 +2931,17 @@ impl Duel {
             }
         }
         for card in cards.iter() {
-            unported!(self, self.is_affected_by_effect(card, EFFECT_SELF_DESTROY));
+            if self.is_affected_by_effect(card, EFFECT_SELF_DESTROY).is_some() {
+                self.core.self_destroy_set.insert(card);
+            }
         }
         if self.core.global_flag & GLOBALFLAG_SELF_TOGRAVE != 0 {
             for card in cards.iter() {
                 unported!(self, self.is_affected_by_effect(card, EFFECT_SELF_TOGRAVE));
             }
+        }
+        if !self.core.self_destroy_set.is_empty() {
+            self.emplace_process(SelfDestroy::default());
         }
     }
 

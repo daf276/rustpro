@@ -93,7 +93,7 @@ fn hspcon(duel: &Duel, a: &Args) -> bool {
 fn hsptg(duel: &mut Duel, a: &Args, _: i32, _: Option<CardId>) -> Script<bool> {
     let tp = a.tp;
     let Some(c) = a.c else { return Ok(false) };
-    let g = duel.select_release_group_full(tp, |rc, duel| hspfilter(rc, duel, tp, c), (1, 1), false, release_options(c, tp))?;
+    let g = duel.select_release_group_full(tp, |rc, duel| hspfilter(rc, duel, tp, c), (1, 1), true, release_options(c, tp))?;
     if g.is_empty() {
         return Ok(false);
     }

@@ -1179,6 +1179,11 @@ impl CardId {
         if card.status & STATUS_NO_LEVEL != 0 { 0 } else { card.data.attack }
     }
 
+    pub fn get_text_defense(self, duel: &Duel) -> i32 {
+        let card = &duel.cards[self];
+        if card.status & STATUS_NO_LEVEL != 0 { 0 } else { card.data.defense }
+    }
+
     pub fn get_original_race(self, duel: &Duel) -> u64 {
         let card = &duel.cards[self];
         if card.status & STATUS_NO_LEVEL != 0 { 0 } else { card.data.race }
@@ -1329,6 +1334,11 @@ impl CardId {
     // Lua passes the ranks to match as further arguments.
     pub fn is_rank(self, duel: &Duel, ranks: &[u32]) -> bool {
         ranks.contains(&duel.get_rank(self))
+    }
+
+    // Lua passes the Link Ratings to match as further arguments.
+    pub fn is_link(self, duel: &Duel, links: &[u32]) -> bool {
+        links.contains(&duel.get_link(self))
     }
 
     pub fn is_xyz_level(self, duel: &Duel, xyzc: CardId, level: u32) -> bool {

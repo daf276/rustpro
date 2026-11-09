@@ -505,6 +505,10 @@ impl CardId {
         duel.equiping_cards(self)
     }
 
+    pub fn get_equip_count(self, duel: &Duel) -> usize {
+        duel.equiping_cards(self).len()
+    }
+
     // The counts of equipped Union monsters in their union state and in the old union state.
     pub fn get_union_count(self, duel: &Duel) -> (usize, usize) {
         (
@@ -1154,6 +1158,10 @@ impl CardId {
 
     pub fn is_destructable(self, duel: &Duel) -> bool {
         duel.is_destructable(self)
+    }
+
+    pub fn is_destructable_full(self, duel: &Duel, effect: EffectId) -> bool {
+        duel.is_destructable_by_effect(self, effect, duel.core.reason_player.get())
     }
 
     pub fn is_summonable_card(self, duel: &Duel) -> bool {

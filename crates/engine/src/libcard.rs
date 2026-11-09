@@ -946,6 +946,27 @@ impl CardId {
         self.get_linked_group(duel).len()
     }
 
+    // card::get_mutual_linked_cards.
+    pub fn get_mutual_linked_group(self, duel: &Duel) -> CardSet {
+        let card = &duel.cards[self];
+        if card.data.card_type & TYPE_LINK == 0 || card.current.location & LOCATION_ONFIELD == 0 {
+            return CardSet::default();
+        }
+        let (zone, p) = (duel.mutual_linked_zone(&duel.zones(), self), card.current.controler);
+        let mut cards = CardSet::default();
+        for (p, zone) in [(p, zone), (1 - p, zone >> 16)] {
+            let player = &duel.player[p];
+            let mzone = player.list_mzone.iter().enumerate().filter(|&(s, _)| zone & 1 << s != 0);
+            let szone = player.list_szone.iter().enumerate().filter(|&(s, _)| zone & 1 << (8 + s) != 0);
+            mzone.chain(szone).filter_map(|(_, card)| *card).for_each(|card| cards.insert(card));
+        }
+        cards
+    }
+
+    pub fn get_mutual_linked_group_count(self, duel: &Duel) -> usize {
+        self.get_mutual_linked_group(duel).len()
+    }
+
     // Card.GetFreeLinkedZone for the controller: card::get_linked_zone(true).
     pub fn get_free_linked_zone(self, duel: &Duel) -> u32 {
         let controler = duel.cards[self].current.controler;

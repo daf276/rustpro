@@ -289,6 +289,33 @@ impl Duel {
         Ok(self.returns.at_i32(0) != 0)
     }
 
+    pub fn equip_complete(&mut self) -> Script<()> {
+        let equips = self.core.equiping_cards;
+        let mut targets = CardSet::default();
+        for equip in equips {
+            if self.cards[equip].is_position(POS_FACEUP) {
+                self.enable_field_effect(equip, true);
+            }
+            if let Some(target) = self.cards[equip].equiping_target {
+                targets.insert(target);
+            }
+        }
+        if targets.is_empty() {
+            return Ok(());
+        }
+        self.adjust_instant();
+        let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
+        for target in targets {
+            self.raise_single_event_with(target, Some(equips), EVENT_EQUIP, reason_effect, 0, reason_player, PLAYER_NONE, 0);
+        }
+        self.field_raise_event(Some(equips), EVENT_EQUIP, reason_effect, 0, reason_player, PLAYER_NONE, 0);
+        self.core.hint_timing[0] |= TIMING_EQUIP;
+        self.core.hint_timing[1] |= TIMING_EQUIP;
+        self.process_single_event();
+        self.process_instant_event();
+        self.yield_script()
+    }
+
     // Duel.GetReleaseGroup, which proc_workaround.lua replaces.
     pub fn get_release_group_core(&self, player: u8, hand: bool, oppo: bool, reason: u32) -> CardSet {
         let mut group = CardSet::default();
@@ -2426,10 +2453,24 @@ impl Duel {
         nolimit: bool,
         positions: u32,
     ) -> Script<bool> {
+        self.special_summon_step_full(target, sumtype, sumplayer, target_player, nocheck, nolimit, positions, 0xff)
+    }
+
+    pub fn special_summon_step_full(
+        &mut self,
+        target: CardId,
+        sumtype: u32,
+        sumplayer: u8,
+        target_player: u8,
+        nocheck: bool,
+        nolimit: bool,
+        positions: u32,
+        zone: u32,
+    ) -> Script<bool> {
         if sumplayer >= PLAYER_NONE {
             return Ok(false);
         }
-        self.field_special_summon_step(target, sumtype, sumplayer, target_player, nocheck, nolimit, positions as u8, 0xff);
+        self.field_special_summon_step(target, sumtype, sumplayer, target_player, nocheck, nolimit, positions as u8, zone);
         self.yield_script()?;
         Ok(self.returns.at_i32(0) != 0)
     }

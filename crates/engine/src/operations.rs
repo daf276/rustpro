@@ -566,7 +566,6 @@ impl Duel {
         }
     }
 
-    // Equipping with is_step (Duel.Equip(..., true) and Duel.EquipComplete) comes with the cards that call it.
     // Unique cards (unique_code) come with the cards that have them.
     pub(crate) fn process_get_control(&mut self, arg: &mut GetControl) -> bool {
         let playerid = arg.playerid;
@@ -903,7 +902,11 @@ impl Duel {
                 if !self.card_targets.contains(&(equip_card, target)) {
                     self.card_targets.push((equip_card, target));
                 }
-                unported!(self, arg.is_step.then_some(equip_card));
+                if arg.is_step {
+                    self.core.equiping_cards.insert(equip_card);
+                    self.returns.set_i32(0, 1);
+                    return true;
+                }
                 if self.cards[equip_card].is_position(POS_FACEUP) {
                     self.enable_field_effect(equip_card, true);
                 }

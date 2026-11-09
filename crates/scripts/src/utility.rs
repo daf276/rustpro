@@ -729,6 +729,19 @@ pub mod aux {
         delayed_operation_reset::<O>(duel, g, phase, RESET_PHASE | phase, flag, e, tp)
     }
 
+    // `hint` is the Lua's hint argument, the string shown on the affected cards.
+    pub fn delayed_operation_hint<O: DelayedOperation>(
+        duel: &mut Duel,
+        g: CardSet,
+        phase: u32,
+        flag: u32,
+        e: EffectId,
+        tp: u8,
+        hint: u64,
+    ) -> Option<EffectId> {
+        delayed_operation_full::<O>(duel, g, phase, RESET_PHASE | phase, flag, e, tp, hint)
+    }
+
     // `reset` is the Lua's reset argument; 0 is not nil there, so the effect never resets.
     pub fn delayed_operation_reset<O: DelayedOperation>(
         duel: &mut Duel,
@@ -738,6 +751,19 @@ pub mod aux {
         flag: u32,
         e: EffectId,
         tp: u8,
+    ) -> Option<EffectId> {
+        delayed_operation_full::<O>(duel, g, phase, reset, flag, e, tp, 0)
+    }
+
+    fn delayed_operation_full<O: DelayedOperation>(
+        duel: &mut Duel,
+        g: CardSet,
+        phase: u32,
+        reset: u32,
+        flag: u32,
+        e: EffectId,
+        tp: u8,
+        hint: u64,
     ) -> Option<EffectId> {
         if g.is_empty() {
             return None;
@@ -756,7 +782,8 @@ pub mod aux {
         e1.set_operation(duel, |duel, a| O::operate(duel, affected_group(duel, a.e), a));
         duel.register_effect(e1, tp);
         for tc in g {
-            let flag_effect = tc.register_flag_effect_full(duel, flag, RESET_EVENT + RESETS_STANDARD, 0, 1, fid, 0);
+            let property = if hint != 0 { EFFECT_FLAG_CLIENT_HINT } else { 0 };
+            let flag_effect = tc.register_flag_effect_full(duel, flag, RESET_EVENT + RESETS_STANDARD, property, 1, fid, hint);
             flag_effect.set_label_object(duel, Some(e1));
             flag_effect.set_condition(duel, |duel, a| !a.e.get_label_object(duel).is_some_and(|e1| e1.is_deleted(duel)));
         }
@@ -1938,6 +1965,7 @@ pub trait DuelUtility {
     fn has_flag_effect_full(&self, tp: u8, id: u32, ct: usize) -> bool;
     fn get_target_cards(&self, e: EffectId) -> Option<CardSet>;
     fn announce_another_attribute(&mut self, g: CardSet, tp: u8) -> Script<u32>;
+    fn check_pendulum_zones(&self, tp: u8) -> bool;
     fn move_to_deck_bottom_count(&mut self, count: usize, tp: u8) -> Script<()>;
     fn move_to_deck_bottom(&mut self, targets: CardSet) -> Script<()>;
     fn move_to_deck_top(&mut self, targets: CardSet) -> Script<()>;
@@ -1947,6 +1975,10 @@ pub trait DuelUtility {
 }
 
 impl DuelUtility for Duel {
+    fn check_pendulum_zones(&self, tp: u8) -> bool {
+        self.check_location(tp, LOCATION_PZONE, 0) || self.check_location(tp, LOCATION_PZONE, 1)
+    }
+
     // Duel.GetTargetCards: the chain link's targets still related to `e`, nil without targets.
     fn get_target_cards(&self, e: EffectId) -> Option<CardSet> {
         let tg = self.get_chain_info::<Option<CardSet>>(0, CHAININFO_TARGET_CARDS)?;

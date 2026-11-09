@@ -481,7 +481,12 @@ impl CardId {
     }
 
     pub fn check_unique_on_field(self, duel: &Duel, player: u8) -> bool {
-        duel.check_unique_onfield(self, player, LOCATION_ONFIELD).is_none()
+        self.check_unique_on_field_full(duel, player, LOCATION_ONFIELD.into())
+    }
+
+    pub fn check_unique_on_field_full(self, duel: &Duel, player: u8, location: u32) -> bool {
+        duel.check_unique_onfield(self, player, (location & u32::from(LOCATION_ONFIELD)) as u8)
+            .is_none()
     }
 
     pub fn is_has_effect(self, duel: &Duel, code: u32) -> Option<EffectId> {

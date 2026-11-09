@@ -279,6 +279,7 @@ impl Duel {
             database,
             script_state,
             script_groups,
+            values_reset,
             fusion_check_additional,
             ritual_summoning_level,
             assumes,
@@ -289,6 +290,7 @@ impl Duel {
             card_targets,
             card_relations,
             announced_cards,
+            indestructable_effects,
             battled_cards,
             immune_effects,
             equip_cards,
@@ -312,6 +314,7 @@ impl Duel {
         self.database.clone_from(database);
         self.script_state.clone_from(script_state);
         self.script_groups.clone_from(script_groups);
+        self.values_reset.clone_from(values_reset);
         self.fusion_check_additional = *fusion_check_additional;
         self.ritual_summoning_level.clone_from(ritual_summoning_level);
         self.assumes.clone_from(assumes);
@@ -322,6 +325,7 @@ impl Duel {
         self.card_targets.clone_from(card_targets);
         self.card_relations.clone_from(card_relations);
         self.announced_cards.clone_from(announced_cards);
+        self.indestructable_effects.clone_from(indestructable_effects);
         self.battled_cards.clone_from(battled_cards);
         self.immune_effects.clone_from(immune_effects);
         self.equip_cards.clone_from(equip_cards);

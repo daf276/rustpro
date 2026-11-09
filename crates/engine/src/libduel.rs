@@ -1107,6 +1107,15 @@ impl Duel {
             .map_or(0, |&(_, value)| value)
     }
 
+    pub fn get_values_reset(&self) -> Vec<fn(&mut Duel)> {
+        self.values_reset.clone()
+    }
+
+    pub fn add_values_reset(&mut self, resetfunc: fn(&mut Duel)) -> bool {
+        self.values_reset.push(resetfunc);
+        self.values_reset.len() == 1
+    }
+
     pub fn set_script_state(&mut self, key: u64, value: i64) {
         match self.script_state.iter_mut().find(|(other, _)| *other == key) {
             Some((_, slot)) => *slot = value,

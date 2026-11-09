@@ -520,6 +520,13 @@ impl CardId {
         duel.filter_effect(self, code, true).first().copied()
     }
 
+    // Card.IsHasEffect(code, player) for a player that is not nil: only effects with a count left for the player.
+    pub fn is_has_effect_full(self, duel: &Duel, code: u32, player: u8) -> Option<EffectId> {
+        duel.filter_effect(self, code, true)
+            .into_iter()
+            .find(|&effect| effect.check_count_limit(duel, player))
+    }
+
     pub fn get_previous_equip_target(self, duel: &Duel) -> Option<CardId> {
         duel.cards[self].pre_equip_target
     }

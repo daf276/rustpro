@@ -331,6 +331,71 @@ pub mod aux {
         c.is_location(duel, if spirit_elimination { LOCATION_MZONE } else { LOCATION_GRAVE })
     }
 
+    pub fn ice_barrier_discard_filter(c: CardId, duel: &Duel, tp: u8) -> bool {
+        c.is_has_effect_full(duel, EFFECT_ICEBARRIER_REPLACE, tp).is_some() && c.is_able_to_remove_as_cost(duel)
+    }
+
+    fn ice_barrier_cost_filter(c: CardId, duel: &Duel, f: impl Fn(CardId, &Duel) -> bool, discard: bool) -> bool {
+        f(c, duel)
+            && if discard {
+                c.is_discardable(duel)
+            } else {
+                c.is_able_to_grave_as_cost(duel)
+            }
+    }
+
+    // The chk 0 half of Auxiliary.IceBarrierDiscardCost(f, discard, minc, maxc).
+    pub fn ice_barrier_discard_cost_check(duel: &Duel, tp: u8, f: impl Fn(CardId, &Duel) -> bool, discard: bool, minc: usize) -> bool {
+        duel.is_existing_matching_card(
+            |c, duel| ice_barrier_cost_filter(c, duel, &f, discard),
+            tp,
+            LOCATION_HAND,
+            0,
+            minc,
+            None,
+        ) || duel.is_existing_matching_card(|c, duel| ice_barrier_discard_filter(c, duel, tp), tp, LOCATION_GRAVE, 0, 1, None)
+    }
+
+    // The cost half of Auxiliary.IceBarrierDiscardCost(f, discard, minc, maxc): the number of cards sent or banished.
+    pub fn ice_barrier_discard_cost(
+        duel: &mut Duel,
+        tp: u8,
+        f: impl Fn(CardId, &Duel) -> bool,
+        discard: bool,
+        (minc, maxc): (usize, usize),
+    ) -> Script<i32> {
+        let mut g = duel.get_matching_group(|c, duel| ice_barrier_cost_filter(c, duel, &f, discard), tp, LOCATION_HAND, 0, None);
+        g.merge(duel.get_matching_group(|c, duel| ice_barrier_discard_filter(c, duel, tp), tp, LOCATION_GRAVE, 0, None));
+        let rescon = |duel: &Duel, sg: CardSet, _: CardSet, _: Option<CardId>| {
+            (
+                sg.filter_count(duel, |c, duel| ice_barrier_discard_filter(c, duel, tp), None) <= 1 && sg.len() >= minc,
+                false,
+            )
+        };
+        let mut sg = select_unselect_group(duel, g, minc, maxc, &rescon, tp, stringid(CARD_REVEALER_ICEBARRIER, 1))?;
+        let mut removed = 0;
+        if sg.is_exists(
+            duel,
+            |c, duel| c.is_has_effect_full(duel, EFFECT_ICEBARRIER_REPLACE, tp).is_some(),
+            1,
+            None,
+        ) {
+            let te = sg.filter(duel, |c, duel| c.is_has_effect(duel, EFFECT_ICEBARRIER_REPLACE).is_some(), None);
+            let replace = te
+                .get_first()
+                .and_then(|c| c.get_card_effect(duel, EFFECT_ICEBARRIER_REPLACE).first().copied());
+            if let Some(replace) = replace {
+                replace.use_count_limit(duel, tp);
+            }
+            removed = duel.remove(te, POS_FACEUP, REASON_COST)?;
+            sg = sg.difference(te);
+        }
+        if sg.is_empty() {
+            return Ok(removed);
+        }
+        Ok(duel.send_to_grave(sg, REASON_COST | if discard { REASON_DISCARD } else { 0 })? + removed)
+    }
+
     pub fn register_client_hint(
         duel: &mut Duel,
         card: CardId,
@@ -856,6 +921,11 @@ pub mod aux {
         c.is_relate_to_battle(duel)
             && c.get_battle_target(duel)
                 .is_some_and(|bc| bc.is_location(duel, LOCATION_GRAVE) && bc.is_monster(duel))
+    }
+
+    // Auxiliary.bdogcon: bdocon and bdgcon together.
+    pub fn bdogcon(duel: &Duel, a: &Args) -> bool {
+        bdocon(duel, a) && bdgcon(duel, a)
     }
 
     // Auxiliary.ChangeBattleDamage(PLAYER, VALUE): -1 leaves the damage alone.

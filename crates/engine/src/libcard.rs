@@ -724,11 +724,19 @@ impl CardId {
         duel.set_material(self, materials.unwrap_or_default());
     }
 
+    pub fn enable_unsummonable(self, duel: &mut Duel) {
+        self.add_summon_limit_effects(duel, &[EFFECT_UNSUMMONABLE_CARD]);
+    }
+
     pub fn enable_revive_limit(self, duel: &mut Duel) {
+        self.add_summon_limit_effects(duel, &[EFFECT_UNSUMMONABLE_CARD, EFFECT_REVIVE_LIMIT]);
+    }
+
+    fn add_summon_limit_effects(self, duel: &mut Duel, codes: &[u32]) {
         if duel.cards[self].is_status(STATUS_COPYING_EFFECT) {
             return;
         }
-        for code in [EFFECT_UNSUMMONABLE_CARD, EFFECT_REVIVE_LIMIT] {
+        for &code in codes {
             let effect = duel.new_effect(self);
             let peffect = &mut duel.effects[effect];
             peffect.code = code;

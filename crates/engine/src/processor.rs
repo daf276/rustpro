@@ -9,7 +9,7 @@ use crate::field::PerPlayer;
 use crate::operations::{
     ChangePos, Damage, Destroy, DestroyReplace, DiscardDeck, Draw, Equip, FlipSummon, GetControl, MonsterSet, MoveToField,
     OperationReplace, PayLpCost, Recover, Release, RemoveCounter, RemoveOverlay, SelectTribute, SendTo, SpSummon, SpSummonRule,
-    SpSummonStep, SpellSet, SpellSetGroup, SummonRule, TossCoin, TossDice, XyzOverlay,
+    SpSummonStep, SpellSet, SpellSetGroup, SummonRule, TossCoin, TossDice, TrapMonsterAdjust, XyzOverlay,
 };
 use crate::script::Procedure;
 
@@ -320,6 +320,7 @@ pub enum Unit {
     DiscardDeck(DiscardDeck),
     Equip(Equip),
     GetControl(GetControl),
+    TrapMonsterAdjust(TrapMonsterAdjust),
     TossCoin(TossCoin),
     TossDice(TossDice),
     Damage(Damage),
@@ -406,6 +407,7 @@ units!(
     DiscardDeck,
     Equip,
     GetControl,
+    TrapMonsterAdjust,
     TossCoin,
     TossDice,
     Damage,
@@ -489,6 +491,7 @@ impl Duel {
             Unit::DiscardDeck(arg) => self.run_steps(arg, Self::process_discard_deck, false),
             Unit::Equip(arg) => self.run_steps(arg, Self::process_equip, false),
             Unit::GetControl(arg) => self.run_steps(arg, Self::process_get_control, false),
+            Unit::TrapMonsterAdjust(arg) => self.run_steps(arg, Self::process_trap_monster_adjust, false),
             Unit::TossCoin(arg) => self.run_steps(arg, Self::process_toss_coin, false),
             Unit::TossDice(arg) => self.run_steps(arg, Self::process_toss_dice, false),
             Unit::Damage(arg) => self.run_steps(arg, Self::process_damage, false),
@@ -3157,8 +3160,7 @@ impl Duel {
         self.core.win_reason = 0;
     }
 
-    // Steps 3-5 and 13 adjust trap monsters, control, brainwashing and deck reversal, which come with the cards that
-    // cause them.
+    // Steps 5 and 13 adjust brainwashing and deck reversal, which come with the cards that cause them.
     fn process_adjust(&mut self, arg: &mut Adjust) -> bool {
         match arg.step {
             0 => {
@@ -3351,7 +3353,24 @@ impl Duel {
                 }
                 false
             }
-            3 | 13 => false,
+            3 => {
+                self.core.trap_monster_adjust_set = PerPlayer::default();
+                for p in 0..2 {
+                    for card in self.player[p].list_mzone.into_iter().flatten() {
+                        if self.get_type(card) & TYPE_TRAPMONSTER != 0
+                            && self.is_affected_by_effect(card, EFFECT_DISABLE_TRAPMONSTER).is_some()
+                        {
+                            self.core.trap_monster_adjust_set[p].insert(card);
+                        }
+                    }
+                }
+                if !self.core.trap_monster_adjust_set[0].is_empty() || !self.core.trap_monster_adjust_set[1].is_empty() {
+                    self.core.re_adjust = true;
+                    self.emplace_process(TrapMonsterAdjust::default());
+                }
+                false
+            }
+            13 => false,
             _ => true,
         }
     }

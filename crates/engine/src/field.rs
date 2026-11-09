@@ -283,6 +283,7 @@ pub struct Processor {
     pub overdraw: PerPlayer<bool>,
     pub shuffle_check_disabled: bool,
     pub shuffle_hand_check: PerPlayer<bool>,
+    pub trap_monster_adjust_set: PerPlayer<CardSet>,
     pub shuffle_deck_check: PerPlayer<bool>,
     pub deck_reversed: bool,
     pub flip_delayed: bool,
@@ -429,6 +430,7 @@ clone_by_field!(Processor {
     overdraw,
     shuffle_check_disabled,
     shuffle_hand_check,
+    trap_monster_adjust_set,
     shuffle_deck_check,
     deck_reversed,
     flip_delayed,
@@ -569,6 +571,7 @@ impl Processor {
             overdraw: PerPlayer::default(),
             shuffle_check_disabled: false,
             shuffle_hand_check: PerPlayer::default(),
+            trap_monster_adjust_set: PerPlayer::default(),
             shuffle_deck_check: PerPlayer::default(),
             deck_reversed: false,
             flip_delayed: false,
@@ -1771,7 +1774,7 @@ impl Duel {
     // EFFECT_REMOVE_BRAINWASHING comes with the cards that register it.
     pub(crate) fn refresh_control_status(&self, card: CardId) -> (u8, Option<EffectId>) {
         match self.filter_effect(card, EFFECT_SET_CONTROL, true).last() {
-            Some(&effect) => (self.effects[effect].int_value() as u8, Some(effect)),
+            Some(&effect) => (self.get_value(effect, card) as u8, Some(effect)),
             None => (self.cards[card].owner, None),
         }
     }

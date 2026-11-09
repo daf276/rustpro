@@ -2688,7 +2688,7 @@ impl Duel {
         self.is_player_can(playerid, EFFECT_CANNOT_SSET, card)
     }
 
-    pub(crate) fn is_player_can_release(&self, playerid: u8, card: CardId, _reason: u32) -> bool {
+    pub(crate) fn field_is_player_can_release(&self, playerid: u8, card: CardId, _reason: u32) -> bool {
         self.is_player_can(playerid, EFFECT_CANNOT_RELEASE, card)
     }
 

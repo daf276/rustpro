@@ -49,7 +49,7 @@ pub mod prelude {
     pub use crate::proc_gemini::Gemini;
     pub use crate::proc_link::{Link, LinkProcedure};
     pub use crate::proc_normal::{Normal, NormalProcedure};
-    pub use crate::proc_pendulum::Pendulum;
+    pub use crate::proc_pendulum::{ExtraPendulum, Pendulum};
     pub use crate::proc_persistent::{Persistent, PersistentProcedure};
     pub use crate::proc_ritual::{ForcedSelection, Ritual, RitualCode, RitualParams, WholeLevelTribute};
     pub use crate::proc_spirit::Spirit;

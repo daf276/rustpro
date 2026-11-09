@@ -1943,6 +1943,7 @@ pub trait DuelUtility {
     fn move_to_deck_top(&mut self, targets: CardSet) -> Script<()>;
     fn place_field_spell(&mut self, c: CardId, tp: u8) -> Script<bool>;
     fn count_heads(&self, results: &[u8]) -> usize;
+    fn check_pendulum_zones(&self, player: u8) -> bool;
     fn summon_or_set(&mut self, tp: u8, c: CardId, ignore_count: bool, procedure: Option<EffectId>, min_tribute: u8) -> Script<()>;
 }
 
@@ -1970,6 +1971,10 @@ impl DuelUtility for Duel {
 
     fn has_flag_effect(&self, tp: u8, id: u32) -> bool {
         self.has_flag_effect_full(tp, id, 1)
+    }
+
+    fn check_pendulum_zones(&self, player: u8) -> bool {
+        self.check_location(player, LOCATION_PZONE, 0) || self.check_location(player, LOCATION_PZONE, 1)
     }
 
     fn count_heads(&self, results: &[u8]) -> usize {

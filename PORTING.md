@@ -185,3 +185,5 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - Comments are rare: the card name, a path left out and why, a mirrored oracle bug, a non-obvious `SUPPORT`.
   One line each. No commented-out code.
 - Minimal code: no copy-pasted blocks; share a helper rather than repeat it.
+- LF line endings. On Windows a Python script's `open(path, "w")` writes CRLF: pass `newline=""` or edit with the
+  edit tools.

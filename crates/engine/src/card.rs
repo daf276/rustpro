@@ -1790,14 +1790,36 @@ impl Duel {
             && self.core.extra_summon[playerid] == 0
             && self.core.summon_count[playerid] >= self.get_summon_count_limit(playerid)
         {
-            unported!(self, self.filter_effect(card, EFFECT_EXTRA_SUMMON_COUNT, true));
-            return (0, procedures);
+            let controler = self.cards[card].current.controler;
+            let found = self.filter_effect(card, EFFECT_EXTRA_SUMMON_COUNT, true).into_iter().any(|effect| {
+                let (new_min, new_zone, releasable) = self.extra_summon_values(effect, 0x1f);
+                self.field_check_tribute(
+                    card,
+                    i32::from(min.max(new_min)),
+                    i32::from(max),
+                    None,
+                    controler,
+                    zone & new_zone,
+                    releasable,
+                )
+            });
+            return (i32::from(found), procedures);
         }
         let controler = self.cards[card].current.controler;
         (
             i32::from(self.field_check_tribute(card, i32::from(min), i32::from(max), None, controler, zone, 0xff00ff)),
             procedures,
         )
+    }
+
+    // What an EFFECT_EXTRA_SUMMON_COUNT effect's value returns: the minimum Tributes, the zones (`default_zone` if it names
+    // none) and the releasable mask. Only a plain integer value comes with the cards ported so far.
+    pub(crate) fn extra_summon_values(&self, effect: EffectId, default_zone: u32) -> (u8, u32, u32) {
+        let Value::Int(min) = self.effects[effect].value else {
+            self.reach_unported(concat!(file!(), ":", line!()));
+            return (0, default_zone, 0xff00ff);
+        };
+        (min as u8, default_zone, 0xff00ff)
     }
 
     // card::check_summon_procedure; the script checks min_tribute with Duel.CheckTribute.

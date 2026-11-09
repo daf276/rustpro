@@ -777,6 +777,11 @@ pub mod aux {
         if e.get_owner_player(duel) == target { i64::from(VALUE) } else { -1 }
     }
 
+    // Auxiliary.imval1: EFFECT_CANNOT_BE_BATTLE_TARGET unless the attacker is immune to the effect.
+    pub fn imval1(duel: &Duel, e: EffectId, c: CardId) -> i32 {
+        i32::from(!c.is_immune_to_effect(duel, e))
+    }
+
     // Auxiliary.indoval: EFFECT_INDESTRUCTABLE_EFFECT for the opponent's effects.
     pub fn indoval(duel: &Duel, e: EffectId, _re: EffectId, rp: u8) -> bool {
         rp == 1 - e.get_handler_player(duel)
@@ -1418,8 +1423,11 @@ impl CardUtility for CardId {
     }
 
     fn lists_code_as_material(self, duel: &Duel, codes: &[u32]) -> bool {
-        let material = Fusion::material(duel, self.get_original_code(duel));
-        codes.iter().any(|code| material.contains(code))
+        let original = self.get_original_code(duel);
+        let material = Fusion::material(duel, original);
+        codes
+            .iter()
+            .any(|code| material.contains(code) || crate::official::material(original).contains(code))
     }
 
     fn lists_archetype_as_material(self, duel: &Duel, setcodes: &[u16]) -> bool {

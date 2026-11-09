@@ -211,6 +211,8 @@ pub struct SummonRule {
     pub tributes: CardSet,
     // Whether the ordinary summon comes first among the options, before core.select_effects.
     pub ordinary: bool,
+    // The same for the options that choose between the ordinary summon count and an EFFECT_EXTRA_SUMMON_COUNT effect.
+    pub extra_ordinary: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -2598,6 +2600,7 @@ impl Duel {
             extra_summon_effect: None,
             tributes,
             ordinary: false,
+            extra_ordinary: false,
         });
     }
 
@@ -2826,8 +2829,14 @@ impl Duel {
     }
 
     fn add_summon_count(&mut self, extra_summon_effect: Option<EffectId>, player: u8) {
-        unported!(self, extra_summon_effect);
-        self.core.summon_count[player] += 1;
+        let Some(extra) = extra_summon_effect else {
+            self.core.summon_count[player] += 1;
+            return;
+        };
+        self.core.extra_summon[player] = 1;
+        let handler = self.effects[extra].handler.unwrap_or_default();
+        self.hint(HINT_CARD, 0, u64::from(self.cards[handler].data.code));
+        unported!(self, self.effects[extra].operation);
     }
 
     // Step 3 (optional tributes) needs EFFECT_DECREASE_TRIBUTE.
@@ -2888,11 +2897,10 @@ impl Duel {
                 false
             }
             1 => {
-                let extra = self.filter_effect(target, EFFECT_EXTRA_SUMMON_COUNT, true);
-                if !arg.ignore_count && self.core.extra_summon[sumplayer] == 0 {
-                    unported!(self, extra);
-                }
+                let extras = self.filter_effect(target, EFFECT_EXTRA_SUMMON_COUNT, true);
+                let use_extra = !arg.ignore_count && self.core.extra_summon[sumplayer] == 0;
                 if self.cards[target].current.location == LOCATION_MZONE {
+                    arg.extra_summon_effect = if use_extra { extras.into_iter().next() } else { None };
                     arg.step = 4;
                     return false;
                 }
@@ -2901,10 +2909,61 @@ impl Duel {
                     let index = if arg.ordinary { index.checked_sub(1) } else { Some(index) };
                     arg.summon_procedure_effect = index.and_then(|index| self.core.select_effects.get(index)).copied();
                 }
-                self.returns.set_i32(0, 0);
+                let procedure = arg.summon_procedure_effect;
+                self.core.select_effects.clear();
+                self.core.select_options.clear();
+                arg.extra_ordinary = arg.ignore_count || self.core.summon_count[sumplayer] < self.get_summon_count_limit(sumplayer);
+                if arg.extra_ordinary {
+                    self.core.select_options.push(1);
+                }
+                if use_extra {
+                    unported!(self, procedure.filter(|_| !extras.is_empty()));
+                    for extra in extras {
+                        let (new_min, new_zone, _) = self.extra_summon_values(extra, 0x1f_001f);
+                        let rcount = self.get_summon_tribute_count(target);
+                        let (mut min, mut max) = ((rcount & 0xffff) as u8, ((rcount >> 16) & 0xffff) as u8);
+                        if !self.is_player_can_summon(SUMMON_TYPE_ADVANCE, sumplayer, target, sumplayer) {
+                            max = 0;
+                        }
+                        min = min.max(arg.min_tribute);
+                        if max < min {
+                            continue;
+                        }
+                        let controler = self.cards[target].current.controler;
+                        let releasable = 0xff00ff;
+                        if !self.field_check_tribute(
+                            target,
+                            i32::from(min.max(new_min)),
+                            i32::from(max),
+                            None,
+                            controler,
+                            new_zone & arg.zone,
+                            releasable,
+                        ) {
+                            continue;
+                        }
+                        self.core.select_effects.push(extra);
+                        self.core.select_options.push(self.effects[extra].description);
+                    }
+                }
+                match self.core.select_options.len() {
+                    0 | 1 => self.returns.set_i32(0, 0),
+                    _ => self.emplace_process(SelectOption {
+                        playerid: sumplayer,
+                        ..SelectOption::default()
+                    }),
+                }
                 false
             }
             2 => {
+                let index = usize::try_from(self.returns.at_i32(0)).unwrap_or(0);
+                let index = if arg.extra_ordinary { index.checked_sub(1) } else { Some(index) };
+                arg.extra_summon_effect = index.and_then(|index| self.core.select_effects.get(index)).copied();
+                if let Some(extra) = arg.extra_summon_effect {
+                    let (new_min, new_zone, _) = self.extra_summon_values(extra, 0x1f_001f);
+                    arg.min_tribute = arg.min_tribute.max(new_min);
+                    arg.zone &= new_zone;
+                }
                 if procedure.is_some() {
                     arg.step = 3;
                     return false;

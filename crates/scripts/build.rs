@@ -59,6 +59,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         setcodes.len(),
         setcodes.join(", ")
     )?;
+    let materials: Vec<String> = cards
+        .iter()
+        .filter_map(|(code, text, _)| Some(format!("({code}, {})", field(*code, text, &["MATERIAL"])?)))
+        .collect();
+    writeln!(
+        out,
+        "pub static MATERIAL: [(u32, &[u32]); {}] = [{}];",
+        materials.len(),
+        materials.join(", ")
+    )?;
     let dark_calling: Vec<String> = cards
         .iter()
         .filter_map(|(code, text, _)| Some(format!("({code}, {})", field(*code, text, &["DARK_CALLING"])?)))

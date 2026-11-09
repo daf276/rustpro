@@ -2856,7 +2856,7 @@ impl Duel {
             }
             3 => {
                 if self.is_flag(DUEL_1ST_TURN_DRAW) || self.infos.turn_id > 1 {
-                    let mut count = self.get_draw_count(turn_player);
+                    let mut count = self.field_get_draw_count(turn_player);
                     if count > 0 && self.is_flag(DUEL_DRAW_UNTIL_5) {
                         count = count.max(5 - self.player[turn_player].list_hand.len() as i32);
                     }

@@ -156,6 +156,7 @@ const CHAININFO_TRIGGERING_LOCATION: u32 = 4;
 const CHAININFO_TRIGGERING_LOCATION_SYMBOLIC: u32 = 5;
 const CHAININFO_TRIGGERING_SEQUENCE: u32 = 6;
 const CHAININFO_TRIGGERING_POSITION: u32 = 16;
+const CHAININFO_TRIGGERING_CODE: u32 = 17;
 const CHAININFO_TRIGGERING_TYPE: u32 = 19;
 const CHAININFO_TRIGGERING_ATTRIBUTE: u32 = 22;
 const CHAININFO_TRIGGERING_RACE: u32 = 23;
@@ -250,6 +251,16 @@ impl Duel {
 
     pub fn is_player_can_draw(&self, player: u8, count: usize) -> bool {
         player <= 1 && self.field_is_player_can_draw(player) && self.player[player].list_main.len() >= count
+    }
+
+    // Duel.CheckLocation; the core returns nothing for a player above 1.
+    pub fn check_location(&self, player: u8, location: u32, sequence: u32) -> bool {
+        player <= 1 && self.is_location_useable(player, location as u16, sequence)
+    }
+
+    // Duel.GetDrawCount; the core returns nothing for a player above 1.
+    pub fn get_draw_count(&self, player: u8) -> i32 {
+        if player > 1 { 0 } else { self.field_get_draw_count(player) }
     }
 
     // Duel.IsPlayerCanRelease without a card.
@@ -836,6 +847,7 @@ impl Duel {
             CHAININFO_TRIGGERING_LOCATION_SYMBOLIC => int((chain.triggering_location & !u16::from(LOCATION_MZONE | LOCATION_SZONE)).into()),
             CHAININFO_TRIGGERING_SEQUENCE => int(chain.triggering_sequence.into()),
             CHAININFO_TRIGGERING_POSITION => int(chain.triggering_position.into()),
+            CHAININFO_TRIGGERING_CODE => int(chain.triggering_state.code.into()),
             CHAININFO_TRIGGERING_TYPE => int(chain.triggering_state.card_type.into()),
             CHAININFO_TRIGGERING_ATTRIBUTE => int(chain.triggering_state.attribute.into()),
             CHAININFO_TRIGGERING_RACE => int(chain.triggering_state.race as i64),

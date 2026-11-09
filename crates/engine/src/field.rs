@@ -2600,7 +2600,7 @@ impl Duel {
         1
     }
 
-    pub(crate) fn get_draw_count(&self, playerid: u8) -> i32 {
+    pub(crate) fn field_get_draw_count(&self, playerid: u8) -> i32 {
         let mut count = self.player[playerid].draw_count;
         for effect in self.filter_player_effect(playerid, EFFECT_DRAW_COUNT, true) {
             match self.get_own_value(effect) {

@@ -773,7 +773,6 @@ impl Duel {
         if data.alias == 0 && !self.may_change_codes() && !self.may_have_effect(EFFECT_ADD_SETCODE) {
             return data.setcodes;
         }
-        unported!(self, self.filter_effect(card, EFFECT_ADD_SETCODE, true));
         let code = self.get_code(card);
         let own = if code == data.code {
             data.setcodes
@@ -782,8 +781,27 @@ impl Duel {
                 .and_then(|database| database.get(code))
                 .map_or([0; 5], |changed| changed.setcodes)
         };
+        let mut setcodes: Vec<u16> = own.into_iter().filter(|&setcode| setcode != 0).collect();
+        for effect in self.filter_effect(card, EFFECT_ADD_SETCODE, true) {
+            if self.effects[effect].operation.is_some() {
+                continue;
+            }
+            let mut value = self.get_value(effect, card) as u32;
+            while value > 0 {
+                let setcode = (value & 0xffff) as u16;
+                if setcode != 0 && !setcodes.contains(&setcode) {
+                    setcodes.push(setcode);
+                }
+                value >>= 16;
+            }
+        }
         unported!(self, (self.get_another_code(card) != 0).then_some(()));
-        own
+        unported!(self, (setcodes.len() > 5).then_some(()));
+        let mut result = [0; 5];
+        for (slot, setcode) in result.iter_mut().zip(setcodes) {
+            *slot = setcode;
+        }
+        result
     }
 
     // The effects of `codes` on the card, in id order, as consecutive filter_effect calls collect them.

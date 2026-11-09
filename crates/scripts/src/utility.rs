@@ -536,6 +536,19 @@ pub mod aux {
         false
     }
 
+    // Group.CheckDifferentPropertyBinary: whether the cards can each take a different bit of the property f returns.
+    pub fn check_different_property_binary(duel: &Duel, g: CardSet, f: &dyn Fn(CardId, &Duel) -> u32) -> bool {
+        fn checkrecbin(duel: &Duel, c: CardId, g: CardSet, val: u32, f: &dyn Fn(CardId, &Duel) -> u32) -> bool {
+            let prop = f(c, duel) & !val;
+            let rest = g.difference(c.into());
+            (0..u32::BITS)
+                .map(|bit| 1 << bit)
+                .filter(|bit| prop & bit != 0)
+                .any(|bit| g.len() < 2 || rest.into_iter().any(|other| checkrecbin(duel, other, rest, val | bit, f)))
+        }
+        g.len() < 2 || g.into_iter().any(|c| checkrecbin(duel, c, g, 0, f))
+    }
+
     // Group.CheckDifferentProperty: whether the cards can each take a different one of the properties f returns.
     pub fn check_different_property(duel: &Duel, g: CardSet, f: &dyn Fn(CardId, &Duel) -> Vec<u32>) -> bool {
         fn checkrec(duel: &Duel, c: CardId, g: CardSet, taken: &mut Vec<u32>, f: &dyn Fn(CardId, &Duel) -> Vec<u32>) -> bool {
@@ -1381,6 +1394,7 @@ pub trait CardUtility: Copy {
     fn add_must_first_be_fusion_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_be_special_summoned_by_dark_fusion(self, duel: &mut Duel) -> EffectId;
 
+    fn add_setcodes_rule(self, duel: &mut Duel, code: u32, copyable: bool, setcodes: &[u16]);
     fn negate_effects(self, duel: &mut Duel, c: CardId, reset: u32, negates_cards: bool);
     fn is_fusion_monster(self, duel: &Duel) -> bool;
     fn is_link_monster(self, duel: &Duel) -> bool;
@@ -1809,6 +1823,24 @@ impl CardUtility for CardId {
         e0
     }
 
+    fn add_setcodes_rule(self, duel: &mut Duel, code: u32, copyable: bool, setcodes: &[u16]) {
+        let property = if copyable { 0 } else { EFFECT_FLAG_UNCOPYABLE };
+        for &setcode in setcodes {
+            let e = duel.create_effect(self);
+            e.set_type(duel, EFFECT_TYPE_SINGLE);
+            e.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + property);
+            e.set_code(duel, EFFECT_ADD_SETCODE);
+            e.set_value(duel, i32::from(setcode));
+            e.set_label(duel, i64::from(code));
+            e.set_condition(duel, |duel, a| {
+                let c = a.e.get_handler(duel);
+                let label = a.e.get_label(duel);
+                label <= 0 || c.get_original_code_rule(duel) != label as u32 || c.is_code(duel, label as u32)
+            });
+            self.register_effect(duel, e);
+        }
+    }
+
     // Card.NegateEffects(tc, c, reset, negates_cards) with ct 1.
     fn negate_effects(self, duel: &mut Duel, c: CardId, reset: u32, negates_cards: bool) {
         let tc = self;
@@ -1841,11 +1873,26 @@ pub trait EffectUtility: Copy {
     fn is_spell_effect(self, duel: &Duel) -> bool;
     fn is_trap_effect(self, duel: &Duel) -> bool;
     fn is_spell_trap_effect(self, duel: &Duel) -> bool;
+    fn has_self_discard_cost(self, duel: &Duel) -> bool;
 }
 
 impl EffectUtility for EffectId {
     fn is_spell_trap_effect(self, duel: &Duel) -> bool {
         self.is_active_type(duel, TYPE_SPELL | TYPE_TRAP)
+    }
+
+    // Effect.HasSelfDiscardCost, which looks the cost up in a table of the library's own costs: Cost.SelfDiscard and the Dragon Ruler
+    // ones, the only composite costs ported with it.
+    fn has_self_discard_cost(self, duel: &Duel) -> bool {
+        let costs: [CostFn; 5] = [
+            Cost::self_discard,
+            DragonRuler::self_discard_to_grave_cost::<ATTRIBUTE_EARTH>,
+            DragonRuler::self_discard_to_grave_cost::<ATTRIBUTE_WATER>,
+            DragonRuler::self_discard_to_grave_cost::<ATTRIBUTE_FIRE>,
+            DragonRuler::self_discard_to_grave_cost::<ATTRIBUTE_WIND>,
+        ];
+        self.get_cost(duel)
+            .is_some_and(|cost| costs.into_iter().any(|known| std::ptr::fn_addr_eq(cost, known)))
     }
 
     fn is_monster_effect(self, duel: &Duel) -> bool {
@@ -2069,5 +2116,26 @@ impl Witchcrafter {
     // Witchcrafter.TributeAndDiscardCost: Cost.AND(Cost.SelfTribute, Witchcrafter.DiscardCost).
     pub fn tribute_and_discard_cost(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         Cost::and(duel, args, chk, &[Cost::self_tribute, Witchcrafter::discard_cost])
+    }
+}
+
+// The Dragon Ruler functions of cards_specific_functions.lua.
+pub struct DragonRuler;
+
+impl DragonRuler {
+    // DragonRuler.SelfDiscardToGraveCost(attr): Cost.AND(discard_with_other_cost(filter), Cost.SelfDiscardToGrave), whose first cost
+    // returns false when executed and so stops the second: it sends both cards.
+    pub fn self_discard_to_grave_cost<const ATTRIBUTE: u32>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        let (c, tp) = (args.e.get_handler(duel), args.tp);
+        let filter = |c: CardId, duel: &Duel| c.is_attribute(duel, ATTRIBUTE) && c.is_discardable(duel) && c.is_able_to_grave_as_cost(duel);
+        if chk == 0 {
+            return Ok(duel.is_existing_matching_card(filter, tp, LOCATION_HAND, 0, 1, Some(c.into()))
+                && c.is_discardable(duel)
+                && c.is_able_to_grave_as_cost(duel));
+        }
+        duel.hint(HINT_SELECTMSG, tp, HINTMSG_DISCARD);
+        let g = duel.select_matching_card(tp, filter, tp, LOCATION_HAND, 0, 1, 1, Some(c.into()))?;
+        duel.send_to_grave(g.union(c.into()), REASON_COST | REASON_DISCARD)?;
+        Ok(false)
     }
 }

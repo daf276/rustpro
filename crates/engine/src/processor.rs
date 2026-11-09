@@ -2665,14 +2665,13 @@ impl Duel {
                     card_codes.into_iter().filter_map(|code| self.is_affected_by_effect(card, code))
                 );
             }
+            // Player effects of EFFECT_ALSO_BATTLE_DAMAGE come with the cards that have them.
             for p in [damp, 1 - damp] {
-                let player_codes = [EFFECT_REFLECT_BATTLE_DAMAGE, EFFECT_ALSO_BATTLE_DAMAGE];
-                unported!(
-                    self,
-                    player_codes
-                        .into_iter()
-                        .filter_map(|code| self.is_player_affected_by_effect(p, code)),
-                );
+                unported!(self, self.is_player_affected_by_effect(p, EFFECT_ALSO_BATTLE_DAMAGE));
+            }
+            if self.is_player_affected_by_effect(damp, EFFECT_REFLECT_BATTLE_DAMAGE).is_some() {
+                self.core.battle_damage[1 - damp] += self.core.battle_damage[damp];
+                self.core.battle_damage[damp] = 0;
             }
             self.change_battle_damage(reason, dam_card, damp);
             if self.is_affected_by_effect(reason, EFFECT_NO_BATTLE_DAMAGE).is_some()

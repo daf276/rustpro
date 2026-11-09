@@ -2496,6 +2496,11 @@ impl Duel {
         result
     }
 
+    // Duel.IsPlayerCanSpecialSummon with a card.
+    pub fn is_player_can_special_summon(&self, player: u8, sumtype: u32, sumpos: u32, toplayer: u8, card: CardId) -> bool {
+        player <= 1 && self.is_player_can_spsummon(self.core.reason_effect.get(), sumtype, sumpos as u8, player, toplayer, card)
+    }
+
     pub fn is_player_can_special_summon_count(&self, player: u8, count: u32) -> bool {
         player <= 1 && self.is_player_can_spsummon_count(player, count)
     }

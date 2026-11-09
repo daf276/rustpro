@@ -340,6 +340,19 @@ pub mod aux {
         oper: impl FnOnce(&mut Duel) -> Script<()>,
         str: u64,
     ) -> Script<()> {
+        to_hand_or_else_result(duel, card, player, check, |duel| oper(duel).map(|()| true), str).map(drop)
+    }
+
+    // Auxiliary.ToHandOrElse for a caller that reads its result: the to-hand option is a Lua number, always truthy, and
+    // the other option is what `oper` returns.
+    pub fn to_hand_or_else_result(
+        duel: &mut Duel,
+        card: CardId,
+        player: u8,
+        check: impl Fn(CardId, &Duel) -> bool,
+        oper: impl FnOnce(&mut Duel) -> Script<bool>,
+        str: u64,
+    ) -> Script<bool> {
         let b1 = card.is_able_to_hand(duel);
         let b2 = check(card, duel);
         let opt = if b1 && b2 {
@@ -360,7 +373,7 @@ pub mod aux {
                 duel.confirm_cards(1 - player, og)?;
             }
         }
-        Ok(())
+        Ok(true)
     }
 
     fn select_unselect_loop(duel: &Duel, c: CardId, sg: CardSet, mg: CardSet, minc: usize, maxc: usize, rescon: GroupCheck) -> bool {

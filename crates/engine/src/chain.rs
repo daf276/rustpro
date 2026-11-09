@@ -671,8 +671,11 @@ impl Duel {
                 if self.cards[handler].current.location == LOCATION_HAND {
                     chain.flag |= CHAIN_HAND_EFFECT;
                 }
-                chain.applied_chain_counters = self.check_chain_counter(effect, chain.triggering_player, chain.chain_count);
                 self.core.current_chain.push(chain);
+                let applied = self.check_chain_counter(effect, chain.triggering_player, chain.chain_count);
+                if let Some(link) = self.core.current_chain.last_mut() {
+                    link.applied_chain_counters = applied;
+                }
                 let peffect = &self.effects[effect];
                 if !peffect.is_flag(EFFECT_FLAG_FIELD_ONLY)
                     && (peffect.effect_type & 0x2a0 == 0 || peffect.code & 0xffff_f000 == EVENT_PHASE)

@@ -103,6 +103,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   since random play uses monsters as Link/Xyz materials and activates hand Spells early; Polymerization stays in hand
   for a reveal or discard cost. A card whose only target is an unported archetype member is `Report`.
 - `mt.material` is `Fusion::material(duel, code)`, recorded by the `Fusion.AddProcMix*` ports.
+- An Xyz Summon in `SUPPORT`: Xyz Import (14602126) in hand with Dragon Rebellion (16195942) and Sangan (26202165) on
+  the opponent's side (see c1621413).
 - A rare Synchro/Xyz/Link path in the first 13 scenarios usually needs three Extra Deck copies and materials of each
   level. There are no Normal Monsters above Level 8: use ported Extra Deck monsters as higher-level materials.
   A Spell that Special Summons another card is checked by `SpecialSummonedCode(code)`.

@@ -1826,7 +1826,7 @@ impl Duel {
             .into_iter()
             .filter(|&effect| check(self, effect))
             .collect();
-        if !self.is_player_can_summon(SUMMON_TYPE_NORMAL, playerid, card, playerid) {
+        if !self.field_is_player_can_summon(SUMMON_TYPE_NORMAL, playerid, card, playerid) {
             return (0, procedures);
         }
         if self.check_unique_onfield(card, playerid, LOCATION_MZONE).is_some() {
@@ -1835,7 +1835,7 @@ impl Duel {
         let rcount = self.get_summon_tribute_count(card);
         let mut min = (rcount & 0xffff) as u8;
         let mut max = ((rcount >> 16) & 0xffff) as u8;
-        if !self.is_player_can_summon(SUMMON_TYPE_ADVANCE, playerid, card, playerid) {
+        if !self.field_is_player_can_summon(SUMMON_TYPE_ADVANCE, playerid, card, playerid) {
             max = 0;
         }
         min = min.max(min_tribute);
@@ -1897,7 +1897,7 @@ impl Duel {
         } else {
             playerid
         };
-        if !self.is_player_can_summon(self.get_value(effect, card) as u32, playerid, card, toplayer)
+        if !self.field_is_player_can_summon(self.get_value(effect, card) as u32, playerid, card, toplayer)
             || self.check_unique_onfield(card, toplayer, LOCATION_MZONE).is_some()
         {
             return false;
@@ -2031,7 +2031,7 @@ impl Duel {
             return !(self.cards[card].is_position(POS_FACEDOWN)
                 || self.is_affected_by_effect(card, EFFECT_GEMINI_SUMMONABLE).is_none()
                 || self.is_affected_by_effect(card, EFFECT_GEMINI_STATUS).is_some()
-                || !self.is_player_can_summon(SUMMON_TYPE_GEMINI, playerid, card, playerid)
+                || !self.field_is_player_can_summon(SUMMON_TYPE_GEMINI, playerid, card, playerid)
                 || self.is_affected_by_effect(card, EFFECT_CANNOT_SUMMON).is_some());
         }
         if self.is_affected_by_effect(card, EFFECT_CANNOT_SUMMON).is_some() {

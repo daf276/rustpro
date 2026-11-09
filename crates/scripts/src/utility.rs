@@ -1910,6 +1910,7 @@ pub trait EffectUtility: Copy {
     fn is_trap_effect(self, duel: &Duel) -> bool;
     fn is_spell_trap_effect(self, duel: &Duel) -> bool;
     fn has_self_discard_cost(self, duel: &Duel) -> bool;
+    fn has_self_change_position_cost(self, duel: &Duel) -> bool;
 }
 
 impl EffectUtility for EffectId {
@@ -1929,6 +1930,11 @@ impl EffectUtility for EffectId {
         ];
         self.get_cost(duel)
             .is_some_and(|cost| costs.into_iter().any(|known| std::ptr::fn_addr_eq(cost, known)))
+    }
+
+    // Effect.HasSelfChangePositionCost: Cost.SelfChangePosition is not ported, so no ported effect has it.
+    fn has_self_change_position_cost(self, _: &Duel) -> bool {
+        false
     }
 
     fn is_monster_effect(self, duel: &Duel) -> bool {

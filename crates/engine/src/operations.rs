@@ -2404,8 +2404,7 @@ impl Duel {
         self.card_add_effect(target, effect);
     }
 
-    // field::special_summon: Duel.SpecialSummon's cards in one SpSummon. EFFECT_DEVINE_LIGHT and
-    // EFFECT_FORCE_SPSUMMON_POSITION come with the cards that register them.
+    // field::special_summon: Duel.SpecialSummon's cards in one SpSummon. EFFECT_DEVINE_LIGHT comes with the cards that register it.
     pub(crate) fn field_special_summon(
         &mut self,
         targets: CardSet,
@@ -2422,7 +2421,7 @@ impl Duel {
             self.is_player_affected_by_effect(sumplayer, EFFECT_DEVINE_LIGHT)
                 .filter(|_| u32::from(positions) & POS_FACEDOWN != 0)
         );
-        unported!(self, self.filter_player_effect(sumplayer, EFFECT_FORCE_SPSUMMON_POSITION, true));
+        let forcing = self.filter_player_effect(sumplayer, EFFECT_FORCE_SPSUMMON_POSITION, true);
         let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
         for card in targets {
             let target = &mut self.cards[card];
@@ -2437,7 +2436,9 @@ impl Duel {
             target.current.reason = REASON_SPSUMMON;
             target.current.reason_effect = reason_effect;
             target.current.reason_player = reason_player;
-            target.spsummon_param =
+            let sumtype = target.summon.summon_type;
+            let positions = self.force_spsummon_positions(&forcing, card, reason_player, sumtype, positions, playerid, reason_effect);
+            self.cards[card].spsummon_param =
                 (u32::from(playerid) << 24) + (u32::from(nocheck) << 16) + (u32::from(nolimit) << 8) + u32::from(positions);
         }
         self.emplace_process(SpSummon {
@@ -2449,7 +2450,6 @@ impl Duel {
         });
     }
 
-    // EFFECT_FORCE_SPSUMMON_POSITION comes with the cards that register it.
     pub(crate) fn field_special_summon_step(
         &mut self,
         target: CardId,
@@ -2468,7 +2468,7 @@ impl Duel {
         if u32::from(positions) & POS_FACEUP != 0 && self.check_unique_onfield(target, playerid, LOCATION_MZONE).is_some() {
             positions &= !(POS_FACEUP as u8);
         }
-        unported!(self, self.filter_player_effect(sumplayer, EFFECT_FORCE_SPSUMMON_POSITION, true));
+        let forcing = self.filter_player_effect(sumplayer, EFFECT_FORCE_SPSUMMON_POSITION, true);
         let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
         let card = &mut self.cards[target];
         card.temp.reason = card.current.reason;
@@ -2482,7 +2482,10 @@ impl Duel {
         card.current.reason = REASON_SPSUMMON;
         card.current.reason_effect = reason_effect;
         card.current.reason_player = reason_player;
-        card.spsummon_param = (u32::from(playerid) << 24) + (u32::from(nocheck) << 16) + (u32::from(nolimit) << 8) + u32::from(positions);
+        let sumtype = card.summon.summon_type;
+        let positions = self.force_spsummon_positions(&forcing, target, reason_player, sumtype, positions, playerid, reason_effect);
+        self.cards[target].spsummon_param =
+            (u32::from(playerid) << 24) + (u32::from(nocheck) << 16) + (u32::from(nolimit) << 8) + u32::from(positions);
         self.emplace_process(SpSummonStep {
             step: 0,
             zone,
@@ -3121,7 +3124,7 @@ impl Duel {
                             && self.core.summon_count[sumplayer] >= self.get_summon_count_limit(sumplayer))
                         || self.is_affected_by_effect(target, EFFECT_GEMINI_SUMMONABLE).is_none()
                         || self.is_affected_by_effect(target, EFFECT_GEMINI_STATUS).is_some()
-                        || !self.is_player_can_summon(SUMMON_TYPE_GEMINI, sumplayer, target, sumplayer)
+                        || !self.field_is_player_can_summon(SUMMON_TYPE_GEMINI, sumplayer, target, sumplayer)
                     {
                         return true;
                     }
@@ -3178,7 +3181,7 @@ impl Duel {
                         let (new_min, new_zone, _) = self.extra_summon_values(extra, 0x1f_001f);
                         let rcount = self.get_summon_tribute_count(target);
                         let (mut min, mut max) = ((rcount & 0xffff) as u8, ((rcount >> 16) & 0xffff) as u8);
-                        if !self.is_player_can_summon(SUMMON_TYPE_ADVANCE, sumplayer, target, sumplayer) {
+                        if !self.field_is_player_can_summon(SUMMON_TYPE_ADVANCE, sumplayer, target, sumplayer) {
                             max = 0;
                         }
                         min = min.max(arg.min_tribute);
@@ -3225,7 +3228,7 @@ impl Duel {
                     return false;
                 }
                 let required = self.get_summon_tribute_count(target);
-                let advance = self.is_player_can_summon(SUMMON_TYPE_ADVANCE, sumplayer, target, sumplayer);
+                let advance = self.field_is_player_can_summon(SUMMON_TYPE_ADVANCE, sumplayer, target, sumplayer);
                 self.select_summon_tributes(target, sumplayer, required, arg.min_tribute, advance, arg.zone);
                 arg.step = 4;
                 false
@@ -4565,7 +4568,8 @@ impl Duel {
                 card.summon.sequence = card.current.sequence;
                 card.summon.pzone = card.current.pzone;
                 self.enable_field_effect(target, false);
-                unported!(self, self.filter_player_effect(sumplayer, EFFECT_FORCE_SPSUMMON_POSITION, true));
+                let forcing = self.filter_player_effect(sumplayer, EFFECT_FORCE_SPSUMMON_POSITION, true);
+                let positions = self.force_spsummon_positions(&forcing, target, sumplayer, sumtype, positions, targetplayer, Some(proc));
                 self.field_move_to_field(
                     target,
                     sumplayer,
@@ -4718,7 +4722,8 @@ impl Duel {
                 target.summon.location = target.current.location;
                 target.summon.sequence = target.current.sequence;
                 target.summon.pzone = target.current.pzone;
-                unported!(self, self.filter_player_effect(sumplayer, EFFECT_FORCE_SPSUMMON_POSITION, true));
+                let forcing = self.filter_player_effect(sumplayer, EFFECT_FORCE_SPSUMMON_POSITION, true);
+                let positions = self.force_spsummon_positions(&forcing, card, sumplayer, sumtype, POS_FACEUP as u8, sumplayer, Some(proc));
                 let reason = LOCATION_REASON_TOFIELD;
                 let (mut main, main_flag) = self.get_tofield_count(Some(card), sumplayer, LOCATION_MZONE, sumplayer, reason, 0xff);
                 let (mut extra, extra_flag) = self.get_spsummonable_count_fromex(Some(card), sumplayer, sumplayer, 0xff);
@@ -4740,7 +4745,7 @@ impl Duel {
                     sumplayer,
                     sumplayer,
                     LOCATION_MZONE.into(),
-                    POS_FACEUP as u8,
+                    positions,
                     false,
                     zone as u8,
                     true,

@@ -3,7 +3,7 @@
 use crate::card::{CardId, CardSet, Unique};
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{Container, EffectId, EffectSet, Value};
+use crate::effect::{Container, EffectId, EffectSet, Event, Value};
 use crate::field::PerPlayer;
 use crate::script::Script;
 
@@ -648,9 +648,15 @@ impl CardId {
         registered.find_map(|(_, effect)| (duel.effects[effect].effect_type & EFFECT_TYPE_ACTIVATE != 0).then_some(effect))
     }
 
-    // Card.CheckActivateEffect: the first activate effect that is ready as the reason effect's player. The events of one
-    // that is not Free Chain (which the Lua returns with it) come with the cards that need them.
+    // Card.CheckActivateEffect: the first activate effect that is ready as the reason effect's player.
     pub fn check_activate_effect(self, duel: &Duel, neglect_con: bool, neglect_cost: bool) -> Option<EffectId> {
+        self.check_activate_effect_event(duel, neglect_con, neglect_cost)
+            .map(|(effect, _)| effect)
+    }
+
+    // Card.CheckActivateEffect with copy_info: also the event of an effect that is not Free Chain (field::check_event_c). The
+    // core copies it into the chain link being built when a script calls this outside a condition, target check or filter.
+    pub fn check_activate_effect_event(self, duel: &Duel, neglect_con: bool, neglect_cost: bool) -> Option<(EffectId, Option<Event>)> {
         let (reason_effect, reason_player) = (duel.core.reason_effect.get()?, duel.core.reason_player.get());
         let registered: Vec<_> = duel
             .field_effects
@@ -663,11 +669,18 @@ impl CardId {
             if peffect.effect_type & EFFECT_TYPE_ACTIVATE == 0 {
                 continue;
             }
-            unported!(duel, (peffect.code != EVENT_FREE_CHAIN).then_some(effect));
-            let event = duel.nil_event;
-            if duel.check_mut(|duel| duel.is_activate_ready(reason_effect, effect, reason_player, &event, neglect_con, neglect_cost, false))
-            {
-                return Some(effect);
+            let ready = |event: &Event| {
+                duel.check_mut(|duel| duel.is_activate_ready(reason_effect, effect, reason_player, event, neglect_con, neglect_cost, false))
+            };
+            if peffect.code == EVENT_FREE_CHAIN {
+                if ready(&duel.nil_event) {
+                    return Some((effect, None));
+                }
+                continue;
+            }
+            let events: Vec<Event> = duel.core.point_event.iter().chain(&duel.core.instant_event).copied().collect();
+            if let Some(event) = events.into_iter().find(|event| event.event_code == peffect.code && ready(event)) {
+                return Some((effect, Some(event)));
             }
         }
         None

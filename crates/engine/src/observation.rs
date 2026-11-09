@@ -82,6 +82,8 @@ pub enum DeterminizeError {
 
 const RERUN_ATTEMPTS: usize = 16;
 
+pub const MAX_DECLARED_CODES: usize = 64;
+
 thread_local! {
     // [Duel::unchanged]'s saved effect ids and statuses, kept so that observing allocates nothing.
     static SAVED: Cell<Vec<CellChunk>> = const { Cell::new(Vec::new()) };
@@ -339,7 +341,48 @@ impl Duel {
             };
             Choice { action, card, description }
         };
-        self.extend_legal_actions(&mut Each(|action| sink.choice(choice(action))));
+        self.extend_policy_actions(prompt, &mut Each(|action| sink.choice(choice(action))));
+    }
+
+    pub fn policy_actions(&self) -> Vec<Action> {
+        let mut actions = Vec::new();
+        self.policy_actions_into(&mut actions);
+        actions
+    }
+
+    // [Duel::legal_actions_into] as a policy chooses among them, which [Duel::observe]'s choices list; see
+    // [Duel::extend_policy_actions].
+    pub fn policy_actions_into(&self, actions: &mut Vec<Action>) {
+        actions.clear();
+        match self.prompt() {
+            Some(prompt @ Prompt::AnnounceCard { .. }) => self.unchanged(|| self.extend_policy_actions(prompt, actions)),
+            _ => self.extend_legal_actions(actions),
+        }
+    }
+
+    // The legal actions, a card-name declaration offering only the codes its player knows (of the cards it owns and the
+    // opponent's it sees) in database order, or else the first declarable ones, up to [MAX_DECLARED_CODES]; any
+    // declarable code stays legal.
+    fn extend_policy_actions(&self, prompt: Prompt, actions: &mut impl Extend<Action>) {
+        let Prompt::AnnounceCard { player } = prompt else {
+            return self.extend_legal_actions(actions);
+        };
+        let mut known: Vec<u32> = self
+            .located_cards()
+            .into_iter()
+            .map(|card| match self.cards[card].owner == player {
+                true => self.cards[card].data.code,
+                false => self.seen(card, player, false).code,
+            })
+            .collect();
+        known.sort_unstable();
+        let declarable = || {
+            let codes = self.database.into_iter().flat_map(|database| database.cards());
+            codes.map(|card| card.code).filter(|&code| self.is_declarable(code))
+        };
+        let mut known_declarable = declarable().filter(|code| known.binary_search(code).is_ok()).peekable();
+        let fallback = known_declarable.peek().is_none().then(declarable).into_iter().flatten();
+        actions.extend(known_declarable.chain(fallback).take(MAX_DECLARED_CODES).map(Action::Code));
     }
 
     // A duel agreeing with what `player` may know of this one ([Duel::observe]), its hidden cards resampled: the

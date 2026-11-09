@@ -252,6 +252,11 @@ impl Duel {
         player <= 1 && self.field_is_player_can_draw(player) && self.player[player].list_main.len() >= count
     }
 
+    // Duel.IsPlayerCanRelease without a card.
+    pub fn is_player_can_release(&self, player: u8) -> bool {
+        player <= 1 && self.is_player_can_action(player, EFFECT_CANNOT_RELEASE)
+    }
+
     pub fn is_player_can_remove(&self, player: u8, card: Option<CardId>) -> bool {
         self.is_player_can_remove_full(player, card, REASON_EFFECT)
     }
@@ -2321,13 +2326,18 @@ impl Duel {
         material
     }
 
-    // field::ritual_release without release_deck, which no ported card passes.
     pub fn release_ritual_material(&mut self, g: CardSet) -> Script<()> {
+        self.release_ritual_material_full(g, false)
+    }
+
+    // With `release_deck`, a material in the Deck is released instead of sent to the GY.
+    pub fn release_ritual_material_full(&mut self, g: CardSet, release_deck: bool) -> Script<()> {
         let (mut rel, mut rem, mut tograve) = (CardSet::default(), CardSet::default(), CardSet::default());
+        let to_grave_types = LOCATION_OVERLAY | LOCATION_EXTRA | if release_deck { 0 } else { LOCATION_DECK };
         for card in g {
             match self.cards[card].current.location {
                 LOCATION_GRAVE => rem.insert(card),
-                location if location & (LOCATION_OVERLAY | LOCATION_EXTRA | LOCATION_DECK) != 0 => tograve.insert(card),
+                location if location & to_grave_types != 0 => tograve.insert(card),
                 _ => rel.insert(card),
             }
         }
@@ -2636,6 +2646,11 @@ impl Duel {
 
     pub fn get_attacker(&self) -> Option<CardId> {
         self.core.attacker
+    }
+
+    // A player but 0 or 1 returns nothing in Lua; the callers pass the duel's players.
+    pub fn get_battle_damage(&self, player: u8) -> i32 {
+        self.core.battle_damage[player]
     }
 
     pub fn is_attack_cost_paid(&self) -> u8 {

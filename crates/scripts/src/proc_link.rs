@@ -1,8 +1,8 @@
 // Port of proc_link.lua: Link.AddProcedure with its condition, target and operation. EFFECT_FORMUD_SKIPPER comes with
-// the card that grants it, as does `spcon`.
+// the card that grants it.
 use std::cell::RefCell;
 
-use engine::{Args, CardId, CardSet, Duel, ExtraMaterialCall, Script, Value};
+use engine::{Args, CardId, CardSet, Duel, EffectId, ExtraMaterialCall, Script, Value};
 
 use crate::constant::*;
 use crate::utility::aux::ExtraMaterials;
@@ -10,8 +10,8 @@ use crate::utility::{CardUtility, aux};
 
 pub struct Link;
 
-// The parameters of Link.AddProcedure (f, min, max, specialchk): `MAX` None is the monster's Link Rating, a nil filter
-// passes every card and a nil specialchk every group.
+// The parameters of Link.AddProcedure (f, min, max, specialchk, spcon): `MAX` None is the monster's Link Rating, a nil
+// filter passes every card and a nil specialchk or spcon everything.
 pub trait LinkProcedure {
     const MIN: usize;
     const MAX: Option<usize> = None;
@@ -21,6 +21,10 @@ pub trait LinkProcedure {
     }
 
     fn specialchk(_duel: &Duel, _sg: CardSet, _lc: CardId, _sumtype: u64, _tp: u8) -> bool {
+        true
+    }
+
+    fn spcon(_duel: &Duel, _e: EffectId, _tp: u8) -> bool {
         true
     }
 }
@@ -176,6 +180,9 @@ impl Link {
             return false;
         }
         let tp = c.get_controler(duel);
+        if !P::spcon(duel, a.e, tp) {
+            return false;
+        }
         let Some((mg, mustg, min, max)) = Link::materials::<P>(duel, a, c, tp) else {
             return false;
         };
@@ -219,6 +226,9 @@ impl Link {
     fn target<P: LinkProcedure>(duel: &mut Duel, a: &Args, _: i32, _: Option<CardId>) -> Script<bool> {
         let (e, tp) = (a.e, a.tp);
         let Some(c) = a.c else { return Ok(false) };
+        if !P::spcon(duel, e, tp) {
+            return Ok(false);
+        }
         let Some((mg, mustg, min, max)) = Link::materials::<P>(duel, a, c, tp) else {
             return Ok(false);
         };

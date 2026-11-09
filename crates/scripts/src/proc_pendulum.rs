@@ -1,11 +1,21 @@
-// Port of proc_pendulum.lua: Pendulum.AddProcedure, the activation in the Pendulum Zone and the Pendulum Summon.
-// The additional Pendulum Summons and Harmonic Oscillation come with the cards that grant them.
+// Port of proc_pendulum.lua: Pendulum.AddProcedure, the activation in the Pendulum Zone and the Pendulum Summon, and
+// the effects CreateAdditionalPendulumSummonEffect and CreateHarmonicOscillationEffect return (no card passes a
+// pendulum_location, a reset or a pendulum_flag), with Pendulum.GrantAdditionalPendulumSummon left to its cards.
 use engine::{Args, CardId, CardSet, Duel, EffectId, Script};
 
 use crate::constant::*;
-use crate::utility::aux;
+use crate::utility::{CardUtility, DuelUtility, aux};
 
 pub struct Pendulum;
+
+// What a card passes to CreateAdditionalPendulumSummonEffect and CreateHarmonicOscillationEffect: the effect
+// description, the code of the card and its pendulum_filter.
+pub trait ExtraPendulum {
+    const DESC: u64;
+    const OWNER: u32;
+
+    fn filter(c: CardId, duel: &Duel) -> bool;
+}
 
 impl Pendulum {
     pub fn add_procedure(duel: &mut Duel, c: CardId) {
@@ -32,6 +42,154 @@ impl Pendulum {
             e2.set_range(duel, LOCATION_HAND);
             c.register_effect(duel, e2);
         }
+    }
+
+    // Pendulum.CreateAdditionalPendulumSummonEffect with the hand and the Extra Deck, left unregistered.
+    pub fn create_additional_pendulum_summon_effect<P: ExtraPendulum>(duel: &mut Duel, handler: CardId) -> EffectId {
+        let e1 = duel.create_effect(handler);
+        e1.set_description(duel, P::DESC);
+        e1.set_type(duel, EFFECT_TYPE_FIELD);
+        e1.set_property(duel, EFFECT_FLAG_UNCOPYABLE + EFFECT_FLAG_CANNOT_DISABLE);
+        e1.set_code(duel, EFFECT_SPSUMMON_PROC_G);
+        e1.set_range(duel, LOCATION_PZONE);
+        e1.set_condition(duel, Pendulum::additional_condition::<P>);
+        e1.set_group_operation(duel, Pendulum::additional_operation::<P>);
+        e1.set_value(duel, SUMMON_TYPE_PENDULUM as i32);
+        e1.set_reset_full(duel, RESET_PHASE | PHASE_END, 1);
+        e1
+    }
+
+    // The first effect of Pendulum.CreateHarmonicOscillationEffect with CARD_ZEFRAATH as the pendulum_flag, left
+    // unregistered; the second, which only resets the first, is never registered by a caller.
+    pub fn create_harmonic_oscillation_effect<P: ExtraPendulum>(duel: &mut Duel, handler: CardId) -> EffectId {
+        let e1 = duel.create_effect(handler);
+        e1.set_description(duel, P::DESC);
+        e1.set_type(duel, EFFECT_TYPE_FIELD);
+        e1.set_property(duel, EFFECT_FLAG_UNCOPYABLE + EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_BOTH_SIDE);
+        e1.set_code(duel, EFFECT_SPSUMMON_PROC_G);
+        e1.set_range(duel, LOCATION_PZONE);
+        e1.set_condition(duel, Pendulum::harmonic_condition::<P>);
+        e1.set_group_operation(duel, Pendulum::harmonic_operation::<P>);
+        e1.set_value(duel, SUMMON_TYPE_PENDULUM as i32);
+        e1.set_reset(duel, RESETS_STANDARD_PHASE_END);
+        e1
+    }
+
+    // The idle command asks with only e and c, so `inchain` is nil. Pendulum::filter orders the scales.
+    fn additional_condition<P: ExtraPendulum>(duel: &Duel, a: &Args) -> bool {
+        let Some(c) = a.c else { return true };
+        let tp = c.get_controler(duel);
+        if duel.has_flag_effect(tp, CARD_ZEFRAATH) {
+            return false;
+        }
+        let available_zones_count =
+            duel.get_location_count(tp, LOCATION_MZONE) + duel.get_location_count_from_ex(tp, tp, None, None::<CardId>);
+        if available_zones_count == 0 {
+            return false;
+        }
+        let Some(rpz) = duel.get_field_card(tp, LOCATION_PZONE, 1).filter(|&rpz| rpz != c) else {
+            return false;
+        };
+        let (lscale, rscale) = (c.get_left_scale(duel), rpz.get_right_scale(duel));
+        let filter = |pc, duel: &Duel| Pendulum::filter(pc, duel, a.e, tp, lscale, rscale, false) && P::filter(pc, duel);
+        duel.is_existing_matching_card(filter, tp, LOCATION_HAND | LOCATION_EXTRA, 0, 1, None)
+    }
+
+    // inchain is nil here as well.
+    fn additional_operation<P: ExtraPendulum>(duel: &mut Duel, a: &Args, sg: &mut CardSet) -> Script<()> {
+        let (e, tp) = (a.e, a.tp);
+        let Some(c) = a.c else { return Ok(()) };
+        let Some(rpz) = duel.get_field_card(tp, LOCATION_PZONE, 1) else {
+            return Ok(());
+        };
+        let (lscale, rscale) = (c.get_left_scale(duel), rpz.get_right_scale(duel));
+        let mut mmz_count = duel.get_location_count(tp, LOCATION_MZONE);
+        let mut emz_count = duel.get_location_count_from_ex(tp, tp, None, None::<CardId>);
+        let mut usable_mzone_count = duel.get_usable_mzone_count(tp);
+        unported!(duel, duel.is_player_affected_by_effect(tp, CARD_BLUEEYES_SPIRIT).is_some());
+        let filter = |pc, duel: &Duel| Pendulum::filter(pc, duel, e, tp, lscale, rscale, false) && P::filter(pc, duel);
+        let available = duel.get_matching_group(filter, tp, LOCATION_HAND | LOCATION_EXTRA, 0, None);
+        let count = |duel: &Duel, location: u32| available.filter_count(duel, |pc, duel| pc.is_location(duel, location), None) as i32;
+        mmz_count = mmz_count.min(count(duel, LOCATION_HAND));
+        emz_count = emz_count.min(count(duel, LOCATION_EXTRA));
+        emz_count = emz_count.min(aux::check_summon_gate(duel, tp).unwrap_or(emz_count));
+        while usable_mzone_count != 0 {
+            let location = (if mmz_count > 0 { LOCATION_HAND } else { 0 }) + if emz_count > 0 { LOCATION_EXTRA } else { 0 };
+            let remaining = available.filter(duel, |pc, duel| pc.is_location(duel, location), Some(*sg));
+            if remaining.is_empty() {
+                break;
+            }
+            duel.hint(HINT_SELECTMSG, tp, HINTMSG_SPSUMMON);
+            let cancelable = duel.is_summon_cancelable();
+            let Some(sc) = remaining.select_unselect(duel, Some(*sg), tp, !sg.is_empty(), cancelable, 1, 1)? else {
+                break;
+            };
+            let step = if sg.is_contains(sc) {
+                sg.remove(sc);
+                1
+            } else {
+                sg.insert(sc);
+                -1
+            };
+            if sc.is_location(duel, LOCATION_HAND) {
+                mmz_count += step;
+            } else {
+                emz_count += step;
+            }
+            usable_mzone_count += step;
+        }
+        if !sg.is_empty() {
+            duel.register_flag_effect(tp, CARD_ZEFRAATH, RESET_PHASE | PHASE_END, 0, 1);
+            duel.hint(HINT_CARD, 0, u64::from(P::OWNER));
+            duel.hint_selection(c);
+            duel.hint_selection(rpz);
+        }
+        Ok(())
+    }
+
+    fn harmonic_condition<P: ExtraPendulum>(duel: &Duel, a: &Args) -> bool {
+        let Some(c) = a.c else { return true };
+        let tp = a.e.get_owner_player(duel);
+        if duel.get_location_count_from_ex(tp, tp, None, None::<CardId>) <= 0 || duel.has_flag_effect(tp, CARD_ZEFRAATH) {
+            return false;
+        }
+        let Some(rpz) = duel.get_field_card(1 - tp, LOCATION_PZONE, 1) else {
+            return false;
+        };
+        let label = |c: CardId| c.get_flag_effect_label(duel, CARD_HARMONIC_OSCILLATION);
+        if !(c.has_flag_effect(duel, CARD_HARMONIC_OSCILLATION) && rpz.has_flag_effect(duel, CARD_HARMONIC_OSCILLATION))
+            || label(c) != label(rpz)
+        {
+            return false;
+        }
+        let (lscale, rscale) = (c.get_left_scale(duel), rpz.get_right_scale(duel));
+        let filter = |pc, duel: &Duel| Pendulum::filter(pc, duel, a.e, tp, lscale, rscale, false) && P::filter(pc, duel);
+        duel.is_existing_matching_card(filter, tp, LOCATION_EXTRA, 0, 1, None)
+    }
+
+    fn harmonic_operation<P: ExtraPendulum>(duel: &mut Duel, a: &Args, sg: &mut CardSet) -> Script<()> {
+        let e = a.e;
+        let tp = e.get_owner_player(duel);
+        let Some(c) = a.c else { return Ok(()) };
+        let Some(rpz) = duel.get_field_card(1 - tp, LOCATION_PZONE, 1) else {
+            return Ok(());
+        };
+        let (lscale, rscale) = (c.get_left_scale(duel), rpz.get_right_scale(duel));
+        unported!(duel, duel.is_player_affected_by_effect(tp, CARD_BLUEEYES_SPIRIT).is_some());
+        let ft = duel.get_location_count_from_ex(tp, tp, None, None::<CardId>);
+        let ft = ft.min(aux::check_summon_gate(duel, tp).unwrap_or(ft));
+        duel.hint(HINT_SELECTMSG, tp, HINTMSG_SPSUMMON);
+        let filter = |pc, duel: &Duel| Pendulum::filter(pc, duel, e, tp, lscale, rscale, false) && P::filter(pc, duel);
+        let min = if duel.is_summon_cancelable() { 0 } else { 1 };
+        sg.merge(duel.select_matching_card(tp, filter, tp, LOCATION_EXTRA, 0, min, ft.max(0) as u8, None)?);
+        if !sg.is_empty() {
+            duel.register_flag_effect(tp, CARD_ZEFRAATH, RESET_PHASE | PHASE_END, 0, 1);
+            duel.hint(HINT_CARD, 0, u64::from(P::OWNER));
+            duel.hint(HINT_CARD, 0, u64::from(CARD_HARMONIC_OSCILLATION));
+            duel.hint_selection(c);
+            duel.hint_selection(rpz);
+        }
+        Ok(())
     }
 
     // No ported card sets pendulum_level.

@@ -2302,7 +2302,7 @@ impl Duel {
         !current.is_status(STATUS_SUMMONING)
             && current.overlay_target.is_none()
             && current.current.location & (LOCATION_GRAVE | LOCATION_REMOVED) == 0
-            && self.is_player_can_release(playerid, card, REASON_SUMMON)
+            && self.field_is_player_can_release(playerid, card, REASON_SUMMON)
             && self.is_affected_by_effect_target(card, EFFECT_UNRELEASABLE_SUM, target).is_none()
             && self.is_affected_by_effect_target(target, EFFECT_TRIBUTE_LIMIT, card).is_none()
     }
@@ -2313,7 +2313,7 @@ impl Duel {
             && target.overlay_target.is_none()
             && target.current.location & (LOCATION_GRAVE | LOCATION_REMOVED) == 0
             && !(target.current.location == LOCATION_HAND && target.data.card_type & (TYPE_SPELL | TYPE_TRAP) != 0)
-            && self.is_player_can_release(playerid, card, reason)
+            && self.field_is_player_can_release(playerid, card, reason)
             && self.is_affected_by_effect(card, EFFECT_UNRELEASABLE_NONSUM).is_none()
     }
 

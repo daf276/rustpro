@@ -1277,6 +1277,7 @@ pub trait CardUtility: Copy {
     fn negate_effects(self, duel: &mut Duel, c: CardId, reset: u32, negates_cards: bool);
     fn is_fusion_monster(self, duel: &Duel) -> bool;
     fn is_link_monster(self, duel: &Duel) -> bool;
+    fn is_pendulum_monster(self, duel: &Duel) -> bool;
     fn is_tribute_summoned(self, duel: &Duel) -> bool;
     fn can_summon_or_set(self, duel: &Duel, ignore_count: bool, procedure: Option<EffectId>, min_tribute: u16) -> bool;
     fn is_fusion_summoned(self, duel: &Duel) -> bool;
@@ -1309,6 +1310,10 @@ impl CardUtility for CardId {
 
     fn is_link_monster(self, duel: &Duel) -> bool {
         self.is_composite_type(duel, TYPE_MONSTER | TYPE_LINK)
+    }
+
+    fn is_pendulum_monster(self, duel: &Duel) -> bool {
+        self.is_composite_type(duel, TYPE_MONSTER | TYPE_PENDULUM)
     }
 
     fn is_tribute_summoned(self, duel: &Duel) -> bool {

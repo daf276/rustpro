@@ -114,13 +114,14 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   arguments by type: `Duel.CheckReleaseGroupCost(tp,f,1,true,...)` passes `true` as `use_hand`, so it is min 1, max 1.
   Port the Lua's own argument slips as the core reads them (`scriptlib.h` `lua_get`): a number in a card or group slot
   is nil, so `GetMatchingGroup(Card.IsAbleToRemove,tp,0,LOCATION_ONFIELD,1,handler,tp,POS_FACEDOWN)` checks player
-  1 with the default position and reason `tp` (c40080312).
+  1 with the default position and reason `tp` (c40080312). In `Duel.SendtoGrave(c,REASON_RULE,nil,PLAYER_NONE)` the
+  `PLAYER_NONE` is the reason player: `send_to_grave_full(c, REASON_RULE, PLAYER_NONE, PLAYER_NONE)`.
 - Functions that can prompt or yield return `Script<T>`; propagate with `?`. A target whose Lua takes no `chkc`
   ignores it (no early return on `chkc.is_some()`). An argument that reads the duel is computed before a call that
   takes `&mut Duel` (`let turn = duel.get_turn_count(); e1.set_label(duel, turn)`). A target or cost returns `Ok(chk0)` for
   chk 0 and `Ok(false)` after doing its work, where the Lua returns nothing.
 - `aux.SelectUnselectGroup` is `aux::select_unselect_group(duel, g, minc, maxc, &|duel, sg, mg, c| (res, stop),
-  seltp, hintmsg)`; `Duel.SelectTarget` returns `Option<CardSet>`; a card calling `Fusion.SummonEffTG/OP` itself builds
+  seltp, hintmsg)`, a nil `rescon` is `&|_, _, _, _| (true, false)`; `Duel.SelectTarget` returns `Option<CardSet>`; a card calling `Fusion.SummonEffTG/OP` itself builds
   the closure first with `Fusion::new_summon_eff_closure(duel, e, op)`.
 - `unported!(duel, x)` takes what the core would have used, an iterator or `Option`: `(cond).then_some(effect)` for a
   condition.

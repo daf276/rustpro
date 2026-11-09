@@ -1,9 +1,10 @@
 // Port of libcard.cpp: the Card methods on CardId. Methods a library script replaces carry a `_core` suffix and the
 // replacement takes the Lua name in the scripts crate.
-use crate::card::{CardId, CardSet};
+use crate::card::{CardId, CardSet, Unique};
 use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{Container, EffectId, EffectSet, Value};
+use crate::field::PerPlayer;
 use crate::script::Script;
 
 impl CardId {
@@ -493,6 +494,28 @@ impl CardId {
             .is_none()
     }
 
+    // Card.SetUniqueOnField with a filter function; `s_count` and `o_count` are the unique_pos of the player's and the
+    // opponent's cards.
+    pub fn set_unique_on_field(self, duel: &mut Duel, s_count: u8, o_count: u8, filter: fn(CardId, &Duel) -> bool, location: u32) {
+        let location = (location & u32::from(LOCATION_ONFIELD)) as u8;
+        let effect = duel.new_effect(self);
+        let peffect = &mut duel.effects[effect];
+        peffect.effect_type = EFFECT_TYPE_SINGLE;
+        peffect.code = EFFECT_UNIQUE_CHECK;
+        peffect.flag[0] = EFFECT_FLAG_COPY_INHERIT;
+        duel.card_add_effect(self, effect);
+        let target = &mut duel.cards[self];
+        target.unique = Some(Unique {
+            filter,
+            pos: PerPlayer([s_count != 0, o_count != 0]),
+            location,
+            effect,
+        });
+        if target.current.location & location != 0 {
+            target.unique_fieldid = 0;
+        }
+    }
+
     pub fn is_has_effect(self, duel: &Duel, code: u32) -> Option<EffectId> {
         duel.filter_effect(self, code, true).first().copied()
     }
@@ -895,6 +918,20 @@ impl CardId {
             mzone.filter_map(|(_, card)| *card).chain(szone).for_each(|card| cards.insert(card));
         }
         cards
+    }
+
+    // card::is_link_state.
+    pub fn is_linked(self, duel: &Duel) -> bool {
+        let current = duel.cards[self].current;
+        if current.location & LOCATION_ONFIELD == 0 {
+            return false;
+        }
+        if !self.get_linked_group(duel).is_empty() {
+            return true;
+        }
+        let linked_zone = duel.get_linked_zone(&duel.zones(), current.controler, true);
+        let szone = if current.location == LOCATION_SZONE { 8 } else { 0 };
+        linked_zone >> (current.sequence + szone) & 1 != 0
     }
 
     pub fn get_linked_group_count(self, duel: &Duel) -> usize {

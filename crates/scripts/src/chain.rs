@@ -48,6 +48,25 @@ pub fn is_setcode(duel: &Duel, ch: u8, setcodes: &[u16]) -> bool {
     is_triggering_setcode(duel, ch, setcodes)
 }
 
+// Chain.IsCode(ch, ...), false where it returns nil; falls back like is_setcode, to the triggering code and its alias.
+pub fn is_code(duel: &Duel, ch: u8, codes: &[u32]) -> bool {
+    if duel.get_current_chain() == 0 {
+        return false;
+    }
+    let Some(eff) = duel.get_chain_info::<Option<EffectId>>(ch, CHAININFO_TRIGGERING_EFFECT) else {
+        return false;
+    };
+    if eff.is_has_property(duel, EFFECT_FLAG_FIELD_ONLY) {
+        return properties_card(duel, eff).is_some_and(|card| codes.iter().any(|&code| card.is_code(duel, code)));
+    }
+    let ec = eff.get_handler(duel);
+    if ec.is_relate_to_effect(duel, eff) && ec.is_faceup(duel) {
+        return codes.iter().any(|&code| ec.is_code(duel, code));
+    }
+    let triggering = [CHAININFO_TRIGGERING_CODE, CHAININFO_TRIGGERING_CODE2].map(|info| duel.get_chain_info::<Option<u32>>(ch, info));
+    codes.iter().any(|&code| triggering.contains(&Some(code)))
+}
+
 // e:GetChainData() of the current chain link, keyed by its chain id and the effect; a `slot` per field of the table.
 fn chain_data_key(duel: &Duel, e: EffectId, slot: u8) -> u64 {
     let chain_id = u64::from(duel.get_chain_info::<u32>(duel.get_current_chain(), CHAININFO_CHAIN_ID));

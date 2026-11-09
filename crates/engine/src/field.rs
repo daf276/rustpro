@@ -730,12 +730,12 @@ impl Duel {
         self.cards[card].current.pzone = pzone;
         self.apply_field_effect(card);
         let field_id = self.next_field_id();
-        let (turn_id, current) = (self.infos.turn_id as u16, self.cards[card].current);
+        let turn_id = self.infos.turn_id as u16;
         let target = &mut self.cards[card];
         target.fieldid = field_id;
         target.fieldid_r = field_id;
         target.turnid = turn_id;
-        unported!(self, self.check_unique_onfield(card, current.controler, current.location));
+        self.mark_unique_violation(card);
         if location == LOCATION_MZONE {
             self.player[playerid].used_location |= 1 << sequence;
         }
@@ -867,8 +867,7 @@ impl Duel {
                         Some(from) => self.write_move(card, from),
                         None => {
                             self.cards[card].fieldid = self.next_field_id();
-                            let current = self.cards[card].current;
-                            unported!(self, self.check_unique_onfield(card, current.controler, current.location));
+                            self.mark_unique_violation(card);
                         }
                     }
                     return true;
@@ -934,8 +933,7 @@ impl Duel {
         if p1 != p2 {
             for card in [card1, card2] {
                 self.cards[card].fieldid = self.next_field_id();
-                let current = self.cards[card].current;
-                unported!(self, self.check_unique_onfield(card, current.controler, current.location));
+                self.mark_unique_violation(card);
             }
         }
         let shift = if location == LOCATION_MZONE { 0 } else { 8 };
@@ -1107,13 +1105,13 @@ impl Duel {
         if self.is_flag(DUEL_FSX_MMZONE) && summoned.facedown && fsx {
             0x7f
         } else {
-            self.get_linked_zone(zones, playerid) | (1 << 5) | (1 << 6)
+            self.get_linked_zone(zones, playerid, false) | (1 << 5) | (1 << 6)
         }
     }
 
-    // field::get_linked_zone without `free` or `actually_linked`: the zones the player's and the opponent's Link
-    // monsters point to, the opponent's mirrored into the high half.
-    pub(crate) fn get_linked_zone(&self, zones: &Zones, playerid: u8) -> u32 {
+    // field::get_linked_zone without `free`: the zones the player's and the opponent's Link monsters point to, the
+    // opponent's mirrored into the high half.
+    pub(crate) fn get_linked_zone(&self, zones: &Zones, playerid: u8, actually_linked: bool) -> u32 {
         let pointed = |p: u8| {
             let mzone = zones.mzone[p].into_iter().flatten();
             mzone
@@ -1121,7 +1119,9 @@ impl Duel {
                 .fold(0, |pointed, card| pointed | self.card_linked_zone(zones, card))
         };
         let opponent = pointed(1 - playerid);
-        unported!(self, self.filter_field_effect(EFFECT_BECOME_LINKED_ZONE));
+        if !actually_linked {
+            unported!(self, self.filter_field_effect(EFFECT_BECOME_LINKED_ZONE));
+        }
         pointed(playerid) | ((opponent & 0xffff) << 16) | (opponent >> 16)
     }
 
@@ -2324,9 +2324,88 @@ impl Duel {
         ids
     }
 
-    // Uniqueness comes from SetUniqueOnField in card scripts that call it.
-    pub(crate) fn check_unique_onfield(&self, _card: CardId, _controler: u8, _location: u8) -> Option<EffectId> {
-        None
+    // core.unique_cards[controler]: the cards on the field with SetUniqueOnField whose rule covers that player's cards.
+    fn unique_cards(&self, controler: u8) -> Vec<CardId> {
+        let on_field = (0..2).flat_map(|p| {
+            let player = &self.player[p];
+            player.list_mzone.into_iter().chain(player.list_szone).flatten()
+        });
+        on_field
+            .filter(|&card| {
+                let target = &self.cards[card];
+                target.unique.is_some_and(|unique| {
+                    target.current.location & unique.location != 0 && unique.pos[u8::from(target.current.controler != controler)]
+                })
+            })
+            .collect()
+    }
+
+    // card::get_unique_target.
+    fn get_unique_target(&self, ucard: CardId, controler: u8, icard: Option<CardId>) -> CardSet {
+        let mut cards = CardSet::default();
+        let Some(unique) = self.cards[ucard].unique else { return cards };
+        for p in 0..2 {
+            if !unique.pos[p] {
+                continue;
+            }
+            let player = &self.player[controler ^ p];
+            let mzone = (unique.location & LOCATION_MZONE != 0)
+                .then_some(player.list_mzone)
+                .into_iter()
+                .flatten()
+                .flatten();
+            let szone = (unique.location & LOCATION_SZONE != 0)
+                .then_some(player.list_szone)
+                .into_iter()
+                .flatten()
+                .flatten();
+            let mzone = mzone.filter(|&card| !self.cards[card].get_status(STATUS_SPSUMMON_STEP));
+            for card in mzone.chain(szone) {
+                if Some(card) != icard && self.cards[card].is_position(POS_FACEUP) && (unique.filter)(card, self) {
+                    cards.insert(card);
+                }
+            }
+        }
+        cards
+    }
+
+    // The check the core makes where a card gets a new fieldid: a card that now breaks a SetUniqueOnField rule is marked.
+    pub(crate) fn mark_unique_violation(&mut self, card: CardId) {
+        let current = self.cards[card].current;
+        if self.check_unique_onfield(card, current.controler, current.location).is_some() {
+            self.cards[card].unique_fieldid = u32::MAX;
+        }
+    }
+
+    // field::check_unique_onfield: the effect of the SetUniqueOnField that forbids the card on the field, if any.
+    pub(crate) fn check_unique_onfield(&self, card: CardId, controler: u8, location: u8) -> Option<EffectId> {
+        self.check_unique_onfield_full(card, controler, location, None)
+    }
+
+    pub(crate) fn check_unique_onfield_full(&self, card: CardId, controler: u8, location: u8, icard: Option<CardId>) -> Option<EffectId> {
+        for ucard in self.unique_cards(controler) {
+            let (unique, target) = (self.cards[ucard].unique?, &self.cards[ucard]);
+            if ucard != card
+                && Some(ucard) != icard
+                && target.is_position(POS_FACEUP)
+                && target.get_status(STATUS_EFFECT_ENABLED)
+                && !target.get_status(STATUS_DISABLED | STATUS_FORBIDDEN)
+                && target.unique_fieldid != 0
+                && (unique.filter)(card, self)
+                && unique.location & location != 0
+            {
+                return Some(unique.effect);
+            }
+        }
+        let unique = self.cards[card].unique?;
+        if unique.location & location == 0 || self.cards[card].get_status(STATUS_DISABLED | STATUS_FORBIDDEN) {
+            return None;
+        }
+        let mut cards = self.get_unique_target(card, controler, icard);
+        if (unique.filter)(card, self) {
+            cards.insert(card);
+        }
+        (cards.len() >= 2).then_some(unique.effect)
     }
 
     // Puts the cards the target may tribute into the sets, sets their release_param and returns their total release
@@ -2796,10 +2875,30 @@ impl Duel {
         }
     }
 
-    // SetUniqueOnField(), EFFECT_SELF_DESTROY and EFFECT_SELF_TOGRAVE come with the cards that use them.
+    // EFFECT_SELF_DESTROY and EFFECT_SELF_TOGRAVE come with the cards that use them, and so does the destruction of
+    // a card with more than one SetUniqueOnField target (Processors::SelfDestroyUnique).
     pub(crate) fn adjust_self_destroy_set(&mut self) {
+        if self.core.selfdes_disabled {
+            return;
+        }
+        let mut p = self.infos.turn_player;
+        for _ in 0..2 {
+            for ucard in self.unique_cards(p) {
+                let target = &self.cards[ucard];
+                if !target.is_position(POS_FACEUP)
+                    || !target.get_status(STATUS_EFFECT_ENABLED)
+                    || target.get_status(STATUS_DISABLED | STATUS_FORBIDDEN)
+                {
+                    continue;
+                }
+                let targets = self.get_unique_target(ucard, p, None);
+                unported!(self, (targets.len() > 1).then_some(ucard));
+                self.cards[ucard].unique_fieldid = targets.get_first().map_or(0, |card| self.cards[card].fieldid);
+            }
+            p = 1 - p;
+        }
         let registry = &self.field_effects.registry;
-        if self.core.selfdes_disabled || !(registry.has_code(EFFECT_SELF_DESTROY) || registry.has_code(EFFECT_SELF_TOGRAVE)) {
+        if !(registry.has_code(EFFECT_SELF_DESTROY) || registry.has_code(EFFECT_SELF_TOGRAVE)) {
             return;
         }
         let mut cards = CardSet::default();

@@ -8,6 +8,7 @@ use carddata::Card as CardData;
 use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{Container, EffectId, EffectSet, Operation, Target, Value, container_key, remove_item};
+use crate::field::PerPlayer;
 use crate::list::{List, Marks};
 use crate::script::{Args, Procedure};
 
@@ -382,6 +383,18 @@ pub struct Card {
     pub pre_overlay_target: Option<CardId>,
     pub equiping_target: Option<CardId>,
     pub pre_equip_target: Option<CardId>,
+    pub unique: Option<Unique>,
+    pub unique_fieldid: u32,
+}
+
+// What SetUniqueOnField with a filter function stores on the card: unique_function, unique_pos, unique_location and
+// unique_effect. A code argument comes with the cards that pass one.
+#[derive(Debug, Clone, Copy)]
+pub struct Unique {
+    pub filter: fn(CardId, &Duel) -> bool,
+    pub pos: PerPlayer<bool>,
+    pub location: u8,
+    pub effect: EffectId,
 }
 
 impl Card {
@@ -977,6 +990,11 @@ impl Duel {
                 self.add_effect(effect, PLAYER_NONE);
             }
         }
+        if let Some(unique) = self.cards[card].unique
+            && self.cards[card].current.location & unique.location != 0
+        {
+            self.cards[card].unique_fieldid = 0;
+        }
     }
 
     pub(crate) fn cancel_field_effect(&mut self, card: CardId) {
@@ -1281,6 +1299,9 @@ impl Duel {
                 .loc(location)
                 .u8(CHINT_DESC_REMOVE)
                 .u64(description);
+        }
+        if code == EFFECT_UNIQUE_CHECK {
+            self.cards[card].unique = None;
         }
         self.mark_reseted(effect);
     }
@@ -2840,7 +2861,13 @@ impl Duel {
         if target.is_status(STATUS_FORBIDDEN) {
             return false;
         }
-        unported!(self, self.filter_effect_any(card, EFFECT_CANNOT_BE_SYNCHRO_MATERIAL).then_some(()));
+        let limits = self.filter_effect(card, EFFECT_CANNOT_BE_SYNCHRO_MATERIAL, true);
+        if limits
+            .into_iter()
+            .any(|effect| self.get_value(effect, scard.unwrap_or_default()) != 0)
+        {
+            return false;
+        }
         !self.is_forbidden_material(card, scard, SUMMON_TYPE_SYNCHRO.into(), playerid)
     }
 

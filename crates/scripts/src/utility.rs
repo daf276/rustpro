@@ -196,6 +196,48 @@ pub mod aux {
         Ok(())
     }
 
+    struct Kaiju;
+
+    impl LavaProcedure for Kaiju {
+        const REQUIRED: usize = 1;
+    }
+
+    // Auxiliary.AddKaijuProcedure.
+    pub fn add_kaiju_procedure(duel: &mut Duel, c: CardId) -> (EffectId, EffectId) {
+        c.set_unique_on_field(duel, 1, 0, |c, duel| c.is_set_card(duel, &[SET_KAIJU]), LOCATION_MZONE);
+        let e1 = add_lava_procedure::<Kaiju>(duel, c, POS_FACEUP_ATTACK, 0, None);
+        let e2 = duel.create_effect(c);
+        e2.set_type(duel, EFFECT_TYPE_FIELD);
+        e2.set_code(duel, EFFECT_SPSUMMON_PROC);
+        e2.set_range(duel, LOCATION_HAND);
+        e2.set_property(duel, EFFECT_FLAG_UNCOPYABLE + EFFECT_FLAG_SPSUM_PARAM);
+        e2.set_target_range(duel, POS_FACEUP_ATTACK, 0);
+        e2.set_condition(duel, |duel, a| {
+            let Some(c) = a.c else { return true };
+            let tp = c.get_controler(duel);
+            duel.get_location_count(tp, LOCATION_MZONE) > 0
+                && duel.is_existing_matching_card(
+                    |c, duel| c.is_faceup(duel) && c.is_set_card(duel, &[SET_KAIJU]),
+                    tp,
+                    0,
+                    LOCATION_MZONE,
+                    1,
+                    None,
+                )
+        });
+        c.register_effect(duel, e2);
+        (e1, e2)
+    }
+
+    // The cost most Kaiju monsters share: Duel.RemoveCounter of `COUNT` Kaiju Counters from either field.
+    pub fn kaiju_counter_cost<const COUNT: u16>(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+        if chk == 0 {
+            return Ok(duel.is_can_remove_counter(a.tp, 1, 1, COUNTER_KAIJU, COUNT, REASON_COST));
+        }
+        duel.remove_counter(a.tp, 1, 1, COUNTER_KAIJU, COUNT, REASON_COST)?;
+        Ok(false)
+    }
+
     // The extracat, extrainfo and extraop parameters of Auxiliary.EnableNeosReturn; returneff has no caller.
     pub trait NeosReturn {
         const EXTRACAT: u64 = 0;

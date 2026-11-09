@@ -4057,7 +4057,7 @@ impl Duel {
                     self.core.hint_timing[current.controler] |= TIMING_POS_CHANGE;
                     if opos & POS_FACEDOWN != 0 && npos & POS_FACEUP != 0 {
                         self.cards[card].fieldid = self.next_field_id();
-                        unported!(self, self.check_unique_onfield(card, current.controler, current.location));
+                        self.mark_unique_violation(card);
                         if current.location == LOCATION_MZONE {
                             self.field_raise_single_event(card, EVENT_FLIP, reason_effect, 0, reason_player, 0, flag);
                             flips.insert(card);

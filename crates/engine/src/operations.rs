@@ -95,8 +95,8 @@ pub struct DestroyReplace {
     pub target: CardId,
 }
 
-// The single effects of a card (Destroy steps 1 and 11) and the field effects of EFFECT_DESTROY_REPLACE start one; the
-// field effects of the other replacements come with the cards that register them.
+// Only the single effects of a card (Destroy steps 1 and 11) start one; the field effects of operation_replace come with
+// the cards that register them.
 #[derive(Debug, Clone)]
 pub struct OperationReplace {
     pub step: u16,
@@ -1202,7 +1202,7 @@ impl Duel {
                     let code = self.cards[self.effects[effect].owner].data.code;
                     self.trace.message(MSG_HINT).u8(HINT_CARD).u8(0).u64(u64::from(code));
                 }
-                self.operation_replace_destroy(arg, 5);
+                arg.replacing = self.operation_replace(EFFECT_DESTROY_REPLACE, 5, arg.targets);
                 false
             }
             1 => {
@@ -1227,7 +1227,10 @@ impl Duel {
                 false
             }
             2 => {
-                self.take_replaced_targets(arg);
+                if arg.replacing {
+                    arg.targets = self.core.replace_targets.pop().unwrap_or_default();
+                    arg.replacing = false;
+                }
                 for card in std::mem::take(&mut self.core.destroy_canceled) {
                     self.cards[card].set_status(STATUS_DESTROY_CONFIRMED, false);
                 }
@@ -1346,7 +1349,7 @@ impl Duel {
                     }
                 }
                 if !arg.targets.is_empty() {
-                    self.operation_replace_destroy(arg, 12);
+                    arg.replacing = self.operation_replace(EFFECT_DESTROY_REPLACE, 12, arg.targets);
                 }
                 false
             }
@@ -1374,7 +1377,8 @@ impl Duel {
             }
             12 => {
                 if arg.replacing {
-                    self.take_replaced_targets(arg);
+                    arg.targets = self.core.replace_targets.pop().unwrap_or_default();
+                    arg.replacing = false;
                     self.core.battle_destroyed = arg.targets;
                 }
                 for card in std::mem::take(&mut self.core.destroy_canceled) {
@@ -1386,33 +1390,34 @@ impl Duel {
         }
     }
 
-    // The group the DestroyReplace and OperationReplace units changed is the Destroy's again.
+    // operation_replace: the field's effects with this code run in OperationReplace units, the turn player's first, on the
+    // group the core shares (put out on core.replace_targets); true when there are any, and the caller takes the group
+    // back with take_replaced_targets.
+    fn operation_replace(&mut self, code: u32, step: u16, targets: CardSet) -> bool {
+        let effects = self.field_effect_range(Container::Continuous, code);
+        if effects.is_empty() {
+            return false;
+        }
+        self.core.replace_targets.push(targets);
+        let turn_player = self.infos.turn_player;
+        let (own, opponent): (Vec<EffectId>, Vec<EffectId>) = effects
+            .into_iter()
+            .partition(|&effect| self.get_handler_player(effect) == turn_player);
+        for replace_effect in own.into_iter().chain(opponent) {
+            self.emplace_process(OperationReplace {
+                step,
+                replace_effect: Some(replace_effect),
+                target: None,
+                is_destroy: code == EFFECT_DESTROY_REPLACE,
+            });
+        }
+        true
+    }
+
     fn take_replaced_targets(&mut self, arg: &mut Destroy) {
         if arg.replacing {
             arg.targets = self.core.replace_targets.pop().unwrap_or_default();
             arg.replacing = false;
-        }
-    }
-
-    // operation_replace(EFFECT_DESTROY_REPLACE, step, targets): the field effects, the turn player's first.
-    fn operation_replace_destroy(&mut self, arg: &mut Destroy, step: u16) {
-        let effects = self.field_effect_range(Container::Continuous, EFFECT_DESTROY_REPLACE);
-        if effects.is_empty() {
-            return;
-        }
-        self.core.replace_targets.push(arg.targets);
-        arg.replacing = true;
-        let turn_player = self.infos.turn_player;
-        let (own, opponent): (Vec<_>, Vec<_>) = effects
-            .into_iter()
-            .partition(|&effect| self.get_handler_player(effect) == turn_player);
-        for effect in own.into_iter().chain(opponent) {
-            self.emplace_process(OperationReplace {
-                step,
-                replace_effect: Some(effect),
-                target: None,
-                is_destroy: true,
-            });
         }
     }
 
@@ -1462,12 +1467,6 @@ impl Duel {
         }
     }
 
-    fn is_self_destroy_reason(&self, target: CardId) -> bool {
-        self.cards[target].current.reason_effect.is_some_and(|reason_effect| {
-            [EFFECT_UNIQUE_CHECK, EFFECT_SELF_DESTROY, EFFECT_SELF_TOGRAVE].contains(&self.effects[reason_effect].code)
-        })
-    }
-
     // The replaced card keeps its destruction undone, except where the reason is one of the self-destroy effects.
     fn replace_destroyed(&mut self, effect: EffectId, target: CardId, is_destroy: bool) {
         if !self.is_self_destroy_reason(target) {
@@ -1481,9 +1480,90 @@ impl Duel {
         self.dec_count(effect, player);
     }
 
+    fn is_self_destroy_reason(&self, card: CardId) -> bool {
+        self.cards[card].current.reason_effect.is_some_and(|reason_effect| {
+            [EFFECT_UNIQUE_CHECK, EFFECT_SELF_DESTROY, EFFECT_SELF_TOGRAVE].contains(&self.effects[reason_effect].code)
+        })
+    }
+
+    // The cards of the shared group that a field effect's value takes, with the destruction undone; `check_self_destroy`
+    // leaves those destroyed by a self-destroy effect.
+    fn replace_valued_targets(&mut self, effect: EffectId, is_destroy: bool, check_self_destroy: bool) {
+        let Some(&targets) = self.core.replace_targets.last() else {
+            return;
+        };
+        for card in targets {
+            if self.get_value(effect, card) != 0 && !(check_self_destroy && self.is_self_destroy_reason(card)) {
+                self.restore_reason(card);
+                if is_destroy {
+                    self.core.destroy_canceled.insert(card);
+                }
+                self.remove_replace_target(card);
+            }
+        }
+        let player = self.get_handler_player(effect);
+        self.dec_count(effect, player);
+    }
+
     pub(crate) fn process_operation_replace(&mut self, arg: &mut OperationReplace) -> bool {
         let is_destroy = arg.is_destroy;
         match (arg.step, arg.replace_effect, arg.target) {
+            (5 | 12, Some(effect), _) => {
+                let Some(&targets) = self.core.replace_targets.last() else {
+                    return true;
+                };
+                let Some(first) = targets.first() else {
+                    return true;
+                };
+                let player = self.get_handler_player(effect);
+                let current = self.cards[first].current;
+                let event = Event {
+                    event_cards: Some(targets),
+                    event_player: player,
+                    reason: current.reason,
+                    reason_effect: current.reason_effect,
+                    reason_player: current.reason_player,
+                    ..Event::default()
+                };
+                if !self.is_activateable(effect, player, &event, false, false, false, false, false)
+                    || matches!(self.effects[effect].value, Value::Int(0))
+                {
+                    return true;
+                }
+                self.core.continuous_chain.push(Chain {
+                    triggering_effect: effect,
+                    triggering_player: player,
+                    evt: event,
+                    target_player: PLAYER_NONE,
+                    disable_player: PLAYER_NONE,
+                    ..Chain::default()
+                });
+                if arg.step == 5 {
+                    self.core.solving_event.insert(0, event);
+                }
+                self.execute(ExecuteKind::Target, effect, player, event);
+                false
+            }
+            (6, Some(effect), _) => {
+                if self.returns.at_i32(0) != 0 {
+                    self.replace_valued_targets(effect, is_destroy, true);
+                } else {
+                    arg.step = 7;
+                }
+                false
+            }
+            (13, Some(effect), _) => {
+                if self.returns.at_i32(0) != 0 {
+                    self.replace_valued_targets(effect, is_destroy, false);
+                    if let Some(&chain) = self.core.continuous_chain.first() {
+                        self.core.desrep_chain.push(chain);
+                    }
+                }
+                if !self.core.continuous_chain.is_empty() {
+                    self.core.continuous_chain.remove(0);
+                }
+                true
+            }
             (0 | 10, Some(effect), Some(target)) => {
                 if self.returns.at_i32(0) != 0 || !matches!(self.effects[effect].target, Target::Action(_)) {
                     return true;
@@ -1520,69 +1600,6 @@ impl Duel {
                     self.replace_destroyed(effect, target, is_destroy);
                 } else {
                     arg.step = 2;
-                }
-                false
-            }
-            (5 | 12, Some(effect), _) => {
-                let Some(&targets) = self.core.replace_targets.last() else {
-                    return true;
-                };
-                let Some(first) = targets.iter().next() else { return true };
-                let player = self.get_handler_player(effect);
-                let current = self.cards[first].current;
-                let event = Event {
-                    event_cards: Some(targets),
-                    event_player: player,
-                    reason: current.reason,
-                    reason_effect: current.reason_effect,
-                    reason_player: current.reason_player,
-                    ..Event::default()
-                };
-                if !self.is_activateable(effect, player, &event, false, false, false, false, false)
-                    || matches!(self.effects[effect].value, Value::Int(0))
-                {
-                    return true;
-                }
-                self.core.continuous_chain.push(Chain {
-                    triggering_effect: effect,
-                    triggering_player: player,
-                    evt: event,
-                    target_player: PLAYER_NONE,
-                    disable_player: PLAYER_NONE,
-                    ..Chain::default()
-                });
-                if arg.step == 5 {
-                    self.core.solving_event.insert(0, event);
-                }
-                self.execute(ExecuteKind::Target, effect, player, event);
-                false
-            }
-            (6 | 13, Some(effect), _) => {
-                let battle = arg.step == 13;
-                if self.returns.at_i32(0) != 0 {
-                    let targets = self.core.replace_targets.last().copied().unwrap_or_default();
-                    for card in targets {
-                        if self.get_value(effect, card) != 0 && (battle || !self.is_self_destroy_reason(card)) {
-                            self.restore_reason(card);
-                            if is_destroy {
-                                self.core.destroy_canceled.insert(card);
-                            }
-                            self.remove_replace_target(card);
-                        }
-                    }
-                    let player = self.get_handler_player(effect);
-                    self.dec_count(effect, player);
-                    if battle && let Some(&chain) = self.core.continuous_chain.first() {
-                        self.core.desrep_chain.push(chain);
-                    }
-                } else if !battle {
-                    arg.step = 7;
-                }
-                if battle {
-                    if !self.core.continuous_chain.is_empty() {
-                        self.core.continuous_chain.remove(0);
-                    }
-                    return true;
                 }
                 false
             }

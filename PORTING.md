@@ -68,7 +68,7 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   than `Resolves` only for a card that has no effect a scenario can resolve, and say why in one comment line.
 - If a check fails at 13 but passes at 64, improve `SUPPORT` (place what the effect needs where it can be used).
   A second copy in the Extra Deck makes a Synchro/Xyz/Link Summon of the card far likelier. Normal Monsters by race
-  and level: query `vendor/BabelCDB/cards.cdb` (`datas.type & 0x11 = 0x11`, minus Pendulums), keeping
+  and level: query `vendor/BabelCDB/cards.cdb` with Python's `sqlite3` (`datas.type & 0x11 = 0x11`, minus Pendulums), keeping
   only codes `porting/queue.tsv` marks `no script` (the cdb also has tokens and cards outside the pool). A ported
   Effect Monster can stand in where no Normal Monster of a level exists.
   An effect that needs the card in one zone gets a copy there (`(ID, SZONE)`), or more copies of what it reacts to.
@@ -88,6 +88,11 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - `Report` is only for a path no `SUPPORT` can reach (say why in one comment line), never for a reachable one that
   is merely rare. An effect needing an empty hand is one: the opening hand is always drawn.
 - `SpecialSummoned` counts the card under test being summoned; what a card summons is `SpecialSummonedCode`.
+- `Replaced` counts the card under test's own replaced move: an effect that replaces another card's destruction is
+  checked from that card's file (with the replacing card in its `SUPPORT`).
+- A battle-timed effect (`EVENT_PRE_DAMAGE_CALCULATE` and the like) needs several copies and materials-proof support,
+  since random play uses monsters as Link/Xyz materials and activates hand Spells early; Polymerization stays in hand
+  for a reveal or discard cost. A card whose only target is an unported archetype member is `Report`.
 - `mt.material` is `Fusion::material(duel, code)`, recorded by the `Fusion.AddProcMix*` ports.
 - A rare Synchro/Xyz/Link path in the first 13 scenarios usually needs three Extra Deck copies and materials of each
   level. There are no Normal Monsters above Level 8: use ported Extra Deck monsters as higher-level materials.

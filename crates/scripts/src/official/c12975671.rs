@@ -120,8 +120,14 @@ fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
             duel.change_position(c, POS_FACEDOWN_DEFENSE)?;
         }
     }
+    limit_extra_deck_to_water(duel, c, tp, aux::stringid(ID, 3));
+    Ok(())
+}
+
+// The restriction Abyssrhine, the Atlantean Spirit also applies: only WATER monsters from the Extra Deck for the rest of the turn.
+pub fn limit_extra_deck_to_water(duel: &mut Duel, c: CardId, tp: u8, description: u64) {
     let e1 = duel.create_effect(c);
-    e1.set_description(duel, aux::stringid(ID, 3));
+    e1.set_description(duel, description);
     e1.set_type(duel, EFFECT_TYPE_FIELD);
     e1.set_property(duel, EFFECT_FLAG_PLAYER_TARGET + EFFECT_FLAG_CLIENT_HINT);
     e1.set_code(duel, EFFECT_CANNOT_SPECIAL_SUMMON);
@@ -132,5 +138,4 @@ fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
     e1.set_reset(duel, RESET_PHASE | PHASE_END);
     duel.register_effect(e1, tp);
     aux::add_temp_lizard_check_full(duel, c, tp, |duel, _, c| !c.is_original_attribute(duel, ATTRIBUTE_WATER));
-    Ok(())
 }

@@ -41,6 +41,12 @@ pub fn material_setcode(code: u32) -> &'static [u16] {
         .map_or(&[], |&(_, setcodes)| setcodes)
 }
 
+// s.material of a Synchro, Xyz or Link Monster: the codes its script names. Fusion Monsters record theirs in the duel.
+pub fn material(code: u32) -> &'static [u32] {
+    let index = MATERIAL.binary_search_by_key(&code, |&(code, _)| code).ok();
+    index.and_then(|index| MATERIAL.get(index)).map_or(&[], |&(_, codes)| codes)
+}
+
 // s.dark_calling = true, which the Evil HERO cards read on the cards they check.
 pub fn dark_calling(code: u32) -> bool {
     let index = DARK_CALLING.binary_search_by_key(&code, |&(code, _)| code).ok();

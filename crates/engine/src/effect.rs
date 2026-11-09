@@ -119,6 +119,8 @@ pub enum Value {
     Values(&'static [i32]),
     // value(e, re, tp): EFFECT_CANNOT_ACTIVATE.
     EffectPlayer(fn(&Duel, EffectId, EffectId, u8) -> bool),
+    // value(e, re, rp, c) that reads the card: EFFECT_INDESTRUCTABLE_EFFECT.
+    EffectPlayerCard(fn(&Duel, EffectId, EffectId, u8, CardId) -> bool),
     // value(e, c): get_value(card).
     Card(fn(&Duel, EffectId, CardId) -> i32),
     // value(e), read without a card: EFFECT_DRAW_COUNT.
@@ -1273,6 +1275,7 @@ impl Duel {
             Value::Values(values) => values.first().copied().unwrap_or(0),
             Value::Card(value) => value(self, effect, card),
             Value::EffectPlayer(_)
+            | Value::EffectPlayerCard(_)
             | Value::Effect(_)
             | Value::Chain(_)
             | Value::BattleDamage(_)

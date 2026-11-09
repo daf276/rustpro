@@ -2423,7 +2423,7 @@ impl Duel {
         target.overlay_target.is_none() && target.current.location & (LOCATION_GRAVE | LOCATION_REMOVED) == 0
     }
 
-    // Values are functions of (e, re, rp), which ignore the card the core also passes.
+    // Values are functions of (e, re, rp), or of (e, re, rp, c) when they read the card the core also passes.
     pub(crate) fn check_indestructable_by_effect(&self, card: CardId, effect: Option<EffectId>, playerid: u8) -> Option<EffectId> {
         let effect = effect?;
         self.filter_effect(card, EFFECT_INDESTRUCTABLE_EFFECT, true)
@@ -2431,6 +2431,7 @@ impl Duel {
             .find(|&indestructable| match self.effects[indestructable].value {
                 Value::Int(value) => value != 0,
                 Value::EffectPlayer(value) => value(self, indestructable, effect, playerid),
+                Value::EffectPlayerCard(value) => value(self, indestructable, effect, playerid, card),
                 _ => {
                     self.reach_unported(concat!(file!(), ":", line!()));
                     false
@@ -2795,7 +2796,7 @@ impl Duel {
         false
     }
 
-    pub(crate) fn get_synchro_level(&self, card: CardId) -> u32 {
+    pub(crate) fn get_synchro_level(&self, card: CardId, scard: CardId) -> u32 {
         let data_type = self.cards[card].data.card_type;
         if data_type & TYPE_LINK != 0 && self.is_affected_by_effect(card, EFFECT_SYNCHRO_LEVEL).is_none() {
             return 0;
@@ -2806,8 +2807,10 @@ impl Duel {
         {
             return 0;
         }
-        unported!(self, self.filter_effect_any(card, EFFECT_SYNCHRO_LEVEL).then_some(()));
-        self.get_level(card)
+        match self.filter_effect(card, EFFECT_SYNCHRO_LEVEL, true).first() {
+            Some(&effect) => self.get_value(effect, scard) as u32,
+            None => self.get_level(card),
+        }
     }
 
     pub(crate) fn get_ritual_level(&self, card: CardId, rcard: CardId) -> u32 {
@@ -2886,6 +2889,12 @@ impl Duel {
             return false;
         }
         let limits = self.filter_effect(card, EFFECT_CANNOT_BE_SYNCHRO_MATERIAL, true);
+        unported!(
+            self,
+            limits
+                .iter()
+                .filter(|&&effect| scard.is_none() && matches!(self.effects[effect].value, Value::Card(_)))
+        );
         if limits
             .into_iter()
             .any(|effect| self.get_value(effect, scard.unwrap_or_default()) != 0)

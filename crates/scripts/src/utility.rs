@@ -67,6 +67,10 @@ pub mod aux {
         sum_type & SUMMON_TYPE_LINK == SUMMON_TYPE_LINK
     }
 
+    pub fn ritlimit(_: &Duel, _: EffectId, _: Option<EffectId>, _: u8, sum_type: u32, _: u8, _: u8) -> bool {
+        sum_type & SUMMON_TYPE_RITUAL == SUMMON_TYPE_RITUAL
+    }
+
     // Auxiliary.EvilHeroLimit; a nil se fails the Lua's `se:GetHandler()`.
     pub fn evil_hero_limit(duel: &Duel, e: EffectId, se: Option<EffectId>, _: u8, sum_type: u32, _: u8, _: u8) -> bool {
         let Some(handler) = se.map(|se| se.get_handler(duel)) else {

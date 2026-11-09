@@ -771,6 +771,11 @@ pub mod aux {
         }
     }
 
+    // Auxiliary.ChkfMMZ, with the tp SelectUnselectGroup passes as a capture.
+    pub fn chkf_mmz(tp: u8, sumcount: i32) -> impl Fn(&Duel, CardSet, CardSet, Option<CardId>) -> (bool, bool) {
+        move |duel, sg, _, _| (duel.get_mzone_count(tp, Some(sg)) >= sumcount, false)
+    }
+
     pub fn dncheck(duel: &Duel, sg: CardSet, mg: CardSet, c: Option<CardId>) -> (bool, bool) {
         dpcheck(|c, duel| i64::from(c.get_code(duel)))(duel, sg, mg, c)
     }
@@ -1147,6 +1152,8 @@ pub trait CardUtility: Copy {
     fn is_sequence(self, duel: &Duel, sequence: u32) -> bool;
     fn has_level(self, duel: &Duel) -> bool;
     fn is_original_level(self, duel: &Duel, level: u32) -> bool;
+    fn has_rank(self, duel: &Duel) -> bool;
+    fn is_original_rank(self, duel: &Duel, rank: u32) -> bool;
     fn lists_code(self, duel: &Duel, code: u32) -> bool;
     fn xyz_number(self, duel: &Duel) -> Option<u32>;
     fn lists_code_as_material(self, duel: &Duel, codes: &[u32]) -> bool;
@@ -1440,6 +1447,19 @@ impl CardUtility for CardId {
 
     fn is_original_level(self, duel: &Duel, level: u32) -> bool {
         self.has_level(duel) && self.get_original_level(duel) == level
+    }
+
+    fn has_rank(self, duel: &Duel) -> bool {
+        if self.is_monster(duel) {
+            return self.is_type(duel, TYPE_XYZ)
+                || (self.has_level(duel)
+                    && (self.is_has_effect(duel, EFFECT_LEVEL_RANK).is_some() || self.is_has_effect(duel, EFFECT_LEVEL_RANK_S).is_some()));
+        }
+        self.is_original_type(duel, TYPE_MONSTER) && self.is_original_type(duel, TYPE_XYZ)
+    }
+
+    fn is_original_rank(self, duel: &Duel, rank: u32) -> bool {
+        self.has_rank(duel) && self.get_original_rank(duel) == rank
     }
 
     fn lists_code(self, duel: &Duel, code: u32) -> bool {

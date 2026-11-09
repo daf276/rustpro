@@ -710,6 +710,11 @@ pub mod aux {
     // The oper of DelayedOperation and RemoveUntil, as a type because effect operations cannot capture it.
     pub trait DelayedOperation {
         fn operate(duel: &mut Duel, rg: CardSet, a: &Args) -> Script<()>;
+
+        // The Lua's cond(ag, e, ...); the effect's first label is the fid delayed_operation_full made.
+        fn condition(_duel: &Duel, _ag: CardSet, _a: &Args) -> bool {
+            true
+        }
     }
 
     // delayed_operation_id, the global counter of utility.lua.
@@ -745,7 +750,7 @@ pub mod aux {
         tp: u8,
         hint: u64,
     ) -> Option<EffectId> {
-        delayed_operation_full::<O>(duel, g, phase, RESET_PHASE | phase, flag, e, tp, hint)
+        delayed_operation_full::<O>(duel, g, phase, RESET_PHASE | phase, flag, e, tp, hint, 1)
     }
 
     // `reset` is the Lua's reset argument; 0 is not nil there, so the effect never resets.
@@ -758,10 +763,11 @@ pub mod aux {
         e: EffectId,
         tp: u8,
     ) -> Option<EffectId> {
-        delayed_operation_full::<O>(duel, g, phase, reset, flag, e, tp, 0)
+        delayed_operation_full::<O>(duel, g, phase, reset, flag, e, tp, 0, 1)
     }
 
-    fn delayed_operation_full<O: DelayedOperation>(
+    // `reset_count` is the Lua's.
+    pub fn delayed_operation_full<O: DelayedOperation>(
         duel: &mut Duel,
         g: CardSet,
         phase: u32,
@@ -770,6 +776,7 @@ pub mod aux {
         e: EffectId,
         tp: u8,
         hint: u64,
+        reset_count: u16,
     ) -> Option<EffectId> {
         if g.is_empty() {
             return None;
@@ -780,11 +787,14 @@ pub mod aux {
         e1.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
         e1.set_property(duel, EFFECT_FLAG_IGNORE_IMMUNE);
         e1.set_code(duel, EVENT_PHASE | phase);
-        e1.set_reset(duel, reset);
+        e1.set_reset_full(duel, reset, reset_count);
         e1.set_count_limit(duel, 1, 0);
         e1.set_labels(duel, &[fid, flag.into()]);
         e1.set_label_object_group(duel, Some(g));
-        e1.set_condition(duel, |duel, a| !affected_group(duel, a.e).is_empty());
+        e1.set_condition(duel, |duel, a| {
+            let ag = affected_group(duel, a.e);
+            !ag.is_empty() && O::condition(duel, ag, a)
+        });
         e1.set_operation(duel, |duel, a| O::operate(duel, affected_group(duel, a.e), a));
         duel.register_effect(e1, tp);
         for tc in g {
@@ -1077,6 +1087,15 @@ impl Cost {
         let c = args.e.get_handler(duel);
         if chk == 0 {
             return Ok(c.is_discardable(duel));
+        }
+        duel.send_to_grave(c, REASON_DISCARD | REASON_COST)?;
+        Ok(false)
+    }
+
+    pub fn self_discard_to_grave(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        let c = args.e.get_handler(duel);
+        if chk == 0 {
+            return Ok(c.is_discardable(duel) && c.is_able_to_grave_as_cost(duel));
         }
         duel.send_to_grave(c, REASON_DISCARD | REASON_COST)?;
         Ok(false)
@@ -1924,11 +1943,12 @@ impl EffectUtility for EffectId {
         self.is_active_type(duel, TYPE_SPELL | TYPE_TRAP)
     }
 
-    // Effect.HasSelfDiscardCost, which looks the cost up in a table of the library's own costs: Cost.SelfDiscard and the Dragon Ruler
-    // ones, the only composite costs ported with it.
+    // Effect.HasSelfDiscardCost, which looks the cost up in a table of the library's own costs: Cost.SelfDiscard, Cost.SelfDiscardToGrave and
+    // the Dragon Ruler ones, the only composite costs ported with it.
     fn has_self_discard_cost(self, duel: &Duel) -> bool {
-        let costs: [CostFn; 5] = [
+        let costs: [CostFn; 6] = [
             Cost::self_discard,
+            Cost::self_discard_to_grave,
             DragonRuler::self_discard_to_grave_cost::<ATTRIBUTE_EARTH>,
             DragonRuler::self_discard_to_grave_cost::<ATTRIBUTE_WATER>,
             DragonRuler::self_discard_to_grave_cost::<ATTRIBUTE_FIRE>,

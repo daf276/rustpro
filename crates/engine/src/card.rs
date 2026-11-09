@@ -553,6 +553,9 @@ impl Duel {
     // with an operation, which apply only to such checks, come with the cards that register them.
     #[inline(always)]
     pub(crate) fn get_type_for(&self, card: CardId, _scard: Option<CardId>, sumtype: u64, _playerid: u8) -> u32 {
+        if let Some(card_type) = self.get_assumed_property(card, ASSUME_TYPE) {
+            return card_type as u32;
+        }
         let current = self.cards[card].current;
         let data_type = self.cards[card].data.card_type;
         if current.location & (LOCATION_ONFIELD | LOCATION_HAND | LOCATION_GRAVE) == 0 {
@@ -711,14 +714,17 @@ impl Duel {
         attribute
     }
 
-    pub(crate) fn get_race(&self, card: CardId) -> u64 {
-        let assumed = self
-            .assumes
-            .borrow()
+    // card::get_assumed_property.
+    fn get_assumed_property(&self, card: CardId, assume: u32) -> Option<u64> {
+        let assumes = self.assumes.borrow();
+        assumes
             .iter()
-            .find(|&&(other, kind, _)| (other, u32::from(kind)) == (card, ASSUME_RACE))
-            .map(|&(_, _, race)| race);
-        if let Some(race) = assumed {
+            .find(|&&(other, kind, _)| (other, u32::from(kind)) == (card, assume))
+            .map(|&(_, _, value)| value)
+    }
+
+    pub(crate) fn get_race(&self, card: CardId) -> u64 {
+        if let Some(race) = self.get_assumed_property(card, ASSUME_RACE) {
             return race;
         }
         if self.cards[card].data.card_type & TYPE_MONSTER == 0

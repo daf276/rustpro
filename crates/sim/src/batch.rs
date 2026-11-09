@@ -18,7 +18,7 @@ pub enum AutoAdvance {
 pub fn auto_advance(duel: &mut Duel, mode: AutoAdvance, player: u8, legal: &mut Vec<Action>) -> Result<u64, ActionError> {
     let mut applied = 0;
     loop {
-        duel.legal_actions_into(legal);
+        duel.policy_actions_into(legal);
         let allowed = match (mode, duel.prompt()) {
             (AutoAdvance::Off, _) | (_, None) => false,
             (AutoAdvance::Own, Some(prompt)) => prompt.player() == player,

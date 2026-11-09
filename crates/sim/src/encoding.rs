@@ -16,7 +16,7 @@ pub enum Section {
     SpellSet,
     Attack,
     Option,
-    // The code's place among the prompt's legal codes.
+    // The code's place among the codes [Duel::policy_actions] offers.
     Code,
     Place,
     Position,
@@ -53,7 +53,7 @@ impl Section {
             Self::Summon | Self::SpecialSummon | Self::MonsterSet => 20,
             Self::Reposition | Self::Attack | Self::Option => 8,
             Self::SpellSet => 16,
-            Self::Code => 64,
+            Self::Code => engine::MAX_DECLARED_CODES,
             Self::Place => 32,
             Self::Position => 4,
             Self::Race => 64,
@@ -158,10 +158,10 @@ pub fn find(legal: &[Action], index: usize) -> Option<Action> {
 
 // None also for an action beyond its section's slots.
 pub fn encode(duel: &Duel, action: Action) -> Option<usize> {
-    let legal = duel.legal_actions();
+    let legal = duel.policy_actions();
     legal.iter().zip(indices(&legal)).find(|&(&other, _)| other == action)?.1.ok()
 }
 
 pub fn decode(duel: &Duel, index: usize) -> Option<Action> {
-    find(&duel.legal_actions(), index)
+    find(&duel.policy_actions(), index)
 }

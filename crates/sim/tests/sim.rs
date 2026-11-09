@@ -49,7 +49,7 @@ fn each_state(vendor: &'static Vendor, record: &DuelRecord, mut check: impl FnMu
 // The legal actions get distinct indices below ACTIONS that decode back to them, the mask holds exactly those, and the
 // prompted player's choices line up with them. Returns the longest list seen per section.
 fn check_encoding(duel: &Duel, index: usize, longest: &mut BTreeMap<Section, usize>) -> Result {
-    let legal = duel.legal_actions();
+    let legal = duel.policy_actions();
     let indices: Vec<usize> = indices(&legal).collect::<std::result::Result<_, _>>()?;
     let mut mask = vec![false; ACTIONS];
     write_mask(&legal, &mut mask)?;
@@ -191,6 +191,30 @@ fn should_reject_an_action_beyond_its_section() {
     assert_eq!(indices(&legal).nth(1), Some(overflow));
 }
 
+#[test]
+fn should_offer_the_black_goat_laughs_at_most_the_cap_of_declarable_codes() {
+    let scenarios = Vendor::leak(Vendor::scenarios).unwrap();
+    let record = diff_scenario(scenarios, 49299410, 0).unwrap().record;
+    let mut declarations = 0;
+    each_state(scenarios, &record, |duel, _| {
+        let Some(Prompt::AnnounceCard { .. }) = duel.prompt() else {
+            return Ok(());
+        };
+        let (offered, legal) = (duel.policy_actions(), duel.legal_actions());
+        let declarable = offered
+            .iter()
+            .all(|action| matches!(action, Action::Code(_)) && legal.contains(action));
+        if !declarable || offered.len() > engine::MAX_DECLARED_CODES || legal.len() <= offered.len() {
+            return Err(format!("{} legal codes, offered {offered:?}", legal.len()).into());
+        }
+        duel.clone().apply(*offered.first().ok_or("no code offered")?)?;
+        declarations += 1;
+        Ok(())
+    })
+    .unwrap();
+    assert!(declarations > 0);
+}
+
 // Auto-advance applies exactly the run of single-option prompts a step-by-step walk sees (only the acting player's
 // under Own) and stops where they end.
 fn check_auto_advance(duel: &Duel) -> Result {
@@ -205,16 +229,16 @@ fn check_auto_advance(duel: &Duel) -> Result {
             let own = duel
                 .prompt()
                 .is_some_and(|prompt| mode == AutoAdvance::Both || prompt.player() == player);
-            own && duel.legal_actions().len() == 1
+            own && duel.policy_actions().len() == 1
         };
         for _ in 0..skipped {
             if !skippable(&walked) {
-                return Err(format!("{mode:?} skipped {:?} with {:?}", walked.prompt(), walked.legal_actions()).into());
+                return Err(format!("{mode:?} skipped {:?} with {:?}", walked.prompt(), walked.policy_actions()).into());
             }
-            walked.apply(walked.legal_actions().into_iter().next().ok_or("no action")?)?;
+            walked.apply(walked.policy_actions().into_iter().next().ok_or("no action")?)?;
         }
         let same = (0..2).all(|player| advanced.observe(player) == walked.observe(player));
-        if skippable(&walked) || !same || legal != walked.legal_actions() {
+        if skippable(&walked) || !same || legal != walked.policy_actions() {
             return Err(format!("{mode:?} stopped after {skipped} at {:?}", walked.prompt()).into());
         }
     }

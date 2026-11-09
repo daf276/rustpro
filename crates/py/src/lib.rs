@@ -202,14 +202,14 @@ impl Duel {
     }
 
     fn legal_actions<'py>(&mut self, py: Python<'py>) -> PyResult<Bound<'py, PyArray1<i64>>> {
-        let legal = self.duel().legal_actions();
+        let legal = self.duel().policy_actions();
         let indices: Result<Vec<i64>, _> = indices(&legal).map(|index| index.map(|index| index as i64)).collect();
         Ok(PyArray1::from_vec(py, indices.map_err(fail)?))
     }
 
     fn apply(&mut self, index: usize) -> PyResult<()> {
         let duel = self.duel();
-        let action = find(&duel.legal_actions(), index).ok_or_else(|| fail(format!("index {index} is not a legal action")))?;
+        let action = find(&duel.policy_actions(), index).ok_or_else(|| fail(format!("index {index} is not a legal action")))?;
         duel.apply(action).map_err(fail)?;
         self.record.iter_mut().for_each(|record| record.actions.push(action));
         Ok(())

@@ -93,6 +93,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - A continuous effect with an operation forms no chain link, so `ResolvesEffect` never counts it: check what it does
   (`Message(MSG_DAMAGE)` and the like), as `Report` if other cards do the same. `aux.SpElimFilter(c, true)` with a nil
   third argument accepts only Graveyard monsters.
+- A monster `SUPPORT` places in `MZONE` was not summoned from the Extra Deck: a condition on that needs the support
+  to really summon it (the Extra Deck monster with Polymerization, or a Link with its materials).
 - `SpecialSummoned` counts the card under test being summoned; what a card summons is `SpecialSummonedCode`.
 - `Replaced` counts the card under test's own replaced move (a destruction replaced, or a `REASON_REPLACE` move such as
   a cost-replace banish): an effect that replaces another card's destruction is

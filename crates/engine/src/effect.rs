@@ -735,6 +735,10 @@ impl OpInfos {
         self.0.iter().flatten().find(|(key, _)| *key == category).map(|(_, target)| target)
     }
 
+    pub fn clear(&mut self) {
+        *self = Self::default();
+    }
+
     pub fn set(&mut self, category: u64, target: OpTarget) {
         let slot = match self.0.iter().position(|entry| entry.is_some_and(|(key, _)| key == category)) {
             Some(index) => self.0.get_mut(index),
@@ -1277,6 +1281,17 @@ impl Duel {
         match self.effects[effect].value {
             Value::Int(value) => i64::from(value),
             Value::BattleDamage(value) => value(self, effect, playerid, reason_card),
+            _ => {
+                debug_assert!(false, "a battle damage value read with the wrong parameters");
+                0
+            }
+        }
+    }
+
+    // effect::get_value(1) of EFFECT_CHANGE_BATTLE_DAMAGE with a player target.
+    pub(crate) fn get_player_battle_damage_value(&self, effect: EffectId) -> i64 {
+        match self.effects[effect].value {
+            Value::Int(value) => i64::from(value),
             _ => {
                 debug_assert!(false, "a battle damage value read with the wrong parameters");
                 0

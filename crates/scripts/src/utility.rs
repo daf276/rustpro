@@ -1793,3 +1793,20 @@ impl Cyberdark {
         Ok(())
     }
 }
+
+// The Witchcrafter functions of cards_specific_functions.lua; CreateCostReplaceEffect comes with the cards that call it.
+pub struct Witchcrafter;
+
+impl Witchcrafter {
+    // Witchcrafter.DiscardCost: Cost.Replaceable(Cost.Discard(Card.IsSpell)).
+    pub fn discard_cost(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        Cost::replaceable(duel, args, chk, |duel, args, chk| {
+            Cost::discard_full(duel, args, chk, CardId::is_spell, false, (1, 1))
+        })
+    }
+
+    // Witchcrafter.TributeAndDiscardCost: Cost.AND(Cost.SelfTribute, Witchcrafter.DiscardCost).
+    pub fn tribute_and_discard_cost(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        Cost::and(duel, args, chk, &[Cost::self_tribute, Witchcrafter::discard_cost])
+    }
+}

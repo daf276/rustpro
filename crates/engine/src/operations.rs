@@ -1726,6 +1726,11 @@ impl Duel {
                         } else {
                             self.cards[card].data.card_type
                         };
+                        if self.cards[card].current.position & POS_FACEUP == 0 {
+                            self.cards[card].previous_attribute = self.cards[card].data.attribute;
+                        } else if self.cards[card].current.location & LOCATION_MZONE != 0 {
+                            self.cards[card].previous_attribute = self.get_attribute(card);
+                        }
                     }
                     if !self.is_leaving_field(card) {
                         continue;

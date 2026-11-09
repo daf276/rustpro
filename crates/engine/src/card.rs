@@ -354,6 +354,7 @@ pub struct Card {
     pub data: StaticData,
     pub previous: CardState,
     pub previous_type: u32,
+    pub previous_attribute: u32,
     pub previous_code: u32,
     pub previous_code2: u32,
     pub temp: CardState,

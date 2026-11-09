@@ -1,6 +1,6 @@
 // Port of utility.lua and cards_specific_functions.lua: the Auxiliary and Cost helpers and the Card, Effect and Duel
 // methods they add.
-use engine::{Args, CardId, CardSet, CostFn, Duel, EffectId, Script, Value};
+use engine::{Args, CardId, CardSet, CostFn, CostReplaceCall, CostReplaceCondition, Duel, EffectId, Operation, Script, Value};
 
 use crate::chain::EffectChain;
 use crate::constant::*;
@@ -88,6 +88,10 @@ pub mod aux {
 
     pub fn ritlimit(_: &Duel, _: EffectId, _: Option<EffectId>, _: u8, sum_type: u32, _: u8, _: u8) -> bool {
         sum_type & SUMMON_TYPE_RITUAL == SUMMON_TYPE_RITUAL
+    }
+
+    pub fn synlimit(_: &Duel, _: EffectId, _: Option<EffectId>, _: u8, sum_type: u32, _: u8, _: u8) -> bool {
+        sum_type & SUMMON_TYPE_SYNCHRO == SUMMON_TYPE_SYNCHRO
     }
 
     // Auxiliary.EvilHeroLimit; a nil se fails the Lua's `se:GetHandler()`.
@@ -904,16 +908,75 @@ impl Cost {
     }
 
     // Cost.Replaceable(base) applied: the base cost, unless one of the player's EFFECT_COST_REPLACE effects stands
-    // in for it (those come with the cards that register them).
+    // in for it.
     pub fn replaceable(duel: &mut Duel, args: &Args, chk: i32, base: CostFn) -> Script<bool> {
+        Cost::replaceable_full(duel, args, chk, base, |_, _, _| true)
+    }
+
+    // Cost.Replaceable(base, extracon) applied.
+    pub fn replaceable_full(duel: &mut Duel, args: &Args, chk: i32, base: CostFn, extracon: CostReplaceCondition) -> Script<bool> {
         let base_chk = base(duel, args, 0)?;
-        if !duel.get_player_effect(args.tp, EFFECT_COST_REPLACE).is_empty() {
-            duel.reach_unported(concat!(file!(), ":", line!()));
-        }
         if chk == 0 {
-            return Ok(base_chk);
+            return Ok(base_chk || !Cost::usable_cost_replace_effects(duel, args, chk, extracon).is_empty());
         }
-        base(duel, args, 1)
+        let Some(eff) = Cost::cost_replace_effect_to_apply(duel, base_chk, args, chk, extracon)? else {
+            return base(duel, args, 1);
+        };
+        duel.hint(HINT_CARD, 0, eff.get_handler(duel).get_original_code(duel).into());
+        if let Some(Operation::Event(operation)) = eff.get_operation(duel) {
+            operation(duel, &Args { e: eff, ..Args::default() })?;
+        }
+        eff.use_count_limit(duel, args.tp);
+        Ok(false)
+    }
+
+    // check_cost_replace_effect of the player's EFFECT_COST_REPLACE effects.
+    fn usable_cost_replace_effects(duel: &Duel, args: &Args, chk: i32, extracon: CostReplaceCondition) -> Vec<EffectId> {
+        duel.get_player_effect(args.tp, EFFECT_COST_REPLACE)
+            .into_iter()
+            .filter(|&eff| {
+                eff.check_count_limit(duel, args.tp)
+                    && match eff.get_value(duel) {
+                        Value::Int(value) => value == 1,
+                        Value::CostReplace(value) => value(duel, eff, CostReplaceCall { extracon, args, chk }),
+                        _ => false,
+                    }
+            })
+            .collect()
+    }
+
+    // get_cost_replace_effect_to_apply: None where the base cost is used.
+    fn cost_replace_effect_to_apply(
+        duel: &mut Duel,
+        base_chk: bool,
+        args: &Args,
+        chk: i32,
+        extracon: CostReplaceCondition,
+    ) -> Script<Option<EffectId>> {
+        let tp = args.tp;
+        let effs = Cost::usable_cost_replace_effects(duel, args, chk, extracon);
+        let handlers = effs.iter().fold(CardSet::default(), |g, eff| g.union(eff.get_handler(duel).into()));
+        let select_effect = |duel: &Duel, handler: CardId| {
+            let own: Vec<EffectId> = effs.iter().copied().filter(|eff| eff.get_handler(duel) == handler).collect();
+            unported!(duel, own.len() > 1);
+            own.first().copied()
+        };
+        let Some(first) = handlers.first() else { return Ok(None) };
+        if handlers.len() == 1 {
+            if base_chk && !duel.select_effect_yes_no(tp, first)? {
+                return Ok(None);
+            }
+            return Ok(select_effect(duel, first));
+        }
+        loop {
+            if base_chk && !duel.select_yes_no(tp, 98)? {
+                return Ok(None);
+            }
+            duel.hint(HINT_SELECTMSG, tp, HINTMSG_RESOLVEEFFECT);
+            if let Some(handler) = handlers.select_full(duel, tp, 1, 1, base_chk, None)?.first() {
+                return Ok(select_effect(duel, handler));
+            }
+        }
     }
 
     pub fn self_tribute(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
@@ -1133,6 +1196,7 @@ pub trait CardUtility: Copy {
     fn has_non_zero_defense(self, duel: &Duel) -> bool;
     fn is_owner(self, duel: &Duel, player: u8) -> bool;
     fn is_equip_spell(self, duel: &Duel) -> bool;
+    fn is_previous_attribute_on_field(self, duel: &Duel, attribute: u32) -> bool;
     fn is_field_spell(self, duel: &Duel) -> bool;
     fn is_ritual_spell(self, duel: &Duel) -> bool;
     fn is_ritual_monster(self, duel: &Duel) -> bool;
@@ -1357,6 +1421,10 @@ impl CardUtility for CardId {
 
     fn is_owner(self, duel: &Duel, player: u8) -> bool {
         self.get_owner(duel) == player
+    }
+
+    fn is_previous_attribute_on_field(self, duel: &Duel, attribute: u32) -> bool {
+        self.get_previous_attribute_on_field(duel) & attribute > 0
     }
 
     fn is_equip_spell(self, duel: &Duel) -> bool {

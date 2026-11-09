@@ -66,7 +66,7 @@ pub fn chainfilter(duel: &Duel, re: EffectId, _: u8, _: u8) -> bool {
     !(re.is_monster_effect(duel) && re.get_activate_location(duel) & (LOCATION_HAND | LOCATION_GRAVE) > 0)
 }
 
-fn ntcon(duel: &Duel, a: &Args) -> bool {
+pub fn ntcon(duel: &Duel, a: &Args) -> bool {
     let Some(c) = a.c else { return true };
     let tp = c.get_controler(duel);
     a.min == 0

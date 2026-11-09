@@ -147,7 +147,21 @@ pub enum Value {
     HandSynchro(fn(&mut Duel, EffectId, CardId, CardId) -> bool),
     // value(chk, summon_type, e, ...) of EFFECT_EXTRA_MATERIAL, which registers and resets effects.
     ExtraMaterial(fn(&mut Duel, EffectId, ExtraMaterialCall) -> CardSet),
+    // value(base, extracon, e, tp, eg, ep, ev, re, r, rp, chk): EFFECT_COST_REPLACE, read only by Cost.Replaceable.
+    CostReplace(fn(&Duel, EffectId, CostReplaceCall) -> bool),
 }
+
+// What Cost.Replaceable passes an EFFECT_COST_REPLACE value besides the replacing effect: its extracon, and the
+// activated effect's parameters and chk.
+#[derive(Debug, Clone, Copy)]
+pub struct CostReplaceCall<'a> {
+    pub extracon: CostReplaceCondition,
+    pub args: &'a Args,
+    pub chk: i32,
+}
+
+// extracon(base, e, tp, eg, ep, ev, re, r, rp) of Cost.Replaceable, with the replacing effect first.
+pub type CostReplaceCondition = fn(&Duel, EffectId, &Args) -> bool;
 
 // The calls aux.GetExtraMaterials and Link.Operation make: chk 0 (tp, sc) for the extra materials, chk 1 (sg, sc, tp)
 // once they are used, chk 2 (eg) when the procedure is done with them.
@@ -1269,7 +1283,8 @@ impl Duel {
             | Value::XyzLevel(_)
             | Value::Reason(_)
             | Value::HandSynchro(_)
-            | Value::ExtraMaterial(_) => {
+            | Value::ExtraMaterial(_)
+            | Value::CostReplace(_) => {
                 debug_assert!(false, "a value read with the wrong parameters");
                 0
             }

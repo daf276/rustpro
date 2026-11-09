@@ -45,7 +45,9 @@ pub mod prelude {
     pub use crate::constant::*;
     pub use crate::lua;
     pub use crate::proc_equip::{Equip, EquipProcedure};
-    pub use crate::proc_fusion::{ContactFusion, DuelFusion, Fusion, FusionMaterial, FusionMix, FusionMixRep, FusionSummonParams};
+    pub use crate::proc_fusion::{
+        ContactFusion, DuelFusion, Fusion, FusionMaterial, FusionMix, FusionMixRep, FusionSummonParams, MatCheck,
+    };
     pub use crate::proc_gemini::Gemini;
     pub use crate::proc_link::{Link, LinkProcedure};
     pub use crate::proc_normal::{Normal, NormalProcedure};

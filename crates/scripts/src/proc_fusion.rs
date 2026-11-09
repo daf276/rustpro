@@ -1,7 +1,7 @@
 // Port of proc_fusion.lua and proc_fusion_spell.lua: the Fusion.AddProc* procedures (Mix and the variants built on it,
 // MixRep, contact fusion) and the Fusion Summon effect (Fusion.CreateSummonEff, SummonEffTG/OP) with their helpers.
 // Material lists given as Lua tables, Fusion.AddProcMixRepUnfix and the effect value a card may set on the procedure
-// (matcheck) have no caller in the TCG pool. The paths behind EFFECT_FUSION_MAT_RESTRICTION, EFFECT_EXTRA_FUSION_MATERIAL,
+// (matcheck) of anything but AddProcMix have no caller in the TCG pool. The paths behind EFFECT_FUSION_MAT_RESTRICTION, EFFECT_EXTRA_FUSION_MATERIAL,
 // EFFECT_CHAIN_MATERIAL and unofficial effect 511004008 are `unported!` checks; Fusion.SummonEffect and the metatable
 // fields (material, material_count, contactfus) are read only by cards that are not ported.
 use engine::{Args, CardId, CardSet, ConditionFn, Duel, EffectId, FusionCheck, OperationFn, Script, Value};
@@ -18,6 +18,10 @@ pub type MaterialFilter = fn(CardId, &Duel, CardId, u64, u8) -> bool;
 // f(c, fc, sumtype, tp, sub, mg, sg) for a filter that reads sg, the materials chosen with c (nil in the first pass, as
 // the Lua's globals are); sub and mg have no caller.
 pub type GroupMaterialFilter = fn(CardId, &Duel, CardId, u64, u8, Option<CardSet>) -> bool;
+
+// matcheck(c, fc, sub, sub2, mg, sg, tp, contact, sumtype), the value a card sets on the effect AddProcMix returns, without the
+// arguments nothing reads.
+pub type MatCheck = fn(&Duel, CardId, CardId, u8, u64) -> bool;
 
 // preselect(e, tc): false stops the summon.
 pub type Preselect = fn(&mut Duel, EffectId, CardId) -> Script<bool>;
@@ -37,6 +41,7 @@ pub trait FusionMix {
     const SUB: bool;
     const INSF: bool;
     const MATERIALS: &'static [FusionMaterial];
+    const MATCHECK: Option<MatCheck> = None;
 }
 
 // Fusion.AddProcMixRep(c, sub, insf, fun1, minc, maxc, ...).
@@ -215,8 +220,16 @@ impl Proc {
     }
 
     // Fusion.ConditionFilterMix.
-    fn condition_filter(self, duel: &Duel, c: CardId, sub: bool, funs: impl IntoIterator<Item = FusionMaterial>) -> bool {
-        c.is_can_be_fusion_material(duel, Some(self.fc), self.sumtype)
+    fn condition_filter(
+        self,
+        duel: &Duel,
+        c: CardId,
+        sub: bool,
+        matcheck: Option<MatCheck>,
+        funs: impl IntoIterator<Item = FusionMaterial>,
+    ) -> bool {
+        matcheck.is_none_or(|matcheck| matcheck(duel, c, self.fc, self.tp, self.sumtype))
+            && c.is_can_be_fusion_material(duel, Some(self.fc), self.sumtype)
             && funs
                 .into_iter()
                 .any(|f| f.check(duel, c, self.fc, sub, sub, self.tp, self.sumtype, None))
@@ -350,7 +363,7 @@ impl Fusion {
         };
         let (s, sub) = Proc::new(duel, a.e, a.chkf, M::SUB);
         let funs = M::MATERIALS;
-        let filter = |mc, duel: &Duel| s.condition_filter(duel, mc, sub, funs.iter().copied());
+        let filter = |mc, duel: &Duel| s.condition_filter(duel, mc, sub, M::MATCHECK, funs.iter().copied());
         let mut mg = g.filter(duel, filter, Some(c.into()));
         let mut mustg = aux::get_must_be_material_group(duel, tp, Some(g), tp, Some(c), Some(mg), REASON_FUSION);
         if s.contact {
@@ -381,7 +394,7 @@ impl Fusion {
         let eg = a.eg.unwrap_or_default();
         let mg = eg.filter(
             duel,
-            |mc, duel| s.condition_filter(duel, mc, sub, funs.iter().copied()),
+            |mc, duel| s.condition_filter(duel, mc, sub, M::MATCHECK, funs.iter().copied()),
             Some(c.into()),
         );
         let mut mustg = aux::get_must_be_material_group(duel, tp, Some(eg), tp, Some(c), Some(mg), REASON_FUSION);
@@ -566,7 +579,7 @@ impl Fusion {
         if s.contact {
             mustg.clear();
         }
-        let filter = |mc, duel: &Duel| s.condition_filter(duel, mc, sub, Fusion::rep_funs::<M>());
+        let filter = |mc, duel: &Duel| s.condition_filter(duel, mc, sub, None, Fusion::rep_funs::<M>());
         let mut mg = g.filter(duel, filter, Some(c.into()));
         if !mg.includes(mustg) || s.cannot_be_material(duel, mustg) {
             return false;
@@ -599,7 +612,7 @@ impl Fusion {
         let eg = a.eg.unwrap_or_default();
         let mg = eg.filter(
             duel,
-            |mc, duel| s.condition_filter(duel, mc, sub, Fusion::rep_funs::<M>()),
+            |mc, duel| s.condition_filter(duel, mc, sub, None, Fusion::rep_funs::<M>()),
             Some(c.into()),
         );
         let mut mustg = aux::get_must_be_material_group(duel, tp, Some(eg), tp, Some(c), Some(mg), REASON_FUSION);

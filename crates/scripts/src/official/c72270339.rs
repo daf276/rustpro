@@ -1,14 +1,14 @@
 // Diabellstar the Black Witch
 use crate::prelude::*;
-use crate::testing::{Check, HAND, MZONE};
+use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 72270339;
 
-// With Unchained Twins - Rakea on the field to destroy it; no Sinful Spoils card is ported to set.
-pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (53624265, MZONE)];
+// With Unchained Twins - Rakea on the field to destroy it, and Sinful Spoils Spells in the Deck to set.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (53624265, MZONE), (80845034, DECK), (66328392, DECK)];
 pub const CHECKS: &[Check] = &[
     Check::SpecialSummoned,
-    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 1))),
+    Check::ResolvesEffect(aux::stringid(ID, 1)),
     Check::ResolvesEffect(aux::stringid(ID, 2)),
 ];
 

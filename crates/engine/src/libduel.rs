@@ -257,6 +257,10 @@ impl Duel {
         player <= 1 && self.is_player_can_action(player, EFFECT_CANNOT_RELEASE)
     }
 
+    pub fn is_player_can_sendto_hand(&self, player: u8) -> bool {
+        player <= 1 && self.is_player_can_action(player, EFFECT_CANNOT_TO_HAND)
+    }
+
     pub fn is_player_can_remove(&self, player: u8, card: Option<CardId>) -> bool {
         self.is_player_can_remove_full(player, card, REASON_EFFECT)
     }
@@ -1576,6 +1580,26 @@ impl Duel {
 
     pub fn disable_shuffle_check(&mut self, disable: bool) {
         self.core.shuffle_check_disabled = disable;
+    }
+
+    // `win_player` is 5 until a win is set; the core's game-over check reports it.
+    pub fn win(&mut self, player: u8, reason: u8) {
+        let cannot_lose = |p| self.is_player_affected_by_effect(p, EFFECT_CANNOT_LOSE_EFFECT).is_some();
+        let player = match player {
+            0 | 1 if cannot_lose(1 - player) => return,
+            0 | 1 => player,
+            2 if cannot_lose(0) && cannot_lose(1) => return,
+            2 if cannot_lose(0) => 0,
+            2 if cannot_lose(1) => 1,
+            2 => 2,
+            _ => return,
+        };
+        match (self.core.win_player, player) {
+            (5, _) => self.core.win_player = player,
+            (0, 1) | (1, 0) => self.core.win_player = 2,
+            _ => return,
+        }
+        self.core.win_reason = reason;
     }
 
     pub fn shuffle_deck(&mut self, player: u8) -> Script<()> {

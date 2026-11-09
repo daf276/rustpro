@@ -88,7 +88,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - `Report` is only for a path no `SUPPORT` can reach (say why in one comment line), never for a reachable one that
   is merely rare. An effect needing an empty hand is one: the opening hand is always drawn.
 - `SpecialSummoned` counts the card under test being summoned; what a card summons is `SpecialSummonedCode`.
-- `Replaced` counts the card under test's own replaced move: an effect that replaces another card's destruction is
+- `Replaced` counts the card under test's own replaced move (a destruction replaced, or a `REASON_REPLACE` move such as
+  a cost-replace banish): an effect that replaces another card's destruction is
   checked from that card's file (with the replacing card in its `SUPPORT`).
 - A battle-timed effect (`EVENT_PRE_DAMAGE_CALCULATE` and the like) needs several copies and materials-proof support,
   since random play uses monsters as Link/Xyz materials and activates hand Spells early; Polymerization stays in hand

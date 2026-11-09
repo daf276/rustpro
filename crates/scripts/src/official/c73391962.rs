@@ -13,7 +13,7 @@ impl FusionMix for Materials {
 }
 
 // In the Extra Deck for its Fusion Summon with Polymerization, Jongleur-Ghoul Illusionist (an Illusion Normal Monster) and Mystical Elf
-// (a LIGHT Spellcaster), and on the field to be destroyed by Raigeki; Elzette in the Deck to add.
+// (a LIGHT Spellcaster), and on the field to be destroyed by Raigeki; Elzette and WANTED: Seeker of Sinful Spoils in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),
     (ID, MZONE),
@@ -21,13 +21,14 @@ pub const SUPPORT: &[(u32, u16)] = &[
     (47894537, HAND),
     (15025844, HAND),
     (38648860, DECK),
+    (80845034, DECK),
+    (80845034, DECK),
     (12580477, HAND | OPPONENT),
 ];
-// No Sinful Spoils Spell is ported, so the second search finds nothing.
 pub const CHECKS: &[Check] = &[
     Check::SpecialSummoned,
     Check::ResolvesEffect(aux::stringid(ID, 0)),
-    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 1))),
+    Check::ResolvesEffect(aux::stringid(ID, 1)),
 ];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {

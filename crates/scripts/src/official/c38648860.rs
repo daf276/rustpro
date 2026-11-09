@@ -1,6 +1,6 @@
 // Elzette, Azamina of the White Forest
 use crate::prelude::*;
-use crate::testing::{Check, EXTRA, HAND, MZONE};
+use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 38648860;
 
@@ -13,7 +13,8 @@ impl FusionSummonParams for Params {
 }
 
 // In the hand and on the field, with Junk Synchron and Junk Warrior in the Extra Deck for its Synchro Material, and
-// Azamina Mu Rcielago in the Extra Deck with Jongleur-Ghoul Illusionist (an Illusion Normal Monster) for its Fusion Summon.
+// Azamina Mu Rcielago in the Extra Deck with Jongleur-Ghoul Illusionist (an Illusion Normal Monster) for its Fusion Summon, and
+// WANTED: Seeker of Sinful Spoils in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),
     (ID, MZONE),
@@ -21,12 +22,13 @@ pub const SUPPORT: &[(u32, u16)] = &[
     (CARD_JUNK_WARRIOR, EXTRA),
     (73391962, EXTRA),
     (47894537, HAND),
+    (80845034, DECK),
+    (80845034, DECK),
 ];
-// No Sinful Spoils card is ported, so the search finds nothing.
 pub const CHECKS: &[Check] = &[
     Check::ResolvesEffect(aux::stringid(ID, 0)),
     Check::ResolvesEffect(aux::stringid(ID, 1)),
-    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 2))),
+    Check::ResolvesEffect(aux::stringid(ID, 2)),
 ];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {

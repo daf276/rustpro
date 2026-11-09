@@ -25,8 +25,9 @@ registers every `c<code>.rs` and reads its `LISTED_NAMES`, `FIT_MONSTER`, `SUPPO
    library procedures that call them (`Duel.Overlay` raises `EVENT_MOVE`, so the Xyz procedure uses
    `DuelWorkaround::overlay`).
 4. Declare `SUPPORT` and, if the default does not fit, `CHECKS` (below).
-5. Run `cargo run --release -p diff --bin card -- <code> --threads 7` and iterate until it passes. Several codes may
-   be given at once; cargo's own flags (`-j 7`) go before `--`. Then run `cargo test --release -p diff -j 7` (all suites must stay clean),
+5. Run `cargo run --profile card -p diff --bin card -- <code> --threads 7` and iterate until it passes (the `card`
+   profile is release with incremental builds: a card edit rebuilds in seconds). Several codes may be given at once;
+   cargo's own flags (`-j 7`) go before `--`. Then run `cargo test --profile card -p diff -j 7` (all suites must stay clean),
    `cargo clippy --workspace --all-targets -j 7`, `cargo fmt --all` and
    `rustfmt --edition 2024 crates/scripts/src/official/c<code>.rs` (`cargo fmt` does not reach card files, since
    build.rs includes them).
@@ -114,8 +115,7 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   A Spell that Special Summons another card is checked by `SpecialSummonedCode(code)`.
   A trigger on its own destruction needs a destroyer that can hit the card (Raigeki only hits the opponent; Dark Hole
   also clears what the trigger needs, so a single-target destroyer is best). An effect without `SetDescription` is
-  `ResolvesEffect(0)`. A Link whose effect needs its materials to qualify gets only qualifying materials. Test several cards per card command run: each rebuild takes over a minute. `cargo check -p scripts -j 7` (about 12 s) finds compile errors
-  first.
+  `ResolvesEffect(0)`. A Link whose effect needs its materials to qualify gets only qualifying materials. `cargo check -p scripts -j 7` finds compile errors first.
   Scenario Xyz materials come only from the fixed set: a card needing a specific material gets it attached through a
   ported `SUPPORT` card (Xyz Import, c1621413). An effect reacting to the opponent targeting a monster gets a targeting
   card `| OPPONENT` in `SUPPORT` (Mage Power, c49161188). A card an effect summons or adds by name is ported first even

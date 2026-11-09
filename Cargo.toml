@@ -25,3 +25,8 @@ opt-level = 3
 inherits = "release"
 lto = "fat"
 codegen-units = 1
+[profile.card]
+inherits = "release"
+incremental = true
+codegen-units = 256
+lto = false

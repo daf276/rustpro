@@ -6,7 +6,7 @@ use crate::duel::Duel;
 use crate::effect::{Chain, Container, EffectId, EffectSet, Event, Target, Value};
 use crate::field::{Cards16, PerPlayer};
 use crate::processor::{
-    PointEvent, SelectCard, SelectCounter, SelectOption, SelectPlace, SelectPosition, SelectTributeP, SelectUnselectCard,
+    PointEvent, RESTART, SelectCard, SelectCounter, SelectOption, SelectPlace, SelectPosition, SelectTributeP, SelectUnselectCard,
 };
 use crate::script::Procedure;
 
@@ -34,6 +34,11 @@ pub struct GetControl {
     pub zone: u32,
     pub destroy_set: CardSet,
     pub remaining: CardSet,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct SelfDestroy {
+    pub step: u16,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -704,6 +709,30 @@ impl Duel {
                 true
             }
         }
+    }
+
+    // Processors::SelfDestroy: destroys the cards an EFFECT_SELF_DESTROY applies to, one at a time.
+    pub(crate) fn process_self_destroy(&mut self, arg: &mut SelfDestroy) -> bool {
+        if arg.step != 0 {
+            self.returns.set_i32(0, 0);
+            self.core.operated_set.clear();
+            return true;
+        }
+        let Some(card) = self.core.self_destroy_set.first() else {
+            return false;
+        };
+        if let Some(effect) = self.is_affected_by_effect(card, EFFECT_SELF_DESTROY) {
+            let reason_player = self.get_handler_player(effect);
+            let target = &mut self.cards[card];
+            target.temp.reason_effect = target.current.reason_effect;
+            target.temp.reason_player = target.current.reason_player;
+            target.current.reason_effect = Some(effect);
+            target.current.reason_player = reason_player;
+            self.field_destroy(card.into(), Some(effect), REASON_EFFECT, PLAYER_SELFDES, PLAYER_NONE, 0, 0);
+        }
+        self.core.self_destroy_set.remove(card);
+        arg.step = RESTART;
+        false
     }
 
     // The Trap Monsters an EFFECT_DISABLE_TRAPMONSTER effect affects go back to the Spell & Trap Zone, or to the GY without room.

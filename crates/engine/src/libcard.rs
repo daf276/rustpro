@@ -572,6 +572,10 @@ impl CardId {
         duel.card_targets(self)
     }
 
+    pub fn get_card_target_count(self, duel: &Duel) -> usize {
+        duel.card_targets(self).len()
+    }
+
     pub fn get_first_card_target(self, duel: &Duel) -> Option<CardId> {
         duel.card_targets(self).get_first()
     }

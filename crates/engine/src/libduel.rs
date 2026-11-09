@@ -2296,15 +2296,42 @@ impl Duel {
         self.get_overlay_group(player, self_side, oppo).len()
     }
 
-    pub fn check_remove_overlay_card(&self, player: u8, self_side: u8, oppo: u8, count: u16, _reason: u32) -> bool {
-        player <= 1 && self.is_player_can_remove_overlay_card(player, None, self_side, oppo, count)
+    pub fn check_remove_overlay_card(&self, player: u8, self_side: u8, oppo: u8, count: u16, reason: u32) -> bool {
+        self.check_remove_overlay_card_full(player, self_side, oppo, count, reason, None)
+    }
+
+    // The sixth argument of Duel.CheckRemoveOverlayCard: only the overlay cards of this group's Xyz Monsters count.
+    pub fn check_remove_overlay_card_full(
+        &self,
+        player: u8,
+        self_side: u8,
+        oppo: u8,
+        count: u16,
+        _reason: u32,
+        group: Option<CardSet>,
+    ) -> bool {
+        player <= 1 && self.is_player_can_remove_overlay_card(player, group, self_side, oppo, count)
     }
 
     pub fn remove_overlay_card(&mut self, player: u8, self_side: u8, oppo: u8, min: u16, max: u16, reason: u32) -> Script<i32> {
+        self.remove_overlay_card_full(player, self_side, oppo, min, max, reason, None)
+    }
+
+    // The seventh argument of Duel.RemoveOverlayCard: only the overlay cards of this group's Xyz Monsters.
+    pub fn remove_overlay_card_full(
+        &mut self,
+        player: u8,
+        self_side: u8,
+        oppo: u8,
+        min: u16,
+        max: u16,
+        reason: u32,
+        group: Option<CardSet>,
+    ) -> Script<i32> {
         if player > 1 {
             return Ok(0);
         }
-        self.field_remove_overlay_card(reason, None, player, self_side, oppo, min, max);
+        self.field_remove_overlay_card(reason, group, player, self_side, oppo, min, max);
         self.yield_script()?;
         Ok(self.returns.at_i32(0))
     }

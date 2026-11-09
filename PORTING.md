@@ -142,6 +142,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - `aux.SelectUnselectGroup` is `aux::select_unselect_group(duel, g, minc, maxc, &|duel, sg, mg, c| (res, stop),
   seltp, hintmsg)`, a nil `rescon` is `&|_, _, _, _| (true, false)`; `Duel.SelectTarget` returns `Option<CardSet>`; a card calling `Fusion.SummonEffTG/OP` itself builds
   the closure first with `Fusion::new_summon_eff_closure(duel, e, op)`.
+- `Cost::and` cannot stop on a cost that returns false when run (Lua's `Cost.AND` does): write such a composite
+  cost out (`DragonRuler::self_discard_to_grave_cost`). `EffectUtility::has_self_discard_cost` lists the costs it knows.
 - In the engine, `unported!(duel, x)` takes what the core would have used, an iterator or `Option`:
   `(cond).then_some(effect)` for a condition; in card files it takes a bool. Trap Monsters are ported except turning one
   face-down.

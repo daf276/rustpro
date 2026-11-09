@@ -228,6 +228,14 @@ impl CardId {
         duel.cards[self].previous.position & (position & 0xff) != 0
     }
 
+    pub fn get_previous_position(self, duel: &Duel) -> u32 {
+        duel.cards[self].previous.position
+    }
+
+    pub fn get_battle_position(self, duel: &Duel) -> u32 {
+        duel.cards[self].temp.position
+    }
+
     pub fn is_able_to_hand_core(self, duel: &Duel) -> bool {
         duel.is_capable_send_to_hand(self, duel.core.reason_player.get())
     }
@@ -899,10 +907,10 @@ impl CardId {
 }
 
 impl CardId {
-    // Card.AssumeProperty, called inside checks. Only card::get_race reads an assumed property so far; the other kinds
-    // (and the invalid ones the core rejects with a Lua error) come with the cards that assume them.
+    // Card.AssumeProperty, called inside checks. Only card::get_race and card::get_type read an assumed property so far;
+    // the other kinds (and the invalid ones the core rejects with a Lua error) come with the cards that assume them.
     pub fn assume_property(self, duel: &Duel, assume: u32, value: u64) {
-        if assume != ASSUME_RACE {
+        if assume != ASSUME_RACE && assume != ASSUME_TYPE {
             duel.reach_unported(concat!(file!(), ":", line!()));
             return;
         }

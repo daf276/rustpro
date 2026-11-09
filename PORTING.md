@@ -72,7 +72,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   only codes `porting/queue.tsv` marks `no script` (the cdb also has tokens and cards outside the pool). A ported
   Effect Monster can stand in where no Normal Monster of a level exists.
   An effect that needs the card in one zone gets a copy there (`(ID, SZONE)`), or more copies of what it reacts to.
-  `SZONE` never places a Field Spell (that is the Field Zone); use 0, or `HAND` for one that must be activated. Placement draws random numbers in list order, so
+  `SZONE` never places a Field Spell (that is the Field Zone); use 0, or `HAND` for one that must be activated.
+  `SZONE` never places a monster either: a Pendulum Monster goes in a Pendulum Zone with `LOCATION_PZONE` (0x200). Placement draws random numbers in list order, so
   reordering `SUPPORT` changes every scenario.
   `DECK` cards are often drawn into the opening hand: list 2-3 copies of what an effect needs in the Deck (4 when it
   needs two left there). An `(ID, MZONE)` copy defeats a "only monster you control" condition. A destroyed-trigger

@@ -117,6 +117,8 @@ pub enum Value {
     Int(i32),
     // The values a Lua function returns regardless of its parameters (a summon procedure's type and zone).
     Values(&'static [i32]),
+    // value(e, c) -> (sumtype, zone) of an EFFECT_SPSUMMON_PROC whose zone depends on the card.
+    SpSummonProcedure(fn(&Duel, EffectId, CardId) -> (i32, i32)),
     // value(e, re, tp): EFFECT_CANNOT_ACTIVATE.
     EffectPlayer(fn(&Duel, EffectId, EffectId, u8) -> bool),
     // value(e, re, rp, c) that reads the card: EFFECT_INDESTRUCTABLE_EFFECT.
@@ -1273,6 +1275,7 @@ impl Duel {
         match self.effects[effect].value {
             Value::Int(value) => value,
             Value::Values(values) => values.first().copied().unwrap_or(0),
+            Value::SpSummonProcedure(value) => value(self, effect, card).0,
             Value::Card(value) => value(self, effect, card),
             Value::EffectPlayer(_)
             | Value::EffectPlayerCard(_)
@@ -1357,6 +1360,10 @@ impl Duel {
     pub(crate) fn get_values(&self, effect: EffectId, card: CardId) -> List<i32, 3> {
         match self.effects[effect].value {
             Value::Values(values) => values.iter().copied().collect(),
+            Value::SpSummonProcedure(value) => {
+                let (sumtype, zone) = value(self, effect, card);
+                List::from_iter([sumtype, zone])
+            }
             _ => List::from_iter([self.get_value(effect, card)]),
         }
     }

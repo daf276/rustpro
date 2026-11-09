@@ -95,6 +95,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   third argument accepts only Graveyard monsters.
 - A Link Monster `SUPPORT` places never sits in an Extra Monster Zone, so effects on the zones it points to need a
   real Link Summon.
+- `(code, DECK)` for an Extra Deck monster is silently dropped. An effect that needs an attack on a specific face-up
+  Attack Position monster is rarely reached by random play; it may be `Report`. Print cdb names with `python -I -X utf8`.
 - A monster `SUPPORT` places in `MZONE` was not summoned from the Extra Deck: a condition on that needs the support
   to really summon it (the Extra Deck monster with Polymerization, or a Link with its materials).
 - `SpecialSummoned` counts the card under test being summoned; what a card summons is `SpecialSummonedCode`.

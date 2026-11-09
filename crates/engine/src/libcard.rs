@@ -1296,6 +1296,18 @@ impl CardId {
         duel.xyz_materials(self)
     }
 
+    pub fn get_overlay_target(self, duel: &Duel) -> Option<CardId> {
+        duel.cards[self].overlay_target
+    }
+
+    pub fn get_column_group_count(self, duel: &Duel) -> usize {
+        self.get_column_group_count_full(duel, 0, 0)
+    }
+
+    pub fn get_column_group_count_full(self, duel: &Duel, left: i32, right: i32) -> usize {
+        duel.get_column_cards(self, left, right).len()
+    }
+
     pub fn get_overlay_count(self, duel: &Duel) -> usize {
         duel.xyz_materials(self).len()
     }

@@ -1,10 +1,10 @@
 // Ports of processor_unit.h, processor_visit.cpp and processor.cpp. Steps keep the core's numbering; the chain units
 // are in chain.rs.
 use crate::card::{Card, CardId, CardSet, LocInfo, SendtoParam};
-use crate::chain::{AddChain, Execute, SolveChain, SolveContinuous};
+use crate::chain::{AddChain, Execute, ExecuteKind, SolveChain, SolveContinuous};
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{Chain, Container, EffectId, Value};
+use crate::effect::{Chain, Container, EffectId, Event, Value};
 use crate::field::PerPlayer;
 use crate::operations::{
     ChangePos, Damage, Destroy, DestroyReplace, DiscardDeck, Draw, Equip, FlipSummon, GetControl, MonsterSet, MoveToField,
@@ -1781,9 +1781,19 @@ impl Duel {
                         self.core.chain_attack = false;
                         self.core.chain_attacker_id = 0;
                     }
-                    // The attack costs of EFFECT_ATTACK_COST run as core.tpchain here and in step 14.
-                    unported!(self, self.filter_player_effect(turn_player, EFFECT_ATTACK_COST, false));
-                    unported!(self, self.filter_effect(attacker, EFFECT_ATTACK_COST, true));
+                    let mut costs = self.filter_player_effect(turn_player, EFFECT_ATTACK_COST, false);
+                    costs.extend(self.filter_effect(attacker, EFFECT_ATTACK_COST, true));
+                    costs.sort_by_key(|&effect| self.effects.id(effect));
+                    costs.retain(|&effect| self.effects[effect].operation.is_some());
+                    if !costs.is_empty() {
+                        self.core.attack_cancelable = false;
+                    }
+                    // Several costs are sorted into core.tpchain and run in step 14.
+                    unported!(self, costs.get(1));
+                    if let Some(&cost) = costs.first() {
+                        self.execute(ExecuteKind::Operation, cost, turn_player, Event::default());
+                        self.adjust_all();
+                    }
                 }
                 false
             }

@@ -2631,6 +2631,18 @@ impl Duel {
         self.core.attacker
     }
 
+    pub fn is_attack_cost_paid(&self) -> u8 {
+        self.core.attack_cost_paid
+    }
+
+    pub fn attack_cost_paid(&mut self) {
+        self.attack_cost_paid_full(1);
+    }
+
+    pub fn attack_cost_paid_full(&mut self, paid: u8) {
+        self.core.attack_cost_paid = paid;
+    }
+
     pub fn chain_attack(&mut self) {
         let Some(attacker) = self.core.attacker else { return };
         if !self.is_affect_by_effect(attacker, self.core.reason_effect.get()) {

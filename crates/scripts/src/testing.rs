@@ -9,6 +9,7 @@ pub const SZONE: u16 = 0x8;
 pub const GRAVE: u16 = 0x10;
 pub const REMOVED: u16 = 0x20;
 pub const EXTRA: u16 = 0x40;
+pub const PZONE: u16 = 0x200;
 pub const OPPONENT: u16 = 0x8000;
 
 // Each check passes when its count over the card's own scenarios is above 0. A card without CHECKS has

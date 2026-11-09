@@ -1041,8 +1041,8 @@ impl CardId {
         duel.is_not_tuner(self, Some(scard), player)
     }
 
-    pub fn get_synchro_level(self, duel: &Duel, _scard: CardId) -> u32 {
-        duel.get_synchro_level(self)
+    pub fn get_synchro_level(self, duel: &Duel, scard: CardId) -> u32 {
+        duel.get_synchro_level(self, scard)
     }
 
     pub fn is_can_be_synchro_material(self, duel: &Duel, scard: CardId) -> bool {

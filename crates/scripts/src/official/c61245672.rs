@@ -15,7 +15,7 @@ impl LinkProcedure for Procedure {
     }
 
     fn specialchk(duel: &Duel, sg: CardSet, _: CardId, _: u64, _: u8) -> bool {
-        aux::check_different_property_binary(duel, sg, &|c, duel| c.get_attribute(duel))
+        aux::check_different_property_binary(duel, sg, &|c, duel| u64::from(c.get_attribute(duel)))
     }
 }
 

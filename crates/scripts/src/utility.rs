@@ -537,11 +537,11 @@ pub mod aux {
     }
 
     // Group.CheckDifferentPropertyBinary: whether the cards can each take a different bit of the property f returns.
-    pub fn check_different_property_binary(duel: &Duel, g: CardSet, f: &dyn Fn(CardId, &Duel) -> u32) -> bool {
-        fn checkrecbin(duel: &Duel, c: CardId, g: CardSet, val: u32, f: &dyn Fn(CardId, &Duel) -> u32) -> bool {
+    pub fn check_different_property_binary(duel: &Duel, g: CardSet, f: &dyn Fn(CardId, &Duel) -> u64) -> bool {
+        fn checkrecbin(duel: &Duel, c: CardId, g: CardSet, val: u64, f: &dyn Fn(CardId, &Duel) -> u64) -> bool {
             let prop = f(c, duel) & !val;
             let rest = g.difference(c.into());
-            (0..u32::BITS)
+            (0..u64::BITS)
                 .map(|bit| 1 << bit)
                 .filter(|bit| prop & bit != 0)
                 .any(|bit| g.len() < 2 || rest.into_iter().any(|other| checkrecbin(duel, other, rest, val | bit, f)))
@@ -1064,6 +1064,15 @@ impl Cost {
             return Ok(c.is_able_to_remove_as_cost(duel));
         }
         duel.remove(c, POS_FACEUP, REASON_COST)?;
+        Ok(false)
+    }
+
+    pub fn self_to_extra(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        let c = args.e.get_handler(duel);
+        if chk == 0 {
+            return Ok(c.is_able_to_extra_as_cost(duel));
+        }
+        duel.send_to_deck(c, PLAYER_NONE, SEQ_DECKSHUFFLE, REASON_COST)?;
         Ok(false)
     }
 

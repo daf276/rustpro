@@ -2687,13 +2687,27 @@ impl Duel {
             })
     }
 
-    pub(crate) fn is_player_can_summon(&self, _sumtype: u32, playerid: u8, card: CardId, _toplayer: u8) -> bool {
-        unported!(self, self.filter_player_effect(playerid, EFFECT_FORCE_NORMAL_SUMMON_POSITION, true));
-        self.is_player_can(playerid, EFFECT_CANNOT_SUMMON, card)
+    // EFFECT_CANNOT_SUMMON and EFFECT_CANNOT_FLIP_SUMMON, whose target may read the summoning player, type and target player.
+    fn is_player_can_summon_target(&self, playerid: u8, code: u32, card: CardId, sumtype: u32, toplayer: u8) -> bool {
+        !self
+            .filter_player_effect(playerid, code, true)
+            .into_iter()
+            .any(|effect| match self.effects[effect].target {
+                Target::Card(target) => target(self, effect, card),
+                Target::SpSummon(target) => target(self, effect, card, playerid, sumtype, POS_FACEUP as u8, toplayer, None),
+                _ => true,
+            })
     }
 
+    pub(crate) fn field_is_player_can_summon(&self, sumtype: u32, playerid: u8, card: CardId, toplayer: u8) -> bool {
+        unported!(self, self.filter_player_effect(playerid, EFFECT_FORCE_NORMAL_SUMMON_POSITION, true));
+        self.is_player_can_summon_target(playerid, EFFECT_CANNOT_SUMMON, card, sumtype | SUMMON_TYPE_NORMAL, toplayer)
+    }
+
+    // The core passes only the card and the player; the parameters a target reads past them are nil in Lua, which
+    // cards read as the player.
     pub(crate) fn is_player_can_flipsummon(&self, playerid: u8, card: CardId) -> bool {
-        self.is_player_can(playerid, EFFECT_CANNOT_FLIP_SUMMON, card)
+        self.is_player_can_summon_target(playerid, EFFECT_CANNOT_FLIP_SUMMON, card, 0, playerid)
     }
 
     pub(crate) fn is_player_can_mset(&self, _sumtype: u32, playerid: u8, card: CardId, _toplayer: u8) -> bool {
@@ -2736,7 +2750,7 @@ impl Duel {
         self.cards[card].current.location == LOCATION_HAND && self.is_player_can(playerid, EFFECT_CANNOT_DISCARD_HAND, card)
     }
 
-    // field::is_player_can_spsummon(peffect, ...): EFFECT_FORCE_SPSUMMON_POSITION, the special summon counters and
+    // field::is_player_can_spsummon(peffect, ...): the special summon counters and
     // the once-per-turn summons come with the cards and libraries that use them.
     pub(crate) fn is_player_can_spsummon(
         &self,
@@ -2776,12 +2790,41 @@ impl Duel {
         if forbidden {
             return false;
         }
-        unported!(self, self.filter_player_effect(playerid, EFFECT_FORCE_SPSUMMON_POSITION, true));
+        let forcing = self.filter_player_effect(playerid, EFFECT_FORCE_SPSUMMON_POSITION, true);
+        if self.force_spsummon_positions(&forcing, card, playerid, sumtype, sumpos, toplayer, effect) == 0 {
+            return false;
+        }
         if !self.check_spsummon_once(card, playerid) {
             return false;
         }
         unported!(self, self.field_effects.spsummon_count_eff.iter().copied());
         true
+    }
+
+    // The positions of `positions` the EFFECT_FORCE_SPSUMMON_POSITION effects of a player leave for the card, `caller` being the
+    // player the targets read as the one summoning.
+    pub(crate) fn force_spsummon_positions(
+        &self,
+        forcing: &EffectSet,
+        card: CardId,
+        caller: u8,
+        sumtype: u32,
+        positions: u8,
+        toplayer: u8,
+        effect: Option<EffectId>,
+    ) -> u8 {
+        forcing.into_iter().fold(positions, |positions, forcing| {
+            let applies = match self.effects[*forcing].target {
+                Target::Card(target) => target(self, *forcing, card),
+                Target::SpSummon(target) => target(self, *forcing, card, caller, sumtype, positions, toplayer, effect),
+                _ => true,
+            };
+            if applies {
+                positions & self.get_value(*forcing, card) as u8
+            } else {
+                positions
+            }
+        })
     }
 
     pub(crate) fn check_spsummon_once(&self, card: CardId, playerid: u8) -> bool {

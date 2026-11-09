@@ -269,6 +269,15 @@ impl Duel {
         player <= 1 && self.is_player_can_action(player, EFFECT_CANNOT_RELEASE)
     }
 
+    // Duel.IsPlayerCanSummon without a card.
+    pub fn is_player_can_summon(&self, player: u8) -> bool {
+        player <= 1 && self.is_player_can_action(player, EFFECT_CANNOT_SUMMON)
+    }
+
+    pub fn is_player_can_additional_summon(&self, player: u8) -> bool {
+        player <= 1 && self.core.extra_summon[player] == 0
+    }
+
     pub fn is_player_can_sendto_hand(&self, player: u8) -> bool {
         player <= 1 && self.is_player_can_action(player, EFFECT_CANNOT_TO_HAND)
     }
@@ -1554,11 +1563,67 @@ impl Duel {
         Ok(self.returns.at_i32(0))
     }
 
+    // What Card.CheckActivateEffect does to the chain link being built when a script calls it with copy_info.
+    pub fn set_current_chain_event(&mut self, event: Event) {
+        if let Some(chain) = self.core.current_chain.last_mut() {
+            chain.evt = event;
+        }
+    }
+
     pub fn adjust_instantly(&mut self, card: Option<CardId>) {
         if let Some(card) = card {
             self.filter_disable_related_cards(card);
         }
         self.adjust_instant();
+    }
+
+    // Duel.Readjust; the core reads the reason effect's handler, so it is only called from an effect.
+    pub fn readjust(&mut self) -> Script<()> {
+        let Some(reason_effect) = self.core.reason_effect.get() else {
+            return Ok(());
+        };
+        let adjcard = reason_effect.get_handler(self);
+        let count = self.core.readjust_map.entry(adjcard).or_insert(0);
+        *count += 1;
+        if *count > 3 {
+            let reason_player = self.core.reason_player.get();
+            self.send_to(
+                adjcard.into(),
+                None,
+                REASON_RULE,
+                reason_player,
+                PLAYER_NONE,
+                LOCATION_GRAVE,
+                0,
+                POS_FACEUP as u8,
+                false,
+            );
+            return self.yield_script();
+        }
+        self.core.re_adjust = true;
+        Ok(())
+    }
+
+    // Duel.IsEnvironment(code) for both players, in the Field Zone and on the field.
+    pub fn is_environment(&self, code: u32) -> bool {
+        let enabled = |card: CardId| self.cards[card].is_position(POS_FACEUP) && self.cards[card].get_status(STATUS_EFFECT_ENABLED);
+        let environment = |card: Option<CardId>| card.is_some_and(|card| enabled(card) && card.get_code(self) == code);
+        let fields = [0, 1].map(|player| self.player[player].list_szone[5]);
+        let on_field = [0, 1]
+            .into_iter()
+            .flat_map(|player| self.player[player].list_szone.into_iter().chain(self.player[player].list_mzone));
+        if on_field.into_iter().any(environment) {
+            return true;
+        }
+        let no_field_spell = !fields.into_iter().any(|card| card.is_some_and(enabled));
+        unported!(
+            self,
+            no_field_spell
+                .then(|| self.filter_field_effect(EFFECT_CHANGE_ENVIRONMENT))
+                .into_iter()
+                .flatten()
+        );
+        false
     }
 
     pub fn skip_phase(&mut self, player: u8, phase: u32, reset: u32, count: u16) {

@@ -100,7 +100,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   A Spell that Special Summons another card is checked by `SpecialSummonedCode(code)`.
   A trigger on its own destruction needs a destroyer that can hit the card (Raigeki only hits the opponent; Dark Hole
   also clears what the trigger needs, so a single-target destroyer is best). An effect without `SetDescription` is
-  `ResolvesEffect(0)`. A Link whose effect needs its materials to qualify gets only qualifying materials. Test several cards per card command run: each rebuild takes over a minute.
+  `ResolvesEffect(0)`. A Link whose effect needs its materials to qualify gets only qualifying materials. Test several cards per card command run: each rebuild takes over a minute. `cargo check -p scripts -j 7` (about 12 s) finds compile errors
+  first.
   Scenario Xyz materials come only from the fixed set: a card needing a specific material gets it attached through a
   ported `SUPPORT` card (Xyz Import, c1621413). An effect reacting to the opponent targeting a monster gets a targeting
   card `| OPPONENT` in `SUPPORT` (Mage Power, c49161188). A card an effect summons or adds by name is ported first even

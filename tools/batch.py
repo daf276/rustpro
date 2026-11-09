@@ -2,9 +2,10 @@
 weekly views first, each batch with the unported cards its Lua names (listed names, materials, searches) that are in
 the pool. Cards outside any archetype are batched by views. One batch per line: code<TAB>name;code<TAB>name;...
 
-  python tools/batch.py [batches] [size] [skip codes...]
+  python tools/batch.py [--top=N] [batches] [size] [skip codes...]
 
-`skip` takes codes already assigned to running batches.
+`skip` takes codes already assigned to running batches; `--top` picks only among the N most viewed cards (the cards their
+Lua names still come from the whole pool).
 """
 import csv
 import re
@@ -14,12 +15,14 @@ from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-batches, size = (int(arg) for arg in (sys.argv[1:3] + ["4", "16"][len(sys.argv[1:3]) :]))
-skip = {int(code) for code in sys.argv[3:]}
+top = next((int(arg[6:]) for arg in sys.argv[1:] if arg.startswith("--top=")), None)
+args = [arg for arg in sys.argv[1:] if not arg.startswith("--top=")]
+batches, size = (int(arg) for arg in (args[:2] + ["4", "16"][len(args[:2]) :]))
+skip = {int(code) for code in args[2:]}
 ported = {int(path.stem[1:]) for path in (ROOT / "crates/scripts/src/official").glob("c*.rs")} | skip
 rows = list(csv.DictReader(open(ROOT / "porting/queue.tsv", encoding="utf-8"), delimiter="\t"))
 pool = {int(row["code"]): row for row in rows if row["ported"] != "no script"}
-todo = [int(row["code"]) for row in rows if row["ported"] == "no" and int(row["code"]) not in ported]
+todo = [int(row["code"]) for row in rows[:top] if row["ported"] == "no" and int(row["code"]) not in ported]
 setcodes = dict(sqlite3.connect((ROOT / "vendor/BabelCDB/cards.cdb").as_uri() + "?mode=ro", uri=True).execute("select id, setcode from datas"))
 
 

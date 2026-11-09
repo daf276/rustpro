@@ -1739,6 +1739,22 @@ fn equip_by_effect_limit(duel: &Duel, e: EffectId, c: CardId) -> bool {
             .any(|te| Some(te) == e.get_label_object(duel))
 }
 
+pub struct Witchcrafter;
+
+impl Witchcrafter {
+    // Witchcrafter.DiscardCost applied.
+    pub fn discard_cost(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        Cost::replaceable(duel, args, chk, |duel, args, chk| {
+            Cost::discard_full(duel, args, chk, CardId::is_spell, false, (1, 1))
+        })
+    }
+
+    // Witchcrafter.TributeAndDiscardCost applied.
+    pub fn tribute_and_discard_cost(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        Cost::and(duel, args, chk, &[Cost::self_tribute, Witchcrafter::discard_cost])
+    }
+}
+
 // The parameters of Cyberdark.EquipFilter, EquipTarget and EquipOperation for the effects that target (targets true); the ones that
 // do not come with the cards that use them. `f` is the filter before EquipFilter wraps it, `equipop` the op.
 pub trait CyberdarkEquip {

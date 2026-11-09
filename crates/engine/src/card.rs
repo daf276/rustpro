@@ -2392,6 +2392,44 @@ impl Duel {
             })
     }
 
+    // card::is_destructable_by_effect: whether `effect`, with the reason player `playerid`, can destroy the card.
+    pub(crate) fn is_destructable_by_effect(&self, card: CardId, effect: EffectId, playerid: u8) -> bool {
+        if !self.is_affect_by_effect(card, Some(effect)) || self.check_indestructable_by_effect(card, Some(effect), playerid).is_some() {
+            return false;
+        }
+        let value = |indestructable: EffectId| match self.effects[indestructable].value {
+            Value::Int(value) => value,
+            Value::Reason(value) => i32::from(value(self, indestructable, Some(effect), REASON_EFFECT, playerid)),
+            _ => {
+                self.reach_unported(concat!(file!(), ":", line!()));
+                0
+            }
+        };
+        if self
+            .filter_effect(card, EFFECT_INDESTRUCTABLE, true)
+            .into_iter()
+            .any(|indestructable| value(indestructable) != 0)
+        {
+            return false;
+        }
+        for indestructable in self.filter_effect(card, EFFECT_INDESTRUCTABLE_COUNT, true) {
+            let counted = self.effects[indestructable].is_flag(EFFECT_FLAG_COUNT_LIMIT);
+            if counted && self.effects[indestructable].count_limit == 0 {
+                continue;
+            }
+            let times = value(indestructable);
+            let spent = self
+                .indestructable_effects
+                .iter()
+                .filter(|&&entry| entry == (card, indestructable))
+                .count() as i32;
+            if times != 0 && (counted || spent < times) {
+                return false;
+            }
+        }
+        true
+    }
+
     // The first EFFECT_INDESTRUCTABLE effect whose value holds for the reason effect, reason and reason player of the card.
     pub(crate) fn check_indestructable_value(&self, card: CardId) -> Option<EffectId> {
         let current = self.cards[card].current;

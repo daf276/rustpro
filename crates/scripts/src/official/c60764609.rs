@@ -114,7 +114,7 @@ fn spcostfilter(c: CardId, duel: &Duel) -> bool {
     c.is_attribute(duel, ATTRIBUTE_LIGHT) && c.is_race(duel, RACE_FIEND) && c.is_able_to_deck_or_extra_as_cost(duel)
 }
 
-fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+pub fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     let (c, tp) = (a.e.get_handler(duel), a.tp);
     if chk == 0 {
         return Ok(duel.is_existing_matching_card(spcostfilter, tp, LOCATION_GRAVE, 0, 1, Some(c.into())));

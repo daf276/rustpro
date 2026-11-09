@@ -2843,7 +2843,10 @@ impl Duel {
             if self.effects[effect].is_flag(EFFECT_FLAG_CANNOT_DISABLE) {
                 return false;
             }
-            unported!(self, self.filter_field_effect(EFFECT_CANNOT_DISEFFECT));
+            return !self
+                .filter_field_effect(EFFECT_CANNOT_DISEFFECT)
+                .into_iter()
+                .any(|peff| self.check_value_chain(peff, chaincount));
         }
         true
     }

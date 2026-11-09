@@ -87,11 +87,11 @@ fn matfilter(c: CardId, duel: &Duel, lc: CardId, sumtype: u64, tp: u8) -> bool {
     c.is_attribute_full(duel, ATTRIBUTE_LIGHT, Some(lc), sumtype, tp) && c.is_race_full(duel, RACE_FIEND, Some(lc), sumtype, tp)
 }
 
-fn eqfilter(c: CardId, duel: &Duel) -> bool {
+pub fn eqfilter(c: CardId, duel: &Duel) -> bool {
     !c.is_link_monster(duel) && c.is_attribute(duel, ATTRIBUTE_LIGHT) && c.is_race(duel, RACE_FIEND) && c.is_faceup(duel)
 }
 
-fn eqtg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bool> {
+pub fn eqtg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bool> {
     let (c, tp) = (a.e.get_handler(duel), a.tp);
     if let Some(chkc) = chkc {
         return Ok(chkc.is_location(duel, LOCATION_MZONE) && chkc.is_controler(duel, tp) && eqfilter(chkc, duel));

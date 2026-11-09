@@ -2595,7 +2595,6 @@ impl Duel {
                             for card in [attacker, target] {
                                 let codes = [EFFECT_REFLECT_BATTLE_DAMAGE, EFFECT_ALSO_BATTLE_DAMAGE];
                                 unported!(self, codes.into_iter().filter_map(|code| self.is_affected_by_effect(card, code)));
-                                unported!(self, self.filter_effect(card, EFFECT_CHANGE_BATTLE_DAMAGE, true));
                             }
                             for p in 0..2 {
                                 let codes = [EFFECT_REFLECT_BATTLE_DAMAGE, EFFECT_ALSO_BATTLE_DAMAGE];
@@ -2603,8 +2602,8 @@ impl Duel {
                                     self,
                                     codes.into_iter().filter_map(|code| self.is_player_affected_by_effect(p, code))
                                 );
-                                unported!(self, self.filter_player_effect(p, EFFECT_CHANGE_BATTLE_DAMAGE, false));
                             }
+                            self.change_battle_damage(attacker, Some(target), pa);
                             let pd = self.cards[target].current.controler;
                             if self.is_affected_by_effect(attacker, EFFECT_NO_BATTLE_DAMAGE).is_some()
                                 || self
@@ -2712,11 +2711,12 @@ impl Duel {
             let (mut double_dam, mut half_dam, mut dam_value) = (false, false, -1);
             for &effect in &effects {
                 let player_target = self.effects[effect].is_flag(EFFECT_FLAG_PLAYER_TARGET);
-                unported!(self, (player_target && self.is_target_player(effect, p)).then_some(effect));
-                let val = if player_target {
-                    -1
-                } else {
+                let val = if !player_target {
                     self.get_battle_damage_value(effect, p, reason_card)
+                } else if self.is_target_player(effect, p) {
+                    self.get_player_battle_damage_value(effect)
+                } else {
+                    -1
                 };
                 if val == i64::from(DOUBLE_DAMAGE) {
                     double_dam = true;

@@ -143,6 +143,11 @@ impl EffectId {
         peffect.flag[1] = property2;
     }
 
+    pub fn get_property_full(self, duel: &Duel) -> (u32, u32) {
+        let flag = &duel.effects[self].flag;
+        (flag[0], flag[1])
+    }
+
     pub fn set_label(self, duel: &mut Duel, label: i64) {
         duel.effects[self].set_labels(&[label]);
     }

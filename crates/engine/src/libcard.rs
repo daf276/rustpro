@@ -585,6 +585,31 @@ impl CardId {
         registered.find_map(|(_, effect)| (duel.effects[effect].effect_type & EFFECT_TYPE_ACTIVATE != 0).then_some(effect))
     }
 
+    // Card.CheckActivateEffect: the first activate effect that is ready as the reason effect's player. The events of one
+    // that is not Free Chain (which the Lua returns with it) come with the cards that need them.
+    pub fn check_activate_effect(self, duel: &Duel, neglect_con: bool, neglect_cost: bool) -> Option<EffectId> {
+        let (reason_effect, reason_player) = (duel.core.reason_effect.get()?, duel.core.reason_player.get());
+        let registered: Vec<_> = duel
+            .field_effects
+            .registry
+            .all(Container::Field, Some(self))
+            .map(|(_, effect)| effect)
+            .collect();
+        for effect in registered {
+            let peffect = &duel.effects[effect];
+            if peffect.effect_type & EFFECT_TYPE_ACTIVATE == 0 {
+                continue;
+            }
+            unported!(duel, (peffect.code != EVENT_FREE_CHAIN).then_some(effect));
+            let event = duel.nil_event;
+            if duel.check_mut(|duel| duel.is_activate_ready(reason_effect, effect, reason_player, &event, neglect_con, neglect_cost, false))
+            {
+                return Some(effect);
+            }
+        }
+        None
+    }
+
     // The old-negate rule (DUEL_SPSUMMON_ONCE_OLD_NEGATE) and its global flag are not part of the duel mode.
     pub fn set_sp_summon_once(self, duel: &mut Duel, code: u32) {
         if duel.cards[self].is_status(STATUS_COPYING_EFFECT) {
@@ -857,6 +882,10 @@ impl CardId {
             mzone.filter_map(|(_, card)| *card).chain(szone).for_each(|card| cards.insert(card));
         }
         cards
+    }
+
+    pub fn get_linked_group_count(self, duel: &Duel) -> usize {
+        self.get_linked_group(duel).len()
     }
 
     // Card.GetFreeLinkedZone for the controller: card::get_linked_zone(true).

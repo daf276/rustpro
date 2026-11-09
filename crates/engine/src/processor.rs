@@ -3080,9 +3080,9 @@ impl Duel {
             }
         }
         if winp != 5 {
-            self.win(winp, rea);
+            self.field_win(winp, rea);
         } else if self.core.win_player != 5 {
-            self.win(self.core.win_player, self.core.win_reason);
+            self.field_win(self.core.win_player, self.core.win_reason);
         }
     }
 
@@ -3152,7 +3152,7 @@ impl Duel {
         }
     }
 
-    fn win(&mut self, player: u8, reason: u8) {
+    fn field_win(&mut self, player: u8, reason: u8) {
         self.trace.message(MSG_WIN).u8(player).u8(reason);
         self.result.get_or_insert((player, reason));
         self.core.overdraw = PerPlayerBool::default();

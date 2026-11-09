@@ -331,6 +331,11 @@ pub mod aux {
         c.is_location(duel, if spirit_elimination { LOCATION_MZONE } else { LOCATION_GRAVE })
     }
 
+    // Auxiliary.WelcomeLabrynthTrapDestroyOperation: Labrynth Labyrinth, the only source of the effect, is not ported.
+    pub fn welcome_labrynth_trap_destroy_operation(duel: &mut Duel, tp: u8) {
+        unported!(duel, duel.is_player_affected_by_effect(tp, CARD_LABRYNTH_LABYRINTH).is_some());
+    }
+
     pub fn ice_barrier_discard_filter(c: CardId, duel: &Duel, tp: u8) -> bool {
         c.is_has_effect_full(duel, EFFECT_ICEBARRIER_REPLACE, tp).is_some() && c.is_able_to_remove_as_cost(duel)
     }
@@ -1331,6 +1336,8 @@ pub trait CardUtility: Copy {
     fn is_ritual_spell(self, duel: &Duel) -> bool;
     fn is_ritual_monster(self, duel: &Duel) -> bool;
     fn is_normal_spell(self, duel: &Duel) -> bool;
+    fn is_normal_trap(self, duel: &Duel) -> bool;
+    fn is_normal_summoned(self, duel: &Duel) -> bool;
     fn is_normal_spell_trap(self, duel: &Duel) -> bool;
     fn is_continuous_spell(self, duel: &Duel) -> bool;
     fn is_continuous_trap(self, duel: &Duel) -> bool;
@@ -1580,6 +1587,14 @@ impl CardUtility for CardId {
 
     fn is_normal_spell(self, duel: &Duel) -> bool {
         self.get_type(duel) == TYPE_SPELL
+    }
+
+    fn is_normal_trap(self, duel: &Duel) -> bool {
+        self.get_type(duel) == TYPE_TRAP
+    }
+
+    fn is_normal_summoned(self, duel: &Duel) -> bool {
+        self.is_summon_type(duel, &[SUMMON_TYPE_NORMAL])
     }
 
     fn is_normal_spell_trap(self, duel: &Duel) -> bool {

@@ -36,6 +36,13 @@ pub struct GetControl {
     pub remaining: CardSet,
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct TrapMonsterAdjust {
+    pub step: u16,
+    pub oppo_selection: bool,
+    pub to_grave_set: CardSet,
+}
+
 #[derive(Debug, Clone)]
 pub struct Equip {
     pub step: u16,
@@ -175,7 +182,7 @@ pub struct Release {
     pub reason_effect: Option<EffectId>,
 }
 
-// `ret` 1 returns a temporarily banished card; 2, for trap monsters, comes with the cards that use it.
+// `ret` 1 returns a temporarily banished card; 2 moves a Trap Monster back to the Spell & Trap Zone.
 #[derive(Debug, Clone)]
 pub struct MoveToField {
     pub step: u16,
@@ -697,6 +704,98 @@ impl Duel {
                 self.returns.set_i32(0, arg.targets.len() as i32);
                 true
             }
+        }
+    }
+
+    // The Trap Monsters an EFFECT_DISABLE_TRAPMONSTER effect affects go back to the Spell & Trap Zone, or to the GY without room.
+    pub(crate) fn process_trap_monster_adjust(&mut self, arg: &mut TrapMonsterAdjust) -> bool {
+        let turn_player = self.infos.turn_player;
+        let check_player = if arg.oppo_selection { 1 - turn_player } else { turn_player };
+        match arg.step {
+            0 => {
+                if !self.is_flag(DUEL_TRAP_MONSTERS_NOT_USE_ZONE) {
+                    arg.step = 3;
+                    return false;
+                }
+                arg.to_grave_set.clear();
+                false
+            }
+            1 => {
+                self.refresh_location_info_instant();
+                let fcount = self
+                    .get_useable_count(None, check_player, LOCATION_SZONE, check_player, LOCATION_REASON_NONE, 0xff)
+                    .0;
+                let adjust_set = self.core.trap_monster_adjust_set[check_player];
+                if fcount <= 0 {
+                    arg.to_grave_set.merge(adjust_set);
+                    self.core.trap_monster_adjust_set[check_player].clear();
+                    arg.step = 2;
+                } else if adjust_set.len() as i32 > fcount {
+                    let count = (adjust_set.len() as i32 - fcount) as u8;
+                    self.core.select_cards = adjust_set.iter().collect();
+                    self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(check_player).u64(502);
+                    self.emplace_process(SelectCard {
+                        playerid: check_player,
+                        min: count,
+                        max: count,
+                        ..SelectCard::default()
+                    });
+                } else {
+                    arg.step = 2;
+                }
+                false
+            }
+            2 | 3 => {
+                if arg.step == 2 {
+                    for card in self.return_cards.list.iter().copied().collect::<Vec<_>>() {
+                        arg.to_grave_set.insert(card);
+                        self.core.trap_monster_adjust_set[check_player].remove(card);
+                    }
+                }
+                if !arg.oppo_selection {
+                    arg.oppo_selection = true;
+                    arg.step = 0;
+                }
+                false
+            }
+            4 => {
+                let mut player = turn_player;
+                for _ in 0..2 {
+                    for card in self.core.trap_monster_adjust_set[player] {
+                        self.reset(card, RESET_TURN_SET, RESET_EVENT);
+                        let position = self.cards[card].current.position as u8;
+                        let unit = MoveToField {
+                            step: 0,
+                            enable: false,
+                            pzone: false,
+                            zone: 0xff,
+                            rule: false,
+                            location_reason: 0,
+                            confirm: true,
+                            ret: 2,
+                            target: card,
+                        };
+                        self.move_to_field_unit(player, player, LOCATION_SZONE.into(), position, unit);
+                    }
+                    player = 1 - player;
+                }
+                if !arg.to_grave_set.is_empty() {
+                    let to_grave = arg.to_grave_set;
+                    self.send_to(
+                        to_grave,
+                        None,
+                        REASON_RULE,
+                        PLAYER_NONE,
+                        PLAYER_NONE,
+                        LOCATION_GRAVE,
+                        0,
+                        POS_FACEUP as u8,
+                        false,
+                    );
+                }
+                true
+            }
+            _ => true,
         }
     }
 
@@ -3907,12 +4006,18 @@ impl Duel {
                             .chain(self.filter_effect(target, EFFECT_MUST_USE_MZONE, true))
                     );
                     if let Some(pre_monster) = self.is_affected_by_effect(target, EFFECT_PRE_MONSTER) {
-                        let card_type = match self.effects[pre_monster].value {
+                        let mut card_type = match self.effects[pre_monster].value {
                             Value::Int(value) => value as u32,
                             _ => 0,
                         };
-                        // A Trap Monster also gets TYPE_TRAPMONSTER and a Spell & Trap Zone to use.
-                        unported!(self, (card_type & TYPE_TRAP != 0).then_some(pre_monster));
+                        if card_type & TYPE_TRAP != 0 {
+                            card_type |= TYPE_TRAPMONSTER | self.cards[target].data.card_type;
+                        }
+                        // MR5 sets DUEL_TRAP_MONSTERS_NOT_USE_ZONE, which skips the Spell & Trap Zone a Trap Monster would use.
+                        unported!(
+                            self,
+                            (!self.is_flag(DUEL_TRAP_MONSTERS_NOT_USE_ZONE) && card_type & TYPE_TRAPMONSTER != 0).then_some(pre_monster)
+                        );
                         self.reset(target, EFFECT_PRE_MONSTER, RESET_CODE);
                         let effect = self.new_effect(target);
                         let peffect = &mut self.effects[effect];
@@ -4014,6 +4119,11 @@ impl Duel {
                     if reason_effect.is_some() {
                         unported!(self, self.filter_effect(card, EFFECT_CANNOT_CHANGE_POS_E, true));
                     }
+                    // A Trap Monster turned face-down goes back to the Spell & Trap Zone (steps 1 and 4).
+                    unported!(
+                        self,
+                        (opos & POS_FACEUP != 0 && npos & POS_FACEDOWN != 0 && self.get_type(card) & TYPE_TRAPMONSTER != 0).then_some(card)
+                    );
                 }
                 arg.to_grave_set.clear();
                 false

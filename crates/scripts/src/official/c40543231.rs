@@ -38,11 +38,16 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e3 = e1.clone_effect(duel);
     e3.set_code(duel, EVENT_RELEASE);
     c.register_effect(duel, e3);
+    register_destroy_replace(duel, c, ID);
+}
+
+// The destruction replacement the Mitsurugi Reptile monsters share, with the card's own `id` for its count limit.
+pub fn register_destroy_replace(duel: &mut Duel, c: CardId, id: u32) {
     let e4 = duel.create_effect(c);
     e4.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
     e4.set_code(duel, EFFECT_DESTROY_REPLACE);
     e4.set_range(duel, LOCATION_MZONE);
-    e4.set_count_limit(duel, 1, (ID, 1));
+    e4.set_count_limit(duel, 1, (id, 1));
     e4.set_target(duel, reptg);
     e4.set_value(
         duel,

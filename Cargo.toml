@@ -29,4 +29,4 @@ codegen-units = 1
 inherits = "release"
 incremental = true
 codegen-units = 256
-lto = false
+lto = "off"

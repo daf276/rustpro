@@ -4,8 +4,9 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 36956512;
 
-// A copy on the opponent's field to Tribute, Kyoutou Waterfront for Kaiju Counters, and Raigeki and Dark Hole to fill it.
+// A copy in hand, one on the opponent's field to Tribute, Kyoutou Waterfront for Kaiju Counters, and Raigeki and Dark Hole to fill it.
 pub const SUPPORT: &[(u32, u16)] = &[
+    (ID, HAND),
     (ID, MZONE | OPPONENT),
     (56111151, HAND),
     (12580477, HAND),

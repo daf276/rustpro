@@ -77,11 +77,12 @@ fn efftg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bo
     let (e, tp) = (a.e, a.tp);
     let c = e.get_handler(duel);
     if let Some(chkc) = chkc {
-        return Ok(match e.get_chain_data(duel, CHOICE) {
-            Some(1) => chkc.is_on_field(duel) && chkc.is_faceup(duel) && chkc != c,
-            Some(2) => chkc.is_location(duel, LOCATION_GRAVE) && spfilter(chkc, duel, e, tp),
-            _ => false,
-        });
+        // Without a choice the Lua falls through to the checks below, whose chk 0 answer is the result.
+        match e.get_chain_data(duel, CHOICE) {
+            Some(1) => return Ok(chkc.is_on_field(duel) && chkc.is_faceup(duel) && chkc != c),
+            Some(2) => return Ok(chkc.is_location(duel, LOCATION_GRAVE) && spfilter(chkc, duel, e, tp)),
+            _ => {}
+        }
     }
     let (b1, b2) = choices(duel, e, tp);
     if chk == 0 {

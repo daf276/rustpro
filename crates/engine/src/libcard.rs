@@ -1208,6 +1208,13 @@ impl CardId {
         u32::from(duel.cards[self].attacked_count)
     }
 
+    // The monsters the card can attack, and whether it can attack directly.
+    pub fn get_attackable_target(self, duel: &mut Duel) -> (CardSet, bool) {
+        let chain_attack = duel.core.chain_attacker_id == duel.cards[self].fieldid;
+        let targets = duel.field_get_attack_target(self, chain_attack, true).into_iter().collect();
+        (targets, duel.cards[self].direct_attackable != 0)
+    }
+
     pub fn get_battle_target(self, duel: &Duel) -> Option<CardId> {
         if duel.core.attacker == Some(self) {
             duel.core.attack_target

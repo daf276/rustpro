@@ -20,6 +20,7 @@ impl SynchroProcedure for Procedure {
 }
 
 pub const MATERIAL: &[u32] = &[CARD_JUNK_SYNCHRON];
+pub const MATERIAL_SETCODE: &[u16] = &[SET_SYNCHRON];
 pub const LISTED_NAMES: &[u32] = &[CARD_JUNK_SYNCHRON];
 // In the Extra Deck, Synchro Summoned with Junk Synchron and Atlantean Pikeman, a Level 2 Normal Monster.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, EXTRA), (CARD_JUNK_SYNCHRON, MZONE), (26976414, MZONE)];

@@ -47,6 +47,7 @@ NATIVE = {
     "match": "CardSet::filter / keep_matching",
     "level": "CardId::set_level (Card.Level with a value)",
     "has_flag_effect": "get_flag_effect(...) > 0",
+    "announce_level": "announce_number_range(tp, min, max) when the Lua passes a range, else announce_level",
     "add_proc_fun_rep": "FusionMix with SUB = false and the filter repeated",
 }
 

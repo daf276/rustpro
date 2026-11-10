@@ -1906,6 +1906,12 @@ impl Duel {
         self.announce_number(player, &(1..=12).collect::<Vec<_>>())
     }
 
+    // Duel.AnnounceNumberRange without excluded numbers; the bounds swap if reversed.
+    pub fn announce_number_range(&mut self, player: u8, min: u32, max: u32) -> Script<u64> {
+        let (min, max) = (min.min(max), min.max(max));
+        self.announce_number(player, &(u64::from(min)..=u64::from(max)).collect::<Vec<_>>())
+    }
+
     // The index of the chosen option, announced to the opponent (the default sel_hint).
     pub fn select_option(&mut self, player: u8, options: &[u64]) -> Script<i32> {
         if player > 1 {

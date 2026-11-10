@@ -734,9 +734,19 @@ pub mod aux {
         e1
     }
 
-    pub fn add_continuous_lizard_check(duel: &mut Duel, c: CardId, location: u32, filter: fn(&Duel, EffectId, CardId) -> bool) -> EffectId {
+    pub fn create_continuous_lizard_check(
+        duel: &mut Duel,
+        c: CardId,
+        location: u32,
+        filter: fn(&Duel, EffectId, CardId) -> bool,
+    ) -> EffectId {
         let e1 = create_lizard_check(duel, c, filter);
         e1.set_range(duel, location);
+        e1
+    }
+
+    pub fn add_continuous_lizard_check(duel: &mut Duel, c: CardId, location: u32, filter: fn(&Duel, EffectId, CardId) -> bool) -> EffectId {
+        let e1 = create_continuous_lizard_check(duel, c, location, filter);
         c.register_effect(duel, e1);
         e1
     }

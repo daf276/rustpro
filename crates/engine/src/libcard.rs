@@ -223,6 +223,10 @@ impl CardId {
         duel.cards[self].previous_attribute
     }
 
+    pub fn get_previous_race_on_field(self, duel: &Duel) -> u64 {
+        duel.cards[self].previous_race
+    }
+
     pub fn get_previous_attack_on_field(self, duel: &Duel) -> i32 {
         duel.cards[self].previous_attack
     }

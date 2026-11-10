@@ -1987,7 +1987,7 @@ impl Duel {
                     return true;
                 }
                 // Phase 2: cards leaving the field also snapshot their previous code, type, stats and set codes here; only
-                // the code, the type, the attribute and the ATK are kept so far.
+                // the code, the type, the attribute, the race and the ATK are kept so far.
                 let mut leave_p = CardSet::default();
                 let targets = arg.targets;
                 for card in targets.iter() {
@@ -2000,9 +2000,11 @@ impl Duel {
                         };
                         if self.cards[card].current.position & POS_FACEUP == 0 {
                             self.cards[card].previous_attribute = self.cards[card].data.attribute;
+                            self.cards[card].previous_race = self.cards[card].data.race;
                             self.cards[card].previous_attack = self.cards[card].data.attack;
                         } else if self.cards[card].current.location & LOCATION_MZONE != 0 {
                             self.cards[card].previous_attribute = self.get_attribute(card);
+                            self.cards[card].previous_race = self.get_race(card);
                             self.cards[card].previous_attack = self.get_attack(card);
                         }
                     }

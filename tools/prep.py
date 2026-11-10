@@ -20,6 +20,8 @@ ALIASES = {
     "is_s_setable": "is_ssetable",
     "s_set": "sset",
     "detach_from_self": "detach_from_self_with",
+    "add_persistent_procedure": "add_procedure",
+    "add_union_procedure": "add_procedure",
 }
 # Lua calls with no function of their own in the port.
 NATIVE = {

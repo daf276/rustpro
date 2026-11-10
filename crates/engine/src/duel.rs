@@ -9,7 +9,7 @@ use crate::field::{FieldInfo, PerPlayer, PlayerInfo, Processor, Relations, Retur
 use crate::list::List;
 use crate::processor::{OcgStatus, Startup};
 use crate::rng::Xoshiro256StarStar;
-use crate::script::{FusionCheck, Library};
+use crate::script::{FusionCheck, Library, SynchroCheck};
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum DuelError {
@@ -94,6 +94,8 @@ pub struct Duel {
     pub(crate) values_reset: Vec<fn(&mut Duel)>,
     // proc_fusion.lua's Fusion.CheckAdditional, a function value the scripts set around a Fusion Summon.
     pub(crate) fusion_check_additional: Option<FusionCheck>,
+    // proc_synchro.lua's Synchro.CheckAdditional, a function value the scripts set around a Synchro Summon.
+    pub(crate) synchro_check_additional: Option<SynchroCheck>,
     // proc_ritual.lua's Ritual.SummoningLevel, which Ritual.Filter sets while a check runs.
     pub(crate) ritual_summoning_level: std::cell::Cell<Option<u32>>,
     // card::assume of the cards duel::assumes lists, as (card, ASSUME_ kind, value): what Card.AssumeProperty fixes until
@@ -167,6 +169,7 @@ impl Duel {
             script_groups: Vec::new(),
             values_reset: Vec::new(),
             fusion_check_additional: None,
+            synchro_check_additional: None,
             ritual_summoning_level: Default::default(),
             assumes: Default::default(),
             pending_resets: Default::default(),

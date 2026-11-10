@@ -110,6 +110,12 @@ pub mod aux {
             || (affected(EFFECT_SUPREME_CASTLE) && sum_type & SUMMON_TYPE_FUSION == SUMMON_TYPE_FUSION)
     }
 
+    // Auxiliary.FossilLimit; a nil se fails the Lua's `se:GetHandler()` for a card in the Extra Deck.
+    pub fn fossil_limit(duel: &Duel, e: EffectId, se: Option<EffectId>, _: u8, _: u32, _: u8, _: u8) -> bool {
+        !e.get_handler(duel).is_location(duel, LOCATION_EXTRA)
+            || se.is_some_and(|se| se.get_handler(duel).is_code(duel, CARD_FOSSIL_FUSION))
+    }
+
     pub fn nvfilter(c: CardId, duel: &Duel) -> bool {
         c.is_has_effect(duel, EFFECT_NECRO_VALLEY).is_none()
     }

@@ -146,6 +146,8 @@ pub enum Value {
     MaterialFor(fn(&Duel, EffectId, CardId, CardId) -> bool),
     // value(e, c, rc): EFFECT_XYZ_LEVEL.
     XyzLevel(fn(&Duel, EffectId, CardId, CardId) -> i32),
+    // value(e, c, rc) returning several levels: EFFECT_XYZ_LEVEL; one level is read like XyzLevel's, several are each compared whole.
+    XyzLevels(fn(&Duel, EffectId, CardId, CardId) -> Vec<i32>),
     // value(e, playerid, uplayer, reason): the zones of EFFECT_MUST_USE_MZONE.
     Zones(fn(&Duel, EffectId, u8, u8, u32) -> i32),
     // value(e, re, r, rp): EFFECT_DESTROY_SUBSTITUTE.
@@ -1313,6 +1315,7 @@ impl Duel {
             | Value::SpSummonCondition(_)
             | Value::MaterialFor(_)
             | Value::XyzLevel(_)
+            | Value::XyzLevels(_)
             | Value::Zones(_)
             | Value::Reason(_)
             | Value::ReasonMut(_)

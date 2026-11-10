@@ -1164,8 +1164,6 @@ impl Duel {
             check_target = None;
             Container::Target
         } else if effect_type & EFFECT_TYPE_XMATERIAL != 0 {
-            // The effects an Xyz material also gives the field are applied when it is attached, which no card needs yet.
-            unported!(self, (effect_type & EFFECT_TYPE_FIELD != 0).then_some(effect));
             check_target = self.cards[card].overlay_target;
             Container::XMaterial
         } else if effect_type & EFFECT_TYPE_FIELD != 0 {
@@ -2576,8 +2574,16 @@ impl Duel {
             .collect()
     }
 
-    // card::xyz_add. No material has EFFECT_TYPE_XMATERIAL field effects to apply, since card_add_effect does not take
-    // them yet.
+    // The EFFECT_TYPE_XMATERIAL effects of a material that are also field effects, in xmaterial_effect order.
+    fn xmaterial_field_effects(&self, material: CardId) -> Vec<EffectId> {
+        self.field_effects
+            .registry
+            .all(Container::XMaterial, Some(material))
+            .map(|(_, effect)| effect)
+            .filter(|&effect| self.effects[effect].effect_type & EFFECT_TYPE_FIELD != 0)
+            .collect()
+    }
+
     pub(crate) fn xyz_add(&mut self, card: CardId, material: CardId) {
         if self.cards[material].current.location != 0 {
             return;
@@ -2590,6 +2596,9 @@ impl Duel {
         mat.current.location = LOCATION_OVERLAY;
         mat.current.sequence = sequence;
         self.overlay_cards.insert(material);
+        for effect in self.xmaterial_field_effects(material) {
+            self.add_effect(effect, PLAYER_NONE);
+        }
     }
 
     pub(crate) fn xyz_remove(&mut self, card: CardId, material: CardId) {
@@ -2615,6 +2624,9 @@ impl Duel {
             if *sequence > current.sequence {
                 *sequence -= 1;
             }
+        }
+        for effect in self.xmaterial_field_effects(material) {
+            self.remove_effect(effect);
         }
     }
 

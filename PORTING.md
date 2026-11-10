@@ -68,7 +68,7 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   effects without a description, never another card's), `ResolvesGranted(aux::stringid(ID, n))` (that effect resolving on
   any card: for effects the card grants by equip, `EFFECT_TYPE_GRANT` or as Xyz material), `SpecialSummoned`, `SpecialSummonedCode(code)` (a token the card creates),
   `RitualMaterial` (the card under test used as a material; a Ritual Spell is checked with `SpecialSummonedCode`),
-  `MaterialFrom(location)`, `CardHint(description)`, `Message(MSG_*)` (from `engine::constants`; the
+  `MaterialFrom(location)`, `CardHint(description)` (`MSG_CARD_HINT`, not `Duel.Hint(HINT_CARD, ...)`), `Message(MSG_*)` (from `engine::constants`; the
   message must be about the card or about no card), `TributeSummoned(n)`, `TributeSet(n)`, `Replaced`, and
   `Report(&check)`, which only writes the count out. Check each effect that needs a specific path; use another check
   than `Resolves` only for a card that has no effect a scenario can resolve, and say why in one comment line.
@@ -112,6 +112,9 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - Random play picks uniformly among the legal actions, so an effect needing an exact board (say exactly 2 monsters) is
   rare; `Raigeki | OPPONENT` and fewer hand cards in `SUPPORT` help. A card reusing another card's `Procedure` struct
   makes it `pub` there.
+- `duel.select_effect` returns the 1-based index of the chosen option (`Some(1)` is the first), like the Lua; an
+  off-by-one shows as a `MSG_SELECT_OPTION` diff. `Message(MSG_SELECT_EFFECTYN)` and `Message(MSG_DAMAGE)` count every
+  card's prompt or damage, so they are weak checks.
 - `Duel.CheckReleaseGroup(tp, nil, 1, c)` is `ReleaseOptions { exception: Some(c), ..ReleaseOptions::new(tp) }` (c78371393).
 - `(code, DECK)` or `(code, HAND)` for an Extra Deck monster and `(code, EXTRA)` for a Main Deck monster are silently
   dropped. An

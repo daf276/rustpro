@@ -1813,6 +1813,11 @@ impl Duel {
             .unwrap_or_default())
     }
 
+    // Duel.AnnounceLevel (AnnounceNumberRange) with its default range 1 to 12 and no excluded level.
+    pub fn announce_level(&mut self, player: u8) -> Script<u64> {
+        self.announce_number(player, &(1..=12).collect::<Vec<_>>())
+    }
+
     // The index of the chosen option, announced to the opponent (the default sel_hint).
     pub fn select_option(&mut self, player: u8, options: &[u64]) -> Script<i32> {
         if player > 1 {
@@ -2682,6 +2687,11 @@ impl Duel {
     // Duel.IsPlayerCanSpecialSummon with a card.
     pub fn is_player_can_special_summon(&self, player: u8, sumtype: u32, sumpos: u32, toplayer: u8, card: CardId) -> bool {
         player <= 1 && self.is_player_can_spsummon(self.core.reason_effect.get(), sumtype, sumpos as u8, player, toplayer, card)
+    }
+
+    // Duel.IsPlayerCanSpecialSummon(player) with that one argument.
+    pub fn is_player_can_special_summon_any(&self, player: u8) -> bool {
+        player <= 1 && self.is_player_can_action(player, EFFECT_CANNOT_SPECIAL_SUMMON) && self.is_player_can_spsummon_count(player, 1)
     }
 
     pub fn is_player_can_special_summon_count(&self, player: u8, count: u32) -> bool {

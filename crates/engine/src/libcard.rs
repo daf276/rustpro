@@ -1090,6 +1090,11 @@ impl CardId {
         current > 0 && current <= link
     }
 
+    pub fn is_link_above(self, duel: &Duel, link: u32) -> bool {
+        let current = duel.get_link(self);
+        current > 0 && current >= link
+    }
+
     pub fn get_ritual_level(self, duel: &Duel, rc: CardId) -> u32 {
         duel.get_ritual_level(self, rc)
     }

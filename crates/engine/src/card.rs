@@ -492,8 +492,7 @@ impl Duel {
         data.card_type & TYPE_MONSTER != 0 && data.card_type & self.get_extra_deck_types() != 0
     }
 
-    // card::get_code: the alias for alternate arts and the last EFFECT_CHANGE_CODE; an EFFECT_ADD_CODE without a summon
-    // condition comes with its cards.
+    // card::get_code: the alias for alternate arts and the last EFFECT_CHANGE_CODE.
     pub(crate) fn get_code(&self, card: CardId) -> u32 {
         let data = &self.cards[card].data;
         if !self.may_change_codes() {
@@ -504,8 +503,8 @@ impl Duel {
             .last()
             .map_or(data.code, |&effect| self.get_value(effect, card) as u32);
         if code == data.code {
-            unported!(self, self.add_codes_without_condition(card));
-            return if data.alias != 0 { data.alias } else { code };
+            let has_addcode = self.add_codes_without_condition(card).next().is_some();
+            return if data.alias != 0 && !has_addcode { data.alias } else { code };
         }
         match self.database.and_then(|database| database.get(code)) {
             Some(changed) if changed.alias != 0 && Self::second_code(code) == 0 => changed.alias,
@@ -527,8 +526,13 @@ impl Duel {
         if code != self.cards[card].data.code {
             return Self::second_code(code);
         }
-        if self.may_change_codes() {
-            unported!(self, self.add_codes_without_condition(card));
+        if self.may_change_codes()
+            && let Some(addcode) = self.add_codes_without_condition(card).last()
+        {
+            let otcode = self.get_value(addcode, card) as u32;
+            if self.get_code(card) != otcode && code != otcode {
+                return otcode;
+            }
         }
         0
     }
@@ -801,7 +805,18 @@ impl Duel {
                 value >>= 16;
             }
         }
-        unported!(self, (self.get_another_code(card) != 0).then_some(()));
+        let another = self.get_another_code(card);
+        if another != 0 {
+            let others = self
+                .database
+                .and_then(|database| database.get(another))
+                .map_or([0; 5], |other| other.setcodes);
+            for setcode in others.into_iter().filter(|&setcode| setcode != 0) {
+                if !setcodes.contains(&setcode) {
+                    setcodes.push(setcode);
+                }
+            }
+        }
         unported!(self, (setcodes.len() > 5).then_some(()));
         let mut result = [0; 5];
         for (slot, setcode) in result.iter_mut().zip(setcodes) {

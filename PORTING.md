@@ -87,7 +87,6 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   `| OPPONENT` is relative to the owner of the card under test. A card immune while a copy is in the GY never sees
   removal: put the second copy in the Extra Deck instead.
 - Race values are the `RACE_*` constants (`RACE_DINOSAUR` is 0x10000, `RACE_BEAST` 0x4000); look them up, do not guess.
-  `ResolvesEffect(0)` is also met by any `SUPPORT` card's undescribed effect (Raigeki's).
 - `ResolvesEffect` and `Message` count by code or by any card: a `SUPPORT` copy of the card can satisfy them, and
   `Message(MSG_ATTACK)` (`use engine::constants::MSG_ATTACK`) counts every attack, the usual check of a card with only
   continuous effects. A battle-damage trigger of a high-ATK card needs few other attackers in `SUPPORT`, or the duel

@@ -19,6 +19,9 @@ pub type MaterialFilter = fn(CardId, &Duel, CardId, u64, u8) -> bool;
 // the Lua's globals are); sub and mg have no caller.
 pub type GroupMaterialFilter = fn(CardId, &Duel, CardId, u64, u8, Option<CardSet>) -> bool;
 
+// f(c, fc, sumtype, tp, sub, mg, sg, contact) for a filter that reads contact, whether this is a contact fusion.
+pub type ContactMaterialFilter = fn(CardId, &Duel, CardId, u64, u8, bool) -> bool;
+
 // matcheck(c, fc, sub, sub2, mg, sg, tp, contact, sumtype), the value a card sets on the effect AddProcMix returns, without the
 // arguments nothing reads.
 pub type MatCheck = fn(&Duel, CardId, CardId, u8, u64) -> bool;
@@ -31,6 +34,7 @@ pub enum FusionMaterial {
     Code(u32),
     Filter(MaterialFilter),
     GroupFilter(GroupMaterialFilter),
+    ContactFilter(ContactMaterialFilter),
     // A Lua table of codes and filters, any of which fits (Fusion.ParseMaterialTable).
     Table(&'static [FusionMaterial]),
 }
@@ -147,17 +151,21 @@ impl FusionMaterial {
         match self {
             Self::Code(code) => vec![code],
             Self::Table(materials) => materials.iter().flat_map(|material| material.codes()).collect(),
-            Self::Filter(_) | Self::GroupFilter(_) => Vec::new(),
+            Self::Filter(_) | Self::GroupFilter(_) | Self::ContactFilter(_) => Vec::new(),
         }
     }
 
     // The material function the procedures build: fun(c, fc, sub, sub2, mg, sg, tp, contact, sumtype).
-    fn check(self, duel: &Duel, c: CardId, fc: CardId, sub: bool, sub2: bool, tp: u8, sumtype: u64, sg: Option<CardSet>) -> bool {
+    fn check(self, duel: &Duel, c: CardId, s: Proc, sub: bool, sub2: bool, sg: Option<CardSet>) -> bool {
+        let Proc {
+            fc, tp, sumtype, contact, ..
+        } = s;
         let any = |duel| sub2 && c.is_has_effect(duel, EFFECT_ANY_MATERIAL).is_some();
         let usable = |duel| c.is_has_effect(duel, EFFECT_NOT_MATERIAL).is_none();
         let passes = |material: Self| match material {
             Self::Filter(f) => f(c, duel, fc, sumtype, tp),
             Self::GroupFilter(f) => f(c, duel, fc, sumtype, tp, sg),
+            Self::ContactFilter(f) => f(c, duel, fc, sumtype, tp, contact),
             Self::Code(_) | Self::Table(_) => false,
         };
         let by_codes = |codes: &[u32]| {
@@ -166,7 +174,7 @@ impl FusionMaterial {
                 || any(duel)
         };
         match self {
-            Self::Filter(_) | Self::GroupFilter(_) => (passes(self) || any(duel)) && usable(duel),
+            Self::Filter(_) | Self::GroupFilter(_) | Self::ContactFilter(_) => (passes(self) || any(duel)) && usable(duel),
             Self::Code(code) => by_codes(&[code]),
             Self::Table(materials) => {
                 let by_filter = |&material: &Self| passes(material) || (!matches!(material, Self::Code(_)) && any(duel));
@@ -230,9 +238,7 @@ impl Proc {
     ) -> bool {
         matcheck.is_none_or(|matcheck| matcheck(duel, c, self.fc, self.tp, self.sumtype))
             && c.is_can_be_fusion_material(duel, Some(self.fc), self.sumtype)
-            && funs
-                .into_iter()
-                .any(|f| f.check(duel, c, self.fc, sub, sub, self.tp, self.sumtype, None))
+            && funs.into_iter().any(|f| f.check(duel, c, self, sub, sub, None))
     }
 
     fn cannot_be_material(self, duel: &Duel, g: CardSet) -> bool {
@@ -430,10 +436,9 @@ impl Fusion {
 
     // Fusion.CheckMix: whether c, then the rest of mg, fill funs in order.
     fn check_mix(duel: &Duel, c: CardId, mg: CardSet, sg: CardSet, s: Proc, sub: bool, sub2: bool, funs: &[FusionMaterial]) -> bool {
-        let (fc, tp, sumtype) = (s.fc, s.tp, s.sumtype);
         let [fun1, rest @ ..] = funs else { return false };
         if rest.is_empty() {
-            return fun1.check(duel, c, fc, sub, sub2, tp, sumtype, Some(sg));
+            return fun1.check(duel, c, s, sub, sub2, Some(sg));
         }
         let sg = sg.union(c.into());
         let next = |sub| {
@@ -444,9 +449,9 @@ impl Fusion {
                 Some(sg),
             )
         };
-        if fun1.check(duel, c, fc, false, sub2, tp, sumtype, Some(sg)) {
+        if fun1.check(duel, c, s, false, sub2, Some(sg)) {
             next(sub)
-        } else if sub && fun1.check(duel, c, fc, true, sub2, tp, sumtype, Some(sg)) {
+        } else if sub && fun1.check(duel, c, s, true, sub2, Some(sg)) {
             next(false)
         } else {
             false
@@ -531,7 +536,7 @@ impl Rep {
 
     // A card given to fixed material i, or to fun1 when i is None; sub stays only if the card also passes without it.
     fn after(self, duel: &Duel, s: Proc, c: CardId, i: Option<usize>, f: FusionMaterial, g: CardSet) -> Self {
-        let sub = self.sub && f.check(duel, c, s.fc, false, self.sub2, s.tp, s.sumtype, Some(g));
+        let sub = self.sub && f.check(duel, c, s, false, self.sub2, Some(g));
         match i {
             Some(i) => Self {
                 sub,
@@ -548,7 +553,7 @@ impl Rep {
     }
 
     fn passes(self, duel: &Duel, s: Proc, c: CardId, f: FusionMaterial, g: CardSet) -> bool {
-        f.check(duel, c, s.fc, self.sub, self.sub2, s.tp, s.sumtype, Some(g))
+        f.check(duel, c, s, self.sub, self.sub2, Some(g))
     }
 }
 

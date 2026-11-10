@@ -102,6 +102,11 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - The card under test is placed besides its own `SUPPORT` copies: a `SetUniqueOnField` card gets none there.
 - A Link Monster `SUPPORT` places never sits in an Extra Monster Zone, so effects on the zones it points to need a
   real Link Summon.
+- A 2-material Link Summon in `SUPPORT` needs about 4 materials in `MZONE` (placed monsters are often face-down) and 2
+  Extra Deck copies. A Flip effect needs 3-5 face-down copies in `MZONE`, an attacker such as Elfnote Lucina (13597785)
+  in `MZONE | OPPONENT`, and no Dark Hole in hand (put it in `DECK`). An optional trigger on being discarded needs
+  extra copies in hand.
+- `Duel.CheckReleaseGroup(tp, nil, 1, c)` is `ReleaseOptions { exception: Some(c), ..ReleaseOptions::new(tp) }` (c78371393).
 - `(code, DECK)` or `(code, HAND)` for an Extra Deck monster and `(code, EXTRA)` for a Main Deck monster are silently
   dropped. An
   exact-count `aux.SelectUnselectGroup` can stall the random player past the decision limit ("no MSG_WIN within 5000

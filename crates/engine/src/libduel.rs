@@ -1455,6 +1455,10 @@ impl Duel {
         self.filter_field_card(player, location1, location2).len()
     }
 
+    pub fn get_card_from_card_id(&self, id: u32) -> Option<CardId> {
+        self.cards.find_by_card_id(id)
+    }
+
     pub fn get_decktop_group(&self, player: u8, count: usize) -> CardSet {
         let deck = &self.player[player].list_main;
         deck.iter().skip(deck.len().saturating_sub(count)).copied().collect()

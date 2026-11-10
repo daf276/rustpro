@@ -67,7 +67,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.register_effect(duel, e7);
 }
 
-fn descon(duel: &Duel, a: &Args) -> bool {
+pub fn descon(duel: &Duel, a: &Args) -> bool {
     let c = a.e.get_handler(duel);
     if c.is_status(duel, STATUS_DESTROY_CONFIRMED) {
         return false;
@@ -76,7 +76,7 @@ fn descon(duel: &Duel, a: &Args) -> bool {
         .is_some_and(|tc| a.eg.is_some_and(|eg| eg.is_contains(tc)))
 }
 
-fn desop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn desop(duel: &mut Duel, a: &Args) -> Script<()> {
     duel.destroy(a.e.get_handler(duel), REASON_EFFECT)?;
     Ok(())
 }

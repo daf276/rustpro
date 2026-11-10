@@ -273,6 +273,10 @@ impl CardId {
         duel.cards[self].fieldid
     }
 
+    pub fn get_card_id(self, _: &Duel) -> u32 {
+        self.index() as u32 + 1
+    }
+
     pub fn get_code(self, duel: &Duel) -> u32 {
         duel.get_code(self)
     }

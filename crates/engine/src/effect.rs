@@ -231,8 +231,8 @@ pub struct Effect {
     pub handler: Option<CardId>,
     pub active_handler: Option<CardId>,
     pub description: u64,
-    // The values Effect.SetLabel stores (scripts use at most two) and their count, a field of its own so that it packs
-    // with the other small fields instead of padding the values to 24 bytes.
+    // The values Effect.SetLabel stores (up to eight: a token's stats, a group's levels) and their count, a field of its
+    // own so that it packs with the other small fields.
     pub label: [i64; 8],
     pub label_len: u8,
     pub label_object: Option<EffectId>,

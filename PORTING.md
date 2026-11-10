@@ -114,6 +114,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - Random play picks uniformly among the legal actions, so an effect needing an exact board (say exactly 2 monsters) is
   rare; `Raigeki | OPPONENT` and fewer hand cards in `SUPPORT` help. A card reusing another card's `Procedure` struct
   makes it `pub` there.
+- `e:SetLabel(a, b, c)` is `e.set_labels(duel, &[a, b, c])`, read back with `let &[a, b, c] = e.get_labels(duel) else { .. }`;
+  an effect keeps at most three labels and drops the rest silently.
 - `Duel.GetControl` returns a count: a bare `if Duel.GetControl(...) then` is always true in Lua (0 is truthy), so the
   port ignores the result there and compares only where the Lua writes `~=0`.
 - `duel.select_effect` returns the 1-based index of the chosen option (`Some(1)` is the first), like the Lua; an

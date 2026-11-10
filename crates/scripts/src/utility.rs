@@ -477,6 +477,18 @@ pub mod aux {
         Ok(())
     }
 
+    // Auxiliary.sumreg: the flag effect (code = the effect's label) for a summoned card of that original code, kept until the
+    // end of the turn.
+    pub fn sumreg(duel: &mut Duel, a: &Args) -> Script<()> {
+        let code = a.e.get_label(duel) as u32;
+        for tc in a.eg.unwrap_or_default() {
+            if tc.get_original_code(duel) == code {
+                tc.register_flag_effect(duel, code, RESETS_STANDARD_PHASE_END, 0, 1);
+            }
+        }
+        Ok(())
+    }
+
     // Auxiliary.ToHandOrElse for one card: to the hand, or else `oper` where `check` allows it (`str` its option).
     pub fn to_hand_or_else(
         duel: &mut Duel,

@@ -327,6 +327,9 @@ pub struct Processor {
     pub must_select_cards: std::cell::Cell<CardSet>,
     // temp.attack and temp.defense of a card while get_attack or get_defense evaluates it: (card, is attack, value).
     pub stat_temp: std::cell::RefCell<List<(CardId, bool, i32), 4>>,
+    // temp.base_attack and temp.base_defense of a card while get_base_attack, get_base_defense, get_attack or get_defense
+    // evaluates it: (card, is attack, value).
+    pub base_stat_temp: std::cell::RefCell<List<(CardId, bool, i32), 4>>,
     // temp.type of a card while get_type evaluates it: (card, value).
     pub type_temp: std::cell::RefCell<List<(CardId, u32), 4>>,
 }
@@ -469,6 +472,7 @@ clone_by_field!(Processor {
     copy_reset_count,
     must_select_cards,
     stat_temp,
+    base_stat_temp,
     type_temp
 });
 
@@ -612,6 +616,7 @@ impl Processor {
             copy_reset_count: 0,
             must_select_cards: Default::default(),
             stat_temp: Default::default(),
+            base_stat_temp: Default::default(),
             type_temp: Default::default(),
         }
     }

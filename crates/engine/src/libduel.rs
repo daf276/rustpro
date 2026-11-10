@@ -1799,6 +1799,12 @@ impl Duel {
         self.yield_script()
     }
 
+    pub fn swap_deck_and_grave(&mut self, player: u8) {
+        if player <= 1 {
+            self.field_swap_deck_and_grave(player);
+        }
+    }
+
     pub fn shuffle_extra(&mut self, player: u8) -> Script<()> {
         if player > 1 {
             return Ok(());

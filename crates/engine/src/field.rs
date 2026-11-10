@@ -1685,6 +1685,97 @@ impl Duel {
         }
     }
 
+    pub(crate) fn field_swap_deck_and_grave(&mut self, playerid: u8) {
+        let in_chain = !self.core.current_chain.is_empty();
+        for (location, list) in [
+            (LOCATION_GRAVE, self.player[playerid].list_grave.clone()),
+            (LOCATION_DECK, self.player[playerid].list_main.clone()),
+        ] {
+            for &card in list.iter() {
+                if in_chain {
+                    self.core.just_sent_cards.insert(card);
+                }
+                let target = &mut self.cards[card];
+                target.previous.location = location;
+                target.previous.sequence = target.current.sequence;
+                self.enable_field_effect(card, false);
+                self.cancel_field_effect(card);
+            }
+        }
+        let player = &mut self.player[playerid];
+        std::mem::swap(&mut player.list_grave, &mut player.list_main);
+        let (mut deck, mut extra) = (Pile::default(), Vec::new());
+        let mut extra_flags = vec![0u8; player.list_main.len().div_ceil(8)];
+        let swapped = player.list_main.clone();
+        let extra_count = (player.list_extra.len() as u32).wrapping_sub(player.extra_p_count);
+        for (index, &card) in swapped.iter().enumerate() {
+            if self.is_extra_deck_monster(card) {
+                if let Some(flags) = extra_flags.get_mut(index / 8) {
+                    *flags |= 1 << (index % 8);
+                }
+                extra.push(card);
+            } else {
+                deck.push(card);
+            }
+        }
+        self.player[playerid].list_main = deck;
+        self.trace
+            .message(MSG_SWAP_GRAVE_DECK)
+            .u8(playerid)
+            .u32(extra_count)
+            .u32(extra_flags.len() as u32)
+            .bytes(&extra_flags);
+        let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
+        let moved = [
+            (
+                self.player[playerid].list_grave.iter().copied().collect::<Vec<_>>(),
+                LOCATION_GRAVE,
+                POS_FACEUP,
+                RESET_TOGRAVE,
+            ),
+            (
+                self.player[playerid].list_main.iter().copied().collect(),
+                LOCATION_DECK,
+                POS_FACEDOWN_DEFENSE,
+                RESET_TODECK,
+            ),
+            (extra.clone(), LOCATION_EXTRA, POS_FACEDOWN_DEFENSE, RESET_TODECK),
+        ];
+        for (cards, location, position, reset) in moved {
+            for card in cards {
+                let target = &mut self.cards[card];
+                target.current.position = position;
+                target.current.location = location;
+                target.current.reason = REASON_EFFECT;
+                target.current.reason_effect = reason_effect;
+                target.current.reason_player = reason_player;
+                self.apply_field_effect(card);
+                self.enable_field_effect(card, true);
+                self.reset(card, reset, RESET_EVENT);
+                if location != LOCATION_GRAVE {
+                    self.field_raise_single_event(card, EVENT_LEAVE_GRAVE, reason_effect, 0, reason_player, 0, 0);
+                }
+            }
+        }
+        let insert_at = self.player[playerid].list_extra.len() - self.player[playerid].extra_p_count as usize;
+        for (offset, &card) in extra.iter().enumerate() {
+            self.player[playerid].list_extra.insert(insert_at + offset, card);
+        }
+        self.reset_sequence(playerid, LOCATION_GRAVE);
+        self.reset_sequence(playerid, LOCATION_EXTRA);
+        self.shuffle(playerid, LOCATION_DECK);
+        if !self.player[playerid].list_main.is_empty() || !extra.is_empty() {
+            let event_cards = extra
+                .iter()
+                .copied()
+                .chain(self.player[playerid].list_main.iter().copied())
+                .collect();
+            self.field_raise_event(Some(event_cards), EVENT_LEAVE_GRAVE, reason_effect, 0, reason_player, 0, 0);
+            self.process_single_event();
+            self.process_instant_event();
+        }
+    }
+
     // field::add_effect: an effect without a handler is a global (field only) effect of `owner_player`.
     pub(crate) fn add_effect(&mut self, effect: EffectId, owner_player: u8) {
         if self.effects[effect].handler.is_none() {

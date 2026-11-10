@@ -1795,6 +1795,13 @@ impl Duel {
         Ok(self.returns.at_u32(0))
     }
 
+    // Duel.AnnounceCoin with its default hint: COIN_HEADS (1) or tails (0).
+    pub fn announce_coin(&mut self, player: u8) -> Script<u8> {
+        self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(player).u64(552);
+        let selected = self.select_option(player, &[60, 61])?;
+        Ok(u8::from(selected == 0))
+    }
+
     // The chosen number (a Lua error without any).
     pub fn announce_number(&mut self, player: u8, numbers: &[u64]) -> Script<u64> {
         if numbers.is_empty() {

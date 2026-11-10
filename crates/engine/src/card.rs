@@ -356,6 +356,7 @@ pub struct Card {
     pub previous: CardState,
     pub previous_type: u32,
     pub previous_attribute: u32,
+    pub previous_attack: i32,
     pub previous_code: u32,
     pub previous_code2: u32,
     pub temp: CardState,
@@ -2684,9 +2685,16 @@ impl Duel {
     }
 
     // Where a cost would send the card after the redirects that leaving the field and the destination apply (the
-    // core sets sendto_param.location to `destination` meanwhile, which no ported redirect value reads).
+    // core sets sendto_param.location to `destination` meanwhile, which Card.GetDestination reads through the probe).
     // Also whether a redirect applied.
     fn cost_destination(&self, card: CardId, destination: u8) -> (u32, bool) {
+        self.destination_probe.set(Some((card, destination)));
+        let result = self.cost_destination_redirected(card, destination);
+        self.destination_probe.set(None);
+        result
+    }
+
+    fn cost_destination_redirected(&self, card: CardId, destination: u8) -> (u32, bool) {
         let (mut destination, mut redirected) = (u32::from(destination), false);
         if self.cards[card].current.location & LOCATION_ONFIELD != 0 {
             let redirect = self.leave_field_redirect(card) & 0xffff;

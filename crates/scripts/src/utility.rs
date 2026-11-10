@@ -8,7 +8,7 @@ use crate::proc_fusion::Fusion;
 use crate::proc_workaround::{CardWorkaround, DuelWorkaround};
 
 // The chain data slots of cd.cost_detached_materials and cd.cost_discarded_cards, above those card ports use.
-const COST_DETACHED_MATERIALS: u8 = u8::MAX;
+pub const COST_DETACHED_MATERIALS: u8 = u8::MAX;
 const COST_DISCARDED_CARDS: u8 = u8::MAX - 1;
 const COST_LP_PAID: u8 = u8::MAX - 2;
 const COST_CHOICE: u8 = u8::MAX - 3;
@@ -1296,6 +1296,31 @@ impl Cost {
             let detached = duel.get_operated_group();
             e.set_chain_data_group(duel, COST_DETACHED_MATERIALS, detached);
             op(duel, e, detached);
+        }
+        Ok(false)
+    }
+
+    // Cost.DetachChoiceFromSelf(choices) applied, for choices that are a function in the Lua, already called: one of the
+    // amounts the card can detach is announced and detached, as the chain data's cost_detached_materials.
+    pub fn detach_choice_from_self(duel: &mut Duel, args: &Args, chk: i32, choices: &[i64]) -> Script<bool> {
+        let (e, tp) = (args.e, args.tp);
+        let c = e.get_handler(duel);
+        let amounts: Vec<u64> = choices
+            .iter()
+            .filter(|&&ct| c.check_remove_overlay_card(duel, tp, ct as u16, REASON_COST))
+            .map(|&ct| ct as u64)
+            .collect();
+        if chk == 0 {
+            return Ok(!amounts.is_empty());
+        }
+        let amt = match amounts.as_slice() {
+            [amt] => *amt,
+            [] => return Ok(false),
+            _ => duel.announce_number(tp, &amounts)?,
+        };
+        if c.remove_overlay_card(duel, tp, amt as u16, amt as u16, REASON_COST)? > 0 {
+            let detached = duel.get_operated_group();
+            e.set_chain_data_group(duel, COST_DETACHED_MATERIALS, detached);
         }
         Ok(false)
     }

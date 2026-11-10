@@ -141,6 +141,8 @@ pub enum Value {
     MaterialFor(fn(&Duel, EffectId, CardId, CardId) -> bool),
     // value(e, c, rc): EFFECT_XYZ_LEVEL.
     XyzLevel(fn(&Duel, EffectId, CardId, CardId) -> i32),
+    // value(e, playerid, uplayer, reason): the zones of EFFECT_MUST_USE_MZONE.
+    Zones(fn(&Duel, EffectId, u8, u8, u32) -> i32),
     // value(e, re, r, rp): EFFECT_DESTROY_SUBSTITUTE.
     Reason(fn(&Duel, EffectId, Option<EffectId>, u32, u8) -> bool),
     // value(e, re), called for what it does when the card is activated: EFFECT_TRAP_ACT_IN_SET_TURN.
@@ -1289,6 +1291,7 @@ impl Duel {
             | Value::SpSummonCondition(_)
             | Value::MaterialFor(_)
             | Value::XyzLevel(_)
+            | Value::Zones(_)
             | Value::Reason(_)
             | Value::HandSynchro(_)
             | Value::ExtraMaterial(_)
@@ -1308,6 +1311,18 @@ impl Duel {
             Value::Own(value) => value(self, effect),
             _ => {
                 debug_assert!(false, "a value read with the wrong parameters");
+                0
+            }
+        }
+    }
+
+    // effect::get_value(3) of EFFECT_MUST_USE_MZONE, with or without a card (the card is not passed to the function).
+    pub(crate) fn get_zones_value(&self, effect: EffectId, playerid: u8, uplayer: u8, reason: u32) -> u32 {
+        match self.effects[effect].value {
+            Value::Int(value) => value as u32,
+            Value::Zones(value) => value(self, effect, playerid, uplayer, reason) as u32,
+            _ => {
+                debug_assert!(false, "a zone limit read with the wrong parameters");
                 0
             }
         }

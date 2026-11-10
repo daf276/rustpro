@@ -1524,19 +1524,34 @@ impl Duel {
         5 - field_used_count(self.player[playerid].used_location >> 8)
     }
 
-    pub(crate) fn get_forced_zones(&self, card: Option<CardId>, playerid: u8, location: u8, uplayer: u8, _reason: u32) -> u32 {
+    pub(crate) fn get_forced_zones(&self, card: Option<CardId>, playerid: u8, location: u8, uplayer: u8, reason: u32) -> u32 {
         if location != LOCATION_MZONE {
             return 0xff;
         }
-        if uplayer < 2 {
-            unported!(self, self.filter_player_effect(uplayer, EFFECT_MUST_USE_MZONE, true));
-        }
-        unported!(
-            self,
+        let mut effects = if uplayer < 2 {
+            self.filter_player_effect(uplayer, EFFECT_MUST_USE_MZONE, true)
+        } else {
+            EffectSet::default()
+        };
+        effects.extend(
             card.map(|card| self.filter_effect(card, EFFECT_MUST_USE_MZONE, true))
-                .unwrap_or_default()
+                .unwrap_or_default(),
         );
-        let zones: u32 = 0xff7f_ff7f;
+        let mut zones: u32 = 0xff7f_ff7f;
+        for effect in effects {
+            let peffect = &self.effects[effect];
+            if peffect.is_flag(EFFECT_FLAG_COUNT_LIMIT) && peffect.count_limit == 0 {
+                continue;
+            }
+            // The core passes the card to the value of an effect without a player target.
+            unported!(
+                self,
+                (peffect.operation.is_some()
+                    || (!peffect.is_flag(EFFECT_FLAG_PLAYER_TARGET) && matches!(peffect.value, crate::Value::Zones(_))))
+                .then_some(effect)
+            );
+            zones &= self.get_zones_value(effect, playerid, uplayer, reason);
+        }
         if uplayer == playerid || uplayer > 1 {
             zones & 0xff
         } else {

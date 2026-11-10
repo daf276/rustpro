@@ -429,6 +429,11 @@ impl CardId {
         duel.get_race(self)
     }
 
+    // The core hands the material context to effects with an operation, which `get_race` leaves unported.
+    pub fn get_race_full(self, duel: &Duel, _scard: Option<CardId>, _sumtype: u64, _player: u8) -> u64 {
+        duel.get_race(self)
+    }
+
     pub fn is_race(self, duel: &Duel, race: u64) -> bool {
         self.is_race_full(duel, race, None, 0, PLAYER_NONE)
     }
@@ -1081,6 +1086,16 @@ impl CardId {
         duel.is_can_be_link_material(self, scard, player)
     }
 
+    pub fn is_can_be_material(self, duel: &Duel, sumtype: u64) -> bool {
+        self.is_can_be_material_full(duel, sumtype, None, None)
+    }
+
+    // `player` None is the reason player.
+    pub fn is_can_be_material_full(self, duel: &Duel, sumtype: u64, scard: Option<CardId>, player: Option<u8>) -> bool {
+        let player = player.unwrap_or_else(|| duel.core.reason_player.get());
+        duel.is_can_be_material(self, scard, sumtype, player)
+    }
+
     pub fn get_link(self, duel: &Duel) -> u32 {
         duel.get_link(self)
     }
@@ -1413,6 +1428,11 @@ impl CardId {
     // Lua passes the ranks to match as further arguments.
     pub fn is_rank(self, duel: &Duel, ranks: &[u32]) -> bool {
         ranks.contains(&duel.get_rank(self))
+    }
+
+    pub fn is_rank_below(self, duel: &Duel, rank: u32) -> bool {
+        let current = duel.get_rank(self);
+        current > 0 && current <= rank
     }
 
     // Lua passes the Link Ratings to match as further arguments.

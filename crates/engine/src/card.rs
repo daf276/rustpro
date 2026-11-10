@@ -2881,6 +2881,29 @@ impl Duel {
                 })
     }
 
+    // The core tests the summon types with `&`, and they share bits (a Synchro type takes the Fusion branch).
+    pub(crate) fn is_can_be_material(&self, card: CardId, scard: Option<CardId>, sumtype: u64, playerid: u8) -> bool {
+        if Some(card) == scard {
+            return false;
+        }
+        if sumtype & u64::from(SUMMON_TYPE_FUSION) != 0 {
+            return self.is_can_be_fusion_material(card, scard, sumtype, playerid);
+        }
+        if sumtype & u64::from(SUMMON_TYPE_SYNCHRO) != 0 {
+            return self.is_can_be_synchro_material(card, scard, playerid);
+        }
+        if sumtype & u64::from(SUMMON_TYPE_RITUAL) != 0 {
+            return self.is_can_be_ritual_material(card, scard, playerid);
+        }
+        if sumtype & u64::from(SUMMON_TYPE_XYZ) != 0 {
+            return self.is_can_be_xyz_material(card, scard, playerid, REASON_XYZ | REASON_MATERIAL);
+        }
+        if sumtype & u64::from(SUMMON_TYPE_LINK) != 0 {
+            return self.is_can_be_link_material(card, scard, playerid);
+        }
+        !self.cards[card].is_status(STATUS_FORBIDDEN) && !self.is_forbidden_material(card, scard, sumtype, playerid)
+    }
+
     pub(crate) fn is_can_be_synchro_material(&self, card: CardId, scard: Option<CardId>, playerid: u8) -> bool {
         let target = &self.cards[card];
         let data_type = target.data.card_type;

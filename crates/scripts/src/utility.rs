@@ -542,6 +542,19 @@ pub mod aux {
         false
     }
 
+    // Group.CheckSameProperty: whether the properties f returns share a bit (the Lua also returns the shared bits).
+    pub fn check_same_property(duel: &Duel, g: CardSet, f: &dyn Fn(CardId, &Duel) -> u64) -> bool {
+        let mut prop = None;
+        for c in g {
+            let current = prop.map_or_else(|| f(c, duel), |prop| prop & f(c, duel));
+            if current == 0 {
+                return false;
+            }
+            prop = Some(current);
+        }
+        true
+    }
+
     // Group.CheckDifferentPropertyBinary: whether the cards can each take a different bit of the property f returns.
     pub fn check_different_property_binary(duel: &Duel, g: CardSet, f: &dyn Fn(CardId, &Duel) -> u64) -> bool {
         fn checkrecbin(duel: &Duel, c: CardId, g: CardSet, val: u64, f: &dyn Fn(CardId, &Duel) -> u64) -> bool {

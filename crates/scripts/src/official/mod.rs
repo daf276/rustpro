@@ -58,3 +58,9 @@ pub fn xyz_number(code: u32) -> Option<u32> {
     let index = XYZ_NUMBER.binary_search_by_key(&code, |&(code, _)| code).ok();
     index.and_then(|index| XYZ_NUMBER.get(index)).map(|&(_, number)| number)
 }
+
+// s.assault_mode, the code of the Synchro Monster an Assault Mode monster is the Special Summon for.
+pub fn assault_mode(code: u32) -> Option<u32> {
+    let index = ASSAULT_MODE.binary_search_by_key(&code, |&(code, _)| code).ok();
+    index.and_then(|index| ASSAULT_MODE.get(index)).map(|&(_, synchro)| synchro)
+}

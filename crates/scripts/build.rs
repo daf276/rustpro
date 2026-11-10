@@ -89,6 +89,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         xyz_numbers.len(),
         xyz_numbers.join(", ")
     )?;
+    let assault_modes: Vec<String> = cards
+        .iter()
+        .filter_map(|(code, text, _)| Some(format!("({code}, {})", field(*code, text, &["ASSAULT_MODE"])?)))
+        .collect();
+    writeln!(
+        out,
+        "pub static ASSAULT_MODE: [(u32, u32); {}] = [{}];",
+        assault_modes.len(),
+        assault_modes.join(", ")
+    )?;
     std::fs::write(Path::new(&std::env::var("OUT_DIR")?).join("official.rs"), out)?;
     Ok(())
 }

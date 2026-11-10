@@ -774,14 +774,22 @@ impl CardId {
 
     // A relation to the chain link of the effect if one is on the chain, else to the effect alone.
     pub fn create_effect_relation(self, duel: &mut Duel, effect: EffectId) {
-        let chain_id = duel
-            .core
+        let chain_id = Self::chain_id_of(duel, effect);
+        duel.create_relation(self, effect, chain_id);
+    }
+
+    pub fn release_effect_relation(self, duel: &mut Duel, effect: EffectId) {
+        let chain_id = Self::chain_id_of(duel, effect);
+        duel.release_relation(self, effect, chain_id);
+    }
+
+    fn chain_id_of(duel: &Duel, effect: EffectId) -> u16 {
+        duel.core
             .current_chain
             .iter()
             .rev()
             .find(|chain| chain.triggering_effect == effect)
-            .map_or(0, |chain| chain.chain_id);
-        duel.create_relation(self, effect, chain_id);
+            .map_or(0, |chain| chain.chain_id)
     }
 
     pub fn complete_procedure(self, duel: &mut Duel) {

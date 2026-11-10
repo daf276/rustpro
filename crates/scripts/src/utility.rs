@@ -1530,6 +1530,7 @@ pub trait CardUtility: Copy {
     fn is_non_effect_monster(self, duel: &Duel) -> bool;
     fn is_in_main_mzone(self, duel: &Duel, tp: Option<u8>) -> bool;
     fn is_sequence(self, duel: &Duel, sequence: u32) -> bool;
+    fn has_counter(self, duel: &Duel, counter: u16) -> bool;
     fn has_level(self, duel: &Duel) -> bool;
     fn has_defense(self, duel: &Duel) -> bool;
     fn is_original_level(self, duel: &Duel, level: u32) -> bool;
@@ -1856,6 +1857,10 @@ impl CardUtility for CardId {
 
     fn is_in_main_mzone(self, duel: &Duel, tp: Option<u8>) -> bool {
         self.is_location(duel, LOCATION_MMZONE) && tp.is_none_or(|tp| self.is_controler(duel, tp))
+    }
+
+    fn has_counter(self, duel: &Duel, counter: u16) -> bool {
+        self.get_counter(duel, counter) > 0
     }
 
     fn is_sequence(self, duel: &Duel, sequence: u32) -> bool {

@@ -1921,35 +1921,35 @@ code	name	type	weekly_views	ported
 58554959	Evil HERO Malicious Edge	Effect Monster	525	yes
 60283232	Wheel Synchron	Tuner Monster	525	yes
 62006866	Zubababa Knight	Effect Monster	525	yes
-66570171	Necroworld Banshee	Effect Monster	525	no
-69176851	Miasma Necromancer	Link Monster	525	no
+66570171	Necroworld Banshee	Effect Monster	525	yes
+69176851	Miasma Necromancer	Link Monster	525	yes
 71407486	Fireyarou	Normal Monster	525	no script
-71832012	Pressured Planet Wraitsoth	Spell Card	525	no
-74003290	Lost Wind	Trap Card	525	no
+71832012	Pressured Planet Wraitsoth	Spell Card	525	yes
+74003290	Lost Wind	Trap Card	525	yes
 74078255	Tearlaments Merrli	Effect Monster	525	yes
-77007920	Laser Cannon Armor	Spell Card	525	no
-77527210	Soul of Purity and Light	Effect Monster	525	no
+77007920	Laser Cannon Armor	Spell Card	525	yes
+77527210	Soul of Purity and Light	Effect Monster	525	yes
 80321197	Crimson Blader	Synchro Monster	525	yes
-86318356	Sogen	Spell Card	525	no
+86318356	Sogen	Spell Card	525	yes
 90411554	Redox, Dragon Ruler of Boulders	Effect Monster	525	yes
 90980792	Dark Jeroid	Effect Monster	525	yes
 92353449	Red-Eyes Insight	Spell Card	525	yes
 93192592	Lollipo★Yummy Way	Synchro Tuner Monster	525	yes
 93347961	Elemental HERO Flame Wingman - Infernal Rage	Fusion Monster	525	yes
-94585852	Pandemonium	Spell Card	525	no
+94585852	Pandemonium	Spell Card	525	yes
 95679145	Dogmatika Maximus	Effect Monster	525	yes
 96235275	Jain, Lightsworn Paladin	Effect Monster	525	yes
-77910045	Fatal Abacus	Trap Card	521	no
+77910045	Fatal Abacus	Trap Card	521	yes
 37478723	"Infernoble Arms - Durendal"	Spell Card	516	yes
 5148778	Starving Venom Wing Dragon	Pendulum Effect Fusion Monster	508	yes
 13676474	Grand Tiki Elder	Normal Monster	507	no script
 17132130	Destiny HERO - Dogma	Effect Monster	507	yes
-25774450	Mystic Box	Spell Card	507	no
-44822037	Angel Statue - Azurune	Trap Card	507	no
-59616123	Trap Stun	Trap Card	507	no
+25774450	Mystic Box	Spell Card	507	yes
+44822037	Angel Statue - Azurune	Trap Card	507	yes
+59616123	Trap Stun	Trap Card	507	yes
 11911336	Spellbook of the Grand Circle	Spell Card	506	no
-66574418	The Black Stone of Legend	Effect Monster	506	no
-70797118	Thunder Nyan Nyan	Effect Monster	506	no
+66574418	The Black Stone of Legend	Effect Monster	506	yes
+70797118	Thunder Nyan Nyan	Effect Monster	506	yes
 97584500	Ghostrick Mummy	Effect Monster	506	yes
 7628844	Number C32: Shark Drake LeVeiss	XYZ Monster	505	yes
 18326736	Tellarknight Ptolemaeus	XYZ Monster	505	yes
@@ -2034,7 +2034,7 @@ code	name	type	weekly_views	ported
 78661338	Fantastical Dragon Phantazmay	Effect Monster	504	no
 79844764	The Monarchs Stormforth	Spell Card	504	no
 79864860	Predaplant Triphyoverutum	Fusion Monster	504	no
-83104731	Ancient Gear Golem	Effect Monster	504	no
+83104731	Ancient Gear Golem	Effect Monster	504	yes
 83887306	Two-Pronged Attack	Trap Card	504	no
 83994433	Stardust Spark Dragon	Synchro Monster	504	no
 85326399	Spike Seadra	Normal Monster	504	no script
@@ -2915,7 +2915,7 @@ code	name	type	weekly_views	ported
 43202238	Yazi, Evil of the Yang Zing	Synchro Monster	337	no
 67694706	Magicolloidal Sol	Tuner Monster	337	no
 69164989	Rikka Glamour	Spell Card	337	no
-73542331	Kashtira Shangri-Ira	XYZ Monster	337	no
+73542331	Kashtira Shangri-Ira	XYZ Monster	337	yes
 75745607	Hino-Kagu-Tsuchi	Spirit Monster	337	no
 78053598	Dark Designator	Spell Card	337	no
 85028288	Jurrac Titano	Effect Monster	337	no
@@ -4118,7 +4118,7 @@ code	name	type	weekly_views	ported
 26845680	Orcustrated Return	Spell Card	231	no
 27132350	Fire Sorcerer	Flip Effect Monster	231	no
 27439792	Chaos Summoning Beast	Effect Monster	231	no
-27483935	Ancient Gear Commander	Effect Monster	231	no
+27483935	Ancient Gear Commander	Effect Monster	231	yes
 27827272	Makiu, the Magical Mist	Spell Card	231	no
 27927359	Harpie Lady 2	Effect Monster	231	no
 27979109	Gearbreed	Spell Card	231	no
@@ -8607,7 +8607,7 @@ code	name	type	weekly_views	ported
 47387961	Number 8: Heraldic King Genom-Heritage	XYZ Monster	84	no
 47393199	Guardragon Cataclysm	Trap Card	84	no
 47408488	Crystal Tree	Spell Card	84	no
-47482043	Ancient Gear Reborn	Trap Card	84	no
+47482043	Ancient Gear Reborn	Trap Card	84	yes
 47504322	War Rock Wento	Effect Monster	84	no
 47598941	Amorphage Lysis	Trap Card	84	no
 47687766	Geargiauger	Effect Monster	84	no

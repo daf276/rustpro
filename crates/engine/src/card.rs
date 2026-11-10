@@ -861,11 +861,24 @@ impl Duel {
         for effect in effects {
             if self.effects[effect].code == code && !self.is_single_unranged(effect) {
                 base = self.get_value(effect, card).max(0);
+                self.set_temp_base_stat(base);
             } else {
                 rest.push(effect);
             }
         }
         (base, rest)
+    }
+
+    fn temp_base_stat(&self, card: CardId, attack: bool) -> Option<i32> {
+        let temp = self.core.base_stat_temp.borrow();
+        temp.iter().find(|&&(c, a, _)| c == card && a == attack).map(|&(_, _, value)| value)
+    }
+
+    // Nested evaluations pop what they push, so the running one is the last entry.
+    fn set_temp_base_stat(&self, value: i32) {
+        if let Some(entry) = self.core.base_stat_temp.borrow_mut().last_mut() {
+            entry.2 = value;
+        }
     }
 
     pub(crate) fn get_base_attack(&self, card: CardId) -> i32 {
@@ -886,8 +899,19 @@ impl Duel {
         if target.current.location != LOCATION_MZONE || target.get_status(STATUS_SUMMONING | STATUS_SPSUMMON_STEP) {
             return base;
         }
+        let attack = code == EFFECT_SET_BASE_ATTACK;
+        if let Some(value) = self.temp_base_stat(card, attack) {
+            return value;
+        }
+        self.core.base_stat_temp.borrow_mut().push((card, attack, base));
         let (base, effects) = self.continuous_base(card, code, base, self.filter_effects(card, &[code]));
-        effects.iter().fold(base, |_, &effect| self.get_value(effect, card).max(0))
+        let value = effects.iter().fold(base, |_, &effect| {
+            let value = self.get_value(effect, card).max(0);
+            self.set_temp_base_stat(value);
+            value
+        });
+        self.core.base_stat_temp.borrow_mut().pop();
+        value
     }
 
     pub(crate) fn get_defense(&self, card: CardId) -> i32 {
@@ -920,6 +944,7 @@ impl Duel {
         }
         let (mut base, mut other_base) = (own.max(0), other.max(0));
         self.core.stat_temp.borrow_mut().push((card, stat.attack, base));
+        self.core.base_stat_temp.borrow_mut().push((card, stat.attack, base));
         let mut codes: List<u32, 8> = [stat.update, stat.set, stat.final_, stat.swap_final, stat.base]
             .into_iter()
             .collect();
@@ -933,7 +958,12 @@ impl Duel {
             let code = self.effects[effect].code;
             if !self.is_single_unranged(effect) && (code == stat.base || code == stat.other_base) {
                 let value = self.get_value(effect, card).max(0);
-                *(if code == stat.base { &mut base } else { &mut other_base }) = value;
+                if code == stat.base {
+                    base = value;
+                    self.set_temp_base_stat(value);
+                } else {
+                    other_base = value;
+                }
             } else {
                 effects.push(effect);
             }
@@ -968,6 +998,7 @@ impl Duel {
             let start = if set < 0 { base } else { set };
             value = if rev { start - up - upc } else { start + up + upc }.max(0);
             self.set_temp_stat(value);
+            self.set_temp_base_stat(base);
         }
         for effect in finals {
             value = self.get_value(effect, card);
@@ -988,6 +1019,7 @@ impl Duel {
             }
         }
         self.core.stat_temp.borrow_mut().pop();
+        self.core.base_stat_temp.borrow_mut().pop();
         value.max(0)
     }
 

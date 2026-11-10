@@ -1944,19 +1944,24 @@ impl Duel {
                 self.return_cards.clear();
                 self.core.select_cards = self.field_get_attack_target(attacker, self.core.chain_attack, true);
                 // EFFECT_PATRICIAN_OF_DARKNESS hands the choices to the opponent.
-                let patrician = self.is_player_affected_by_effect(turn_player, EFFECT_PATRICIAN_OF_DARKNESS);
+                let patrician = self
+                    .is_player_affected_by_effect(turn_player, EFFECT_PATRICIAN_OF_DARKNESS)
+                    .is_some();
                 if self.cards[attacker].direct_attackable != 0 {
                     if self.core.select_cards.is_empty() {
                         self.returns.set_i32(0, -2);
                         arg.step = 5;
                         return false;
                     }
-                    unported!(self, patrician);
-                    self.emplace_process(SelectYesNo {
-                        playerid: turn_player,
-                        description: 31,
-                        ..SelectYesNo::default()
-                    });
+                    if patrician {
+                        self.field_select_effect_yes_no(1 - turn_player, 31, attacker);
+                    } else {
+                        self.emplace_process(SelectYesNo {
+                            playerid: turn_player,
+                            description: 31,
+                            ..SelectYesNo::default()
+                        });
+                    }
                     return false;
                 }
                 if self.core.select_cards.is_empty() {
@@ -1964,8 +1969,14 @@ impl Duel {
                     arg.step = 6;
                     return false;
                 }
-                unported!(self, patrician);
-                self.select_attack_target();
+                if !patrician {
+                    self.select_attack_target(false);
+                } else if let (1, Some(&only)) = (self.core.select_cards.len(), self.core.select_cards.first()) {
+                    self.return_cards.list.push(only);
+                } else {
+                    self.hint_selection(attacker);
+                    self.select_attack_target(true);
+                }
                 arg.step = 5;
                 false
             }
@@ -1973,8 +1984,10 @@ impl Duel {
                 if self.returns.at_i32(0) != 0 {
                     self.returns.set_i32(0, -2);
                 } else if !self.core.select_cards.is_empty() {
-                    unported!(self, self.is_player_affected_by_effect(turn_player, EFFECT_PATRICIAN_OF_DARKNESS));
-                    self.select_attack_target();
+                    let patrician = self
+                        .is_player_affected_by_effect(turn_player, EFFECT_PATRICIAN_OF_DARKNESS)
+                        .is_some();
+                    self.select_attack_target(patrician);
                 } else {
                     arg.attack_announce_failed = true;
                     arg.step = 6;
@@ -2566,8 +2579,14 @@ impl Duel {
         self.battle_window(43, false);
     }
 
-    fn select_attack_target(&mut self) {
-        let (player, cancelable) = (self.infos.turn_player, self.core.attack_cancelable);
+    // `opposite` is EFFECT_PATRICIAN_OF_DARKNESS: the opponent chooses, and cannot cancel.
+    fn select_attack_target(&mut self, opposite: bool) {
+        let turn_player = self.infos.turn_player;
+        let (player, cancelable) = if opposite {
+            (1 - turn_player, false)
+        } else {
+            (turn_player, self.core.attack_cancelable)
+        };
         self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(player).u64(549);
         self.emplace_process(SelectCard {
             playerid: player,

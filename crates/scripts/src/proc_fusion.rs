@@ -1060,8 +1060,9 @@ impl Fusion {
                     return Ok(());
                 }
                 duel.set_fusion_check_additional(check_addition);
+                // Only cards in mg1 reach the selection, so the rest of the unfiltered extra group is never asked about.
                 if let Some(extragroup) = extragroup {
-                    set_extra_group(duel, extragroup);
+                    set_extra_group(duel, extragroup.filter(duel, |c, _| mg1.is_contains(c), None));
                 }
                 let mat1 = duel.select_fusion_material(tp, tc, mg1, gc, chkf)?;
                 if !mat1.is_empty() {

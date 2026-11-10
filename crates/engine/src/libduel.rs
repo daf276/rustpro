@@ -10,7 +10,7 @@ use crate::chain::ExecuteKind;
 use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{
-    ChainLimit, ChainLimitFn, Container, CounterFilter, CustomCounter, EffectId, EffectSet, Event, OpTarget, OperationFn, Value,
+    ChainLimit, ChainLimitFn, Container, CounterFilter, CustomCounter, EffectId, EffectSet, Event, OpTarget, OperationFn, Target, Value,
 };
 
 use crate::field::FromEx;
@@ -19,7 +19,7 @@ use crate::processor::{
     AnnounceAttribute, AnnounceCard, AnnounceNumber, AnnounceRace, SelectCard, SelectOption, SelectPlace, SelectPosition, SelectYesNo,
     SortDeck,
 };
-use crate::script::{FusionCheck, Procedure, Script, SynchroCheck};
+use crate::script::{Args, FusionCheck, Procedure, Script, SynchroCheck};
 
 // What Duel.GetChainInfo pushes for one CHAININFO flag.
 #[derive(Debug, Clone, Copy)]
@@ -3019,6 +3019,75 @@ impl Duel {
 
     pub fn get_attack_target(&self) -> Option<CardId> {
         self.core.attack_target
+    }
+
+    pub fn change_attack_target(&mut self, target: Option<CardId>, ignore: bool) -> bool {
+        let Some(attacker) = self.core.attacker else { return false };
+        if !self.is_capable_attack(attacker) || self.cards[attacker].is_status(STATUS_ATTACK_CANCELED) {
+            return false;
+        }
+        let targets = self.field_get_attack_target(attacker, self.core.chain_attack, true);
+        let allowed = target.is_some_and(|target| targets.contains(&target))
+            || ignore
+            || (target.is_none() && self.is_affected_by_effect(attacker, EFFECT_CANNOT_DIRECT_ATTACK).is_none());
+        if !allowed {
+            return false;
+        }
+        self.core.attack_target = target;
+        self.core.attack_rollback = false;
+        self.core.opp_mzone = self.opponent_field_ids();
+        let turn_player = self.infos.turn_player;
+        let attacker_location = self.cards.get_info_location(attacker);
+        let target_location = match target {
+            Some(target) => {
+                let event_player = if self.cards[target].current.controler != turn_player {
+                    turn_player
+                } else {
+                    1 - turn_player
+                };
+                self.field_raise_single_event(target, EVENT_BE_BATTLE_TARGET, None, REASON_REPLACE, 0, event_player, 0);
+                self.field_raise_event(
+                    Some(target.into()),
+                    EVENT_BE_BATTLE_TARGET,
+                    None,
+                    REASON_REPLACE,
+                    0,
+                    event_player,
+                    0,
+                );
+                self.process_single_event();
+                self.process_instant_event();
+                self.cards.get_info_location(target)
+            }
+            None => {
+                self.core.attack_player = true;
+                LocInfo::default()
+            }
+        };
+        self.trace.message(MSG_ATTACK).loc(attacker_location).loc(target_location);
+        true
+    }
+
+    // field::check_chain_target: whether the target function of the chain link's effect accepts the card.
+    pub fn check_chain_target(&mut self, chain_count: u8, card: CardId) -> bool {
+        let len = self.core.current_chain.len();
+        let index = match usize::from(chain_count) {
+            0 => len.checked_sub(1),
+            count if count > len => None,
+            count => Some(count - 1),
+        };
+        let Some(chain) = index.and_then(|index| self.core.current_chain.get(index)) else {
+            return false;
+        };
+        let (effect, player, event) = (chain.triggering_effect, chain.triggering_player, chain.evt);
+        let Target::Action(target) = self.effects[effect].target else {
+            return false;
+        };
+        if !self.effects[effect].is_flag(EFFECT_FLAG_CARD_TARGET) {
+            return false;
+        }
+        let args = Args::event(effect, player, &event);
+        self.check_script(|duel| target(duel, &args, 0, Some(card)))
     }
 
     pub fn calculate_damage(&mut self, attacker: CardId, attack_target: Option<CardId>) -> Script<()> {

@@ -2830,11 +2830,7 @@ impl Duel {
         if self.force_spsummon_positions(&forcing, card, playerid, sumtype, sumpos, toplayer, effect) == 0 {
             return false;
         }
-        if !self.check_spsummon_once(card, playerid) {
-            return false;
-        }
-        unported!(self, self.field_effects.spsummon_count_eff.iter().copied());
-        true
+        self.check_spsummon_once(card, playerid) && self.check_spsummon_counter(playerid, 1)
     }
 
     // The positions of `positions` the EFFECT_FORCE_SPSUMMON_POSITION effects of a player leave for the card, `caller` being the
@@ -2892,11 +2888,28 @@ impl Duel {
         }
     }
 
-    // field::set_spsummon_counter without DUEL_CANNOT_SUMMON_OATH_OLD; the counters of EFFECT_SPSUMMON_COUNT_LIMIT come
-    // with the cards that register it.
+    // field::set_spsummon_counter without DUEL_CANNOT_SUMMON_OATH_OLD.
     pub(crate) fn set_spsummon_counter(&mut self, playerid: u8) {
         self.core.spsummon_state_count[playerid] += 1;
-        unported!(self, self.field_effects.spsummon_count_eff.iter().copied());
+        for effect in self.field_effects.spsummon_count_eff.iter().copied().collect::<Vec<_>>() {
+            let handler = self.get_handler(effect);
+            let peffect = &self.effects[effect];
+            let range = if playerid == self.cards[handler].current.controler {
+                peffect.s_range
+            } else {
+                peffect.o_range
+            };
+            if self.is_available(effect) && range != 0 {
+                self.cards[handler].spsummon_counter[playerid] += 1;
+            }
+        }
+    }
+
+    pub(crate) fn check_spsummon_counter(&self, playerid: u8, count: u16) -> bool {
+        self.field_effects.spsummon_count_eff.iter().all(|&effect| {
+            let handler = self.get_handler(effect);
+            !self.is_available(effect) || self.cards[handler].spsummon_counter[playerid] + count <= self.effects[effect].int_value() as u16
+        })
     }
 
     // field::check_card_counter: the counters of this activity that no card has failed for the player yet count a player's
@@ -2922,12 +2935,10 @@ impl Duel {
         }
     }
 
-    // EFFECT_LEFT_SPSUMMON_COUNT values and the counters of EFFECT_SPSUMMON_COUNT_LIMIT (check_spsummon_counter) come
-    // with the cards that register them.
-    pub(crate) fn is_player_can_spsummon_count(&self, playerid: u8, _count: u32) -> bool {
+    // EFFECT_LEFT_SPSUMMON_COUNT values come with the cards that register them.
+    pub(crate) fn is_player_can_spsummon_count(&self, playerid: u8, count: u32) -> bool {
         unported!(self, self.filter_player_effect(playerid, EFFECT_LEFT_SPSUMMON_COUNT, true));
-        unported!(self, self.field_effects.spsummon_count_eff.iter().copied());
-        true
+        self.check_spsummon_counter(playerid, count as u8 as u16)
     }
 
     pub(crate) fn field_is_player_can_draw(&self, playerid: u8) -> bool {

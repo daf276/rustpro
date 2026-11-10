@@ -2817,7 +2817,13 @@ impl Duel {
                 for counter in self.core.custom_counters.iter_mut() {
                     counter.amount = [0; 2];
                 }
-                unported!(self, self.field_effects.spsummon_count_eff.iter().copied());
+                for effect in self.field_effects.spsummon_count_eff.iter().copied().collect::<Vec<_>>() {
+                    if !self.effects[effect].is_flag(EFFECT_FLAG_NO_TURN_RESET) {
+                        let handler = self.get_handler(effect);
+                        self.cards[handler].spsummon_counter = Default::default();
+                        self.cards[handler].spsummon_counter_rst = Default::default();
+                    }
+                }
                 self.infos.turn_id += 1;
                 self.infos.turn_id_by_player[turn_player] += 1;
                 self.infos.turn_player = turn_player;

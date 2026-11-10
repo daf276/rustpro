@@ -4420,6 +4420,8 @@ impl Duel {
                         if target.summon.summon_type & SUMMON_TYPE_PENDULUM == SUMMON_TYPE_PENDULUM {
                             target.summon.summon_type &= 0xf000_ffff;
                         }
+                        target.spsummon_counter = Default::default();
+                        target.spsummon_counter_rst = Default::default();
                     }
                     if npos & POS_FACEDOWN != 0 {
                         for equip in self.equiping_cards(card) {

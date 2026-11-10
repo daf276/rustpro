@@ -61,7 +61,7 @@ pub mod prelude {
     pub use crate::proc_xyz::{AlterFilter, Xyz, XyzFilter, XyzProcedure};
     pub use crate::utility::{
         COST_DETACHED_MATERIALS, CardUtility, Cost, CostChoice, Cyberdark, CyberdarkEquip, DragonRuler, DuelUtility, EffectUtility,
-        Witchcrafter, aux,
+        Mysterune, MysteruneQuickPlay, Witchcrafter, aux,
     };
 }
 

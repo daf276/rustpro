@@ -286,6 +286,14 @@ impl Duel {
         player <= 1 && self.is_player_can_action(player, EFFECT_CANNOT_TO_HAND)
     }
 
+    pub fn is_player_can_sendto_deck(&self, player: u8, card: Option<CardId>) -> bool {
+        player <= 1
+            && match card {
+                Some(card) => self.is_player_can_send_to_deck(player, card),
+                None => self.is_player_can_action(player, EFFECT_CANNOT_TO_DECK),
+            }
+    }
+
     pub fn is_player_can_remove(&self, player: u8, card: Option<CardId>) -> bool {
         self.is_player_can_remove_full(player, card, REASON_EFFECT)
     }

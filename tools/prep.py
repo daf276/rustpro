@@ -35,6 +35,8 @@ NATIVE = {
     "non_tuner_ex": "written inline (c.is_not_tuner(...) && the filter)",
     "from_cards": "CardSet::from_iter",
     "sub": "CardSet::difference",
+    "add_card": "CardSet::insert",
+    "remove_card": "CardSet::remove",
     "field_summon_proc_tg": "set_target_card(fun1) (see c89252153)",
 }
 

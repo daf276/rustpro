@@ -1973,6 +1973,19 @@ impl Duel {
         Some(self.effects[effect].labels().first().copied().unwrap_or(0))
     }
 
+    pub fn reset_flag_effect(&mut self, player: u8, code: u32) {
+        if player > 1 {
+            return;
+        }
+        let code = (code & 0xfff_ffff) | 0x1000_0000;
+        let flagged: Vec<EffectId> = self.field_effects.registry.equal_range(Container::Aura, None, code).collect();
+        for effect in flagged {
+            if self.effects[effect].is_flag(EFFECT_FLAG_FIELD_ONLY) && self.get_owner_player(effect) == player {
+                self.remove_effect(effect);
+            }
+        }
+    }
+
     pub fn set_flag_effect_label(&mut self, player: u8, code: u32, label: i32) -> bool {
         let Some(effect) = self.get_player_effect(player, (code & 0xfff_ffff) | 0x1000_0000).into_iter().next() else {
             return false;

@@ -868,20 +868,6 @@ fn extra_mat_eff(c: CardId, duel: &Duel) -> bool {
     effect.is_some()
 }
 
-// Fusion.ExtraGroup is read only by proc_fusion_spell's global EFFECT_EXTRA_FUSION_MATERIAL, which is not ported: the
-// effect lets these cards be materials, which monsters and cards on the field already may.
-fn set_extra_group(duel: &Duel, g: CardSet) {
-    unported!(
-        duel,
-        g.is_exists(
-            duel,
-            |c, duel| !c.is_on_field(duel) && !c.is_original_type(duel, TYPE_MONSTER),
-            1,
-            None
-        )
-    );
-}
-
 impl Fusion {
     pub fn create_summon_eff<P: FusionSummonParams>(duel: &mut Duel, c: CardId) -> EffectId {
         let e1 = duel.create_effect(c);
@@ -966,7 +952,9 @@ impl Fusion {
         fmg_all.filter(duel, extra_mat_eff, None);
         let (extra, check_addition) = P::extrafil(duel, e, tp, mg1);
         if let Some(extra) = extra {
-            set_extra_group(duel, extra_group(duel, extra));
+            // Fusion.ExtraGroup is read only by proc_fusion_spell's global EFFECT_EXTRA_FUSION_MATERIAL, which is not ported;
+            // the filter still runs for its effect lookups.
+            extra_group(duel, extra);
             mg1.merge(extra);
         }
         (mg1, extra, check_addition)
@@ -1060,8 +1048,13 @@ impl Fusion {
                     return Ok(());
                 }
                 duel.set_fusion_check_additional(check_addition);
+                // The effect lets a card off the field that is no monster be a material, so only if mg1 holds one.
                 if let Some(extragroup) = extragroup {
-                    set_extra_group(duel, extragroup);
+                    let is_extra_spell = |c: CardId, duel: &Duel| !c.is_on_field(duel) && !c.is_original_type(duel, TYPE_MONSTER);
+                    unported!(
+                        duel,
+                        extragroup.is_exists(duel, |c, duel| mg1.is_contains(c) && is_extra_spell(c, duel), 1, None)
+                    );
                 }
                 let mat1 = duel.select_fusion_material(tp, tc, mg1, gc, chkf)?;
                 if !mat1.is_empty() {

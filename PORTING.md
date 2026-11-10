@@ -96,7 +96,10 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   third argument accepts only Graveyard monsters.
 - A Link Monster `SUPPORT` places never sits in an Extra Monster Zone, so effects on the zones it points to need a
   real Link Summon.
-- `(code, DECK)` for an Extra Deck monster is silently dropped. An effect that needs an attack on a specific face-up
+- `(code, DECK)` for an Extra Deck monster and `(code, EXTRA)` for a Main Deck monster are silently dropped. An
+  exact-count `aux.SelectUnselectGroup` can stall the random player past the decision limit ("no MSG_WIN within 5000
+  decisions"); the Extra Deck size changes the odds (Gordian Slicer pads it to 17).
+  An effect that needs an attack on a specific face-up
   Attack Position monster is rarely reached by random play; it may be `Report`. Print cdb names with `python -I -X utf8`.
 - A monster `SUPPORT` places in `MZONE` was not summoned from the Extra Deck: a condition on that needs the support
   to really summon it (the Extra Deck monster with Polymerization, or a Link with its materials).

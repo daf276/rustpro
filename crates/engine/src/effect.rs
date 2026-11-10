@@ -231,9 +231,9 @@ pub struct Effect {
     pub handler: Option<CardId>,
     pub active_handler: Option<CardId>,
     pub description: u64,
-    // The values Effect.SetLabel stores (scripts use at most two) and their count, a field of its own so that it packs
-    // with the other small fields instead of padding the values to 24 bytes.
-    pub label: [i64; 2],
+    // The values Effect.SetLabel stores (scripts use at most three) and their count, a field of its own so that it packs
+    // with the other small fields.
+    pub label: [i64; 3],
     pub label_len: u8,
     pub label_object: Option<EffectId>,
     // Where the effect is registered: its keys in a card's container and in the field's, which are never 0.
@@ -282,7 +282,7 @@ impl Effect {
             handler: None,
             active_handler: None,
             description: 0,
-            label: [0; 2],
+            label: [0; 3],
             label_len: 0,
             label_object: None,
             card_key: None,

@@ -1245,6 +1245,15 @@ impl Cost {
         Ok(false)
     }
 
+    pub fn self_to_hand(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        let c = args.e.get_handler(duel);
+        if chk == 0 {
+            return Ok(c.is_able_to_hand_as_cost(duel));
+        }
+        duel.send_to_hand(c, PLAYER_NONE, REASON_COST)?;
+        Ok(false)
+    }
+
     pub fn self_to_extra(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         let c = args.e.get_handler(duel);
         if chk == 0 {

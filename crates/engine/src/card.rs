@@ -177,6 +177,14 @@ impl Cards {
         Some(id)
     }
 
+    // Duel.GetCardFromCardID: the core's cardid counts from 1, which its temp_card takes.
+    pub fn find_by_card_id(&self, id: u32) -> Option<CardId> {
+        let index = u16::try_from(id.checked_sub(1)?)
+            .ok()
+            .filter(|&index| usize::from(index) < self.list.len())?;
+        Some(CardId::new(index))
+    }
+
     pub fn get_info_location(&self, card: CardId) -> LocInfo {
         let card = &self[card];
         match card.overlay_target {

@@ -273,6 +273,10 @@ impl CardId {
         duel.cards[self].fieldid
     }
 
+    pub fn get_real_field_id(self, duel: &Duel) -> u32 {
+        duel.cards[self].fieldid_r
+    }
+
     pub fn get_card_id(self, _: &Duel) -> u32 {
         self.index() as u32 + 1
     }

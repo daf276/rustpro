@@ -598,11 +598,27 @@ pub mod aux {
         finishcon: Option<GroupCheck>,
         cancelable: bool,
     ) -> Script<CardSet> {
+        select_unselect_group_break(duel, g, minc, maxc, rescon, seltp, hintmsg, finishcon, None, cancelable)
+    }
+
+    // The Lua's `breakcon` ends the selection as soon as it accepts the cards selected so far.
+    pub fn select_unselect_group_break(
+        duel: &mut Duel,
+        g: CardSet,
+        minc: usize,
+        maxc: usize,
+        rescon: GroupCheck,
+        seltp: u8,
+        hintmsg: u64,
+        finishcon: Option<GroupCheck>,
+        breakcon: Option<GroupCheck>,
+        cancelable: bool,
+    ) -> Script<CardSet> {
         let mut sg = CardSet::default();
         loop {
             let finishable = sg.len() >= minc && finishcon.is_none_or(|finishcon| finishcon(duel, sg, g, None).0);
             let mg = g.filter(duel, |c, duel| select_unselect_loop(duel, c, sg, g, minc, maxc, rescon), Some(sg));
-            if mg.is_empty() || sg.len() >= maxc {
+            if breakcon.is_some_and(|breakcon| breakcon(duel, sg, mg, None).0) || mg.is_empty() || sg.len() >= maxc {
                 break;
             }
             duel.hint(HINT_SELECTMSG, seltp, hintmsg);
@@ -1074,6 +1090,14 @@ pub mod aux {
 pub struct Cost;
 
 impl Cost {
+    pub fn hint_selected_effect(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        if chk == 0 {
+            return Ok(true);
+        }
+        duel.hint(HINT_OPSELECTED, 1 - args.tp, args.e.get_description(duel));
+        Ok(false)
+    }
+
     pub fn self_reveal(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         let c = args.e.get_handler(duel);
         if chk == 0 {
@@ -1452,6 +1476,7 @@ pub trait CardUtility: Copy {
     fn is_attribute_except(self, duel: &Duel, att: u32) -> bool;
     fn add_must_be_special_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_be_fusion_summoned(self, duel: &mut Duel) -> EffectId;
+    fn add_must_be_synchro_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_first_be_fusion_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_be_special_summoned_by_dark_fusion(self, duel: &mut Duel) -> EffectId;
 
@@ -1845,6 +1870,16 @@ impl CardUtility for CardId {
             duel,
             Value::SpSummonCondition(|_, _, _, _, sum_type, _, _| sum_type & SUMMON_TYPE_FUSION == SUMMON_TYPE_FUSION),
         );
+        self.register_effect(duel, e0);
+        e0
+    }
+
+    fn add_must_be_synchro_summoned(self, duel: &mut Duel) -> EffectId {
+        let e0 = duel.create_effect(self);
+        e0.set_type(duel, EFFECT_TYPE_SINGLE);
+        e0.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
+        e0.set_code(duel, EFFECT_SPSUMMON_CONDITION);
+        e0.set_value(duel, Value::SpSummonCondition(aux::synlimit));
         self.register_effect(duel, e0);
         e0
     }

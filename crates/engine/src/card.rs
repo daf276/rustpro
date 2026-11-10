@@ -1446,6 +1446,11 @@ impl Duel {
             if id & (moved | RESET_LEAVE | RESET_TOFIELD | RESET_TURN_SET) != 0 {
                 self.battled_cards.retain(|entry| entry.0 != card);
                 self.reset_effect_count(card);
+                for effect in self.card_effects(card) {
+                    if self.effects[effect].code == EFFECT_DISABLE_FIELD {
+                        self.effects[effect].value = Value::Int(0);
+                    }
+                }
             }
             self.reset_counters(card, id);
             if id & RESET_TOFIELD != 0 {

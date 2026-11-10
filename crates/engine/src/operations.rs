@@ -577,11 +577,26 @@ impl Duel {
         }
     }
 
-    // field::refresh_location_info_instant: the zones EFFECT_DISABLE_FIELD and EFFECT_USE_EXTRA_*ZONE take away, which
-    // come with the cards that register them.
-    pub(crate) fn refresh_location_info_instant(&self) {
-        for code in [EFFECT_DISABLE_FIELD, EFFECT_USE_EXTRA_MZONE, EFFECT_USE_EXTRA_SZONE] {
+    // field::refresh_location_info_instant: the zones EFFECT_DISABLE_FIELD and EFFECT_USE_EXTRA_*ZONE take away; the
+    // latter come with the cards that register them.
+    pub(crate) fn refresh_location_info_instant(&mut self) {
+        let previously = self.player[0].disabled_location | (self.player[1].disabled_location << 16);
+        self.player[0].disabled_location = 0;
+        self.player[1].disabled_location = 0;
+        for effect in self.filter_field_effect(EFFECT_DISABLE_FIELD) {
+            let value = self.get_own_value(effect) as u32;
+            self.player[0].disabled_location |= value & 0xff7f;
+            self.player[1].disabled_location |= (value >> 16) & 0xff7f;
+        }
+        for code in [EFFECT_USE_EXTRA_MZONE, EFFECT_USE_EXTRA_SZONE] {
             unported!(self, self.filter_field_effect(code));
+        }
+        let cross = |disabled: u32| (((disabled >> 5) & 1) << 6) | (((disabled >> 6) & 1) << 5);
+        self.player[0].disabled_location |= cross(self.player[1].disabled_location);
+        self.player[1].disabled_location |= cross(self.player[0].disabled_location);
+        let disabled = self.player[0].disabled_location | (self.player[1].disabled_location << 16);
+        if disabled != previously {
+            self.trace.message(MSG_FIELD_DISABLED).u32(disabled);
         }
     }
 

@@ -56,6 +56,8 @@ pub type CostFn = fn(&mut Duel, &Args, i32) -> Script<bool>;
 pub type CostConditionFn = fn(&Duel, EffectId, CardId, u8, u32) -> bool;
 pub type TargetFn = fn(&mut Duel, &Args, i32, Option<CardId>) -> Script<bool>;
 pub type OperationFn = fn(&mut Duel, &Args) -> Script<()>;
+// An operation whose return value the core reads: EFFECT_DISABLE_FIELD, the zones to disable.
+pub type ReturningOperationFn = fn(&mut Duel, &Args) -> Script<u32>;
 // A Duel.SetChainLimit function f(e, rp, tp), with the value its Lua closure captures (0 for none).
 pub type ChainLimitFn = fn(&Duel, EffectId, u8, u8, i64) -> bool;
 
@@ -98,6 +100,7 @@ pub enum Operation {
     Event(OperationFn),
     // A library function that never reaches a prompt, so it runs without the snapshot a rerun would need.
     Promptless(OperationFn),
+    Returning(ReturningOperationFn),
     Group(GroupOperationFn),
     // op(e, tsg, ntsg, sg, lv, sc, tp) -> (ok, lvchk): EFFECT_SYNCHRO_MATERIAL_CUSTOM, read only by proc_synchro.
     SynchroMaterial(SynchroMaterialFn),

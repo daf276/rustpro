@@ -4,7 +4,7 @@ use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{
     CodeConditionFn, Condition, ConditionFn, CostConditionFn, CostFn, EffectId, ExtraMaterialFn, GroupOperationFn, Operation, OperationFn,
-    SpSummonTargetFn, SynchroCheckFn, SynchroMaterialFn, Target, TargetFn, Value,
+    ReturningOperationFn, SpSummonTargetFn, SynchroCheckFn, SynchroMaterialFn, Target, TargetFn, Value,
 };
 use crate::script::Args;
 
@@ -261,6 +261,11 @@ impl EffectId {
     // Effect.SetOperation for library functions that cannot reach a prompt; a debug build checks they never do.
     pub fn set_promptless_operation(self, duel: &mut Duel, operation: OperationFn) {
         duel.effects[self].operation = Some(Operation::Promptless(operation));
+    }
+
+    // Effect.SetOperation for EFFECT_DISABLE_FIELD, whose function returns the zones to disable.
+    pub fn set_returning_operation(self, duel: &mut Duel, operation: ReturningOperationFn) {
+        duel.effects[self].operation = Some(Operation::Returning(operation));
     }
 
     // Effect.SetOperation for EFFECT_SPSUMMON_PROC_G, whose function fills the group it is passed.

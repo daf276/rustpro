@@ -39,6 +39,9 @@ pub struct Turn {
 pub struct RefreshLoc {
     pub step: u16,
     pub previously_disabled_locations: u32,
+    // The EFFECT_DISABLE_FIELD effects whose zones are still to be chosen, and the one being run.
+    pub disfield_effects: Vec<EffectId>,
+    pub current_disable_field_effect: EffectId,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -3444,8 +3447,8 @@ impl Duel {
         }
     }
 
-    // Steps 1-6 apply the EFFECT_DISABLE_FIELD and EFFECT_USE_EXTRA_*ZONE effects step 0 collects, which come with
-    // the cards that register them.
+    // Steps 1 and 2 apply the EFFECT_DISABLE_FIELD effects step 0 collects; steps 3-6 apply the EFFECT_USE_EXTRA_*ZONE effects,
+    // which come with the cards that register them.
     fn process_refresh_loc(&mut self, arg: &mut RefreshLoc) -> bool {
         match arg.step {
             0 => {
@@ -3456,12 +3459,51 @@ impl Duel {
                 arg.previously_disabled_locations = (self.player[0].disabled_location & 0xffff) | (self.player[1].disabled_location << 16);
                 self.player[0].disabled_location = 0;
                 self.player[1].disabled_location = 0;
-                for code in [EFFECT_DISABLE_FIELD, EFFECT_USE_EXTRA_MZONE, EFFECT_USE_EXTRA_SZONE] {
+                arg.disfield_effects.clear();
+                for effect in self.filter_field_effect(EFFECT_DISABLE_FIELD) {
+                    let value = self.get_own_value(effect) as u32;
+                    if value != 0 && !self.effects[effect].is_flag(EFFECT_FLAG_REPEAT) {
+                        self.player[0].disabled_location |= value & 0xff7f;
+                        self.player[1].disabled_location |= (value >> 16) & 0xff7f;
+                    } else {
+                        arg.disfield_effects.push(effect);
+                    }
+                }
+                for code in [EFFECT_USE_EXTRA_MZONE, EFFECT_USE_EXTRA_SZONE] {
                     unported!(self, self.filter_field_effect(code));
                 }
                 false
             }
-            1 | 3 | 5 => {
+            1 => {
+                if arg.disfield_effects.is_empty() {
+                    arg.step = 2;
+                    return false;
+                }
+                let effect = arg.disfield_effects.remove(0);
+                arg.current_disable_field_effect = effect;
+                if self.effects[effect].operation.is_none() {
+                    self.effects[effect].value = Value::Int(0x80);
+                    arg.step = 0;
+                    return false;
+                }
+                let player = self.get_handler_player(effect);
+                self.execute(ExecuteKind::Operation, effect, player, Event::default());
+                false
+            }
+            2 => {
+                let disabled = self.returns.at_u32(0) & 0xff7f_ff7f;
+                let disabled = if disabled == 0 { 0x80 } else { disabled };
+                let effect = arg.current_disable_field_effect;
+                let own = self.get_handler_player(effect) == 0;
+                self.effects[effect].value = Value::Int(if own { disabled } else { disabled.rotate_left(16) } as i32);
+                let (first, second) = if own { (0, 1) } else { (1, 0) };
+                self.player[first].disabled_location |= disabled & 0xff7f;
+                self.player[second].disabled_location |= (disabled >> 16) & 0xff7f;
+                self.returns.set_u32(0, disabled);
+                arg.step = 0;
+                false
+            }
+            3 | 5 => {
                 arg.step += 1;
                 false
             }

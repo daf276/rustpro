@@ -74,7 +74,7 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   Effect Monster can stand in where no Normal Monster of a level exists.
   An effect that needs the card in one zone gets a copy there (`(ID, SZONE)`), or more copies of what it reacts to.
   `SZONE` never places a Field Spell (that is the Field Zone); use 0, or `HAND` for one that must be activated.
-  `SZONE` never places a monster either: a Pendulum Monster goes in a Pendulum Zone with `PZONE`. `Synchro.AddMajesticProcedure` and `Duel.MajesticCopy` are not ported. Placement draws random numbers in list order, so
+  `SZONE` never places a monster either: a Pendulum Monster goes in a Pendulum Zone with `PZONE`. A copied effect resolving counts on the copying card as `ResolvesEffect(aux::stringid(copied_code, n))`. Placement draws random numbers in list order, so
   reordering `SUPPORT` changes every scenario.
   `DECK` cards are often drawn into the opening hand: list 2-3 copies of what an effect needs in the Deck (4 when it
   needs two left there). An `(ID, MZONE)` copy defeats a "only monster you control" condition. A destroyed-trigger
@@ -157,6 +157,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   the closure first with `Fusion::new_summon_eff_closure(duel, e, op)`.
 - `Cost::and` cannot stop on a cost that returns false when run (Lua's `Cost.AND` does): write such a composite
   cost out (`DragonRuler::self_discard_to_grave_cost`). `EffectUtility::has_self_discard_cost` lists the costs it knows.
+- A value that resets its own effect (`e:Reset()` inside the value) is `Value::ReasonMut`; messages a check writes
+  through `check_mut` stay in the trace, where the core writes them.
 - In the engine, `unported!(duel, x)` takes what the core would have used, an iterator or `Option`:
   `(cond).then_some(effect)` for a condition; in card files it takes a bool. Trap Monsters are ported except turning one
   face-down.

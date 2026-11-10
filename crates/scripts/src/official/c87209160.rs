@@ -42,7 +42,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_count_limit(duel, 1, (ID, 1));
     e2.set_cost(duel, spcost);
     e2.set_target(duel, sptg);
-    e2.set_operation(duel, spop);
+    e2.set_operation(duel, spop::<ID>);
     c.register_effect(duel, e2);
 }
 
@@ -81,7 +81,7 @@ fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8, ct: u32, g: Option<Card
         && duel.get_location_count_from_ex(tp, tp, g, c) > 0
 }
 
-fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+pub fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     let (e, tp) = (a.e, a.tp);
     let g = duel.get_matching_group(rmfilter, tp, LOCATION_MZONE | LOCATION_GRAVE, 0, None);
     let nums: Vec<u64> = (1..=g.len() as u32)
@@ -100,7 +100,7 @@ fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     Ok(false)
 }
 
-fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+pub fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
     if chk == 0 {
         return Ok(true);
     }
@@ -108,7 +108,7 @@ fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> 
     Ok(false)
 }
 
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn spop<const CODE: u32>(duel: &mut Duel, a: &Args) -> Script<()> {
     let (e, tp) = (a.e, a.tp);
     let c = e.get_handler(duel);
     let e1 = duel.create_effect(c);
@@ -122,7 +122,7 @@ fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
     );
     e1.set_reset(duel, RESET_PHASE | PHASE_END);
     duel.register_effect(e1, tp);
-    aux::register_client_hint(duel, c, 0, tp, 1, 0, Some(aux::stringid(ID, 2)));
+    aux::register_client_hint(duel, c, 0, tp, 1, 0, Some(aux::stringid(CODE, 2)));
     let ct = e.get_label(duel) as u32;
     duel.hint(HINT_SELECTMSG, tp, HINTMSG_SPSUMMON);
     let g = duel.select_matching_card(tp, |c, duel| spfilter(c, duel, e, tp, ct, None), tp, LOCATION_EXTRA, 0, 1, 1, None)?;

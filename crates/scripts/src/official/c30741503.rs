@@ -4,7 +4,7 @@ use crate::testing::{Check, EXTRA, MZONE, REMOVED};
 
 const ID: u32 = 30741503;
 
-struct Procedure;
+pub struct Procedure;
 
 impl LinkProcedure for Procedure {
     const MIN: usize = 2;

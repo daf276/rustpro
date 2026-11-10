@@ -462,7 +462,11 @@ impl Synchro {
     // requirements, and no effect of the codes CheckP41 to CheckP43 look up.
     fn is_plain<P: SynchroProcedure>(duel: &Duel) -> bool {
         let codes = [EFFECT_SYNCHRO_MAT_RESTRICTION, HAND_CHECK, EFFECT_SYNCHRO_MATERIAL_CUSTOM];
-        P::REQ1.is_none() && P::REQ2.is_none() && P::REQM.is_none() && !codes.iter().any(|&code| duel.may_have_effect(code))
+        P::REQ1.is_none()
+            && P::REQ2.is_none()
+            && P::REQM.is_none()
+            && duel.get_synchro_check_additional().is_none()
+            && !codes.iter().any(|&code| duel.may_have_effect(code))
     }
 
     fn level_reachable<P: SynchroProcedure>(duel: &Duel, g: CardSet, s: &Search) -> bool {

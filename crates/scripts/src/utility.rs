@@ -1399,6 +1399,15 @@ impl Cost {
         Cost::soft_once::<FLAG, { RESET_PHASE | PHASE_DAMAGE }>(duel, args, chk)
     }
 
+    // Cost.HardOncePerChain(flag) applied: the player is flagged until the chain ends.
+    pub fn hard_once_per_chain<const FLAG: u32>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        if chk == 0 {
+            return Ok(!duel.has_flag_effect(args.tp, FLAG));
+        }
+        duel.register_flag_effect(args.tp, FLAG, RESET_CHAIN, 0, 1);
+        Ok(false)
+    }
+
     fn soft_once<const FLAG: u32, const RESET: u32>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         let c = args.e.get_handler(duel);
         if chk == 0 {

@@ -1,16 +1,22 @@
 // Red-Eyes Black Fullmetal Dragon
 use crate::prelude::*;
-use crate::testing::{Check, HAND, MZONE, OPPONENT};
+use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 80870883;
 
 pub const LISTED_NAMES: &[u32] = &[CARD_MAX_METALMORPH];
 
-// In the hand and on the field, with the opponent's Dark Hole to negate and Sangan to damage. The Metalmorph Traps it
-// sets are not ported.
-pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (26202165, MZONE | OPPONENT), (53129443, HAND | OPPONENT)];
+// In the hand and on the field, with the opponent's Dark Hole to negate, Sangan to damage and Max Metalmorph in the Deck to Set.
+pub const SUPPORT: &[(u32, u16)] = &[
+    (ID, HAND),
+    (ID, MZONE),
+    (26202165, MZONE | OPPONENT),
+    (53129443, HAND | OPPONENT),
+    (CARD_MAX_METALMORPH, DECK),
+    (CARD_MAX_METALMORPH, DECK),
+];
 pub const CHECKS: &[Check] = &[
-    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 0))),
+    Check::ResolvesEffect(aux::stringid(ID, 0)),
     Check::ResolvesEffect(aux::stringid(ID, 1)),
 ];
 

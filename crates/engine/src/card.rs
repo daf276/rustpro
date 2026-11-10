@@ -773,20 +773,31 @@ impl Duel {
         race
     }
 
-    // get_lscale and get_rscale.
+    // get_lscale and get_rscale, without the temp value the core keeps against a value that reads its own scale.
     pub(crate) fn get_scale(&self, card: CardId, right: bool) -> u32 {
         let data = &self.cards[card].data;
         let scale = if right { data.rscale } else { data.lscale };
         if !self.cards[card].current.is_location(LOCATION_PZONE) {
             return scale;
         }
-        let codes = if right {
-            [EFFECT_UPDATE_RSCALE, EFFECT_CHANGE_RSCALE]
+        let (update, change) = if right {
+            (EFFECT_UPDATE_RSCALE, EFFECT_CHANGE_RSCALE)
         } else {
-            [EFFECT_UPDATE_LSCALE, EFFECT_CHANGE_LSCALE]
+            (EFFECT_UPDATE_LSCALE, EFFECT_CHANGE_LSCALE)
         };
-        unported!(self, codes.into_iter().flat_map(|code| self.filter_effect(card, code, true)));
-        scale
+        let (mut scale, mut up, mut upc) = (scale as i32, 0, 0);
+        for effect in self.filter_effects(card, &[update, change]) {
+            let value = self.get_value(effect, card);
+            if self.effects[effect].code != update {
+                scale = value;
+                up = 0;
+            } else if self.is_single_unranged(effect) {
+                up += value;
+            } else {
+                upc += value;
+            }
+        }
+        (scale + up + upc) as u32
     }
 
     // card::get_set_card with match_setcode: whether one of the card's archetypes matches `setcode`.

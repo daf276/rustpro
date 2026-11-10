@@ -1589,6 +1589,21 @@ impl Duel {
         Ok(self.returns.at_i32(0))
     }
 
+    // Duel.SwapControl for two cards: whether the swap happened.
+    pub fn swap_control(&mut self, card1: CardId, card2: CardId, reset_phase: u16, reset_count: u8) -> Script<bool> {
+        self.emplace_process(crate::operations::SwapControl {
+            reason_effect: self.core.reason_effect.get(),
+            reason_player: self.core.reason_player.get(),
+            targets1: card1.into(),
+            targets2: card2.into(),
+            reset_phase: reset_phase & 0x3ff,
+            reset_count,
+            ..Default::default()
+        });
+        self.yield_script()?;
+        Ok(self.returns.at_i32(0) != 0)
+    }
+
     // What Card.CheckActivateEffect does to the chain link being built when a script calls it with copy_info.
     pub fn set_current_chain_event(&mut self, event: Event) {
         if let Some(chain) = self.core.current_chain.last_mut() {

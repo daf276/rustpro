@@ -1,0 +1,45 @@
+// Herald of Orange Light
+use super::c71068247::{operation as disop, target as distg};
+use crate::prelude::*;
+use crate::testing::{Check, HAND};
+
+const ID: u32 = 17266660;
+
+// Happy Lover, a Fairy Normal Monster, in the hand to send as the cost.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (99030164, HAND), (99030164, HAND)];
+pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];
+
+pub fn initial_effect(duel: &mut Duel, c: CardId) {
+    let e1 = duel.create_effect(c);
+    e1.set_description(duel, aux::stringid(ID, 0));
+    e1.set_category(duel, CATEGORY_NEGATE + CATEGORY_DESTROY);
+    e1.set_type(duel, EFFECT_TYPE_QUICK_O);
+    e1.set_code(duel, EVENT_CHAINING);
+    e1.set_property(duel, EFFECT_FLAG_DAMAGE_STEP + EFFECT_FLAG_DAMAGE_CAL);
+    e1.set_range(duel, LOCATION_HAND);
+    e1.set_condition(duel, discon);
+    e1.set_cost(duel, discost);
+    e1.set_target(duel, distg);
+    e1.set_operation(duel, disop);
+    c.register_effect(duel, e1);
+}
+
+fn discon(duel: &Duel, a: &Args) -> bool {
+    a.ep != a.tp && a.re.is_some_and(|re| re.is_monster_effect(duel)) && duel.is_chain_negatable(a.ev as u8)
+}
+
+fn costfilter(c: CardId, duel: &Duel) -> bool {
+    c.is_race(duel, RACE_FAIRY) && c.is_able_to_grave_as_cost(duel)
+}
+
+fn discost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+    let (c, tp) = (a.e.get_handler(duel), a.tp);
+    if chk == 0 {
+        return Ok(c.is_able_to_grave_as_cost(duel) && duel.is_existing_matching_card(costfilter, tp, LOCATION_HAND, 0, 1, Some(c.into())));
+    }
+    duel.hint(HINT_SELECTMSG, tp, HINTMSG_TOGRAVE);
+    let mut g = duel.select_matching_card(tp, costfilter, tp, LOCATION_HAND, 0, 1, 1, Some(c.into()))?;
+    g.insert(c);
+    duel.send_to_grave(g, REASON_COST)?;
+    Ok(false)
+}

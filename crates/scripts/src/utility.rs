@@ -1646,6 +1646,7 @@ pub trait CardUtility: Copy {
     fn is_equip_card(self, duel: &Duel) -> bool;
     fn is_spell_trap(self, duel: &Duel) -> bool;
     fn is_monster_card(self, duel: &Duel) -> bool;
+    fn is_trap_monster(self, duel: &Duel) -> bool;
     fn has_non_zero_attack(self, duel: &Duel) -> bool;
     fn has_non_zero_defense(self, duel: &Duel) -> bool;
     fn is_owner(self, duel: &Duel, player: u8) -> bool;
@@ -1920,6 +1921,11 @@ impl CardUtility for CardId {
 
     fn is_monster_card(self, duel: &Duel) -> bool {
         self.is_original_type(duel, TYPE_MONSTER)
+    }
+
+    fn is_trap_monster(self, duel: &Duel) -> bool {
+        self.is_original_type(duel, TYPE_TRAP)
+            && (self.get_original_level(duel) > 0 || self.get_original_attribute(duel) > 0 || self.get_original_race(duel) > 0)
     }
 
     fn has_non_zero_attack(self, duel: &Duel) -> bool {

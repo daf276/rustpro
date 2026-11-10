@@ -471,6 +471,10 @@ impl CardId {
         duel.cards[self].summon.summon_type & 0xff00_ffff
     }
 
+    pub fn get_summon_location(self, duel: &Duel) -> u32 {
+        duel.cards[self].summon.location.into()
+    }
+
     pub fn is_summon_location(self, duel: &Duel, location: u32) -> bool {
         let summon = duel.cards[self].summon;
         let state = crate::card::CardState {

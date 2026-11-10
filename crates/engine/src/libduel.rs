@@ -491,6 +491,32 @@ impl Duel {
             && self.is_player_affected_by_effect(player, EFFECT_CANNOT_DISCARD_DECK).is_none()
     }
 
+    pub fn is_player_can_discard_deck_as_cost(&self, player: u8, count: usize) -> bool {
+        if !self.is_player_can_discard_deck(player, count) {
+            return false;
+        }
+        let Some(&topcard) = self.player[player].list_main.last() else {
+            return true;
+        };
+        if count == 1 && self.cards[topcard].is_position(POS_FACEUP) {
+            return self.is_capable_cost_to_grave(topcard, player);
+        }
+        let cant_remove_s = !self.is_player_can_action(player, EFFECT_CANNOT_REMOVE);
+        let cant_remove_o = !self.is_player_can_action(1 - player, EFFECT_CANNOT_REMOVE);
+        self.filter_field_effect(EFFECT_TO_GRAVE_REDIRECT).into_iter().all(|effect| {
+            let (redirect, p, peffect) = (
+                self.get_value(effect, topcard) as u32,
+                self.get_handler_player(effect),
+                &self.effects[effect],
+            );
+            let skipped = redirect & u32::from(LOCATION_REMOVED) != 0
+                && (self.is_affected_by_effect(topcard, EFFECT_CANNOT_REMOVE).is_some()
+                    || if p == player { cant_remove_s } else { cant_remove_o });
+            let range = if p == player { peffect.s_range } else { peffect.o_range };
+            skipped || range & u16::from(LOCATION_DECK) == 0
+        })
+    }
+
     pub fn discard_deck(&mut self, player: u8, count: u16, reason: u32) -> Script<i32> {
         self.emplace_process(crate::operations::DiscardDeck {
             playerid: player,

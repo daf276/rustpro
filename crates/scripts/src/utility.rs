@@ -1071,6 +1071,42 @@ pub mod aux {
         rp != e.get_handler_player(duel)
     }
 
+    // Auxiliary.RemainFieldCost: the card stays on the field after the chain, unless its activation is negated.
+    pub fn remain_field_cost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+        if chk == 0 {
+            return Ok(true);
+        }
+        let (c, tp) = (a.e.get_handler(duel), a.tp);
+        let cid: i64 = duel.get_chain_info(0, CHAININFO_CHAIN_ID);
+        let e1 = duel.create_effect(c);
+        e1.set_type(duel, EFFECT_TYPE_SINGLE);
+        e1.set_code(duel, EFFECT_REMAIN_FIELD);
+        e1.set_property(duel, EFFECT_FLAG_OATH);
+        e1.set_reset(duel, RESET_CHAIN);
+        c.register_effect(duel, e1);
+        let e2 = duel.create_effect(c);
+        e2.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
+        e2.set_code(duel, EVENT_CHAIN_DISABLED);
+        e2.set_operation(duel, remain_field_disabled);
+        e2.set_label(duel, cid);
+        e2.set_reset(duel, RESET_CHAIN);
+        duel.register_effect(e2, tp);
+        Ok(false)
+    }
+
+    // Auxiliary.RemainFieldDisabled
+    fn remain_field_disabled(duel: &mut Duel, a: &Args) -> Script<()> {
+        let cid: i64 = duel.get_chain_info(a.ev as u8, CHAININFO_CHAIN_ID);
+        if cid != a.e.get_label(duel) {
+            return Ok(());
+        }
+        let owner = a.e.get_owner(duel);
+        if owner.is_location(duel, LOCATION_ONFIELD) {
+            owner.cancel_to_grave_full(duel, false);
+        }
+        Ok(())
+    }
+
     // Auxiliary.CheckStealEquip(c, e, tp).
     pub fn check_steal_equip(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
         if c.is_facedown(duel) || !c.is_controler_can_be_changed(duel) || !c.is_controler(duel, 1 - tp) {
@@ -1556,6 +1592,7 @@ pub trait CardUtility: Copy {
     fn is_negatable(self, duel: &Duel) -> bool;
     fn is_attribute_except(self, duel: &Duel, att: u32) -> bool;
     fn add_must_be_special_summoned(self, duel: &mut Duel) -> EffectId;
+    fn add_must_be_special_summoned_by_card_effect(self, duel: &mut Duel) -> EffectId;
     fn add_must_be_fusion_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_be_synchro_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_first_be_fusion_summoned(self, duel: &mut Duel) -> EffectId;
@@ -1976,6 +2013,19 @@ impl CardUtility for CardId {
         e0.set_type(duel, EFFECT_TYPE_SINGLE);
         e0.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
         e0.set_code(duel, EFFECT_SPSUMMON_CONDITION);
+        self.register_effect(duel, e0);
+        e0
+    }
+
+    fn add_must_be_special_summoned_by_card_effect(self, duel: &mut Duel) -> EffectId {
+        let e0 = duel.create_effect(self);
+        e0.set_type(duel, EFFECT_TYPE_SINGLE);
+        e0.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
+        e0.set_code(duel, EFFECT_SPSUMMON_CONDITION);
+        e0.set_value(
+            duel,
+            Value::SpSummonCondition(|duel, _, se, _, _, _, _| se.is_some_and(|se| se.is_has_type(duel, EFFECT_TYPE_ACTIONS))),
+        );
         self.register_effect(duel, e0);
         e0
     }

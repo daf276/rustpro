@@ -117,6 +117,12 @@ pub struct SortCard {
 }
 
 #[derive(Debug, Clone, Default)]
+pub struct SortChain {
+    pub step: u16,
+    pub playerid: u8,
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct SortDeck {
     pub step: u16,
     pub sort_player: u8,
@@ -283,6 +289,7 @@ pub enum Unit {
     AnnounceAttribute(AnnounceAttribute),
     AnnounceCard(AnnounceCard),
     SortCard(SortCard),
+    SortChain(SortChain),
     SortDeck(SortDeck),
     SelectCard(SelectCard),
     SelectUnselectCard(SelectUnselectCard),
@@ -372,6 +379,7 @@ units!(
     AnnounceAttribute,
     AnnounceCard,
     SortCard,
+    SortChain,
     SortDeck,
     SelectCard,
     SelectUnselectCard,
@@ -458,6 +466,7 @@ impl Duel {
             Unit::AnnounceAttribute(arg) => self.run_steps(arg, Self::process_announce_attribute, true),
             Unit::AnnounceCard(arg) => self.run_steps(arg, Self::process_announce_card, true),
             Unit::SortCard(arg) => self.run_steps(arg, Self::process_sort_card, true),
+            Unit::SortChain(arg) => self.run_steps(arg, Self::process_sort_chain, false),
             Unit::SortDeck(arg) => self.run_steps(arg, Self::process_sort_deck, false),
             Unit::SelectCard(arg) => self.run_steps(arg, Self::process_select_card, true),
             Unit::SelectUnselectCard(arg) => self.run_steps(arg, Self::process_select_unselect_card, true),
@@ -1798,13 +1807,26 @@ impl Duel {
                     if !costs.is_empty() {
                         self.core.attack_cancelable = false;
                     }
-                    // Several costs are sorted into core.tpchain and run in step 14.
-                    unported!(self, costs.get(1));
-                    if let Some(&cost) = costs.first() {
+                    self.core.tpchain = costs.to_vec();
+                    if self.core.tpchain.len() > 1 {
+                        self.emplace_process(SortChain {
+                            playerid: turn_player,
+                            ..SortChain::default()
+                        });
+                        arg.step = 13;
+                    } else if let Some(&cost) = self.core.tpchain.first() {
                         self.execute(ExecuteKind::Operation, cost, turn_player, Event::default());
                         self.adjust_all();
                     }
                 }
+                false
+            }
+            14 => {
+                for cost in std::mem::take(&mut self.core.tpchain) {
+                    self.execute(ExecuteKind::Operation, cost, turn_player, Event::default());
+                    self.adjust_all();
+                }
+                arg.step = 2;
                 false
             }
             2 => {

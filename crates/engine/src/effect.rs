@@ -784,6 +784,7 @@ pub struct TriggeringState {
     pub code2: u32,
     pub card_type: u32,
     pub level: u32,
+    pub rank: u32,
     pub attribute: u32,
     pub race: u64,
     pub attack: i32,

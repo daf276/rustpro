@@ -116,7 +116,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - An Xyz Summon in `SUPPORT`: Xyz Import (14602126) in hand with Dragon Rebellion (16195942) and Sangan (26202165) on
   the opponent's side (see c1621413).
 - A rare Synchro/Xyz/Link path in the first 13 scenarios usually needs three Extra Deck copies and materials of each
-  level. There are no Normal Monsters above Level 8: use ported Extra Deck monsters as higher-level materials.
+  level. Two of each material on the field (Ash Blossom, Level 3, with Shapesnatch, Level 5, for Level 8) works; one pair
+  gave 1 Synchro Summon in 64. An attack-announce trigger needs an opponent's monster to attack into (Sangan). There are no Normal Monsters above Level 8: use ported Extra Deck monsters as higher-level materials.
   A Spell that Special Summons another card is checked by `SpecialSummonedCode(code)`.
   A trigger on its own destruction needs a destroyer that can hit the card (Raigeki only hits the opponent; Dark Hole
   also clears what the trigger needs, so a single-target destroyer is best). An effect without `SetDescription` is

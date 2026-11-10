@@ -4,11 +4,11 @@ use std::io::Write;
 use std::ops::Range;
 use std::time::{Duration, Instant};
 
-use diff::{DiffError, Vendor, diff_duel, diff_position, diff_scenario};
+use diff::{DiffError, Vendor, diff_duel, diff_position, diff_scenario, sampled_cards};
 use engine::constants::{LOCATION_MZONE, PHASE_DRAW};
 use engine::{Duel, DuelRecord, NewCardInfo, Position};
 use rayon::prelude::*;
-use scripts::{CARD_SCRIPTS, LIBRARY};
+use scripts::LIBRARY;
 
 type Result<T = ()> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -22,9 +22,11 @@ fn records(vendor: &'static Vendor, seeds: Range<u64>) -> Result<Vec<DuelRecord>
         .collect::<std::result::Result<_, DiffError>>()?)
 }
 
-// One scenario of every ported card.
+// One scenario of each card of [sampled_cards].
 fn scenario_records(vendor: &'static Vendor) -> Result<Vec<DuelRecord>> {
-    let records = CARD_SCRIPTS.par_iter().map(|card| Ok(diff_scenario(vendor, card.code, 0)?.record));
+    let records = sampled_cards()
+        .into_par_iter()
+        .map(|code| Ok(diff_scenario(vendor, code, 0)?.record));
     Ok(records.collect::<std::result::Result<_, DiffError>>()?)
 }
 

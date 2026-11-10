@@ -1,13 +1,12 @@
 use std::io::Write;
 use std::ops::Range;
 
-use diff::{DiffError, Report, SCENARIOS, SCENARIOS_FULL, Tally, Vendor, diff_cards, diff_duel, summarize};
+use diff::{DiffError, Report, SCENARIOS, SCENARIOS_FULL, Tally, Vendor, diff_cards, diff_duel, sampled_cards, summarize};
 use rayon::prelude::*;
 use scripts::{CARD_SCRIPTS, CLASSIC_CARDS};
 
 const WIN_BY_LP: u8 = 1;
 const WIN_BY_DECK_OUT: u8 = 2;
-const SAMPLE_CARDS: usize = 200;
 
 fn diff_duels(vendor: &'static Vendor, seeds: Range<u64>) -> Result<(Tally, Vec<Report>), DiffError> {
     let results: Vec<Result<Report, DiffError>> = seeds.into_par_iter().map(|seed| diff_duel(vendor, seed)).collect();
@@ -111,20 +110,14 @@ fn should_match_the_oracle_in_5000_elfnote_mirror_matches() {
 }
 
 // Writes each card's scenarios out and checks that they diff clean and pass the card's checks, and with every card that
-// Ritual materials are selected by both kinds of sum. `sample` keeps about SAMPLE_CARDS cards, picked by a hash of the
-// code so that new ports rarely change the sample.
+// Ritual materials are selected by both kinds of sum. `sample` keeps the cards of [sampled_cards].
 fn assert_scenarios_clean(count: u32, sample: bool) -> Result<(), DiffError> {
     let vendor = Vendor::leak(Vendor::scenarios)?;
-    let stride = if sample {
-        CARD_SCRIPTS.len().div_ceil(SAMPLE_CARDS) as u64
+    let cards: Vec<u32> = if sample {
+        sampled_cards()
     } else {
-        1
+        CARD_SCRIPTS.iter().map(|card| card.code).collect()
     };
-    let cards: Vec<u32> = CARD_SCRIPTS
-        .iter()
-        .map(|card| card.code)
-        .filter(|&code| (u64::from(code).wrapping_mul(0x9E37_79B9_7F4A_7C15) >> 32) % stride == 0)
-        .collect();
     let runs = diff_cards(vendor, &cards, count);
     let out = &mut std::io::stdout().lock();
     let mut failed = Vec::new();

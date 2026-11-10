@@ -637,6 +637,31 @@ fn frames(mut buffer: &[u8]) -> Vec<&[u8]> {
     .collect()
 }
 
+// Cards the per-card suites run besides the new ones.
+pub const SAMPLE_CARDS: usize = 200;
+
+// The cards the default per-card suites run: all with DIFF_ALL_CARDS set, otherwise the codes in DIFF_NEW_CARDS (the
+// ports since the last full run) and about SAMPLE_CARDS more, which DIFF_SAMPLE_SEED rotates so every card takes its turn.
+pub fn sampled_cards() -> Vec<u32> {
+    let codes = scripts::CARD_SCRIPTS.iter().map(|card| card.code);
+    if std::env::var_os("DIFF_ALL_CARDS").is_some() {
+        return codes.collect();
+    }
+    let seed: u64 = std::env::var("DIFF_SAMPLE_SEED")
+        .ok()
+        .and_then(|seed| seed.parse().ok())
+        .unwrap_or(0);
+    let new: BTreeSet<u32> = std::env::var("DIFF_NEW_CARDS")
+        .unwrap_or_default()
+        .split(',')
+        .filter_map(|code| code.trim().parse().ok())
+        .collect();
+    let stride = scripts::CARD_SCRIPTS.len().div_ceil(SAMPLE_CARDS) as u64;
+    codes
+        .filter(|code| new.contains(code) || ((u64::from(*code) ^ seed).wrapping_mul(0x9E37_79B9_7F4A_7C15) >> 32).is_multiple_of(stride))
+        .collect()
+}
+
 // Scenarios per card in the default test (about 1000 for the 78 cards of phase 4a) and in the ignored one.
 pub const SCENARIOS: u32 = 13;
 pub const SCENARIOS_FULL: u32 = 64;

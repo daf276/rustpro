@@ -25,7 +25,7 @@ fn condition(duel: &Duel, a: &Args) -> bool {
     a.re.is_some_and(|re| re.is_spell_effect(duel) && re.is_has_type(duel, EFFECT_TYPE_ACTIVATE)) && duel.is_chain_negatable(a.ev as u8)
 }
 
-fn cost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+pub fn cost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     let tp = a.tp;
     if duel.is_player_affected_by_effect(tp, EFFECT_DISCARD_COST_CHANGE).is_some() {
         return Ok(true);
@@ -38,7 +38,7 @@ fn cost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     Ok(false)
 }
 
-fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+pub fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
     if chk == 0 {
         return Ok(true);
     }
@@ -52,7 +52,7 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool
     Ok(false)
 }
 
-fn activate(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn activate(duel: &mut Duel, a: &Args) -> Script<()> {
     let Some(re) = a.re else { return Ok(()) };
     if duel.negate_activation(a.ev as u8) && re.get_handler(duel).is_relate_to_effect(duel, re) {
         duel.destroy(a.eg.unwrap_or_default(), REASON_EFFECT)?;

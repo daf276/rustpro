@@ -1,6 +1,6 @@
-// Port of proc_synchro.lua: Synchro.AddProcedure with its condition, target and operation, and
-// Synchro.AddHandMaterialEffect. The Majestic and Dark Synchro procedures and Synchro.Send come with the cards that use them.
-use engine::{Args, CardId, CardSet, Duel, EffectId, Operation, Script, Target, Value};
+// Port of proc_synchro.lua: Synchro.AddProcedure and Synchro.AddMajesticProcedure with their conditions, targets and
+// operation, and Synchro.AddHandMaterialEffect. The Dark Synchro procedure and Synchro.Send come with the cards that use them.
+use engine::{Args, CardId, CardSet, ConditionFn, Duel, EffectId, Operation, Script, Target, TargetFn, Value};
 
 use crate::constant::*;
 use crate::utility::aux;
@@ -31,6 +31,21 @@ pub trait SynchroProcedure {
     fn sub2(_c: CardId, _duel: &Duel, _sc: CardId, _sumtype: u64, _tp: u8) -> bool {
         false
     }
+}
+
+// The parameters of Synchro.AddMajesticProcedure (f1, cbt1, f2, cbt2, f3, cbt3, reqm...): the filter of each of the three
+// materials in the order chosen, and whether it can be the Tuner.
+pub trait MajesticProcedure {
+    const CBT1: bool;
+    const CBT2: bool;
+    const CBT3: bool;
+    const REQM: &'static [Requirement] = &[];
+
+    fn f1(c: CardId, duel: &Duel, sc: CardId, sumtype: u64, tp: u8) -> bool;
+
+    fn f2(c: CardId, duel: &Duel, sc: CardId, sumtype: u64, tp: u8) -> bool;
+
+    fn f3(c: CardId, duel: &Duel, sc: CardId, sumtype: u64, tp: u8) -> bool;
 }
 
 // The parameters of Synchro.AddHandMaterialEffect (id, material_filter, synchro_filter); no official script passes
@@ -101,14 +116,22 @@ impl Synchro {
     }
 
     pub fn add_procedure<P: SynchroProcedure>(duel: &mut Duel, c: CardId) -> EffectId {
+        Synchro::register_procedure(duel, c, Synchro::condition::<P>, Synchro::target::<P>)
+    }
+
+    pub fn add_majestic_procedure<P: MajesticProcedure>(duel: &mut Duel, c: CardId) -> EffectId {
+        Synchro::register_procedure(duel, c, Synchro::majestic_condition::<P>, Synchro::majestic_target::<P>)
+    }
+
+    fn register_procedure(duel: &mut Duel, c: CardId, condition: ConditionFn, target: TargetFn) -> EffectId {
         let e1 = duel.create_effect(c);
         e1.set_type(duel, EFFECT_TYPE_FIELD);
         e1.set_description(duel, 1172);
         e1.set_code(duel, EFFECT_SPSUMMON_PROC);
         e1.set_property(duel, EFFECT_FLAG_UNCOPYABLE + EFFECT_FLAG_IGNORE_IMMUNE);
         e1.set_range(duel, LOCATION_EXTRA);
-        e1.set_condition(duel, Synchro::condition::<P>);
-        e1.set_target(duel, Synchro::target::<P>);
+        e1.set_condition(duel, condition);
+        e1.set_target(duel, target);
         e1.set_operation(duel, Synchro::operation);
         e1.set_value(duel, SUMMON_TYPE_SYNCHRO as i32);
         c.register_effect(duel, e1);
@@ -193,30 +216,58 @@ impl Synchro {
         P::f2(c, duel, sc, SYNCHRO_MATERIAL, tp) || P::sub2(c, duel, sc, SYNCHRO_MATERIAL, tp)
     }
 
-    // The materials both the condition and the target start from: (dg, g, pg, mgchk) and their levels.
-    fn materials(duel: &Duel, c: CardId, tp: u8, mg: Option<CardSet>) -> (CardSet, CardSet, CardSet, bool, Levels) {
-        let can_be_material = |mc: CardId, duel: &Duel| mc.is_can_be_synchro_material(duel, c);
-        let (dg, mut g, mgchk) = match mg {
-            Some(mg) => (mg, mg.filter(duel, can_be_material, Some(c.into())), true),
-            None => {
-                let synchmatfilter = |mc: CardId, duel: &Duel| {
-                    let handmatfilter = mc.is_has_effect(duel, EFFECT_SYNCHRO_MAT_FROM_HAND);
-                    (mc.is_location(duel, LOCATION_MZONE)
-                        && mc.is_faceup(duel)
-                        && (mc.is_controler(duel, tp) || mc.is_can_be_synchro_material(duel, c)))
-                        || handmatfilter.is_some_and(|te| {
-                            te.check_count_limit(duel, tp)
-                                && matches!(te.get_value(duel), Value::MaterialFor(value) if value(duel, te, mc, c))
-                        })
-                };
-                let dg = duel.get_matching_group(synchmatfilter, tp, LOCATION_MZONE | LOCATION_HAND, LOCATION_MZONE, Some(c.into()));
-                (dg, dg.filter(duel, can_be_material, None), false)
-            }
+    // The materials both the condition and the target start from: (g, pg, mgchk) and their levels.
+    fn materials(duel: &Duel, c: CardId, tp: u8, mg: Option<CardSet>) -> (CardSet, CardSet, bool, Levels) {
+        let synchmatfilter = |mc: CardId, duel: &Duel| {
+            let handmatfilter = mc.is_has_effect(duel, EFFECT_SYNCHRO_MAT_FROM_HAND);
+            (mc.is_location(duel, LOCATION_MZONE)
+                && mc.is_faceup(duel)
+                && (mc.is_controler(duel, tp) || mc.is_can_be_synchro_material(duel, c)))
+                || handmatfilter.is_some_and(|te| {
+                    te.check_count_limit(duel, tp) && matches!(te.get_value(duel), Value::MaterialFor(value) if value(duel, te, mc, c))
+                })
         };
+        let dg = mg
+            .unwrap_or_else(|| duel.get_matching_group(synchmatfilter, tp, LOCATION_MZONE | LOCATION_HAND, LOCATION_MZONE, Some(c.into())));
+        Synchro::usable_materials(duel, c, tp, dg, mg.is_some())
+    }
+
+    // The materials of Synchro.MajesticCondition and Synchro.MajesticTarget, as [Synchro::materials] has them.
+    fn majestic_materials(duel: &Duel, c: CardId, tp: u8, mg: Option<CardSet>) -> (CardSet, CardSet, bool, Levels) {
+        let matfilter =
+            |mc: CardId, duel: &Duel| mc.is_faceup(duel) && (mc.is_controler(duel, tp) || mc.is_can_be_synchro_material(duel, c));
+        let dg = mg.unwrap_or_else(|| duel.get_matching_group(matfilter, tp, LOCATION_MZONE, LOCATION_MZONE, Some(c.into())));
+        Synchro::usable_materials(duel, c, tp, dg, mg.is_some())
+    }
+
+    fn usable_materials(duel: &Duel, c: CardId, tp: u8, dg: CardSet, mgchk: bool) -> (CardSet, CardSet, bool, Levels) {
+        let mut g = dg.filter(duel, |mc, duel| mc.is_can_be_synchro_material(duel, c), Some(c.into()));
         let levels = Levels::new(duel, g, c);
         g.remove_matching(duel, |mc, duel| levels.get(duel, mc, c) < 1, None);
         let pg = aux::get_must_be_material_group(duel, tp, Some(dg), tp, Some(c), Some(g), REASON_SYNCHRO);
-        (dg, g, pg, mgchk, levels)
+        (g, pg, mgchk, levels)
+    }
+
+    // The condition's check that the materials it must use can be, and g and pg with smat.
+    fn must_materials(duel: &Duel, c: CardId, g: CardSet, pg: CardSet, smat: Option<CardSet>) -> Option<(CardSet, CardSet)> {
+        let cannot = |mc: CardId, duel: &Duel| !mc.is_can_be_synchro_material(duel, c);
+        if !g.includes(pg) || pg.is_exists(duel, cannot, 1, None) || smat.is_some_and(|smat| smat.is_exists(duel, cannot, 1, None)) {
+            return None;
+        }
+        let smat = smat.unwrap_or_default();
+        Some((g.union(smat), pg.union(smat)))
+    }
+
+    // The hand materials the EFFECT_HAND_SYNCHRO effects of the cards of g add, unfiltered.
+    fn hand_materials(duel: &mut Duel, c: CardId, tp: u8, g: CardSet) -> CardSet {
+        let hg = Synchro::hand_group(duel, c, tp);
+        let mut thg = CardSet::default();
+        for thc in g {
+            if let Some(&te) = thc.get_card_effect(duel, EFFECT_HAND_SYNCHRO).first() {
+                thg.merge(Synchro::hand_synchro(duel, te, hg, c, |_, _| true));
+            }
+        }
+        thg
     }
 
     // Whether an effect may have EFFECT_HAND_SYNCHRO, or EFFECT_HAND_SYNCHRO+EFFECT_SYNCHRO_CHECK (which a cancelled
@@ -333,18 +384,10 @@ impl Synchro {
             return false;
         }
         let tp = c.get_controler(duel);
-        let (_, mut g, mut pg, mgchk, levels) = Synchro::materials(duel, c, tp, mg);
-        let can_be_material = |mc: CardId, duel: &Duel| mc.is_can_be_synchro_material(duel, c);
-        if !g.includes(pg) || pg.is_exists(duel, |mc, duel| !can_be_material(mc, duel), 1, None) {
+        let (g, pg, mgchk, levels) = Synchro::materials(duel, c, tp, mg);
+        let Some((g, pg)) = Synchro::must_materials(duel, c, g, pg, smat) else {
             return false;
-        }
-        if let Some(smat) = smat {
-            if smat.is_exists(duel, |mc, duel| !can_be_material(mc, duel), 1, None) {
-                return false;
-            }
-            pg.merge(smat);
-            g.merge(smat);
-        }
+        };
         let mut s = Search {
             lv: c.get_level(duel),
             sc: c,
@@ -369,15 +412,11 @@ impl Synchro {
             };
             let res = if hand_synchro {
                 duel.check_mut(|duel| {
-                    let mut g2 = g;
-                    if !mgchk {
-                        let hg = Synchro::hand_group(duel, c, tp);
-                        for thc in g {
-                            if let Some(&te) = thc.get_card_effect(duel, EFFECT_HAND_SYNCHRO).first() {
-                                g2.merge(Synchro::hand_synchro(duel, te, hg, c, |_, _| true));
-                            }
-                        }
-                    }
+                    let g2 = if mgchk {
+                        g
+                    } else {
+                        g.union(Synchro::hand_materials(duel, c, tp, g))
+                    };
                     let res = search(duel, g2);
                     Synchro::reset_hand_synchro(duel, tp);
                     res
@@ -634,8 +673,11 @@ impl Synchro {
     }
 
     fn check_p43(duel: &Duel, tsg: CardSet, ntsg: CardSet, sg: CardSet, s: &Search) -> bool {
-        let (lv, sc, tp) = (s.lv, s.sc, s.tp);
-        // Synchro.CheckHand: a hand material whose EFFECT_HAND_SYNCHRO card (by label) is not among the materials.
+        !Synchro::hand_unmatched(duel, sg) && Synchro::level_matches(duel, tsg, ntsg, sg, s)
+    }
+
+    // Synchro.CheckHand over sg: a hand material whose EFFECT_HAND_SYNCHRO card (by label) is not among the materials.
+    fn hand_unmatched(duel: &Duel, sg: CardSet) -> bool {
         let check_hand = |c: CardId, duel: &Duel| {
             let teg = c.get_card_effect(duel, HAND_CHECK);
             let check_label = |tc: CardId, duel: &Duel, label: i64| {
@@ -648,9 +690,12 @@ impl Synchro {
                     .iter()
                     .all(|&te| !sg.is_exists(duel, |tc, duel| check_label(tc, duel, te.get_label(duel)), 1, Some(c.into())))
         };
-        if duel.may_have_effect(HAND_CHECK) && sg.is_exists(duel, check_hand, 1, None) {
-            return false;
-        }
+        duel.may_have_effect(HAND_CHECK) && sg.is_exists(duel, check_hand, 1, None)
+    }
+
+    // The rest of CheckP43: the EFFECT_SYNCHRO_MATERIAL_CUSTOM checks, the level sum and a free zone.
+    fn level_matches(duel: &Duel, tsg: CardSet, ntsg: CardSet, sg: CardSet, s: &Search) -> bool {
+        let (lv, sc, tp) = (s.lv, s.sc, s.tp);
         let mut lvchk = false;
         let custom = if duel.may_have_effect(EFFECT_SYNCHRO_MATERIAL_CUSTOM) {
             sg
@@ -687,7 +732,7 @@ impl Synchro {
         let (e, tp, smat, mg) = (a.e, a.tp, a.must, a.materials);
         let Some(c) = a.c else { return Ok(false) };
         let mut sg = CardSet::default();
-        let (_, mut g, mut pg, mgchk, levels) = Synchro::materials(duel, c, tp, mg);
+        let (mut g, mut pg, mgchk, levels) = Synchro::materials(duel, c, tp, mg);
         if let Some(smat) = smat {
             pg.merge(smat);
             g.merge(smat);
@@ -905,6 +950,156 @@ impl Synchro {
             e1.set_reset(duel, RESET_EVENT + RESETS_STANDARD);
             subc.register_effect_full(duel, e1, true);
         }
+        e.set_label_object_group(duel, Some(sg));
+        Ok(true)
+    }
+
+    // Synchro.MajesticCheck1: whether c can be chosen after the materials of `cards`, in their order.
+    fn majestic_check1<P: MajesticProcedure>(
+        duel: &Duel,
+        c: CardId,
+        g: CardSet,
+        sg: CardSet,
+        cards: [Option<CardId>; 3],
+        s: &Search,
+    ) -> bool {
+        Synchro::synchro_check_all(duel, c, g);
+        let Some((rg, _)) = Synchro::restrictions(duel, c, sg, [g, CardSet::default()], [g, g], sg, sg, false) else {
+            return false;
+        };
+        let (g, sg, cards) = (g.difference(rg), sg.union(c.into()), Synchro::chosen(cards, c));
+        let res = if sg.len() < 3 {
+            g.is_exists(
+                duel,
+                |mc, duel| Synchro::majestic_check1::<P>(duel, mc, g, sg, cards, s),
+                1,
+                Some(sg),
+            )
+        } else {
+            sg.includes(s.pg) && Synchro::majestic_check2::<P>(duel, sg, cards, s)
+        };
+        Synchro::assume_reset_unless_checked(duel, sg.difference(c.into()));
+        res
+    }
+
+    fn majestic_check2<P: MajesticProcedure>(duel: &Duel, sg: CardSet, cards: [Option<CardId>; 3], s: &Search) -> bool {
+        let (sc, tp) = (s.sc, s.tp);
+        let [Some(card1), Some(card2), Some(card3)] = cards else {
+            return false;
+        };
+        if Synchro::hand_unmatched(duel, sg)
+            || !P::f1(card1, duel, sc, SYNCHRO_MATERIAL, tp)
+            || !P::f2(card2, duel, sc, SYNCHRO_MATERIAL, tp)
+            || !P::f3(card3, duel, sc, SYNCHRO_MATERIAL, tp)
+        {
+            return false;
+        }
+        let tuner = |cbt: bool, card: CardId| cbt && card.is_type_full(duel, TYPE_TUNER, Some(sc), SYNCHRO_MATERIAL, tp);
+        let tunechk = [tuner(P::CBT1, card1), tuner(P::CBT2, card2), tuner(P::CBT3, card3)];
+        tunechk.contains(&true)
+            && P::REQM.iter().all(|reqmat| reqmat(duel, sg, sc, tp))
+            && Synchro::level_matches(duel, CardSet::default(), CardSet::default(), sg, s)
+    }
+
+    fn chosen(mut cards: [Option<CardId>; 3], c: CardId) -> [Option<CardId>; 3] {
+        if let Some(slot) = cards.iter_mut().find(|slot| slot.is_none()) {
+            *slot = Some(c);
+        }
+        cards
+    }
+
+    fn majestic_search(a: &Args, lv: u32, sc: CardId, tp: u8, pg: CardSet, mgchk: bool, levels: Levels) -> Search {
+        Search {
+            lv,
+            sc,
+            tp,
+            pg,
+            mgchk,
+            min: usize::from(a.min),
+            max: usize::from(a.max),
+            levels,
+            plain: false,
+        }
+    }
+
+    fn majestic_condition<P: MajesticProcedure>(duel: &Duel, a: &Args) -> bool {
+        let Some(c) = a.c else { return true };
+        if a.min > 3 || (a.max != 0 && a.max < 3) {
+            return false;
+        }
+        let (tp, lv) = (c.get_controler(duel), c.get_level(duel));
+        let (g, pg, mgchk, levels) = Synchro::majestic_materials(duel, c, tp, a.materials);
+        let Some((g, pg)) = Synchro::must_materials(duel, c, g, pg, a.must) else {
+            return false;
+        };
+        let s = Synchro::majestic_search(a, lv, c, tp, pg, mgchk, levels);
+        let none = CardSet::default();
+        let search = |duel: &Duel, g: CardSet| {
+            g.is_exists(
+                duel,
+                |mc, duel| Synchro::majestic_check1::<P>(duel, mc, g, none, [None; 3], &s),
+                1,
+                None,
+            )
+        };
+        let res = if Synchro::hand_synchro_possible(duel) {
+            duel.check_mut(|duel| {
+                let g = if mgchk {
+                    g
+                } else {
+                    g.union(Synchro::hand_materials(duel, c, tp, g))
+                };
+                let res = search(duel, g);
+                Synchro::reset_hand_synchro(duel, tp);
+                res
+            })
+        } else {
+            search(duel, g)
+        };
+        duel.assume_reset();
+        res
+    }
+
+    fn majestic_target<P: MajesticProcedure>(duel: &mut Duel, a: &Args, _: i32, _: Option<CardId>) -> Script<bool> {
+        let (e, tp) = (a.e, a.tp);
+        let Some(c) = a.c else { return Ok(false) };
+        if a.min > 3 || (a.max != 0 && a.max < 3) {
+            return Ok(false);
+        }
+        // The Lua reads the level again once it has the materials.
+        c.get_level(duel);
+        let (mut g, mut pg, mgchk, levels) = Synchro::majestic_materials(duel, c, tp, a.materials);
+        if let Some(smat) = a.must {
+            pg.merge(smat);
+            g.merge(smat);
+        }
+        if !mgchk {
+            g.merge(Synchro::hand_materials(duel, c, tp, g));
+        }
+        let s = Synchro::majestic_search(a, c.get_level(duel), c, tp, pg, mgchk, levels);
+        let mut sg = CardSet::default();
+        let mut cards = [None; 3];
+        let cancel = !mgchk && duel.is_summon_cancelable();
+        while sg.len() < 3 {
+            let g2 = g.filter(duel, |mc, duel| Synchro::majestic_check1::<P>(duel, mc, g, sg, cards, &s), Some(sg));
+            duel.hint(HINT_SELECTMSG, tp, HINTMSG_SMATERIAL);
+            let Some(tc) = g2.select_unselect(duel, Some(sg), tp, false, cancel, 1, 1)? else {
+                return Ok(false);
+            };
+            if !sg.is_contains(tc) {
+                sg.insert(tc);
+                Synchro::synchro_check_all(duel, tc, g);
+                cards = Synchro::chosen(cards, tc);
+            } else if let Some(last) = cards.iter_mut().rev().find(|slot| slot.is_some())
+                && *last == Some(tc)
+            {
+                *last = None;
+                sg.remove(tc);
+                Synchro::assume_reset_unless_checked(duel, sg);
+            }
+        }
+        duel.assume_reset();
+        Synchro::reset_hand_synchro(duel, tp);
         e.set_label_object_group(duel, Some(sg));
         Ok(true)
     }

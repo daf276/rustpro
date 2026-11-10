@@ -55,7 +55,7 @@ pub mod prelude {
     pub use crate::proc_persistent::{Persistent, PersistentProcedure};
     pub use crate::proc_ritual::{ForcedSelection, Ritual, RitualCode, RitualParams, WholeLevelTribute};
     pub use crate::proc_spirit::Spirit;
-    pub use crate::proc_synchro::{HandMaterial, Synchro, SynchroProcedure};
+    pub use crate::proc_synchro::{HandMaterial, MajesticProcedure, Synchro, SynchroProcedure};
     pub use crate::proc_union::{Union, UnionProcedure};
     pub use crate::proc_workaround::{CardWorkaround, DuelWorkaround};
     pub use crate::proc_xyz::{AlterFilter, Xyz, XyzFilter, XyzProcedure};

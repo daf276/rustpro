@@ -10,9 +10,7 @@ impl FusionSummonParams for Params {
         c.is_able_to_remove(duel)
     }
 
-    fn extraop(duel: &mut Duel, e: EffectId, tc: CardId, tp: u8, sg: &mut CardSet) -> Script<()> {
-        Fusion::banish_material(duel, e, tc, tp, sg)
-    }
+    const EXTRAOP: Option<FusionMaterialFn> = Some(Fusion::banish_material);
 }
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {

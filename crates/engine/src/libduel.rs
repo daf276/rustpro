@@ -2619,18 +2619,14 @@ impl Duel {
 }
 
 impl Duel {
-    // field::get_fusion_material; cards with EFFECT_EXTRA_FUSION_MATERIAL come with the cards that register it.
+    // field::get_fusion_material.
     pub fn get_fusion_material_core(&self, player: u8) -> CardSet {
         if player > 1 {
             return CardSet::default();
         }
         let info = &self.player[player];
 
-        let extra = |card: CardId| {
-            let extra = self.is_affected_by_effect(card, EFFECT_EXTRA_FUSION_MATERIAL);
-            unported!(self, extra);
-            extra.is_some()
-        };
+        let extra = |card: CardId| self.is_affected_by_effect(card, EFFECT_EXTRA_FUSION_MATERIAL).is_some();
         let mut material: CardSet = info.list_mzone.iter().flatten().copied().collect();
         material.merge(info.list_szone.iter().flatten().copied().filter(|&card| extra(card)).collect());
         let hand = info.list_hand.iter().copied();

@@ -27,25 +27,7 @@ impl FusionSummonParams for Params {
         (Some(grave.union(removed)), None)
     }
 
-    fn extraop(duel: &mut Duel, _: EffectId, _: CardId, tp: u8, sg: &mut CardSet) -> Script<()> {
-        let rg = sg.filter(duel, CardId::is_facedown, None);
-        if !rg.is_empty() {
-            duel.confirm_cards(1 - tp, rg)?;
-        }
-        let gyrmg = sg.filter(duel, |c, duel| c.is_location(duel, LOCATION_GRAVE | LOCATION_REMOVED), None);
-        if !gyrmg.is_empty() {
-            duel.hint_selection_full(gyrmg, true);
-        }
-        duel.send_to_deck(*sg, PLAYER_NONE, SEQ_DECKBOTTOM, REASON_EFFECT + REASON_MATERIAL + REASON_FUSION)?;
-        let ct = duel
-            .get_operated_group()
-            .filter_count(duel, |c, duel| c.is_location(duel, LOCATION_DECK), None);
-        if ct > 0 {
-            duel.sort_deckbottom(tp, tp, ct as u16)?;
-        }
-        *sg = CardSet::default();
-        Ok(())
-    }
+    const EXTRAOP: Option<FusionMaterialFn> = Some(extraop);
 
     fn stage2(duel: &mut Duel, e: EffectId, tc: Option<CardId>, _: u8, sg: Option<CardSet>, chk: i32) -> Script<()> {
         let neos = |sg: CardSet, duel: &Duel| sg.is_exists(duel, |c, duel| c.is_code(duel, CARD_NEOS), 1, None);
@@ -66,6 +48,26 @@ impl FusionSummonParams for Params {
         }
         Ok(())
     }
+}
+
+fn extraop(duel: &mut Duel, _: EffectId, _: CardId, tp: u8, sg: &mut CardSet) -> Script<()> {
+    let rg = sg.filter(duel, CardId::is_facedown, None);
+    if !rg.is_empty() {
+        duel.confirm_cards(1 - tp, rg)?;
+    }
+    let gyrmg = sg.filter(duel, |c, duel| c.is_location(duel, LOCATION_GRAVE | LOCATION_REMOVED), None);
+    if !gyrmg.is_empty() {
+        duel.hint_selection_full(gyrmg, true);
+    }
+    duel.send_to_deck(*sg, PLAYER_NONE, SEQ_DECKBOTTOM, REASON_EFFECT + REASON_MATERIAL + REASON_FUSION)?;
+    let ct = duel
+        .get_operated_group()
+        .filter_count(duel, |c, duel| c.is_location(duel, LOCATION_DECK), None);
+    if ct > 0 {
+        duel.sort_deckbottom(tp, tp, ct as u16)?;
+    }
+    *sg = CardSet::default();
+    Ok(())
 }
 
 // Elemental HERO Flame Wingman in the Extra Deck, Fusion Summoned with Elemental HERO Avian on the field and Burstinatrix in

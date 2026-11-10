@@ -24,9 +24,7 @@ impl FusionSummonParams for Params {
         (Some(duel.get_matching_group(filter, tp, own, opponent, None)), None)
     }
 
-    fn extraop(duel: &mut Duel, e: EffectId, tc: CardId, tp: u8, sg: &mut CardSet) -> Script<()> {
-        Fusion::banish_material(duel, e, tc, tp, sg)
-    }
+    const EXTRAOP: Option<FusionMaterialFn> = Some(Fusion::banish_material);
 
     fn stage2(duel: &mut Duel, e: EffectId, tc: Option<CardId>, tp: u8, mg: Option<CardSet>, chk: i32) -> Script<()> {
         let (Some(tc), Some(sg)) = (tc, mg) else { return Ok(()) };

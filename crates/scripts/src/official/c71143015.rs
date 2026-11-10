@@ -26,9 +26,7 @@ impl FusionSummonParams for Params {
         )
     }
 
-    fn extraop(duel: &mut Duel, e: EffectId, tc: CardId, tp: u8, sg: &mut CardSet) -> Script<()> {
-        Fusion::shuffle_material(duel, e, tc, tp, sg)
-    }
+    const EXTRAOP: Option<FusionMaterialFn> = Some(Fusion::shuffle_material);
 
     fn stage2(duel: &mut Duel, _: EffectId, _: Option<CardId>, tp: u8, mg: Option<CardSet>, chk: i32) -> Script<()> {
         if chk != 0 {

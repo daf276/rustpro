@@ -27,14 +27,7 @@ impl FusionSummonParams for Params {
         )
     }
 
-    fn extraop(duel: &mut Duel, _: EffectId, _: CardId, _: u8, sg: &mut CardSet) -> Script<()> {
-        let rg = sg.filter(duel, |c, duel| c.is_location(duel, LOCATION_GRAVE | LOCATION_ONFIELD), None);
-        if !rg.is_empty() {
-            duel.remove(rg, POS_FACEUP, REASON_EFFECT + REASON_MATERIAL + REASON_FUSION)?;
-            *sg = sg.difference(rg);
-        }
-        Ok(())
-    }
+    const EXTRAOP: Option<FusionMaterialFn> = Some(extraop);
 
     fn extratg(duel: &mut Duel, _: &Args, chk: i32) -> Script<bool> {
         if chk == 0 {
@@ -44,6 +37,15 @@ impl FusionSummonParams for Params {
         duel.set_possible_operation_info(0, CATEGORY_REMOVE, None, 0, PLAYER_EITHER, locations as i32);
         Ok(false)
     }
+}
+
+fn extraop(duel: &mut Duel, _: EffectId, _: CardId, _: u8, sg: &mut CardSet) -> Script<()> {
+    let rg = sg.filter(duel, |c, duel| c.is_location(duel, LOCATION_GRAVE | LOCATION_ONFIELD), None);
+    if !rg.is_empty() {
+        duel.remove(rg, POS_FACEUP, REASON_EFFECT + REASON_MATERIAL + REASON_FUSION)?;
+        *sg = sg.difference(rg);
+    }
+    Ok(())
 }
 
 // Invoked Magellanica to Fusion Summon from Aleister the Invoker and EARTH Tao the Chanter in hand, and a copy in the

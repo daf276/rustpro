@@ -586,6 +586,11 @@ impl CardId {
         duel.filter_effect(self, code, true).first().copied()
     }
 
+    // Card.IsHasEffect(code) with every effect it returns.
+    pub fn is_has_effects(self, duel: &Duel, code: u32) -> EffectSet {
+        duel.filter_effect(self, code, true)
+    }
+
     // Card.IsHasEffect(code, player) for a player that is not nil: only effects with a count left for the player.
     pub fn is_has_effect_full(self, duel: &Duel, code: u32, player: u8) -> Option<EffectId> {
         duel.filter_effect(self, code, true)

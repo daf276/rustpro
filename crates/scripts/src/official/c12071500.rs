@@ -27,9 +27,7 @@ impl FusionSummonParams for Params {
         )
     }
 
-    fn extraop(duel: &mut Duel, e: EffectId, tc: CardId, tp: u8, sg: &mut CardSet) -> Script<()> {
-        Fusion::banish_material(duel, e, tc, tp, sg)
-    }
+    const EXTRAOP: Option<FusionMaterialFn> = Some(Fusion::banish_material);
 
     fn extratg(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
         if chk == 0 {

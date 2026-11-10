@@ -3092,9 +3092,7 @@ impl Duel {
         !self.is_forbidden_material(card, scard, SUMMON_TYPE_LINK.into(), playerid)
     }
 
-    // EFFECT_CANNOT_BE_FUSION_MATERIAL values that are functions of (e, c, sumtype) and EFFECT_EXTRA_FUSION_MATERIAL
-    // effects come with the cards that register them; proc_fusion_spell.lua's global one is not ported (see the scripts'
-    // Fusion.ExtraGroup).
+    // EFFECT_CANNOT_BE_FUSION_MATERIAL values that are functions of (e, c, sumtype) come with the cards that register them.
     pub(crate) fn is_can_be_fusion_material(&self, card: CardId, fcard: Option<CardId>, summon_type: u64, playerid: u8) -> bool {
         if Some(card) == fcard || self.cards[card].is_status(STATUS_FORBIDDEN) {
             return false;
@@ -3112,17 +3110,14 @@ impl Duel {
         if limited || self.is_forbidden_material(card, fcard, summon_type, playerid) {
             return false;
         }
-        if fcard.is_some() {
-            unported!(self, self.filter_effect(card, EFFECT_EXTRA_FUSION_MATERIAL, true));
-            return true;
+        if let Some(fcard) = fcard {
+            let extra = self.filter_effect(card, EFFECT_EXTRA_FUSION_MATERIAL, true);
+            return extra.is_empty() || extra.into_iter().any(|effect| self.get_value(effect, fcard) != 0);
         }
         let target = &self.cards[card];
-        if target.current.location & LOCATION_ONFIELD == 0 && target.data.card_type & TYPE_MONSTER == 0 {
-            let extra = self.is_affected_by_effect(card, EFFECT_EXTRA_FUSION_MATERIAL);
-            unported!(self, extra);
-            return extra.is_some();
-        }
-        true
+        target.current.location & LOCATION_ONFIELD != 0
+            || target.data.card_type & TYPE_MONSTER != 0
+            || self.is_affected_by_effect(card, EFFECT_EXTRA_FUSION_MATERIAL).is_some()
     }
 
     // card::fusion_check and card::fusion_filter_valid: the EFFECT_FUSION_MATERIAL effects whose condition (e, g, gc,

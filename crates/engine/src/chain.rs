@@ -575,7 +575,11 @@ impl Duel {
             }
             1 => {
                 let Some(&chain) = self.core.new_chains.first() else { return true };
-                unported!(self, self.filter_player_effect(chain.triggering_player, EFFECT_ACTIVATE_COST, true));
+                for cost in self.activate_cost_effects(chain.triggering_effect, chain.triggering_player) {
+                    if self.effects[cost].operation.is_some() {
+                        self.execute(ExecuteKind::Operation, cost, chain.triggering_player, chain.evt);
+                    }
+                }
                 if !arg.is_activated_effect {
                     return false;
                 }

@@ -84,6 +84,8 @@ pub enum Target {
     PlayerCard(fn(&Duel, EffectId, CardId, u8, u32) -> bool),
     // The check (e, c, sg, tg, ntg, tsg, ntsg) -> (ok, trg, ntrg) of a hand Synchro material, read only by proc_synchro.
     SynchroCheck(SynchroCheckFn),
+    // The target (e, re, tp) of EFFECT_ACTIVATE_COST: whether the effect `re` being activated pays its cost.
+    ActivateCost(fn(&Duel, EffectId, EffectId, u8) -> bool),
 }
 
 pub type SpSummonTargetFn = fn(&Duel, EffectId, CardId, u8, u32, u8, u8, Option<EffectId>) -> bool;
@@ -1137,6 +1139,18 @@ impl Duel {
             || (phandler == peffect.owner && !peffect.is_flag(EFFECT_FLAG_CANNOT_DISABLE) && card.is_status(STATUS_DISABLED)))
     }
 
+    // The EFFECT_ACTIVATE_COST effects of `playerid` whose target accepts the activated `effect`.
+    pub(crate) fn activate_cost_effects(&self, effect: EffectId, playerid: u8) -> Vec<EffectId> {
+        let accepts = |&cost: &EffectId| match self.effects[cost].target {
+            Target::ActivateCost(target) => target(self, cost, effect, playerid),
+            _ => true,
+        };
+        self.filter_player_effect(playerid, EFFECT_ACTIVATE_COST, true)
+            .into_iter()
+            .filter(accepts)
+            .collect()
+    }
+
     // The values of EFFECT_CANNOT_ACTIVATE, and the target and cost of EFFECT_ACTIVATE_COST.
     pub(crate) fn is_action_check(&self, effect: EffectId, playerid: u8) -> bool {
         for limit in self.filter_player_effect(playerid, EFFECT_CANNOT_ACTIVATE, true) {
@@ -1144,8 +1158,10 @@ impl Duel {
                 return false;
             }
         }
-        unported!(self, self.filter_player_effect(playerid, EFFECT_ACTIVATE_COST, true));
-        true
+        // The cost of EFFECT_ACTIVATE_COST is kept as the value, which it has none of.
+        self.activate_cost_effects(effect, playerid)
+            .into_iter()
+            .all(|cost| !matches!(self.effects[cost].value, Value::EffectPlayer(check) if !check(self, cost, effect, playerid)))
     }
 
     // Condition, cost (chk=0) and target (chk=0) of `effect`, called with `reason_effect` as their `e`.
@@ -1265,7 +1281,7 @@ impl Duel {
             Target::Card(target) => target(self, effect, card),
             // The core passes only (e, c); the rest are nil.
             Target::SpSummon(target) => target(self, effect, card, PLAYER_NONE, 0, 0, PLAYER_NONE, None),
-            Target::Action(_) | Target::PlayerCard(_) | Target::SynchroCheck(_) => {
+            Target::Action(_) | Target::PlayerCard(_) | Target::SynchroCheck(_) | Target::ActivateCost(_) => {
                 debug_assert!(false, "a field effect has an activation target");
                 true
             }

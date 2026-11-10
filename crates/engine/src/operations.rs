@@ -2476,7 +2476,7 @@ impl Duel {
                 {
                     return true;
                 }
-                unported!(self, self.filter_effect(target, EFFECT_SSET_COST, true));
+                self.run_cost_operations(target, EFFECT_SSET_COST, setplayer);
                 false
             }
             1 => {
@@ -2521,13 +2521,19 @@ impl Duel {
 
     // The EFFECT_SPSUMMON_COST effects of a card about to be Special Summoned: their operations pay the cost.
     fn run_spsummon_cost_operations(&mut self, card: CardId, sumplayer: u8, effects: &mut Vec<EffectId>) {
-        *effects = self.filter_effect(card, EFFECT_SPSUMMON_COST, true).into_iter().collect();
-        for &effect in effects.iter() {
+        *effects = self.run_cost_operations(card, EFFECT_SPSUMMON_COST, sumplayer);
+    }
+
+    // The effects of `code` (EFFECT_SUMMON_COST and the like) that `card` is affected by, whose operations pay the cost.
+    fn run_cost_operations(&mut self, card: CardId, code: u32, player: u8) -> Vec<EffectId> {
+        let effects: Vec<EffectId> = self.filter_effect(card, code, true).into_iter().collect();
+        for &effect in &effects {
             if self.effects[effect].operation.is_some() {
                 let nil_event = self.nil_event;
-                self.execute_procedure(ExecuteKind::Operation, effect, sumplayer, nil_event, None);
+                self.execute_procedure(ExecuteKind::Operation, effect, player, nil_event, None);
             }
         }
+        effects
     }
 
     // A monster Set in the Spell & Trap Zone takes the type its EFFECT_MONSTER_SSET effect gives.
@@ -3402,7 +3408,11 @@ impl Duel {
                     }
                     arg.tributes = self.return_cards.list.iter().copied().collect();
                 }
-                unported!(self, self.filter_effect(target, EFFECT_SUMMON_COST, true));
+                let effects = self.run_cost_operations(target, EFFECT_SUMMON_COST, sumplayer);
+                unported!(
+                    self,
+                    effects.into_iter().find(|&effect| self.effects[effect].is_flag(EFFECT_FLAG_OATH))
+                );
                 false
             }
             6 => {
@@ -3754,7 +3764,7 @@ impl Duel {
                         arg.tributes = self.return_cards.list.iter().copied().collect();
                     }
                 }
-                unported!(self, self.filter_effect(target, EFFECT_MSET_COST, true));
+                self.run_cost_operations(target, EFFECT_MSET_COST, setplayer);
                 false
             }
             5 => {
@@ -5462,7 +5472,7 @@ impl Duel {
                     return true;
                 }
                 for card in state.set_cards {
-                    unported!(self, self.filter_effect(card, EFFECT_SSET_COST, true));
+                    self.run_cost_operations(card, EFFECT_SSET_COST, setplayer);
                 }
                 self.core.phase_action = true;
                 false

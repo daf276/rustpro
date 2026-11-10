@@ -904,6 +904,11 @@ impl Fusion {
         UPVALUE_CHKF | ((e.get_owner(duel).index() as u64) << 1) | u64::from(op)
     }
 
+    // Fusion.OnFieldMat as a matfilter: the library calls it with the card first, which takes its `type(filter) == "Card"` branch.
+    pub fn on_field_mat(c: CardId, duel: &Duel) -> bool {
+        c.is_on_field(duel) && c.is_able_to_grave(duel)
+    }
+
     // A card that calls Fusion.SummonEffTG or SummonEffOP itself builds a new closure each time, whose chkf starts as nil.
     pub fn new_summon_eff_closure(duel: &mut Duel, e: EffectId, op: bool) {
         let key = Fusion::upvalue_key(duel, e, op);

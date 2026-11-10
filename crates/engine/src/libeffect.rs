@@ -194,6 +194,16 @@ impl EffectId {
         duel.effects[self].target = Target::Card(target);
     }
 
+    // Effect.SetTarget for EFFECT_ACTIVATE_COST.
+    pub fn set_target_activate_cost(self, duel: &mut Duel, target: fn(&Duel, EffectId, EffectId, u8) -> bool) {
+        duel.effects[self].target = Target::ActivateCost(target);
+    }
+
+    // Effect.SetCost for EFFECT_ACTIVATE_COST: cost(e, re, tp), kept as the value.
+    pub fn set_cost_activate(self, duel: &mut Duel, cost: fn(&Duel, EffectId, EffectId, u8) -> bool) {
+        duel.effects[self].value = Value::EffectPlayer(cost);
+    }
+
     // Effect.SetTarget for EFFECT_CANNOT_SPECIAL_SUMMON with a target that reads past (e, c).
     pub fn set_target_spsummon(self, duel: &mut Duel, target: SpSummonTargetFn) {
         duel.effects[self].target = Target::SpSummon(target);

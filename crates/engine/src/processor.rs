@@ -1932,9 +1932,9 @@ impl Duel {
             }
             7 => {
                 if !arg.is_replaying_attack {
-                    // Phase 2: check_card_counter counts the attack for the activity counters of scripts.
                     self.core.phase_action = true;
                     self.core.attack_state_count[turn_player] += 1;
+                    self.check_card_counter(attacker.into(), ACTIVITY_ATTACK, turn_player);
                     self.cards[attacker].attack_announce_count += 1;
                 }
                 if arg.attack_announce_failed {

@@ -2012,9 +2012,9 @@ impl Duel {
     }
 
     // A second counter with the same id is ignored.
-    // Only chain and Special Summon counters are counted; the other activities come with the cards that count them.
+    // Only chain, Special Summon and attack counters are counted; the other activities come with the cards that count them.
     pub fn add_custom_activity_counter(&mut self, id: u32, activity: u8, filter: CounterFilter) {
-        if activity != ACTIVITY_CHAIN && activity != ACTIVITY_SPSUMMON {
+        if ![ACTIVITY_CHAIN, ACTIVITY_SPSUMMON, ACTIVITY_ATTACK].contains(&activity) {
             self.reach_unported(concat!(file!(), ":", line!()));
         }
         let counters = &mut self.core.custom_counters;

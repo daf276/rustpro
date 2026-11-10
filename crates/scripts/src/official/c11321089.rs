@@ -99,7 +99,7 @@ fn ffilter3(c: CardId, duel: &Duel, fc: CardId, sumtype: u64, tp: u8, sg: Option
     unique_code(c, duel, fc, sumtype, tp, sg)
 }
 
-fn matfilter(duel: &Duel, c: CardId, fc: CardId, tp: u8, sumtype: u64) -> bool {
+fn matfilter(duel: &Duel, c: CardId, fc: CardId, tp: u8, _: bool, sumtype: u64) -> bool {
     if sumtype & u64::from(SUMMON_TYPE_FUSION) > 0 && fc.is_location(duel, LOCATION_EXTRA) {
         return c.is_location(duel, LOCATION_HAND | LOCATION_ONFIELD) && c.is_controler(duel, tp);
     }

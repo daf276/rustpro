@@ -239,7 +239,14 @@ impl Duel {
                 }
                 self.core.new_ochain.push(chain);
             }
-            unported!(self, self.field_effect_range(Container::QuickF, event.event_code));
+            for effect in self.field_effect_range(Container::QuickF, event.event_code) {
+                let handler = self.get_handler(effect);
+                self.set_activate_location(effect);
+                let controler = self.cards[handler].current.controler;
+                if self.is_activateable(effect, controler, &event, false, false, false, false, false) {
+                    self.insert_quick_f_chain(effect, &event, handler);
+                }
+            }
             self.core.delayed_activate_event.push(event);
             for effect in self.field_effect_range(Container::QuickO, event.event_code) {
                 let controler = self.cards[self.get_handler(effect)].current.controler;
@@ -251,6 +258,38 @@ impl Duel {
         self.push_continuous(tp, ntp);
         let core = &mut self.core;
         core.instant_event.append(&mut core.queue_event);
+    }
+
+    // core.quick_f_chain[effect], a map ordered by effect address (the effect id stands in for it): an entry the effect
+    // already has is overwritten.
+    fn insert_quick_f_chain(&mut self, effect: EffectId, event: &Event, handler: CardId) {
+        let existing = self.core.quick_f_chain.iter().position(|&(other, _)| other == effect);
+        let mut chain = existing
+            .and_then(|index| self.core.quick_f_chain.get(index))
+            .map_or_else(|| Chain::new(effect), |entry| entry.1);
+        chain.flag = 0;
+        chain.chain_id = self.next_field_id() as u16;
+        chain.evt = *event;
+        chain.triggering_effect = effect;
+        self.set_triggering_state(&mut chain, handler);
+        chain.triggering_player = if self.effects[effect].is_flag(EFFECT_FLAG_EVENT_PLAYER) && event.event_player < 2 {
+            event.event_player
+        } else {
+            self.cards[handler].current.controler
+        };
+        self.create_relation(handler, effect, chain.chain_id);
+        match existing {
+            Some(index) => {
+                if let Some(entry) = self.core.quick_f_chain.get_mut(index) {
+                    entry.1 = chain;
+                }
+            }
+            None => {
+                let id = self.effects.id(effect);
+                let index = self.core.quick_f_chain.partition_point(|&(other, _)| self.effects.id(other) < id);
+                self.core.quick_f_chain.insert(index, (effect, chain));
+            }
+        }
     }
 
     // The core keeps delayed quick effects in a set ordered by effect address then event; effect id and event id

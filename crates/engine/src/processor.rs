@@ -134,13 +134,14 @@ pub struct SelectCard {
     pub max: u8,
 }
 
-// SelectDisField, the disable_field variant, comes with EFFECT_DISABLE_FIELD.
+// SelectDisField is a SelectPlace with `disable_field`; the rest of its callers come with EFFECT_DISABLE_FIELD.
 #[derive(Debug, Clone, Default)]
 pub struct SelectPlace {
     pub step: u16,
     pub playerid: u8,
     pub count: u8,
     pub flag: u32,
+    pub disable_field: bool,
 }
 
 #[derive(Debug, Clone, Default)]

@@ -570,7 +570,8 @@ impl Duel {
                 self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(playerid).u64(0);
                 return true;
             }
-            self.trace.message(MSG_SELECT_PLACE).u8(playerid).u8(arg.count).u32(arg.flag);
+            let message = if arg.disable_field { MSG_SELECT_DISFIELD } else { MSG_SELECT_PLACE };
+            self.trace.message(message).u8(playerid).u8(arg.count).u32(arg.flag);
             // The core zeroes the first byte; a response replaces the whole buffer, and `apply` collects zones in it.
             self.returns.clear();
             return false;

@@ -96,7 +96,7 @@ fn nondark(c: CardId, duel: &Duel) -> bool {
     c.is_faceup(duel) && c.is_attribute_except(duel, ATTRIBUTE_DARK)
 }
 
-fn attg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bool> {
+pub fn attg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bool> {
     let tp = a.tp;
     if let Some(chkc) = chkc {
         return Ok(nondark(chkc, duel) && chkc.is_location(duel, LOCATION_MZONE));
@@ -109,7 +109,7 @@ fn attg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<boo
     Ok(false)
 }
 
-fn atop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn atop(duel: &mut Duel, a: &Args) -> Script<()> {
     if let Some(tc) = duel.get_first_target()
         && tc.is_faceup(duel)
         && tc.is_relate_to_effect(duel, a.e)

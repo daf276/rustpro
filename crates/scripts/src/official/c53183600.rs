@@ -29,14 +29,18 @@ fn release_options(c: CardId, tp: u8) -> ReleaseOptions {
 }
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
+    initial_effect_releasing::<2>(duel, c);
+}
+
+pub fn initial_effect_releasing<const COUNT: u8>(duel: &mut Duel, c: CardId) {
     c.enable_revive_limit(duel);
     let e1 = duel.create_effect(c);
     e1.set_type(duel, EFFECT_TYPE_FIELD);
     e1.set_code(duel, EFFECT_SPSUMMON_PROC);
     e1.set_property(duel, EFFECT_FLAG_UNCOPYABLE);
     e1.set_range(duel, LOCATION_HAND);
-    e1.set_condition(duel, spcon);
-    e1.set_target(duel, sptg);
+    e1.set_condition(duel, spcon::<COUNT>);
+    e1.set_target(duel, sptg::<COUNT>);
     e1.set_operation(duel, spop);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
@@ -87,16 +91,16 @@ pub fn toon_world_on_field(duel: &Duel, tp: u8) -> bool {
     )
 }
 
-fn spcon(duel: &Duel, a: &Args) -> bool {
+pub fn spcon<const COUNT: u8>(duel: &Duel, a: &Args) -> bool {
     let Some(c) = a.c else { return true };
     let tp = c.get_controler(duel);
-    duel.check_release_group_full(tp, aux::TRUE, 2, release_options(c, tp)) && toon_world_on_field(duel, tp)
+    duel.check_release_group_full(tp, aux::TRUE, COUNT as usize, release_options(c, tp)) && toon_world_on_field(duel, tp)
 }
 
-fn sptg(duel: &mut Duel, a: &Args, _: i32, _: Option<CardId>) -> Script<bool> {
+pub fn sptg<const COUNT: u8>(duel: &mut Duel, a: &Args, _: i32, _: Option<CardId>) -> Script<bool> {
     let tp = a.tp;
     let Some(c) = a.c else { return Ok(false) };
-    let g = duel.select_release_group_full(tp, aux::TRUE, (2, 2), true, release_options(c, tp))?;
+    let g = duel.select_release_group_full(tp, aux::TRUE, (COUNT, COUNT), true, release_options(c, tp))?;
     if g.is_empty() {
         return Ok(false);
     }
@@ -104,7 +108,7 @@ fn sptg(duel: &mut Duel, a: &Args, _: i32, _: Option<CardId>) -> Script<bool> {
     Ok(true)
 }
 
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
     if let Some(g) = a.e.get_label_object_group(duel) {
         duel.release(g, REASON_COST)?;
     }

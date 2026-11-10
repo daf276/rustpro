@@ -5,7 +5,7 @@ use engine::constants::MSG_ATTACK;
 
 const ID: u32 = 85289965;
 
-struct Procedure;
+pub struct Procedure;
 
 impl LinkProcedure for Procedure {
     const MIN: usize = 3;

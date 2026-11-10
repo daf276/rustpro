@@ -1733,6 +1733,7 @@ pub trait CardUtility: Copy {
     fn has_flag_effect(self, duel: &Duel, id: u32) -> bool;
     fn has_flag_effect_full(self, duel: &Duel, id: u32, count: usize) -> bool;
     fn announce_another_attribute(self, duel: &mut Duel, tp: u8) -> Script<u32>;
+    fn announce_another_race(self, duel: &mut Duel, tp: u8) -> Script<u64>;
     fn is_race_except(self, duel: &Duel, race: u64) -> bool;
     fn update_level(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>) -> i32;
     fn update_attack(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>, reset_count: Option<u16>) -> i32;
@@ -1827,6 +1828,17 @@ impl CardUtility for CardId {
 
     fn announce_another_attribute(self, duel: &mut Duel, tp: u8) -> Script<u32> {
         announce_another_attribute(duel, self.get_attribute(duel), tp)
+    }
+
+    fn announce_another_race(self, duel: &mut Duel, tp: u8) -> Script<u64> {
+        let race = self.get_race(duel);
+        duel.hint(HINT_SELECTMSG, tp, HINTMSG_RACE);
+        let available = if race & race.wrapping_sub(1) == 0 {
+            !race & RACE_ALL
+        } else {
+            RACE_ALL
+        };
+        duel.announce_race(tp, 1, available)
     }
 
     // Card.IsRaceExcept(c, race, scard, sumtype, playerid): the scard arguments only reach race effects that apply as

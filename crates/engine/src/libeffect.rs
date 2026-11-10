@@ -305,6 +305,23 @@ impl EffectId {
         duel.dec_count(self, player);
     }
 
+    // Effect.UseCountLimit(player, count, oath_only): with oath_only, only an effect of the once-per-turn-oath kind counts.
+    pub fn use_count_limit_full(self, duel: &mut Duel, player: u8, count: u32, oath_only: bool) {
+        if !oath_only || duel.effects[self].count_flag & EFFECT_COUNT_CODE_OATH != 0 {
+            for _ in 0..count {
+                duel.dec_count(self, player);
+            }
+        }
+    }
+
+    // Effect.IsActivatable(player, neglect_loc, neglect_target).
+    pub fn is_activatable(self, duel: &Duel, player: u8, neglect_loc: bool, neglect_target: bool) -> bool {
+        duel.check_mut(|duel| {
+            let event = duel.nil_event;
+            duel.is_activateable(self, player, &event, false, false, neglect_target, neglect_loc, false)
+        })
+    }
+
     pub fn get_field_id(self, duel: &Duel) -> u32 {
         duel.effects.id(self)
     }

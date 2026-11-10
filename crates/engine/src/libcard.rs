@@ -491,6 +491,11 @@ impl CardId {
         setcodes.iter().any(|&setcode| duel.is_set_card(self, setcode))
     }
 
+    // Card.GetSetCard without summon parameters: every archetype of the card (the empty list is the Lua's nil).
+    pub fn get_set_card(self, duel: &Duel) -> Vec<u16> {
+        duel.get_set_card(self).into_iter().filter(|&setcode| setcode != 0).collect()
+    }
+
     pub fn is_original_set_card(self, duel: &Duel, setcodes: &[u16]) -> bool {
         setcodes.iter().any(|&setcode| duel.is_original_set_card(self, setcode))
     }

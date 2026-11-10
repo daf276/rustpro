@@ -615,6 +615,14 @@ pub mod aux {
         g.len() < 2 || g.into_iter().any(|c| checkrec(duel, c, g, &mut Vec::new(), f))
     }
 
+    // Auxiliary.PropertyTableFilter: the values f returns that are among `values`. The Lua also caches them per card.
+    pub fn property_table_filter<'a>(
+        f: impl Fn(CardId, &Duel) -> Vec<u32> + 'a,
+        values: &'a [u32],
+    ) -> impl Fn(CardId, &Duel) -> Vec<u32> + 'a {
+        move |c, duel| f(c, duel).into_iter().filter(|value| values.contains(value)).collect()
+    }
+
     pub fn select_unselect_group(
         duel: &mut Duel,
         g: CardSet,

@@ -352,6 +352,13 @@ impl CardId {
         duel.get_level(self)
     }
 
+    // Card.Level called with a value: sets the level of the card's data.
+    pub fn set_level(self, duel: &mut Duel, level: u32) {
+        let mut data = *duel.cards[self].data;
+        data.level = level;
+        duel.cards[self].data = crate::card::StaticData::interned(data);
+    }
+
     // Lua passes the levels to match as further arguments.
     pub fn is_level(self, duel: &Duel, levels: &[u32]) -> bool {
         levels.contains(&duel.get_level(self))

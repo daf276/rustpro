@@ -1636,6 +1636,7 @@ pub trait CardUtility: Copy {
     fn is_in_extra_mzone(self, duel: &Duel) -> bool;
     fn is_ritual_summoned(self, duel: &Duel) -> bool;
     fn is_special_summoned(self, duel: &Duel) -> bool;
+    fn is_reason_card(self, duel: &Duel, c: CardId) -> bool;
     fn has_flag_effect(self, duel: &Duel, id: u32) -> bool;
     fn has_flag_effect_full(self, duel: &Duel, id: u32, count: usize) -> bool;
     fn announce_another_attribute(self, duel: &mut Duel, tp: u8) -> Script<u32>;
@@ -1708,6 +1709,10 @@ impl CardUtility for CardId {
 
     fn is_special_summoned(self, duel: &Duel) -> bool {
         self.is_summon_type(duel, &[SUMMON_TYPE_SPECIAL])
+    }
+
+    fn is_reason_card(self, duel: &Duel, c: CardId) -> bool {
+        c.get_reason_card(duel) == Some(self)
     }
 
     fn has_flag_effect(self, duel: &Duel, id: u32) -> bool {

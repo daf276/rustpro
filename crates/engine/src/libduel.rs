@@ -1097,7 +1097,9 @@ impl Duel {
 
     pub fn check_lp_cost(&self, player: u8, lp: u32) -> bool {
         unported!(self, self.filter_player_effect(player, EFFECT_LPCOST_CHANGE, true));
-        unported!(self, self.field_effect_range(Container::Continuous, EFFECT_LPCOST_REPLACE));
+        if lp > 0 && !self.field_effect_range(Container::Continuous, EFFECT_LPCOST_REPLACE).is_empty() {
+            unported!(self, self.check_mut(|duel| duel.lpcost_replacements(player, lp)));
+        }
         player <= 1 && (lp == 0 || lp as i32 <= self.player[player].lp)
     }
 

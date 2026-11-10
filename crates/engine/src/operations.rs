@@ -1317,6 +1317,26 @@ impl Duel {
         }
     }
 
+    // The EFFECT_LPCOST_REPLACE effects that can be activated for this payment: the offer to use one instead of paying
+    // comes with the cards whose condition holds (Pandemonium's, for an "Archfiend" monster in the Standby Phase).
+    pub(crate) fn lpcost_replacements(&mut self, playerid: u8, cost: u32) -> Vec<EffectId> {
+        let event = Event {
+            event_player: playerid,
+            event_value: cost,
+            reason_effect: self.core.reason_effect.get(),
+            reason_player: playerid,
+            ..Event::default()
+        };
+        let effects = self.field_effect_range(Container::Continuous, EFFECT_LPCOST_REPLACE);
+        effects
+            .into_iter()
+            .filter(|&effect| {
+                let player = self.get_handler_player(effect);
+                self.is_activateable(effect, player, &event, false, false, false, false, false)
+            })
+            .collect()
+    }
+
     pub(crate) fn process_pay_lp_cost(&mut self, arg: &mut PayLpCost) -> bool {
         let (playerid, cost) = (arg.playerid, arg.cost);
         if arg.step == 0 {
@@ -1329,7 +1349,8 @@ impl Duel {
             if cost as i32 <= self.player[playerid].lp {
                 self.core.select_options.push(11);
             }
-            unported!(self, self.field_effect_range(Container::Continuous, EFFECT_LPCOST_REPLACE));
+            let replacements = self.lpcost_replacements(playerid, cost);
+            unported!(self, replacements);
             if self.core.select_options.is_empty() {
                 return true;
             }

@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::fmt::Write as _;
+use std::hash::{Hash, Hasher};
 use std::path::Path;
 
 use carddata::{CardDatabase, CardsError, Deck, Pool, TYPE_NORMAL, TYPE_PENDULUM, banlist_limits};
@@ -14,6 +15,7 @@ use scripts::testing::Check;
 
 pub use scenario::Scenario;
 
+mod cache;
 mod scenario;
 
 const MAX_DECISIONS: u32 = 5_000;
@@ -458,23 +460,23 @@ impl Vendor {
 // Plays one seeded duel in the oracle and the engine with the same decks and random responses and compares every
 // message up to MSG_WIN.
 pub fn diff_duel(vendor: &'static Vendor, seed: u64) -> Result<Report, DiffError> {
-    play(vendor, seed, None, None, &mut |_, _| Ok(()))
+    play_cached(vendor, seed, None, None)
 }
 
 // Scenario `index` of `card`, seeded by both alone, so that adding ports changes no other card's scenarios.
 pub fn diff_scenario(vendor: &'static Vendor, card: u32, index: u32) -> Result<Report, DiffError> {
-    diff_scenario_probed(vendor, card, index, &mut |_, _| Ok(()))
+    play_cached(vendor, scenario_seed(card, index), Some(card), None)
 }
 
 // A check of both engines at every prompt, once their messages agree.
 pub type Probe<'a> = dyn FnMut(&mut oracle::Duel<'_>, &engine::Duel) -> Result<(), String> + 'a;
 
 pub fn diff_duel_probed(vendor: &'static Vendor, seed: u64, probe: &mut Probe) -> Result<Report, DiffError> {
-    play(vendor, seed, None, None, probe)
+    play(vendor, seed, None, None, Some(probe)).map(|(report, _)| report)
 }
 
 pub fn diff_scenario_probed(vendor: &'static Vendor, card: u32, index: u32, probe: &mut Probe) -> Result<Report, DiffError> {
-    play(vendor, scenario_seed(card, index), Some(card), None, probe)
+    play(vendor, scenario_seed(card, index), Some(card), None, Some(probe)).map(|(report, _)| report)
 }
 
 fn scenario_seed(card: u32, index: u32) -> u64 {
@@ -495,17 +497,34 @@ fn seeded(vendor: &Vendor, seed: u64, card: Option<u32>) -> (StdRng, [u64; 4], O
 
 // A duel both engines set up from `position` alone, which must start the duel (see scenario::lua).
 pub fn diff_position(vendor: &'static Vendor, seed: u64, position: &Position) -> Result<Report, DiffError> {
-    play(vendor, seed, None, Some(position), &mut |_, _| Ok(()))
+    play_cached(vendor, seed, None, Some(position))
 }
 
-// Both engines start from one position: the decks, the scenario of `card` if any on top, or `position` if given.
-fn play(
-    vendor: &'static Vendor,
-    seed: u64,
-    card: Option<u32>,
-    position: Option<&Position>,
-    probe: &mut Probe,
-) -> Result<Report, DiffError> {
+// With the hash of the oracle's stream cached, the engine plays alone: equal streams get equal responses, so an equal
+// hash is a clean lockstep run. Anything else plays in lockstep, which reports the divergence.
+fn play_cached(vendor: &'static Vendor, seed: u64, card: Option<u32>, position: Option<&Position>) -> Result<Report, DiffError> {
+    let lockstep = || play(vendor, seed, card, position, Some(&mut |_, _| Ok(())));
+    let entry = (!vendor.keep_stream).then(|| {
+        let (mut rng, duel_seed, _, start) = setup(vendor, seed, card, position);
+        let responder: u128 = rng.random();
+        cache::entry(&(scenario::lua(&start), duel_seed, responder))
+    });
+    let Some(entry) = entry.flatten() else {
+        return lockstep().map(|(report, _)| report);
+    };
+    if let Some(stored) = entry.read()
+        && let Ok((report, hash)) = play(vendor, seed, card, position, None)
+        && hash == stored
+    {
+        return Ok(report);
+    }
+    let (report, hash) = lockstep()?;
+    entry.write(hash);
+    Ok(report)
+}
+
+// The decks, the scenario of `card` if any on top, or `position` if given.
+fn setup(vendor: &Vendor, seed: u64, card: Option<u32>, position: Option<&Position>) -> (StdRng, [u64; 4], Option<Scenario>, Position) {
     let (mut rng, duel_seed, scenario) = seeded(vendor, seed, card);
     let position = match position {
         Some(position) => position.clone(),
@@ -525,8 +544,28 @@ fn play(
             position
         }
     };
-    let mut oracle = oracle::Duel::new(&vendor.cards, &vendor.scripts, duel_seed)?;
-    oracle.run_lua(&scenario::lua(&position))?;
+    (rng, duel_seed, scenario, position)
+}
+
+// Both engines start from the position of `setup` and the oracle's stream, as compared, is hashed. Without a probe the
+// engine plays alone, answering its own prompts.
+fn play(
+    vendor: &'static Vendor,
+    seed: u64,
+    card: Option<u32>,
+    position: Option<&Position>,
+    mut probe: Option<&mut Probe>,
+) -> Result<(Report, u128), DiffError> {
+    let (mut rng, duel_seed, scenario, position) = setup(vendor, seed, card, position);
+    let mut oracle = match probe {
+        Some(_) => {
+            let mut oracle = oracle::Duel::new(&vendor.cards, &vendor.scripts, duel_seed)?;
+            oracle.run_lua(&scenario::lua(&position))?;
+            oracle.start();
+            Some(oracle)
+        }
+        None => None,
+    };
     let mut engine = engine::Duel::from_position(&position, &vendor.cards, &scripts::LIBRARY, duel_seed)?;
     engine.set_trace(true);
     let mut record = DuelRecord {
@@ -534,28 +573,21 @@ fn play(
         position,
         actions: Vec::new(),
     };
-    oracle.start();
     engine.process();
     let (mut compared, mut decisions, mut tally): (Vec<Vec<u8>>, u32, Tally) = (Vec::new(), 0, Tally::default());
+    let mut digest = cache::Digest::new();
     for (place, code) in scenario.iter().flat_map(Scenario::places) {
         tally.places.entry(place).or_insert(code);
     }
     loop {
-        let mut expected = Vec::new();
-        let status = loop {
-            let status = oracle.process()?;
-            expected.extend(oracle.messages().map(<[u8]>::to_vec));
-            if status != Status::Continue {
-                break status;
-            }
-        };
-        sort_hint_removals(&mut expected);
+        let batch = oracle.as_mut().map(oracle_batch).transpose()?;
         if let Some(site) = engine.unported_site() {
             return Err(DiffError::Unported { seed, site });
         }
         let trace = engine.take_trace();
         let mut actual = frames(&trace);
         sort_hint_removals(&mut actual);
+        let (expected, status) = batch.unwrap_or_else(|| (actual.iter().map(|message| message.to_vec()).collect(), Status::Awaiting));
         let mismatch = |compared: &[Vec<u8>], from: usize| {
             let context = if vendor.keep_stream { usize::MAX } else { vendor.context };
             DiffError::Mismatch(Box::new(Mismatch {
@@ -571,9 +603,10 @@ fn play(
                 return Err(mismatch(&compared, index));
             }
             compared.push(message.clone());
+            message.hash(&mut digest);
             tally.count(message);
             if let [MSG_WIN, winner, reason, ..] = message.as_slice() {
-                return Ok(Report {
+                let report = Report {
                     messages: compared.len(),
                     decisions,
                     winner: *winner,
@@ -581,9 +614,11 @@ fn play(
                     tally,
                     record,
                     stream: if vendor.keep_stream { compared } else { Vec::new() },
-                });
+                };
+                return Ok((report, digest.value()));
             }
         }
+        digest.write_usize(usize::MAX);
         if actual.len() > expected.len() {
             return Err(mismatch(&compared, expected.len()));
         }
@@ -595,9 +630,13 @@ fn play(
         let Some(Message::Prompt(prompt)) = expected.last().map(|message| parse(message)).transpose()? else {
             return Err(DiffError::MissingPrompt { seed });
         };
-        probe(&mut oracle, &engine).map_err(|message| DiffError::Probe { seed, message })?;
+        if let (Some(probe), Some(oracle)) = (&mut probe, &mut oracle) {
+            probe(oracle, &engine).map_err(|message| DiffError::Probe { seed, message })?;
+        }
         let response = respond(&prompt, &vendor.cards, &mut rng).ok_or(DiffError::Unanswerable { seed, prompt })?;
-        oracle.set_response(&response);
+        if let Some(oracle) = &mut oracle {
+            oracle.set_response(&response);
+        }
         let actions = engine
             .decode_response(&response)
             .map_err(|error| DiffError::Action { seed, error })?;
@@ -607,6 +646,19 @@ fn play(
         }
         decisions += 1;
     }
+}
+
+fn oracle_batch(oracle: &mut oracle::Duel) -> Result<(Vec<Vec<u8>>, Status), DiffError> {
+    let mut messages = Vec::new();
+    let status = loop {
+        let status = oracle.process()?;
+        messages.extend(oracle.messages().map(<[u8]>::to_vec));
+        if status != Status::Continue {
+            break status;
+        }
+    };
+    sort_hint_removals(&mut messages);
+    Ok((messages, status))
 }
 
 // The core removes hint effects iterating unordered sets of effect pointers (field::effects.cheff and pheff), and
@@ -635,6 +687,31 @@ fn frames(mut buffer: &[u8]) -> Vec<&[u8]> {
         Some(message)
     })
     .collect()
+}
+
+// Cards the per-card suites run besides the new ones.
+pub const SAMPLE_CARDS: usize = 200;
+
+// The cards the default per-card suites run: all with DIFF_ALL_CARDS set, otherwise the codes in DIFF_NEW_CARDS (the
+// ports since the last full run) and about SAMPLE_CARDS more, which DIFF_SAMPLE_SEED rotates so every card takes its turn.
+pub fn sampled_cards() -> Vec<u32> {
+    let codes = scripts::CARD_SCRIPTS.iter().map(|card| card.code);
+    if std::env::var_os("DIFF_ALL_CARDS").is_some() {
+        return codes.collect();
+    }
+    let seed: u64 = std::env::var("DIFF_SAMPLE_SEED")
+        .ok()
+        .and_then(|seed| seed.parse().ok())
+        .unwrap_or(0);
+    let new: BTreeSet<u32> = std::env::var("DIFF_NEW_CARDS")
+        .unwrap_or_default()
+        .split(',')
+        .filter_map(|code| code.trim().parse().ok())
+        .collect();
+    let stride = scripts::CARD_SCRIPTS.len().div_ceil(SAMPLE_CARDS) as u64;
+    codes
+        .filter(|code| new.contains(code) || ((u64::from(*code) ^ seed).wrapping_mul(0x9E37_79B9_7F4A_7C15) >> 32).is_multiple_of(stride))
+        .collect()
 }
 
 // Scenarios per card in the default test (about 1000 for the 78 cards of phase 4a) and in the ignored one.

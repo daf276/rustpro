@@ -31,6 +31,8 @@ registers every `c<code>.rs` and reads its `LISTED_NAMES`, `FIT_MONSTER`, `SUPPO
    `cargo clippy --workspace --all-targets -j 7`, `cargo fmt --all` and
    `rustfmt --edition 2024 crates/scripts/src/official/c<code>.rs` (`cargo fmt` does not reach card files, since
    build.rs includes them).
+   The card command and the diff suites cache the oracle (a hash of each run's stream in `target/oracle-cache`) and
+   replay a cached run in the engine alone; `ORACLE_CACHE=off` disables it, `ORACLE_CACHE=<dir>` moves it.
 
 Never weaken a check (the card's own or another card's) or the harness to get a pass. If a card cannot be ported
 without engine work out of scope, stop and report what is missing.

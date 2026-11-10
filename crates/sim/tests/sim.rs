@@ -2,12 +2,12 @@ use std::collections::BTreeMap;
 use std::io::Write;
 use std::sync::OnceLock;
 
-use diff::{DiffError, Vendor, diff_duel, diff_scenario};
+use diff::{DiffError, Vendor, diff_duel, diff_scenario, sampled_cards};
 use engine::{Action, Duel, DuelRecord, Observation, Prompt, SeenCard};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
-use scripts::{CARD_SCRIPTS, LIBRARY};
+use scripts::LIBRARY;
 use sim::*;
 
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
@@ -24,9 +24,9 @@ fn all_records() -> Result<&'static [(&'static Vendor, DuelRecord)]> {
     static RECORDS: OnceLock<std::result::Result<Vec<(&'static Vendor, DuelRecord)>, String>> = OnceLock::new();
     let build = || -> Result<Vec<_>> {
         let (elfnote, scenarios) = (Vendor::leak(Vendor::elfnote)?, Vendor::leak(Vendor::scenarios)?);
-        let scenario_records = CARD_SCRIPTS
-            .par_iter()
-            .map(|card| Ok((scenarios, diff_scenario(scenarios, card.code, 0)?.record)));
+        let scenario_records = sampled_cards()
+            .into_par_iter()
+            .map(|code| Ok((scenarios, diff_scenario(scenarios, code, 0)?.record)));
         let mut records: Vec<_> = records(elfnote, 0..40)?.into_iter().map(|record| (elfnote, record)).collect();
         records.extend(scenario_records.collect::<std::result::Result<Vec<_>, DiffError>>()?);
         Ok(records)

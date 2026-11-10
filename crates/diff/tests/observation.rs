@@ -4,14 +4,14 @@ use std::io::Write;
 use std::time::Instant;
 
 use carddata::{Deck, TYPE_EXTRA, TYPE_MONSTER};
-use diff::{DiffError, Vendor, diff_duel, diff_duel_probed, diff_scenario, diff_scenario_probed};
+use diff::{DiffError, Vendor, diff_duel, diff_duel_probed, diff_scenario, diff_scenario_probed, sampled_cards};
 use engine::constants::*;
 use engine::{Action, DeterminizeError, Duel, DuelRecord, PlacedCard, Position, Prompt, SeenCard, Status, Xoshiro256StarStar};
 use rand::rngs::StdRng;
 use rand::seq::{IndexedRandom, SliceRandom};
 use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
-use scripts::{CARD_SCRIPTS, LIBRARY};
+use scripts::LIBRARY;
 
 type Result<T = ()> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -27,7 +27,7 @@ fn records(vendor: &'static Vendor) -> Result<Vec<DuelRecord>> {
 }
 
 fn scenario_records(vendor: &'static Vendor) -> Result<Vec<DuelRecord>> {
-    let scenarios = CARD_SCRIPTS.par_iter().map(|card| diff_scenario(vendor, card.code, 0));
+    let scenarios = sampled_cards().into_par_iter().map(|code| diff_scenario(vendor, code, 0));
     Ok(scenarios
         .map(|report| Ok(report?.record))
         .collect::<std::result::Result<_, DiffError>>()?)
@@ -315,8 +315,8 @@ fn should_show_what_the_core_marks_public() {
         .map(|seed| diff_duel_probed(elfnote, seed, &mut probe_observations).map(drop));
     duels.collect::<std::result::Result<(), DiffError>>().unwrap();
     let scenarios = Vendor::leak(Vendor::scenarios).unwrap();
-    let cards = CARD_SCRIPTS.par_iter();
-    let scenarios = cards.map(|card| diff_scenario_probed(scenarios, card.code, 0, &mut probe_observations).map(drop));
+    let cards = sampled_cards().into_par_iter();
+    let scenarios = cards.map(|code| diff_scenario_probed(scenarios, code, 0, &mut probe_observations).map(drop));
     scenarios.collect::<std::result::Result<(), DiffError>>().unwrap();
 }
 

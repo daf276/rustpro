@@ -2349,6 +2349,7 @@ pub trait DuelUtility {
     fn activate_field_spell(&mut self, c: CardId, tp: u8) -> Script<bool>;
     fn count_heads(&self, results: &[u8]) -> usize;
     fn call_coin(&mut self, tp: u8) -> Script<bool>;
+    fn get_zone_with_linked_count(&self, count: usize, tp: u8) -> u32;
     fn summon_or_set(&mut self, tp: u8, c: CardId, ignore_count: bool, procedure: Option<EffectId>, min_tribute: u8) -> Script<()>;
 }
 
@@ -2380,6 +2381,17 @@ impl DuelUtility for Duel {
 
     fn has_flag_effect(&self, tp: u8, id: u32) -> bool {
         self.has_flag_effect_full(tp, id, 1)
+    }
+
+    // Duel.GetZoneWithLinkedCount: the zones, seen from `tp`, that at least `count` Link monsters of either player point to.
+    fn get_zone_with_linked_count(&self, count: usize, tp: u8) -> u32 {
+        let links = self.get_matching_group(|c, duel| c.is_type(duel, TYPE_LINK), tp, LOCATION_MZONE, LOCATION_MZONE, None);
+        let linked: Vec<u32> = links.iter().map(|c| c.get_linked_zone_full(self, tp)).collect();
+        let pointed_by = |zone: u32| linked.iter().filter(|&&pointed| zone & pointed != 0).count();
+        (0..7)
+            .map(|bit| 1 << bit)
+            .filter(|&zone| pointed_by(zone) >= count)
+            .fold(0, |rzone, zone| rzone | zone)
     }
 
     fn call_coin(&mut self, tp: u8) -> Script<bool> {

@@ -1,0 +1,40 @@
+"""Lists the monsters SUPPORT can use (ported, or Normal Monsters without a script): code, name, kind, level/rank/link,
+attribute and race, filtered by any mix of kind (normal, effect, tuner, fusion, synchro, xyz, link, ritual, pendulum),
+level, attribute, race and part of the name.
+
+  python tools/ported.py [tuner] [synchro] [level=3] [attribute=WIND] [race=DRAGON] [name=Kuriboh]
+"""
+import sqlite3
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+KINDS = {"normal": 0x10, "effect": 0x20, "fusion": 0x40, "ritual": 0x80, "tuner": 0x1000, "synchro": 0x2000,
+         "token": 0x4000, "xyz": 0x800000, "pendulum": 0x1000000, "link": 0x4000000}
+ATTRIBUTES = ["EARTH", "WATER", "FIRE", "WIND", "LIGHT", "DARK", "DIVINE"]
+RACES = ["WARRIOR", "SPELLCASTER", "FAIRY", "FIEND", "ZOMBIE", "MACHINE", "AQUA", "PYRO", "ROCK", "WINGEDBEAST", "PLANT",
+         "INSECT", "THUNDER", "DRAGON", "BEAST", "BEASTWARRIOR", "DINOSAUR", "FISH", "SEASERPENT", "REPTILE", "PSYCHIC",
+         "DIVINE", "CREATORGOD", "WYRM", "CYBERSE", "ILLUSION"]
+
+
+def names(value, table):
+    return "|".join(name for bit, name in enumerate(table) if value >> bit & 1)
+
+
+filters = dict(arg.split("=", 1) for arg in sys.argv[1:] if "=" in arg)
+kinds = [KINDS[arg] for arg in sys.argv[1:] if "=" not in arg]
+ported = {int(path.stem[1:]) for path in (ROOT / "crates/scripts/src/official").glob("c*.rs")}
+database = sqlite3.connect((ROOT / "vendor/BabelCDB/cards.cdb").as_uri() + "?mode=ro", uri=True)
+rows = database.execute("select d.id, t.name, d.type, d.level, d.attribute, d.race from datas d join texts t on t.id = d.id")
+scripted = lambda code: (ROOT / f"vendor/CardScripts/official/c{code}.lua").exists()
+for code, name, kind, level, attribute, race in sorted(rows, key=lambda row: (row[3] & 0xff, row[0])):
+    usable = code in ported or kind & KINDS["normal"] and not scripted(code)
+    if not usable or not kind & 1 or kind & KINDS["token"] or any(not kind & bit for bit in kinds):
+        continue
+    if ("level" in filters and level & 0xff != int(filters["level"])
+            or "attribute" in filters and filters["attribute"].upper() not in names(attribute, ATTRIBUTES)
+            or "race" in filters and filters["race"].upper() not in names(race, RACES).split("|")
+            or "name" in filters and filters["name"].lower() not in name.lower()):
+        continue
+    kind_names = "|".join(key for key, bit in KINDS.items() if kind & bit)
+    print(f"{code}\t{name}\t{kind_names}\t{level & 0xff}\t{names(attribute, ATTRIBUTES)}\t{names(race, RACES)}")

@@ -109,6 +109,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   Extra Deck copies. A Flip effect needs 3-5 face-down copies in `MZONE`, an attacker such as Elfnote Lucina (13597785)
   in `MZONE | OPPONENT`, and no Dark Hole in hand (put it in `DECK`). An optional trigger on being discarded needs
   extra copies in hand.
+- `python tools/ported.py tuner level=3`, `... synchro attribute=wind`, `... normal race=rock` list the monsters
+  `SUPPORT` can use (ported cards and script-less Normal Monsters) with their level, attribute and race.
 - Random play picks uniformly among the legal actions, so an effect needing an exact board (say exactly 2 monsters) is
   rare; `Raigeki | OPPONENT` and fewer hand cards in `SUPPORT` help. A card reusing another card's `Procedure` struct
   makes it `pub` there.

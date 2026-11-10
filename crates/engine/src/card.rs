@@ -1534,12 +1534,6 @@ impl Duel {
         self.filter_effect_lookup(card, code, sort)
     }
 
-    // Whether filter_effect finds an effect, without building the set when no effect has the code.
-    #[inline(always)]
-    pub(crate) fn filter_effect_any(&self, card: CardId, code: u32) -> bool {
-        self.may_have_effect(code) && !self.filter_effect_lookup(card, code, false).is_empty()
-    }
-
     fn filter_effect_lookup(&self, card: CardId, code: u32, sort: bool) -> EffectSet {
         let mut effects = EffectSet::default();
         self.filter_effect_into(card, code, &mut effects);
@@ -2807,8 +2801,9 @@ impl Duel {
         if self.get_type_for(card, scard, SUMMON_TYPE_SYNCHRO.into(), playerid) & TYPE_TUNER == 0 {
             return true;
         }
-        unported!(self, self.filter_effect_any(card, EFFECT_NONTUNER).then_some(()));
-        false
+        self.filter_effect(card, EFFECT_NONTUNER, true)
+            .into_iter()
+            .any(|effect| matches!(self.effects[effect].value, Value::Int(0)) || self.get_value(effect, scard.unwrap_or_default()) != 0)
     }
 
     pub(crate) fn get_synchro_level(&self, card: CardId, scard: CardId) -> u32 {

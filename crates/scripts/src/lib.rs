@@ -60,7 +60,8 @@ pub mod prelude {
     pub use crate::proc_workaround::{CardWorkaround, DuelWorkaround};
     pub use crate::proc_xyz::{AlterFilter, Xyz, XyzFilter, XyzProcedure};
     pub use crate::utility::{
-        CardUtility, Cost, CostChoice, Cyberdark, CyberdarkEquip, DragonRuler, DuelUtility, EffectUtility, Witchcrafter, aux,
+        COST_DETACHED_MATERIALS, CardUtility, Cost, CostChoice, Cyberdark, CyberdarkEquip, DragonRuler, DuelUtility, EffectUtility,
+        Witchcrafter, aux,
     };
 }
 

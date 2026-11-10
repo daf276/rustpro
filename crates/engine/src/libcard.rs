@@ -580,6 +580,10 @@ impl CardId {
         duel.card_targets(self)
     }
 
+    pub fn get_owner_target_count(self, duel: &Duel) -> usize {
+        duel.card_targets.iter().filter(|&&(_, target)| target == self).count()
+    }
+
     pub fn get_card_target_count(self, duel: &Duel) -> usize {
         duel.card_targets(self).len()
     }
@@ -908,13 +912,16 @@ impl CardId {
 
     // The label of the first flag effect of the code, as the first of the values Lua gets.
     pub fn get_flag_effect_label(self, duel: &Duel, code: u32) -> Option<i64> {
+        self.get_flag_effect_labels(duel, code).first().copied()
+    }
+
+    // The labels of all flag effects of the code, all the values Lua gets (none for its nil).
+    pub fn get_flag_effect_labels(self, duel: &Duel, code: u32) -> Vec<i64> {
         let code = (code & 0xfff_ffff) | 0x1000_0000;
-        let effect = duel
-            .field_effects
-            .registry
-            .equal_range(Container::Single, Some(self), code)
-            .next()?;
-        Some(duel.effects[effect].labels().first().copied().unwrap_or(0))
+        let effects = duel.field_effects.registry.equal_range(Container::Single, Some(self), code);
+        effects
+            .map(|effect| duel.effects[effect].labels().first().copied().unwrap_or(0))
+            .collect()
     }
 
     pub fn get_flag_effect(self, duel: &Duel, code: u32) -> usize {

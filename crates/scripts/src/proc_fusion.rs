@@ -24,7 +24,7 @@ pub type ContactMaterialFilter = fn(CardId, &Duel, CardId, u64, u8, bool) -> boo
 
 // matcheck(c, fc, sub, sub2, mg, sg, tp, contact, sumtype), the value a card sets on the effect AddProcMix returns, without the
 // arguments nothing reads.
-pub type MatCheck = fn(&Duel, CardId, CardId, u8, u64) -> bool;
+pub type MatCheck = fn(&Duel, CardId, CardId, u8, bool, u64) -> bool;
 
 // preselect(e, tc): false stops the summon.
 pub type Preselect = fn(&mut Duel, EffectId, CardId) -> Script<bool>;
@@ -236,7 +236,7 @@ impl Proc {
         matcheck: Option<MatCheck>,
         funs: impl IntoIterator<Item = FusionMaterial>,
     ) -> bool {
-        matcheck.is_none_or(|matcheck| matcheck(duel, c, self.fc, self.tp, self.sumtype))
+        matcheck.is_none_or(|matcheck| matcheck(duel, c, self.fc, self.tp, self.contact, self.sumtype))
             && c.is_can_be_fusion_material(duel, Some(self.fc), self.sumtype)
             && funs.into_iter().any(|f| f.check(duel, c, self, sub, sub, None))
     }

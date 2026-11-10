@@ -1554,6 +1554,7 @@ pub trait CardUtility: Copy {
     fn is_race_except(self, duel: &Duel, race: u64) -> bool;
     fn update_level(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>) -> i32;
     fn update_attack(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>, reset_count: Option<u16>) -> i32;
+    fn update_defense(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>, reset_count: Option<u16>) -> i32;
     fn equip_by_effect_and_limit_register(
         self,
         duel: &mut Duel,
@@ -1674,6 +1675,21 @@ impl CardUtility for CardId {
         e1.set_reset_full(duel, reset, reset_count.unwrap_or(1));
         c.register_effect(duel, e1);
         c.get_attack(duel) - atk
+    }
+
+    fn update_defense(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>, reset_count: Option<u16>) -> i32 {
+        let c = self;
+        let rc = rc.unwrap_or(c);
+        let r = if c == rc { RESETS_STANDARD_DISABLE } else { RESETS_STANDARD };
+        let reset = reset.unwrap_or(RESET_EVENT + r);
+        let def = c.get_defense(duel);
+        let e1 = duel.create_effect(rc);
+        e1.set_type(duel, EFFECT_TYPE_SINGLE);
+        e1.set_code(duel, EFFECT_UPDATE_DEFENSE);
+        e1.set_value(duel, amt);
+        e1.set_reset_full(duel, reset, reset_count.unwrap_or(1));
+        c.register_effect(duel, e1);
+        c.get_defense(duel) - def
     }
 
     // Card.EquipByEffectAndLimitRegister; `up` is nil in Lua unless mustbefaceup is given, which Duel.Equip reads as false.

@@ -87,7 +87,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   ends first. Check that the counted path is the card's own. An effect a card grants
   another (an Xyz material's effect, an equip or `EFFECT_TYPE_GRANT` effect) chains as that other card, so check it
   another way (`MaterialFrom`, `CardHint`).
-  `CardHint` counts by the hinted card, so a hint on another card never counts. `SZONE` often sets a Trap face-down:
+  `CardHint` counts by the hinted card, so a hint on another card never counts (a BE_MATERIAL effect hinting the
+  summoned monster is one). `SZONE` often sets a Trap face-down:
   a cost needing several face-up Traps needs five or more copies.
 - `Report` is only for a path no `SUPPORT` can reach (say why in one comment line), never for a reachable one that
   is merely rare. An effect needing an empty hand is one: the opening hand is always drawn.
@@ -133,7 +134,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   `duel.create_effect(c)`, `e:Clone()` is `e.clone_effect(duel)`, `#g` is `g.len()`. Names are the Lua names in
   snake case.
 - Optional trailing arguments: the plain name takes the arguments most calls pass; `_full` takes all of them (add it where a mirror lacks it). Call
-  `_full` exactly when the Lua call passes one of the optional ones, with the Lua default for any it leaves out
+  `_full` exactly when the Lua call passes one of the optional ones, with the Lua default for any it leaves out (one-argument `e:SetHintTiming(x)` sets both timings; a missed one shows as
+  `spe_count` in `MSG_SELECT_CHAIN`)
   (`c.is_type_full(duel, TYPE_TUNER, Some(sc), sumtype, tp)`). Lua nil is `None` for cards and groups and
   `PLAYER_NONE` for a player.
   A nil count is the C++ default, not 1: `Duel.IsPlayerCanDraw(tp)` checks a count of 0. Some Lua helpers shift their

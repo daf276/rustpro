@@ -114,6 +114,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - Random play picks uniformly among the legal actions, so an effect needing an exact board (say exactly 2 monsters) is
   rare; `Raigeki | OPPONENT` and fewer hand cards in `SUPPORT` help. A card reusing another card's `Procedure` struct
   makes it `pub` there.
+- `Duel.GetControl` returns a count: a bare `if Duel.GetControl(...) then` is always true in Lua (0 is truthy), so the
+  port ignores the result there and compares only where the Lua writes `~=0`.
 - `duel.select_effect` returns the 1-based index of the chosen option (`Some(1)` is the first), like the Lua; an
   off-by-one shows as a `MSG_SELECT_OPTION` diff. `Message(MSG_SELECT_EFFECTYN)` and `Message(MSG_DAMAGE)` count every
   card's prompt or damage, so they are weak checks.

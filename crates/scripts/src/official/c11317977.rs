@@ -1,25 +1,32 @@
 // Lunalight Black Sheep
 use crate::prelude::*;
-use crate::testing::{Check, DECK, EXTRA, HAND};
+use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, SZONE};
 
 const ID: u32 = 11317977;
 const LUNALIGHT_SILVER_HOUND: u32 = 35763582;
 const LUNALIGHT_PERFUME_DANCER: u32 = 81196066;
+const LUNALIGHT_MASQUERADE: u32 = 2344618;
 
 pub const LISTED_NAMES: &[u32] = &[CARD_POLYMERIZATION, ID];
 
 // In hand with Polymerization in the Deck to search, and Polymerization and Lunalight Silver Hound in hand to Fusion Summon
-// Lunalight Perfume Dancer from the Extra Deck with it.
+// Lunalight Perfume Dancer from the Extra Deck with it; Lunalight Masquerade then returns Polymerization to use it again
+// with a copy banished from the GY.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),
     (CARD_POLYMERIZATION, DECK),
     (CARD_POLYMERIZATION, HAND),
     (LUNALIGHT_SILVER_HOUND, HAND),
     (LUNALIGHT_PERFUME_DANCER, EXTRA),
+    (LUNALIGHT_MASQUERADE, SZONE),
+    (LUNALIGHT_PERFUME_DANCER, EXTRA),
+    (ID, GRAVE),
+    (LUNALIGHT_MASQUERADE, SZONE),
 ];
 pub const CHECKS: &[Check] = &[
     Check::ResolvesEffect(aux::stringid(ID, 0)),
     Check::ResolvesEffect(aux::stringid(ID, 1)),
+    Check::MaterialFrom(GRAVE),
 ];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {

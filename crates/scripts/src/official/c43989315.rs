@@ -38,9 +38,7 @@ impl FusionSummonParams for Params {
         (Some(duel.get_matching_group(filter, tp, locations, 0, None)), None)
     }
 
-    fn extraop(duel: &mut Duel, e: EffectId, tc: CardId, tp: u8, sg: &mut CardSet) -> Script<()> {
-        Fusion::banish_material(duel, e, tc, tp, sg)
-    }
+    const EXTRAOP: Option<FusionMaterialFn> = Some(Fusion::banish_material);
 
     fn gc(duel: &Duel, e: EffectId, _: u8) -> Option<CardSet> {
         Some(Fusion::forced_handler(duel, e))

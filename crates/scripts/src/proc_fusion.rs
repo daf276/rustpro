@@ -1,10 +1,12 @@
 // Port of proc_fusion.lua and proc_fusion_spell.lua: the Fusion.AddProc* procedures (Mix and the variants built on it,
 // MixRep, contact fusion) and the Fusion Summon effect (Fusion.CreateSummonEff, SummonEffTG/OP) with their helpers.
 // Material lists given as Lua tables, Fusion.AddProcMixRepUnfix and the effect value a card may set on the procedure
-// (matcheck) of anything but AddProcMix have no caller in the TCG pool. The paths behind EFFECT_FUSION_MAT_RESTRICTION, EFFECT_EXTRA_FUSION_MATERIAL,
+// (matcheck) of anything but AddProcMix have no caller in the TCG pool. The paths behind EFFECT_FUSION_MAT_RESTRICTION,
 // EFFECT_CHAIN_MATERIAL and unofficial effect 511004008 are `unported!` checks; Fusion.SummonEffect and the metatable
 // fields (material, material_count, contactfus) are read only by cards that are not ported.
-use engine::{Args, CardId, CardSet, ConditionFn, Duel, EffectId, FusionCheck, OperationFn, Script, Value};
+use std::cell::Cell;
+
+use engine::{Args, CardId, CardSet, ConditionFn, Duel, EffectId, FusionCheck, FusionMaterialFn, Operation, OperationFn, Script, Value};
 
 use crate::constant::*;
 use crate::proc_workaround::CardWorkaround;
@@ -84,6 +86,8 @@ pub trait FusionSummonParams {
     const NOSUMMONCHECK: bool = false;
     const SUMPOS: u32 = POS_FACEUP;
     const PRESELECT: Option<Preselect> = None;
+    // extraop(e, tc, tp, sg), a constant since SummonEffOP compares it with an EFFECT_EXTRA_FUSION_MATERIAL operation.
+    const EXTRAOP: Option<FusionMaterialFn> = None;
 
     fn fusfilter(_c: CardId, _duel: &Duel) -> bool {
         true
@@ -97,10 +101,6 @@ pub trait FusionSummonParams {
     // extrafil(e, tp, mg): the extra materials and the additional check.
     fn extrafil(_duel: &Duel, _e: EffectId, _tp: u8, _mg: CardSet) -> (Option<CardSet>, Option<FusionCheck>) {
         (None, None)
-    }
-
-    fn extraop(_duel: &mut Duel, _e: EffectId, _tc: CardId, _tp: u8, _sg: &mut CardSet) -> Script<()> {
-        Ok(())
     }
 
     // gc(e, tp, ...): the materials that must be used.
@@ -126,6 +126,10 @@ const EFFECT_OPPONENT_SELECTS: u32 = 511004008;
 const CHECK_EXACT: u64 = 4;
 const CHECK_MIN: u64 = 5;
 const CHECK_MAX: u64 = 6;
+// The field id of proc_fusion_spell's global EFFECT_EXTRA_FUSION_MATERIAL as script state, and Fusion.ExtraGroup as a
+// script group.
+const GEFF: u64 = 8;
+const EXTRA_GROUP: u64 = 9;
 // The chkf upvalue of a SummonEffTG or SummonEffOP closure, per card that created it; SET marks a value.
 const UPVALUE_CHKF: u64 = 1 << 62;
 const SET: i64 = 1 << 40;
@@ -855,17 +859,71 @@ impl DuelFusion for Duel {
             0,
             None,
         );
-        unported!(self, !g.is_empty());
         res.merge(g);
         res
     }
 }
 
-// GetExtraMatEff: whether an EFFECT_EXTRA_FUSION_MATERIAL effect other than proc_fusion_spell's own applies to c.
+// proc_fusion_spell.lua's global EFFECT_EXTRA_FUSION_MATERIAL, registered when the library loads.
+pub fn load(duel: &mut Duel) {
+    let geff = duel.global_effect();
+    geff.set_type(duel, EFFECT_TYPE_FIELD);
+    geff.set_code(duel, EFFECT_EXTRA_FUSION_MATERIAL);
+    geff.set_property(duel, EFFECT_FLAG_SET_AVAILABLE + EFFECT_FLAG_IGNORE_IMMUNE);
+    geff.set_target_range(duel, 0xff, 0xff);
+    geff.set_target_card(duel, |duel, _, c| {
+        duel.get_script_group(EXTRA_GROUP).is_some_and(|g| g.is_contains(c))
+    });
+    geff.set_value(duel, true);
+    duel.register_effect_core(geff, 0);
+    let id = geff.get_field_id(duel);
+    duel.set_script_state(GEFF, id.into());
+}
+
+fn set_extra_group(duel: &mut Duel, group: Option<CardSet>) {
+    duel.set_script_group(EXTRA_GROUP, group);
+}
+
+// GetExtraMatEff: the first EFFECT_EXTRA_FUSION_MATERIAL effect on c but the global one, with summon_card the first
+// whose value also accepts it.
+fn get_extra_mat_eff(duel: &Duel, c: CardId, summon_card: Option<CardId>) -> Option<EffectId> {
+    let geff = duel.get_script_state(GEFF);
+    c.is_has_effects(duel, EFFECT_EXTRA_FUSION_MATERIAL).into_iter().find(|&eff| {
+        i64::from(eff.get_field_id(duel)) != geff
+            && summon_card.is_none_or(|sc| match eff.get_value(duel) {
+                Value::Card(val) => val(duel, eff, sc) != 0,
+                Value::Int(val) => val == 1,
+                _ => false,
+            })
+    })
+}
+
 fn extra_mat_eff(c: CardId, duel: &Duel) -> bool {
-    let effect = c.is_has_effect(duel, EFFECT_EXTRA_FUSION_MATERIAL);
-    unported!(duel, effect.is_some());
-    effect.is_some()
+    get_extra_mat_eff(duel, c, None).is_some()
+}
+
+// ExtraMatOPTCheck: once the count of the EFFECT_EXTRA_FUSION_MATERIAL effect is used up, its materials leave mg1 and
+// efmg.
+fn extra_mat_opt_check<P: FusionSummonParams>(duel: &Duel, e: EffectId, tp: u8, mg1: &mut CardSet, efmg: &mut CardSet) {
+    let extra_feff_mg = mg1.filter(duel, extra_mat_eff, None);
+    let Some(first) = extra_feff_mg.get_first() else {
+        if let Some(first) = efmg.get_first()
+            && get_extra_mat_eff(duel, first, None).is_some_and(|eff| !eff.check_count_limit(duel, tp))
+        {
+            efmg.clear();
+        }
+        return;
+    };
+    let Some(extra_feff) = get_extra_mat_eff(duel, first, None).filter(|eff| !eff.check_count_limit(duel, tp)) else {
+        return;
+    };
+    let (extra_feff_loc, _) = extra_feff.get_target_range(duel);
+    let in_range = |c: CardId, duel: &Duel| c.is_location(duel, extra_feff_loc);
+    let (extrafil_g, _) = P::extrafil(duel, e, tp, *mg1);
+    if extrafil_g.is_none_or(|g| !g.is_empty() && !g.is_exists(duel, in_range, 1, None)) {
+        *mg1 = mg1.difference(extra_feff_mg.filter(duel, in_range, None));
+        efmg.clear();
+    }
 }
 
 impl Fusion {
@@ -920,44 +978,51 @@ impl Fusion {
         chkf
     }
 
-    // Fusion.SummonEffFilter; efmg holds no card while EFFECT_EXTRA_FUSION_MATERIAL is not ported.
+    // Fusion.SummonEffFilter: the materials of efmg whose effect accepts c join mg for good, since the Lua merges them
+    // into the group every call shares.
     fn summon_eff_filter<P: FusionSummonParams>(
         c: CardId,
         duel: &Duel,
         e: EffectId,
         tp: u8,
-        mg: CardSet,
+        (mg, efmg): (&Cell<CardSet>, CardSet),
         gc: Option<CardSet>,
         chkf: u64,
         value: u32,
         sumlimit: bool,
     ) -> bool {
+        mg.set(
+            mg.get()
+                .union(efmg.filter(duel, |m, duel| get_extra_mat_eff(duel, m, Some(c)).is_some(), None)),
+        );
         c.is_type(duel, TYPE_FUSION)
             && P::fusfilter(c, duel)
             && (P::NOSUMMONCHECK || c.is_can_be_special_summoned_full(duel, e, value, tp, sumlimit, false, P::SUMPOS, tp, 0xff))
-            && c.check_fusion_material(duel, Some(mg), gc, chkf)
+            && c.check_fusion_material(duel, Some(mg.get()), gc, chkf)
     }
 
     // The materials the target and the operation start from: mg1 after matfilter with the extra materials merged, the
-    // extra materials, and the additional check extrafil returns. `extra_group` filters the extra materials into
-    // Fusion.ExtraGroup.
+    // materials with an EFFECT_EXTRA_FUSION_MATERIAL effect (efmg), the extra materials, and the additional check
+    // extrafil returns. Fusion.ExtraGroup becomes the extra materials `extra_group` keeps.
     fn summon_materials<P: FusionSummonParams>(
-        duel: &Duel,
+        duel: &mut Duel,
         e: EffectId,
         tp: u8,
         extra_group: impl Fn(&Duel, CardSet) -> CardSet,
-    ) -> (CardSet, Option<CardSet>, Option<FusionCheck>) {
+    ) -> (CardSet, CardSet, Option<CardSet>, Option<FusionCheck>) {
         let fmg_all = duel.get_fusion_material(tp);
         let mut mg1 = fmg_all.filter(duel, |c, duel| P::matfilter(c, duel, e, tp), None);
-        fmg_all.filter(duel, extra_mat_eff, None);
+        let efmg = fmg_all.filter(duel, extra_mat_eff, None);
+        // An effect whose label object replaces extrafil (c86758746) is not ported.
+        let extra_feff = efmg.get_first().and_then(|c| get_extra_mat_eff(duel, c, None));
+        unported!(duel, extra_feff.is_some_and(|eff| eff.get_label_object(duel).is_some()));
         let (extra, check_addition) = P::extrafil(duel, e, tp, mg1);
         if let Some(extra) = extra {
-            // Fusion.ExtraGroup is read only by proc_fusion_spell's global EFFECT_EXTRA_FUSION_MATERIAL, which is not ported;
-            // the filter still runs for its effect lookups.
-            extra_group(duel, extra);
+            let group = extra_group(duel, extra);
+            set_extra_group(duel, Some(group));
             mg1.merge(extra);
         }
-        (mg1, extra, check_addition)
+        (mg1, efmg, extra, check_addition)
     }
 
     pub fn summon_eff_tg<P: FusionSummonParams>(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
@@ -974,8 +1039,9 @@ impl Fusion {
             let can_be_material = |c: CardId, duel: &Duel| c.is_can_be_fusion_material(duel, None, value);
             let not_immune = |c: CardId, duel: &Duel| !c.is_immune_to_effect(duel, e);
             let extra_group = |duel: &Duel, g: CardSet| g.filter(duel, can_be_material, None).filter(duel, not_immune, None);
-            let (mut mg1, _, check_addition) = Fusion::summon_materials::<P>(duel, e, tp, extra_group);
+            let (mut mg1, mut efmg, _, check_addition) = Fusion::summon_materials::<P>(duel, e, tp, extra_group);
             if gc.is_some_and(|gc| !mg1.includes(gc)) {
+                set_extra_group(duel, None);
                 return Ok(false);
             }
             duel.set_fusion_check_additional(check_addition);
@@ -984,10 +1050,12 @@ impl Fusion {
             set_check(duel, CHECK_EXACT, P::EXACTCOUNT);
             set_check(duel, CHECK_MIN, P::MINCOUNT);
             set_check(duel, CHECK_MAX, P::MAXCOUNT);
-            mg1.filter(duel, extra_mat_eff, None);
-            let filter = |c, duel: &Duel| Fusion::summon_eff_filter::<P>(c, duel, e, tp, mg1, gc, chkf, value as u32, sumlimit);
+            extra_mat_opt_check::<P>(duel, e, tp, &mut mg1, &mut efmg);
+            let mg = Cell::new(mg1);
+            let filter = |c, duel: &Duel| Fusion::summon_eff_filter::<P>(c, duel, e, tp, (&mg, efmg), gc, chkf, value as u32, sumlimit);
             let res = duel.is_existing_matching_card(filter, tp, P::LOCATION, 0, 1, None);
             duel.set_fusion_check_additional(None);
+            set_extra_group(duel, None);
             if !res && !notfusion {
                 unported!(duel, !duel.get_player_effect(tp, EFFECT_CHAIN_MATERIAL).is_empty());
             }
@@ -1016,22 +1084,26 @@ impl Fusion {
             c.is_can_be_fusion_material(duel, None, value) && !c.is_immune_to_effect(duel, e) && aux::nvfilter(c, duel)
         };
         let extra_group = |duel: &Duel, g: CardSet| g.filter(duel, material_filter, None);
-        let (mut mg1, extragroup, check_addition) = Fusion::summon_materials::<P>(duel, e, tp, extra_group);
+        let (mut mg1, mut efmg, extragroup, check_addition) = Fusion::summon_materials::<P>(duel, e, tp, extra_group);
         mg1.keep_matching(duel, material_filter, None);
         let forced_mat_validity = |c: CardId, duel: &Duel| match c == e.get_handler(duel) {
             true => !c.is_relate_to_effect(duel, e),
             false => c.is_immune_to_effect(duel, e),
         };
         if gc.is_some_and(|gc| !mg1.includes(gc) || gc.is_exists(duel, forced_mat_validity, 1, None)) {
+            set_extra_group(duel, None);
             return Ok(());
         }
         set_check(duel, CHECK_EXACT, P::EXACTCOUNT);
         set_check(duel, CHECK_MIN, P::MINCOUNT);
         set_check(duel, CHECK_MAX, P::MAXCOUNT);
         duel.set_fusion_check_additional(check_addition);
-        mg1.filter(duel, extra_mat_eff, None);
-        let filter = |c, duel: &Duel| Fusion::summon_eff_filter::<P>(c, duel, e, tp, mg1, gc, chkf, value as u32, sumlimit);
+        extra_mat_opt_check::<P>(duel, e, tp, &mut mg1, &mut efmg);
+        let mg = Cell::new(mg1);
+        let filter = |c, duel: &Duel| Fusion::summon_eff_filter::<P>(c, duel, e, tp, (&mg, efmg), gc, chkf, value as u32, sumlimit);
         let sg1 = duel.get_matching_group(filter, tp, P::LOCATION, 0, None);
+        let mg1 = mg.get();
+        set_extra_group(duel, None);
         duel.set_fusion_check_additional(None);
         if !notfusion {
             unported!(duel, !duel.get_player_effect(tp, EFFECT_CHAIN_MATERIAL).is_empty());
@@ -1048,30 +1120,65 @@ impl Fusion {
                     return Ok(());
                 }
                 duel.set_fusion_check_additional(check_addition);
-                // The effect lets a card off the field that is no monster be a material, so only if mg1 holds one.
-                if let Some(extragroup) = extragroup {
-                    let is_extra_spell = |c: CardId, duel: &Duel| !c.is_on_field(duel) && !c.is_original_type(duel, TYPE_MONSTER);
-                    unported!(
-                        duel,
-                        extragroup.is_exists(duel, |c, duel| mg1.is_contains(c) && is_extra_spell(c, duel), 1, None)
-                    );
-                }
+                set_extra_group(duel, extragroup);
                 let mat1 = duel.select_fusion_material(tp, tc, mg1, gc, chkf)?;
                 if !mat1.is_empty() {
                     break (tc, mat1);
                 }
             };
+            set_extra_group(duel, None);
             let backupmat = mat1;
             if !notfusion {
                 tc.set_material(duel, Some(mat1));
             }
-            mat1.filter(duel, extra_mat_eff, None);
-            P::extraop(duel, e, tc, tp, &mut mat1)?;
+            let extra_mat_eff_for = |c: CardId, duel: &Duel| get_extra_mat_eff(duel, c, Some(tc)).is_some();
+            let extra_feff_mg = mat1.filter(duel, extra_mat_eff_for, None);
+            if let Some(extraop) = P::EXTRAOP
+                && let Some(extra_feff) = extra_feff_mg.get_first().and_then(|c| get_extra_mat_eff(duel, c, Some(tc)))
+                && let Some(Operation::FusionMaterial(extra_feff_op)) = extra_feff.get_operation(duel)
+                && !std::ptr::fn_addr_eq(extraop, extra_feff_op)
+                && extra_feff.check_count_limit(duel, tp)
+            {
+                let (extra_feff_loc, _) = extra_feff.get_target_range(duel);
+                let (extrafil_g, _) = P::extrafil(duel, e, tp, mg1);
+                // No extrafil forces the effect, but the Lua errors on one returning nil; the two are not told apart.
+                unported!(duel, extrafil_g.is_none());
+                let mut applied = None;
+                if extrafil_g.is_none_or(|g| !g.is_exists(duel, |c, duel| c.is_location(duel, extra_feff_loc), 1, None)) {
+                    applied = Some(extra_feff_mg);
+                } else if duel.select_effect_yes_no(tp, extra_feff.get_handler(duel))? {
+                    duel.hint(HINT_SELECTMSG, tp, HINTMSG_RESOLVECARD);
+                    let max = u8::try_from(extra_feff_mg.len()).unwrap_or(u8::MAX);
+                    applied = Some(extra_feff_mg.select(duel, tp, 1, max, None)?).filter(|g| !g.is_empty());
+                }
+                if let Some(mut g) = applied {
+                    mat1 = mat1.difference(g);
+                    extra_feff_op(duel, e, tc, tp, &mut g)?;
+                    if extra_feff.check_count_limit(duel, tp) {
+                        extra_feff.use_count_limit(duel, tp);
+                    }
+                }
+            }
+            if let Some(extraop) = P::EXTRAOP {
+                extraop(duel, e, tc, tp, &mut mat1)?;
+            }
             if !mat1.is_empty() {
+                let (mut extra_feff_mg, normal_mg) = mat1.split(duel, extra_mat_eff_for, None);
+                let extra_feff = extra_feff_mg.get_first().and_then(|c| get_extra_mat_eff(duel, c, Some(tc)));
                 // Group.AddMaximumCheck adds only Maximum monsters (proc_maximum.lua, out of scope).
-                let normal_mg = mat1.filter(duel, |c, duel| !extra_mat_eff(c, duel), None);
-                if !normal_mg.is_empty() {
+                if !normal_mg.is_empty() && extra_feff.is_none_or(|eff| eff.get_label(duel) != 160018042) {
                     duel.send_to_grave(normal_mg, REASON_EFFECT + REASON_MATERIAL + REASON_FUSION)?;
+                }
+                if let Some(extra_feff) = extra_feff {
+                    match extra_feff.get_operation(duel) {
+                        Some(Operation::FusionMaterial(extra_feff_op)) => extra_feff_op(duel, e, tc, tp, &mut extra_feff_mg)?,
+                        _ => {
+                            duel.send_to_grave(extra_feff_mg, REASON_EFFECT + REASON_MATERIAL + REASON_FUSION)?;
+                        }
+                    }
+                    if extra_feff.check_count_limit(duel, tp) {
+                        extra_feff.use_count_limit(duel, tp);
+                    }
                 }
             }
             duel.break_effect()?;

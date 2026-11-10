@@ -108,9 +108,13 @@ pub enum Operation {
     ExtraMaterial(ExtraMaterialFn),
     // operation(scard, sumtype, tp): when an EFFECT_ADD_CODE, EFFECT_REMOVE_CODE or EFFECT_CHANGE_CODE applies to a summon.
     CodeCondition(CodeConditionFn),
+    // op(e, tc, tp, sg) with the Fusion Summon effect as e: EFFECT_EXTRA_FUSION_MATERIAL, read only by Fusion.SummonEffOP.
+    FusionMaterial(FusionMaterialFn),
 }
 
 pub type CodeConditionFn = fn(&Duel, Option<CardId>, u64, u8) -> bool;
+
+pub type FusionMaterialFn = fn(&mut Duel, EffectId, CardId, u8, &mut CardSet) -> Script<()>;
 
 pub type ExtraMaterialFn = fn(&Duel, CardId, EffectId, u8, CardSet, CardSet, CardId, CardSet, i32) -> bool;
 

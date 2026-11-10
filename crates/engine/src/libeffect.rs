@@ -3,8 +3,8 @@ use crate::card::CardId;
 use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{
-    CodeConditionFn, Condition, ConditionFn, CostConditionFn, CostFn, EffectId, ExtraMaterialFn, GroupOperationFn, Operation, OperationFn,
-    ReturningOperationFn, SpSummonTargetFn, SynchroCheckFn, SynchroMaterialFn, Target, TargetFn, Value,
+    CodeConditionFn, Condition, ConditionFn, CostConditionFn, CostFn, EffectId, ExtraMaterialFn, FusionMaterialFn, GroupOperationFn,
+    Operation, OperationFn, ReturningOperationFn, SpSummonTargetFn, SynchroCheckFn, SynchroMaterialFn, Target, TargetFn, Value,
 };
 use crate::script::Args;
 
@@ -74,6 +74,11 @@ impl EffectId {
         peffect.s_range = s_range as u16;
         peffect.o_range = o_range as u16;
         peffect.flag[0] &= !EFFECT_FLAG_ABSOLUTE_TARGET;
+    }
+
+    pub fn get_target_range(self, duel: &Duel) -> (u32, u32) {
+        let peffect = &duel.effects[self];
+        (peffect.s_range.into(), peffect.o_range.into())
     }
 
     pub fn set_absolute_range(self, duel: &mut Duel, player: u8, s_range: u32, o_range: u32) {
@@ -286,6 +291,11 @@ impl EffectId {
     // Effect.SetOperation for EFFECT_EXTRA_MATERIAL, whose function aux.GetExtraMaterials calls with its own parameters.
     pub fn set_extra_material_operation(self, duel: &mut Duel, operation: ExtraMaterialFn) {
         duel.effects[self].operation = Some(Operation::ExtraMaterial(operation));
+    }
+
+    // Effect.SetOperation for EFFECT_EXTRA_FUSION_MATERIAL, whose function Fusion.SummonEffOP calls with its own parameters.
+    pub fn set_fusion_material_operation(self, duel: &mut Duel, operation: FusionMaterialFn) {
+        duel.effects[self].operation = Some(Operation::FusionMaterial(operation));
     }
 
     // Effect.SetOperation for the code effects that apply only to summons, whose function is a condition.

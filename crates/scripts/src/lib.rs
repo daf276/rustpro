@@ -38,7 +38,7 @@ pub use official::{CARD_SCRIPTS, CLASSIC_CARDS, CardScript, card, card_script};
 pub mod prelude {
     pub use engine::{
         Args, CardId, CardSet, ChainLimitFn, CostReplaceCall, CostReplaceCondition, CounterFilter, Duel, EffectId, ExtraMaterialCall,
-        FusionCheck, MonsterStats, ReleaseOptions, Script, SynchroCheck, Value,
+        FusionCheck, FusionMaterialFn, MonsterStats, ReleaseOptions, Script, SynchroCheck, Value,
     };
 
     pub use crate::chain::{self, DuelChain, EffectChain};
@@ -65,10 +65,10 @@ pub mod prelude {
     };
 }
 
-// What loading utility.lua registers. proc_fusion_spell.lua, proc_skill.lua and proc_maximum.lua also register global
-// effects on load; they act only on materials in Fusion.ExtraGroup that are not monsters (see proc_fusion.rs), skills
-// and Maximum monsters, none of which is ported.
+// What loading utility.lua registers. proc_skill.lua and proc_maximum.lua also register global effects on load; they act
+// only on skills and Maximum monsters, neither of which is ported.
 fn load(duel: &mut Duel) {
+    proc_fusion::load(duel);
     proc_workaround::load(duel);
 }
 

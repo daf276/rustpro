@@ -52,8 +52,8 @@ pub use constants::{DUEL_MODE_MR5, PHASE_DAMAGE, PHASE_DAMAGE_CAL};
 pub use duel::{Duel, DuelError, DuelOptions, NewCardInfo, PlayerOptions, Status};
 pub use effect::{
     ChainLimitFn, Condition, ConditionFn, CostFn, CostReplaceCall, CostReplaceCondition, CounterFilter, EffectId, EffectSet, Event,
-    ExtraMaterialCall, GroupOperationFn, OpTarget, Operation, OperationFn, SpSummonTargetFn, SynchroCheckFn, SynchroMaterialFn, Target,
-    TargetFn, Value,
+    ExtraMaterialCall, FusionMaterialFn, GroupOperationFn, OpTarget, Operation, OperationFn, SpSummonTargetFn, SynchroCheckFn,
+    SynchroMaterialFn, Target, TargetFn, Value,
 };
 pub use gamestate::{DuelRecord, FormatError, PlacedCard, Position, PositionError, ReplayError};
 pub use libduel::{ChainInfo, ExtraSummon, FromChainInfo, MonsterStats, ReleaseOptions};

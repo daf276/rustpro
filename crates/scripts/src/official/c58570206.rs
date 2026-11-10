@@ -17,18 +17,7 @@ impl FusionSummonParams for Params {
         }
     }
 
-    fn extraop(duel: &mut Duel, e: EffectId, _: CardId, _: u8, sg: &mut CardSet) -> Script<()> {
-        let rg = sg.filter(duel, |c, duel| c.is_location(duel, LOCATION_EXTRA), None);
-        if rg.is_empty() {
-            e.set_label(duel, 0);
-            return Ok(());
-        }
-        duel.remove(rg, POS_FACEUP, REASON_EFFECT | REASON_MATERIAL | REASON_FUSION)?;
-        let attack = rg.get_sum(duel, |c, duel| i64::from(c.get_attack(duel)));
-        e.set_label(duel, attack);
-        *sg = sg.difference(rg);
-        Ok(())
-    }
+    const EXTRAOP: Option<FusionMaterialFn> = Some(extraop);
 
     fn extratg(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
         if chk != 0 {
@@ -47,6 +36,19 @@ impl FusionSummonParams for Params {
         }
         Ok(())
     }
+}
+
+fn extraop(duel: &mut Duel, e: EffectId, _: CardId, _: u8, sg: &mut CardSet) -> Script<()> {
+    let rg = sg.filter(duel, |c, duel| c.is_location(duel, LOCATION_EXTRA), None);
+    if rg.is_empty() {
+        e.set_label(duel, 0);
+        return Ok(());
+    }
+    duel.remove(rg, POS_FACEUP, REASON_EFFECT | REASON_MATERIAL | REASON_FUSION)?;
+    let attack = rg.get_sum(duel, |c, duel| i64::from(c.get_attack(duel)));
+    e.set_label(duel, attack);
+    *sg = sg.difference(rg);
+    Ok(())
 }
 
 fn fcheck(duel: &Duel, _: CardId, tp: u8, sg: CardSet, _: CardId) -> bool {

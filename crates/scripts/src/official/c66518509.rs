@@ -26,17 +26,19 @@ impl FusionSummonParams for Params {
         Ok(true)
     }
 
-    fn extraop(duel: &mut Duel, _: EffectId, _: CardId, _: u8, sg: &mut CardSet) -> Script<()> {
-        let rg = sg.filter(duel, |c, duel| c.is_location(duel, LOCATION_GRAVE), None);
-        if !rg.is_empty() {
-            duel.hint_selection_full(rg, true);
-            duel.send_to_deck(rg, PLAYER_NONE, SEQ_DECKSHUFFLE, REASON_EFFECT + REASON_MATERIAL + REASON_FUSION)?;
-            for c in rg {
-                sg.remove(c);
-            }
+    const EXTRAOP: Option<FusionMaterialFn> = Some(extraop);
+}
+
+fn extraop(duel: &mut Duel, _: EffectId, _: CardId, _: u8, sg: &mut CardSet) -> Script<()> {
+    let rg = sg.filter(duel, |c, duel| c.is_location(duel, LOCATION_GRAVE), None);
+    if !rg.is_empty() {
+        duel.hint_selection_full(rg, true);
+        duel.send_to_deck(rg, PLAYER_NONE, SEQ_DECKSHUFFLE, REASON_EFFECT + REASON_MATERIAL + REASON_FUSION)?;
+        for c in rg {
+            sg.remove(c);
         }
-        Ok(())
     }
+    Ok(())
 }
 
 // In hand with Mementomictlan Tecuhtlica - Creation King in the Extra Deck, Fusion Summoned with Memento monsters from the

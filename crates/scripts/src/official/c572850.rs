@@ -19,29 +19,7 @@ impl FusionSummonParams for Params {
         )
     }
 
-    fn extraop(duel: &mut Duel, _: EffectId, _: CardId, tp: u8, sg: &mut CardSet) -> Script<()> {
-        let gg = sg.filter(duel, |c, duel| c.is_location(duel, LOCATION_HAND | LOCATION_GRAVE), None);
-        if !gg.is_empty() {
-            duel.hint_selection_full(gg, true);
-        }
-        let rg = sg.filter(duel, CardId::is_facedown, None);
-        if !rg.is_empty() {
-            duel.confirm_cards(1 - tp, rg)?;
-        }
-        duel.send_to_deck(*sg, PLAYER_NONE, SEQ_DECKBOTTOM, REASON_EFFECT + REASON_MATERIAL + REASON_FUSION)?;
-        let dg = duel
-            .get_operated_group()
-            .filter(duel, |c, duel| c.is_location(duel, LOCATION_DECK), None);
-        let ct = dg.filter_count(duel, |c, duel| c.is_controler(duel, tp), None);
-        if ct > 0 {
-            duel.sort_deckbottom(tp, tp, ct as u16)?;
-        }
-        if dg.len() > ct {
-            duel.sort_deckbottom(tp, 1 - tp, (dg.len() - ct) as u16)?;
-        }
-        sg.clear();
-        Ok(())
-    }
+    const EXTRAOP: Option<FusionMaterialFn> = Some(extraop);
 
     fn gc(duel: &Duel, e: EffectId, _: u8) -> Option<CardSet> {
         Some(Fusion::forced_handler(duel, e))
@@ -62,6 +40,30 @@ impl FusionSummonParams for Params {
         );
         Ok(false)
     }
+}
+
+fn extraop(duel: &mut Duel, _: EffectId, _: CardId, tp: u8, sg: &mut CardSet) -> Script<()> {
+    let gg = sg.filter(duel, |c, duel| c.is_location(duel, LOCATION_HAND | LOCATION_GRAVE), None);
+    if !gg.is_empty() {
+        duel.hint_selection_full(gg, true);
+    }
+    let rg = sg.filter(duel, CardId::is_facedown, None);
+    if !rg.is_empty() {
+        duel.confirm_cards(1 - tp, rg)?;
+    }
+    duel.send_to_deck(*sg, PLAYER_NONE, SEQ_DECKBOTTOM, REASON_EFFECT + REASON_MATERIAL + REASON_FUSION)?;
+    let dg = duel
+        .get_operated_group()
+        .filter(duel, |c, duel| c.is_location(duel, LOCATION_DECK), None);
+    let ct = dg.filter_count(duel, |c, duel| c.is_controler(duel, tp), None);
+    if ct > 0 {
+        duel.sort_deckbottom(tp, tp, ct as u16)?;
+    }
+    if dg.len() > ct {
+        duel.sort_deckbottom(tp, 1 - tp, (dg.len() - ct) as u16)?;
+    }
+    sg.clear();
+    Ok(())
 }
 
 // In the hand with a monster to send to the Graveyard, and copies in the Deck for the mill to send, to Fusion Summon Rulkallos

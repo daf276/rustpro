@@ -30,9 +30,7 @@ impl FusionSummonParams for Params {
         (Some(duel.get_matching_group(matfilter, tp, LOCATION_GRAVE, 0, None)), None)
     }
 
-    fn extraop(duel: &mut Duel, e: EffectId, tc: CardId, tp: u8, sg: &mut CardSet) -> Script<()> {
-        Fusion::shuffle_material(duel, e, tc, tp, sg)
-    }
+    const EXTRAOP: Option<FusionMaterialFn> = Some(Fusion::shuffle_material);
 }
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {

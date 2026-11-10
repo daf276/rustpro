@@ -1,14 +1,15 @@
 // Mementotlan Bone Party
 use crate::prelude::*;
-use crate::testing::{Check, GRAVE, HAND};
+use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 80722024;
 
-// No "Memento" monster is ported, so neither effect has a target or a card to search.
-pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, GRAVE)];
+// In the hand with Mementotlan Tatsunootoshigo on the field to destroy and Mementotlan Angwitch in the Deck to search, and in the
+// Graveyard to give it piercing damage.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, GRAVE), (81677154, MZONE), (54550967, DECK), (54550967, DECK)];
 pub const CHECKS: &[Check] = &[
-    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 0))),
-    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 1))),
+    Check::ResolvesEffect(aux::stringid(ID, 0)),
+    Check::ResolvesEffect(aux::stringid(ID, 1)),
 ];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {

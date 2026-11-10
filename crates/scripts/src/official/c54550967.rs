@@ -1,17 +1,24 @@
 // Mementotlan Angwitch
 use crate::prelude::*;
-use crate::testing::{Check, DECK, HAND, MZONE};
+use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 54550967;
 
 pub const LISTED_NAMES: &[u32] = &[ID];
 
-// In the hand and on the field, with Mementotlan Tatsunootoshigo in the Deck to search.
-pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (81677154, DECK), (81677154, DECK), (81677154, DECK)];
-// No ported Memento monster of Level 2 or lower exists for the second effect to revive.
+// In the hand and on the field, with Mementotlan Tatsunootoshigo in the Deck to search and Mementotlan Goblin (Level 1) in the
+// Graveyard to revive.
+pub const SUPPORT: &[(u32, u16)] = &[
+    (ID, HAND),
+    (ID, MZONE),
+    (81677154, DECK),
+    (81677154, DECK),
+    (81677154, DECK),
+    (17943271, GRAVE),
+];
 pub const CHECKS: &[Check] = &[
     Check::ResolvesEffect(aux::stringid(ID, 0)),
-    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 1))),
+    Check::ResolvesEffect(aux::stringid(ID, 1)),
 ];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {

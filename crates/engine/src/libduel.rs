@@ -2085,6 +2085,11 @@ impl Duel {
         Some(effect)
     }
 
+    // The field id a flag effect that a read-only check registers and resets at once takes up (an effect's id).
+    pub fn skip_field_id(&self) {
+        self.next_field_id();
+    }
+
     pub fn get_flag_effect(&self, player: u8, code: u32) -> usize {
         if player > 1 {
             return 0;

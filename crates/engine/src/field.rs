@@ -2785,8 +2785,29 @@ impl Duel {
         self.is_player_can_summon_target(playerid, EFFECT_CANNOT_FLIP_SUMMON, card, 0, playerid)
     }
 
-    pub(crate) fn is_player_can_mset(&self, _sumtype: u32, playerid: u8, card: CardId, _toplayer: u8) -> bool {
-        self.is_player_can(playerid, EFFECT_CANNOT_MSET, card)
+    // The core passes (e, c, player, sumtype | normal, toplayer, POS_FACEDOWN) to the target.
+    pub(crate) fn is_player_can_mset(&self, sumtype: u32, playerid: u8, card: CardId, toplayer: u8) -> bool {
+        if !self.field_effects.registry.has_code(EFFECT_CANNOT_MSET) {
+            return true;
+        }
+        !self
+            .filter_player_effect(playerid, EFFECT_CANNOT_MSET, true)
+            .into_iter()
+            .any(|effect| match self.effects[effect].target {
+                Target::Card(target) => target(self, effect, card),
+                Target::PlayerCard(target) => target(self, effect, card, playerid, 0),
+                Target::SpSummon(target) => target(
+                    self,
+                    effect,
+                    card,
+                    playerid,
+                    sumtype | SUMMON_TYPE_NORMAL,
+                    toplayer,
+                    POS_FACEDOWN as u8,
+                    None,
+                ),
+                _ => true,
+            })
     }
 
     pub(crate) fn is_player_can_sset(&self, playerid: u8, card: CardId) -> bool {

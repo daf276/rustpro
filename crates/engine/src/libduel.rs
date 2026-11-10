@@ -2046,6 +2046,11 @@ impl Duel {
     }
 
     pub fn register_flag_effect(&mut self, player: u8, code: u32, reset: u32, flag: u32, count: u16) -> Option<EffectId> {
+        self.register_flag_effect_full(player, code, reset, flag, count, 0)
+    }
+
+    // The sixth argument of Duel.RegisterFlagEffect: the label.
+    pub fn register_flag_effect_full(&mut self, player: u8, code: u32, reset: u32, flag: u32, count: u16, label: u32) -> Option<EffectId> {
         if player > 1 {
             return None;
         }
@@ -2063,7 +2068,7 @@ impl Duel {
         peffect.s_range = 1;
         peffect.o_range = 0;
         peffect.reset_count = count.max(1);
-        peffect.set_labels(&[0]);
+        peffect.set_labels(&[i64::from(label)]);
         self.add_effect(effect, player);
         Some(effect)
     }

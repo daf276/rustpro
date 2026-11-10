@@ -16,7 +16,8 @@ use crate::effect::{
 use crate::field::FromEx;
 use crate::operations::{PayLpCost, TossCoin, TossDice};
 use crate::processor::{
-    AnnounceAttribute, AnnounceCard, AnnounceNumber, AnnounceRace, SelectCard, SelectOption, SelectPosition, SelectYesNo, SortDeck,
+    AnnounceAttribute, AnnounceCard, AnnounceNumber, AnnounceRace, SelectCard, SelectOption, SelectPlace, SelectPosition, SelectYesNo,
+    SortDeck,
 };
 use crate::script::{FusionCheck, Procedure, Script};
 
@@ -1462,10 +1463,14 @@ impl Duel {
         Ok(self.get_decktop_group(player, count))
     }
 
-    // Duel.MoveSequence for a card in the Deck; the sequences of other locations come with the cards that move them.
+    // Duel.MoveSequence for a card in the Deck or a Monster Zone; the sequences of other locations come with the cards that move them.
     pub fn move_sequence(&mut self, card: CardId, sequence: u8) -> Script<bool> {
         let location = self.cards[card].current.location;
-        unported!(self, (location != LOCATION_DECK).then_some(card));
+        let invalid_mzone = sequence > if self.is_flag(DUEL_EMZONE) { 6 } else { 4 };
+        unported!(
+            self,
+            (location != LOCATION_DECK && (location != LOCATION_MZONE || invalid_mzone)).then_some(card)
+        );
         let reason_effect = self.core.reason_effect.get();
         if !self.is_affect_by_effect(card, reason_effect) {
             return Ok(false);
@@ -2192,6 +2197,50 @@ impl Duel {
             self.core.summoning_card = Some(card);
         }
         self.yield_script()
+    }
+
+    // Duel.SelectDisableField without all_field: the zones as a mask of the chosen places, nil for no choice.
+    pub fn select_disable_field(&mut self, player: u8, count: u8, location1: u16, location2: u16, filter: u32) -> Script<Option<u32>> {
+        if player > 1 {
+            return Ok(None);
+        }
+        let mut flag = u32::MAX;
+        let mut available = 0u32;
+        for (shift, owner, location, wanted) in [
+            (0, player, LOCATION_MZONE, location1),
+            (8, player, LOCATION_SZONE, location1),
+            (16, 1 - player, LOCATION_MZONE, location2),
+            (24, 1 - player, LOCATION_SZONE, location2),
+        ] {
+            if wanted & u16::from(location) != 0 {
+                let (useable, unusable) = self.get_useable_count(None, owner, location, PLAYER_NONE, LOCATION_REASON_NONE, 0xff);
+                available = available.wrapping_add(useable as u32);
+                flag = (flag & !(0xff << shift)) | (unusable << shift);
+            }
+        }
+        flag |= filter | 0xe0e0_e0e0;
+        let count = u32::from(count).min(available) as u8;
+        if count == 0 {
+            return Ok(None);
+        }
+        self.emplace_process(SelectPlace {
+            playerid: player,
+            count,
+            flag,
+            disable_field: true,
+            ..SelectPlace::default()
+        });
+        self.yield_script()?;
+        let picked = (0..usize::from(count)).fold(0, |picked, pick| {
+            let (select_player, location, sequence) = (
+                self.returns.at_u8(3 * pick),
+                self.returns.at_u8(3 * pick + 1),
+                self.returns.at_u8(3 * pick + 2),
+            );
+            let shift = u32::from(sequence) + if select_player == player { 0 } else { 16 } + if location == LOCATION_MZONE { 0 } else { 8 };
+            picked | 1u32.wrapping_shl(shift)
+        });
+        Ok(Some(picked))
     }
 
     pub fn select_position(&mut self, player: u8, card: CardId, positions: u8) -> Script<u32> {

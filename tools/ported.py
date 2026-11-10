@@ -26,7 +26,8 @@ def names(value, table):
 sys.stdout.reconfigure(encoding="utf-8")
 filters = dict(arg.split("=", 1) for arg in sys.argv[1:] if "=" in arg)
 kinds = [KINDS[arg] for arg in sys.argv[1:] if "=" not in arg]
-ported = {int(path.stem[1:]) for path in (ROOT / "crates/scripts/src/official").glob("c*.rs")}
+# A batch's stub files (an empty initial_effect) are not ported yet.
+ported = {int(path.stem[1:]) for path in (ROOT / "crates/scripts/src/official").glob("c*.rs") if "CardId) {}" not in path.read_text(encoding="utf-8")}
 database = sqlite3.connect((ROOT / "vendor/BabelCDB/cards.cdb").as_uri() + "?mode=ro", uri=True)
 rows = database.execute("select d.id, t.name, d.type, d.level, d.attribute, d.race from datas d join texts t on t.id = d.id")
 scripted = lambda code: (ROOT / f"vendor/CardScripts/official/c{code}.lua").exists()

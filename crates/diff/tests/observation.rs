@@ -6,7 +6,7 @@ use std::time::Instant;
 use carddata::{Deck, TYPE_EXTRA, TYPE_MONSTER};
 use diff::{DiffError, Vendor, diff_duel, diff_duel_probed, diff_scenario, diff_scenario_probed};
 use engine::constants::*;
-use engine::{Action, DeterminizeError, Duel, DuelRecord, PlacedCard, Position, SeenCard, Status, Xoshiro256StarStar};
+use engine::{Action, DeterminizeError, Duel, DuelRecord, PlacedCard, Position, Prompt, SeenCard, Status, Xoshiro256StarStar};
 use rand::rngs::StdRng;
 use rand::seq::{IndexedRandom, SliceRandom};
 use rand::{Rng, SeedableRng};
@@ -55,7 +55,20 @@ fn play_out(mut duel: Duel, rng: &mut StdRng) -> Result<bool> {
         if status == Status::End {
             break;
         }
-        let action = *duel.legal_actions().choose(rng).ok_or("a prompt without legal actions")?;
+        let legal = duel.legal_actions();
+        // Uniform toggles walk an exact-count aux.SelectUnselectGroup for thousands of steps, each searching subsets, so
+        // the play-out finishes a selection when it can and otherwise mostly adds cards.
+        let selectable = duel.selectable_count();
+        let picks: Vec<Action> = legal
+            .iter()
+            .copied()
+            .filter(|&action| matches!(action, Action::Card(index) if usize::from(index) < selectable))
+            .collect();
+        let action = match duel.prompt() {
+            Some(Prompt::UnselectCard { .. }) if legal.contains(&Action::Finish) => Action::Finish,
+            Some(Prompt::UnselectCard { .. }) if !picks.is_empty() && rng.random_bool(0.9) => *picks.choose(rng).ok_or("no pick")?,
+            _ => *legal.choose(rng).ok_or("a prompt without legal actions")?,
+        };
         status = duel.apply(action)?;
     }
     Ok(duel.unported_site().is_some())

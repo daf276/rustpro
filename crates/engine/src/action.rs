@@ -194,6 +194,11 @@ fn response_zone(player: u8, [select_player, location, sequence]: [u8; 3]) -> u8
 }
 
 impl Duel {
+    // At a Prompt::UnselectCard, `Action::Card` indices below this pick a card and the rest put one back.
+    pub fn selectable_count(&self) -> usize {
+        self.core.select_cards.len()
+    }
+
     pub fn prompt(&self) -> Option<Prompt> {
         match self.core.units.last()? {
             Unit::SelectIdleCmd(arg) if arg.step > 0 => Some(Prompt::IdleCommand { player: arg.playerid }),

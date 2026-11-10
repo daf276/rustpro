@@ -64,7 +64,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   first (an unported card in the Deck shows up as an unexplained `MSG_SELECT_CHAIN` mismatch).
 - `pub const CHECKS: &[Check]` (`crate::testing::Check`), each needing a count above 0 in both the first 13 and all
   64 scenarios. Without `CHECKS` the card must resolve some effect (`Check::Resolves`). Others:
-  `ResolvesEffect(aux::stringid(ID, n))`, `SpecialSummoned`, `SpecialSummonedCode(code)` (a token the card creates),
+  `ResolvesEffect(aux::stringid(ID, n))` (chain links the card itself activated: `ResolvesEffect(0)` counts only its own
+  effects without a description, never another card's), `SpecialSummoned`, `SpecialSummonedCode(code)` (a token the card creates),
   `RitualMaterial`, `MaterialFrom(location)`, `CardHint(description)`, `Message(MSG_*)` (from `engine::constants`; the
   message must be about the card or about no card), `TributeSummoned(n)`, `TributeSet(n)`, `Replaced`, and
   `Report(&check)`, which only writes the count out. Check each effect that needs a specific path; use another check

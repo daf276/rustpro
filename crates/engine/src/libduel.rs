@@ -278,6 +278,11 @@ impl Duel {
         player <= 1 && self.is_player_can_action(player, EFFECT_CANNOT_SUMMON)
     }
 
+    // Duel.CanPlayerSetSpellTrap without a card.
+    pub fn can_player_set_spell_trap(&self, player: u8) -> bool {
+        player <= 1 && self.is_player_can_action(player, EFFECT_CANNOT_SSET)
+    }
+
     pub fn is_player_can_additional_summon(&self, player: u8) -> bool {
         player <= 1 && self.core.extra_summon[player] == 0
     }

@@ -95,7 +95,7 @@ fn immop(duel: &mut Duel, a: &Args) -> Script<()> {
     e2.set_player_card_target(duel, remtg);
     e2.set_reset(duel, RESET_PHASE | PHASE_END);
     duel.register_effect(e2, tp);
-    aux::register_client_hint_full(duel, c, 0, tp, 1, 0, Some(aux::stringid(ID, 2)), RESET_PHASE | PHASE_END);
+    aux::register_client_hint_full(duel, c, 0, tp, 1, 0, Some(aux::stringid(ID, 2)), RESET_PHASE | PHASE_END, 0);
     let ch = duel.get_current_chain();
     if ch <= 1 {
         return Ok(());

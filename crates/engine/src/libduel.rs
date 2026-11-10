@@ -157,6 +157,7 @@ const CHAININFO_TRIGGERING_LOCATION_SYMBOLIC: u32 = 5;
 const CHAININFO_TRIGGERING_SEQUENCE: u32 = 6;
 const CHAININFO_TRIGGERING_POSITION: u32 = 16;
 const CHAININFO_TRIGGERING_CODE: u32 = 17;
+const CHAININFO_TRIGGERING_CODE2: u32 = 18;
 const CHAININFO_TRIGGERING_TYPE: u32 = 19;
 const CHAININFO_TRIGGERING_ATTRIBUTE: u32 = 22;
 const CHAININFO_TRIGGERING_RACE: u32 = 23;
@@ -884,6 +885,7 @@ impl Duel {
             CHAININFO_TRIGGERING_SEQUENCE => int(chain.triggering_sequence.into()),
             CHAININFO_TRIGGERING_POSITION => int(chain.triggering_position.into()),
             CHAININFO_TRIGGERING_CODE => int(chain.triggering_state.code.into()),
+            CHAININFO_TRIGGERING_CODE2 => int(chain.triggering_state.code2.into()),
             CHAININFO_TRIGGERING_TYPE => int(chain.triggering_state.card_type.into()),
             CHAININFO_TRIGGERING_ATTRIBUTE => int(chain.triggering_state.attribute.into()),
             CHAININFO_TRIGGERING_RACE => int(chain.triggering_state.race as i64),

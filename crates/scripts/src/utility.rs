@@ -432,7 +432,7 @@ pub mod aux {
         player2: u32,
         description: Option<u64>,
     ) -> EffectId {
-        register_client_hint_full(duel, card, property, tp, player1, player2, description, 0)
+        register_client_hint_full(duel, card, property, tp, player1, player2, description, 0, 0)
     }
 
     // `description` None takes the card's second string.
@@ -445,13 +445,14 @@ pub mod aux {
         player2: u32,
         description: Option<u64>,
         reset: u32,
+        reset_count: u16,
     ) -> EffectId {
         let eff = duel.create_effect(card);
         eff.set_property(duel, (EFFECT_FLAG_PLAYER_TARGET + EFFECT_FLAG_CLIENT_HINT) | property);
         eff.set_target_range(duel, player1, player2);
         let description = description.unwrap_or_else(|| stringid(card.get_original_code(duel), 1));
         eff.set_description(duel, description);
-        eff.set_reset(duel, (RESET_PHASE + PHASE_END) | reset);
+        eff.set_reset_full(duel, (RESET_PHASE + PHASE_END) | reset, reset_count);
         duel.register_effect(eff, tp);
         eff
     }
@@ -1514,11 +1515,13 @@ pub trait CardUtility: Copy {
     fn is_synchro_monster(self, duel: &Duel) -> bool;
     fn is_xyz_monster(self, duel: &Duel) -> bool;
     fn is_base_attack(self, duel: &Duel, atk: i32) -> bool;
+    fn is_base_defense(self, duel: &Duel, def: i32) -> bool;
     fn is_effect_monster(self, duel: &Duel) -> bool;
     fn is_non_effect_monster(self, duel: &Duel) -> bool;
     fn is_in_main_mzone(self, duel: &Duel, tp: Option<u8>) -> bool;
     fn is_sequence(self, duel: &Duel, sequence: u32) -> bool;
     fn has_level(self, duel: &Duel) -> bool;
+    fn has_defense(self, duel: &Duel) -> bool;
     fn is_original_level(self, duel: &Duel, level: u32) -> bool;
     fn has_rank(self, duel: &Duel) -> bool;
     fn is_original_rank(self, duel: &Duel, rank: u32) -> bool;
@@ -1829,6 +1832,10 @@ impl CardUtility for CardId {
         self.get_base_attack(duel) == atk
     }
 
+    fn is_base_defense(self, duel: &Duel, def: i32) -> bool {
+        self.has_defense(duel) && self.get_base_defense(duel) == def
+    }
+
     fn is_effect_monster(self, duel: &Duel) -> bool {
         self.is_monster(duel) && self.is_type(duel, TYPE_EFFECT)
     }
@@ -1843,6 +1850,15 @@ impl CardUtility for CardId {
 
     fn is_sequence(self, duel: &Duel, sequence: u32) -> bool {
         self.get_sequence(duel) == sequence
+    }
+
+    // Card.HasDefense; a card in Maximum Mode carries the flag effects of proc_maximum.lua (170000000 and 170000001).
+    fn has_defense(self, duel: &Duel) -> bool {
+        if self.is_monster(duel) {
+            !(self.is_type(duel, TYPE_LINK) || self.has_flag_effect(duel, 170_000_000) || self.has_flag_effect(duel, 170_000_001))
+        } else {
+            self.is_original_type(duel, TYPE_MONSTER) && !self.is_original_type(duel, TYPE_LINK)
+        }
     }
 
     fn has_level(self, duel: &Duel) -> bool {

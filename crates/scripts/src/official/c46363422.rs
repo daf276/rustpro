@@ -45,7 +45,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.register_effect(duel, e2);
 }
 
-fn acop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn acop(duel: &mut Duel, a: &Args) -> Script<()> {
     let c = a.e.get_handler(duel);
     if a.re
         .is_some_and(|re| re.is_has_type(duel, EFFECT_TYPE_ACTIVATE) && re.is_spell_effect(duel))
@@ -56,7 +56,7 @@ fn acop(duel: &mut Duel, a: &Args) -> Script<()> {
     Ok(())
 }
 
-fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+pub fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     let c = a.e.get_handler(duel);
     if chk == 0 {
         return Ok(c.get_counter(duel, COUNTER_SPELL) == 3 && c.is_releasable(duel));

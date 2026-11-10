@@ -22,6 +22,7 @@ NATIVE = {
     "delete_group": "nothing, groups are values",
     "filter_bool_function": "a closure",
     "filter_bool_function_ex": "a closure",
+    "not": "a closure negating the filter",
 }
 
 

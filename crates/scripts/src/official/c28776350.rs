@@ -20,6 +20,7 @@ impl LinkProcedure for Procedure {
         aux::check_same_property(duel, sg, &|c, duel| {
             c.get_race_full(duel, Some(lc), SUMMON_TYPE_LINK.into(), sumtype as u8)
         })
+        .0
     }
 }
 

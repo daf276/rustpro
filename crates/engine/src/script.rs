@@ -212,8 +212,8 @@ impl Duel {
     // A check whose Lua registers and resets effects (a summon procedure's condition) runs on a copy, since checks only
     // read the duel. What it registers it resets again before it returns, so what later lookups can tell apart is
     // brought back: the ids it took, the ids and statuses is_available changed, and the effects of this duel it reset,
-    // which are reset here at the next processor step (and on the copies of later checks before they start), and the
-    // messages it wrote, which those resets do not write again.
+    // which are reset here at the next processor step (and on the copies of later checks before they start), the
+    // messages it wrote, which those resets do not write again, and the script state it wrote.
     pub fn check_mut<T>(&self, check: impl FnOnce(&mut Duel) -> T) -> T {
         let mut copy = self.clone();
         copy.reset_pending();
@@ -221,6 +221,7 @@ impl Duel {
         self.trace.buffer.swap(&copy.trace.buffer);
         self.trace.count.swap(&copy.trace.count);
         self.trace.mute.swap(&copy.trace.mute);
+        self.script_state.swap(&copy.script_state);
         debug_assert!(
             copy.effects.added_since(&self.effects).next().is_none(),
             "a check kept an effect it registered"

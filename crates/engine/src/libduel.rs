@@ -1236,6 +1236,7 @@ impl Duel {
     // The values a script keeps in Lua locals across calls, per duel; 0 until set.
     pub fn get_script_state(&self, key: u64) -> i64 {
         self.script_state
+            .borrow()
             .iter()
             .find(|(other, _)| *other == key)
             .map_or(0, |&(_, value)| value)
@@ -1250,10 +1251,12 @@ impl Duel {
         self.values_reset.len() == 1
     }
 
-    pub fn set_script_state(&mut self, key: u64, value: i64) {
-        match self.script_state.iter_mut().find(|(other, _)| *other == key) {
+    // Takes `&self`, since Lua conditions and values write `s[...]` where the engine has only `&Duel`.
+    pub fn set_script_state(&self, key: u64, value: i64) {
+        let mut state = self.script_state.borrow_mut();
+        match state.iter_mut().find(|(other, _)| *other == key) {
             Some((_, slot)) => *slot = value,
-            None => self.script_state.push((key, value)),
+            None => state.push((key, value)),
         }
     }
 }

@@ -168,7 +168,7 @@ code	name	type	weekly_views	ported
 24508238	D.D. Crow	Effect Monster	3507	yes
 22283204	The Gaze of Timaeus	Spell Card	3499	yes
 62962630	Aluber the Jester of Despia	Effect Monster	3486	yes
-37432075	"Invocation - ""Sword"""	Spell Card	3466	yes
+37432075	Invocation - "Sword"	Spell Card	3466	yes
 88234821	Dragunity Knight - Areadbhair	Synchro Monster	3420	yes
 79415624	Snake-Eyes Vengeance Dragon	Synchro Monster	3408	yes
 92359409	Superdreadnought Rail Cannon Gustav Rocket	XYZ Monster	3404	yes
@@ -279,10 +279,10 @@ code	name	type	weekly_views	ported
 80845034	WANTED: Seeker of Sinful Spoils	Spell Card	2478	yes
 71413901	Breaker the Magical Warrior	Effect Monster	2459	yes
 81101309	Night Train Blue Traveler	Effect Monster	2457	no
-10604644	"Therion ""King"" Regulus"	Effect Monster	2442	yes
+10604644	Therion "King" Regulus	Effect Monster	2442	yes
 64626565	Dark Ceruvim Irisfil	XYZ Monster	2441	no
 45223540	Sorcerer of the Swamp	Effect Monster	2437	no
-27420823	"K9-17 ""Ripper"""	XYZ Monster	2418	yes
+27420823	K9-17 "Ripper"	XYZ Monster	2418	yes
 78449284	The Phantom Knights of Malevolent Scythe	XYZ Monster	2416	yes
 6983839	Tornado Dragon	XYZ Monster	2415	yes
 24361622	Hieratic Seal of the Heavenly Spheres	Link Monster	2415	yes
@@ -593,7 +593,7 @@ code	name	type	weekly_views	ported
 2263869	Ultimate Slayer	Spell Card	1491	no
 13529466	Invoked Caliga	Fusion Monster	1491	yes
 85742772	Gravity Bind	Trap Card	1491	no
-90303227	"K9-X ""Werewolf"""	XYZ Monster	1491	yes
+90303227	K9-X "Werewolf"	XYZ Monster	1491	yes
 28933734	Mask of Darkness	Flip Effect Monster	1490	no
 77044671	Pyramid Turtle	Effect Monster	1488	no
 19066538	Roaring Ocean Snake	Fusion Monster	1483	no
@@ -664,7 +664,7 @@ code	name	type	weekly_views	ported
 71166481	Number 75: Bamboozling Gossip Shadow	XYZ Monster	1344	yes
 72498838	Rilliona, the Magistus of Verre	Effect Monster	1344	yes
 74131780	Exiled Force	Effect Monster	1344	no
-80181649	A Case for K9	Spell Card	1344	yes
+80181649	"A Case for K9"	Spell Card	1344	yes
 88942504	Melomelody the Brass Djinn	XYZ Monster	1344	yes
 15052462	Violet Crystal	Spell Card	1342	no
 29549364	Mask of Restrict	Trap Card	1328	no
@@ -789,13 +789,13 @@ code	name	type	weekly_views	ported
 79559912	D/D/D Wave High King Caesar	XYZ Monster	1176	yes
 83968380	Jar of Greed	Trap Card	1176	no
 99330325	Interrupted Kaiju Slumber	Spell Card	1176	yes
-11132674	"Gigantic ""Champion"" Sargas"	XYZ Monster	1160	no
+11132674	Gigantic "Champion" Sargas	XYZ Monster	1160	no
 13567610	Carnot the Eternal Machine	Effect Monster	1160	no
 35886170	Gogogo Goblindbergh	Effect Monster	1157	yes
 47606319	Gigantes	Effect Monster	1157	no
 423705	Gearfried the Iron Knight	Effect Monster	1156	no
 10000020	Slifer the Sky Dragon	Effect Monster	1156	no
-27918365	"World Legacy - ""World Crown"""	Effect Monster	1156	yes
+27918365	World Legacy - "World Crown"	Effect Monster	1156	yes
 80117527	Number 11: Big Eye	XYZ Monster	1156	yes
 62121	Castle of Dark Illusions	Flip Effect Monster	1155	no
 25224340	Nightmare Hands	Spell Card	1155	no
@@ -865,7 +865,7 @@ code	name	type	weekly_views	ported
 27134689	Master of Oz	Fusion Monster	1072	no
 46174776	Azamina Moa Regina	Fusion Monster	1072	yes
 46956301	White Aura Porpoise	Synchro Monster	1072	yes
-67515699	"K9-66X ""Jacks"""	XYZ Monster	1072	yes
+67515699	K9-66X "Jacks"	XYZ Monster	1072	yes
 73602965	Arias the Labrynth Butler	Effect Monster	1072	yes
 2204140	Book of Life	Spell Card	1071	no
 9785661	Azamina Sol Erysichthon	Fusion Monster	1071	yes
@@ -1089,7 +1089,7 @@ code	name	type	weekly_views	ported
 65240384	Big Shield Gardna	Effect Monster	902	no
 95281259	The Warrior Returning Alive	Spell Card	895	no
 93717133	Galaxy-Eyes Photon Dragon	Effect Monster	890	yes
-68831625	"DoomZ Command ""D.O.O.M.D.U.R.G."""	Spell Card	886	no
+68831625	DoomZ Command "D.O.O.M.D.U.R.G."	Spell Card	886	no
 74820316	Enlilgirsu, the Orcust Mekk-Knight	Link Monster	886	no
 6186304	D - Force	Spell Card	885	no
 25655502	Bickuribox	Fusion Monster	885	no
@@ -1113,7 +1113,7 @@ code	name	type	weekly_views	ported
 54577949	Witness of the Ancient	Tuner Monster	882	no
 67300516	Red-Eyes Wyvern	Effect Monster	882	no
 78058681	Kewl Tune Synchro	Spell Card	882	no
-84054556	"DoomZ Command ""A.D.R.A.S.T.E.I.A."""	Spell Card	882	no
+84054556	DoomZ Command "A.D.R.A.S.T.E.I.A."	Spell Card	882	no
 93453053	Maliss in the Mirror	Spell Card	870	no
 572850	Tearlaments Scheiren	Effect Monster	865	no
 41386308	Mathematician	Effect Monster	864	no
@@ -1158,7 +1158,7 @@ code	name	type	weekly_views	ported
 6368038	Gaia The Fierce Knight	Normal Monster	841	no script
 8809344	Outer Entity Nyarla	XYZ Monster	841	no
 39168895	Berserk Gorilla	Effect Monster	841	no
-46502744	"Retaliating ""C"""	Effect Monster	841	no
+46502744	Retaliating "C"	Effect Monster	841	no
 70903634	Right Arm of the Forbidden One	Normal Monster	841	no script
 89812483	Max Metalmorph	Trap Card	841	no
 342673	Dark Magician the Magician of Black Magic	Effect Monster	840	no
@@ -1195,7 +1195,7 @@ code	name	type	weekly_views	ported
 2333466	Gandora-G the Dragon of Destruction	Effect Monster	819	no
 2347656	Lovely Labrynth of the Silver Castle	Effect Monster	819	no
 4928565	Tearlaments Kashtira	Effect Monster	819	no
-15735108	"Spell Card ""Soul Exchange"""	Spell Card	819	no
+15735108	Spell Card "Soul Exchange"	Spell Card	819	no
 18738846	Astrazma Urania	Effect Monster	819	no
 27315304	Mist Wurm	Synchro Monster	819	no
 38511382	Sinful Spoils of Betrayal - Silvera	Trap Card	819	no
@@ -1700,7 +1700,7 @@ code	name	type	weekly_views	ported
 27581098	Non-Fusion Area	Trap Card	588	yes
 28346136	Galaxy-Eyes Cipher X Dragon	XYZ Monster	588	no
 28649820	Embodiment of Apophis	Trap Card	588	no
-28958464	"Spell Card ""Monster Reborn"""	Spell Card	588	no
+28958464	Spell Card "Monster Reborn"	Spell Card	588	no
 30461781	Legacy of Yata-Garasu	Trap Card	588	no
 31562086	Runick Tip	Spell Card	588	no
 34090915	Branded Regained	Spell Card	588	no
@@ -1940,7 +1940,7 @@ code	name	type	weekly_views	ported
 95679145	Dogmatika Maximus	Effect Monster	525	no
 96235275	Jain, Lightsworn Paladin	Effect Monster	525	no
 77910045	Fatal Abacus	Trap Card	521	no
-37478723	Infernoble Arms - Durendal	Spell Card	516	no
+37478723	"Infernoble Arms - Durendal"	Spell Card	516	no
 5148778	Starving Venom Wing Dragon	Pendulum Effect Fusion Monster	508	no
 13676474	Grand Tiki Elder	Normal Monster	507	no script
 17132130	Destiny HERO - Dogma	Effect Monster	507	yes
@@ -1961,7 +1961,7 @@ code	name	type	weekly_views	ported
 57116033	Winged Kuriboh	Effect Monster	505	no
 57554544	Fire King Island	Spell Card	505	no
 78679226	Future Silence	Spell Card	505	no
-93920420	"World Legacy - ""World Wand"""	Effect Monster	505	no
+93920420	World Legacy - "World Wand"	Effect Monster	505	no
 99234526	White Dragon Wyverburster	Effect Monster	505	no
 1434352	Chaos Necromancer	Effect Monster	504	yes
 1435851	Dragon Treasure	Spell Card	504	no
@@ -2157,7 +2157,7 @@ code	name	type	weekly_views	ported
 72405967	Royal Tribute	Spell Card	464	no
 74137509	Graceful Dice	Spell Card	464	no
 10202894	Skull Red Bird	Normal Monster	463	no script
-31286915	"K9-X ""Ripper/M"""	XYZ Monster	463	no
+31286915	K9-X "Ripper/M"	XYZ Monster	463	no
 36039163	Penguin Knight	Effect Monster	463	no
 38192988	Red-Eyes Zombie Dragon Lord	Synchro Monster	463	no
 46925518	Ghostrick Doll	Effect Monster	463	no
@@ -2308,7 +2308,7 @@ code	name	type	weekly_views	ported
 54031490	Shien's Smoke Signal	Spell Card	441	no
 54191698	Number 29: Mannequin Cat	XYZ Monster	441	yes
 54351224	Ritual Weapon	Spell Card	441	no
-54919528	"K9-ØØ ""Hound"""	XYZ Monster	441	no
+54919528	K9-ØØ "Hound"	XYZ Monster	441	no
 56838842	Fiend Piece Golem	Effect Monster	441	no
 57416183	Dragonmaid Tidying	Trap Card	441	no
 57579381	Darklord Marie	Effect Monster	441	no
@@ -2386,7 +2386,7 @@ code	name	type	weekly_views	ported
 8628798	D.D. Dynamite	Trap Card	420	no
 10774240	Skull Guardian, Protector of the Voiceless Voice	Ritual Effect Monster	420	no
 11549357	Gamma the Magnet Warrior	Normal Monster	420	no script
-14442329	"JJ ""Kewl Tune"""	Spell Card	420	no
+14442329	JJ "Kewl Tune"	Spell Card	420	no
 15401633	Kagemusha of the Blue Flame	Normal Monster	420	no script
 15443125	Spright Starter	Spell Card	420	no
 16889337	Aratama	Spirit Monster	420	no
@@ -2732,7 +2732,7 @@ code	name	type	weekly_views	ported
 91512835	Insect Queen	Effect Monster	378	no
 91530236	Spirit Charmers	Spell Card	378	no
 91869203	Amazoness Archer	Effect Monster	378	no
-92171126	"Deftero Enneacraft - ""alazoneIA"""	Pendulum Flip Effect Monster	378	no
+92171126	Deftero Enneacraft - "alazoneIA"	Pendulum Flip Effect Monster	378	no
 93107608	Howling Insect	Effect Monster	378	no
 93777634	Number 39: Utopia Rising	XYZ Monster	378	no
 94689635	Herald of Purple Light	Effect Monster	378	no
@@ -2805,7 +2805,7 @@ code	name	type	weekly_views	ported
 30757127	Destiny HERO - Dangerous	Fusion Monster	357	yes
 31447217	Wingweaver	Normal Monster	357	no script
 31596518	Eidos the Underworld Monarch	Effect Monster	357	no
-31893528	"Spirit Message ""I"""	Spell Card	357	no
+31893528	Spirit Message "I"	Spell Card	357	no
 32441317	De-Synchro	Spell Card	357	no
 32476603	Silverrokket Dragon	Effect Monster	357	no
 32491822	Hamon, Lord of Striking Thunder	Effect Monster	357	yes
@@ -2852,7 +2852,7 @@ code	name	type	weekly_views	ported
 66989694	The Earl of Demise	Normal Monster	357	no script
 67095270	Dimension Wall	Trap Card	357	no
 67284107	Scapeghost	Tuner Monster	357	no
-67287533	"Spirit Message ""N"""	Spell Card	357	no
+67287533	Spirit Message "N"	Spell Card	357	no
 67584223	Tessera the Primal Squire	Effect Monster	357	no
 68516705	Mystic Horseman	Normal Monster	357	no script
 70595331	Il Blud	Gemini Monster	357	no
@@ -2888,7 +2888,7 @@ code	name	type	weekly_views	ported
 92365601	Rank-Up-Magic Limited Barian's Force	Spell Card	357	no
 92731455	M-Warrior #2	Normal Monster	357	no script
 94163677	Infinite Cards	Spell Card	357	no
-94772232	"Spirit Message ""A"""	Spell Card	357	no
+94772232	Spirit Message "A"	Spell Card	357	no
 94853057	Banisher of the Radiance	Effect Monster	357	no
 95169481	Diamond Dire Wolf	XYZ Monster	357	no
 95174353	Ameba	Effect Monster	357	no
@@ -2910,7 +2910,7 @@ code	name	type	weekly_views	ported
 8487449	Jester Confit	Effect Monster	337	no
 13179332	Charcoal Inpachi	Normal Monster	337	no script
 26902560	Fusion Sage	Spell Card	337	no
-30170981	"Spirit Message ""L"""	Spell Card	337	no
+30170981	Spirit Message "L"	Spell Card	337	no
 36187051	Rock Band Xenoguitar	Effect Monster	337	no
 43202238	Yazi, Evil of the Yang Zing	Synchro Monster	337	no
 67694706	Magicolloidal Sol	Tuner Monster	337	no
@@ -2961,7 +2961,7 @@ code	name	type	weekly_views	ported
 25280974	Legion the Fiend Jester	Effect Monster	336	no
 25687946	Melffy Footsteps	Spell Card	336	no
 26725158	Exile of the Wicked	Spell Card	336	no
-29570824	"Ekto Enneacraft - ""tromarIA"""	Pendulum Flip Effect Monster	336	no
+29570824	Ekto Enneacraft - "tromarIA"	Pendulum Flip Effect Monster	336	no
 29599813	Purrely Pretty Memory	Spell Card	336	no
 30208479	Magician of Black Chaos	Ritual Monster	336	yes
 30270176	Crimson Nova the Dark Cubic Lord	Effect Monster	336	no
@@ -3372,7 +3372,7 @@ code	name	type	weekly_views	ported
 55171412	Elemental HERO Aqua Neos	Fusion Monster	294	no
 55704856	Cyberload Fusion	Spell Card	294	no
 55821894	Amazoness Fighter	Effect Monster	294	no
-56187077	"Proto Enneacraft - ""orgIA"""	Pendulum Flip Effect Monster	294	no
+56187077	Proto Enneacraft - "orgIA"	Pendulum Flip Effect Monster	294	no
 56460688	Different Dimension Gate	Spell Card	294	no
 57420265	Fishborg Harpooner	Tuner Monster	294	no
 58257569	Red-Eyes Baby Dragon	Effect Monster	294	no
@@ -3583,7 +3583,7 @@ code	name	type	weekly_views	ported
 41375811	Zoodiac Chakanine	XYZ Monster	273	no
 42469671	Thunderforce Attack	Spell Card	273	no
 43175858	Toon Kingdom	Spell Card	273	no
-44716748	"Trito Enneacraft - ""exapatisIA"""	Pendulum Flip Effect Monster	273	no
+44716748	Trito Enneacraft - "exapatisIA"	Pendulum Flip Effect Monster	273	no
 44762290	Opti-Camouflage Armor	Spell Card	273	no
 45349196	Archfiend Black Skull Dragon	Fusion Monster	273	no
 45462306	X-Saber Bruno	Tuner Monster	273	no
@@ -3870,7 +3870,7 @@ code	name	type	weekly_views	ported
 54020393	Enneacraft Release	Spell Card	252	no
 54959865	Neo-Spacian Air Hummingbird	Effect Monster	252	yes
 55773067	Drop Off	Trap Card	252	no
-55965529	"Enato Enneacraft - ""oknirIA"""	Pendulum Flip Effect Monster	252	no
+55965529	Enato Enneacraft - "oknirIA"	Pendulum Flip Effect Monster	252	no
 56094445	Ancient Gear Soldier	Effect Monster	252	no
 56111151	Kyoutou Waterfront	Spell Card	252	yes
 56322832	Tensei Ryu-Ge Anva	Pendulum Effect Monster	252	no
@@ -4145,7 +4145,7 @@ code	name	type	weekly_views	ported
 34370473	Gryphon's Feather Duster	Spell Card	231	no
 34408491	Beelze of the Diabolic Dragons	Synchro Monster	231	no
 34419588	Kuribeh	Effect Monster	231	no
-34541863	A Cell Breeding Device	Spell Card	231	no
+34541863	"A" Cell Breeding Device	Spell Card	231	no
 34773082	Frightfur Patchwork	Spell Card	231	no
 35645105	Infinitrack Harvester	Effect Monster	231	no
 35975813	Terrorking Archfiend	Effect Monster	231	no
@@ -4826,7 +4826,7 @@ code	name	type	weekly_views	ported
 23965037	Doriado's Blessing	Spell Card	189	no
 24484270	Gem-Knight Phantom Quartz	Link Monster	189	no
 24634594	Diabolantis the Menacing Mantis	Synchro Monster	189	no
-25137581	"Sneaky ""C"""	Effect Monster	189	no
+25137581	Sneaky "C"	Effect Monster	189	no
 25236056	Rare Metal Dragon	Effect Monster	189	no
 25247218	Big Piece Golem	Effect Monster	189	no
 25484449	Wind-Up Shark	Effect Monster	189	no
@@ -5069,7 +5069,7 @@ code	name	type	weekly_views	ported
 82642348	Kryuel	Effect Monster	189	no
 82768499	Spiral Flame Strike	Spell Card	189	no
 82983267	Purrelyeap!?	Trap Card	189	no
-83610035	"Therion ""Lily"" Borea"	Effect Monster	189	no
+83610035	Therion "Lily" Borea	Effect Monster	189	no
 84544192	Ultimate Crystal Rainbow Dragon Overdrive	Fusion Monster	189	no
 84693918	Solfachord Solfegia	Pendulum Effect Monster	189	no
 85314178	Cosmo Queen the Queen of Prayers	Effect Monster	189	no
@@ -5080,7 +5080,7 @@ code	name	type	weekly_views	ported
 86605515	Qardan the Clear-Sighted	Effect Monster	189	no
 86762958	Assist★Yummy!	Trap Card	189	no
 86976918	Speedroid Ultra Hound	Effect Monster	189	no
-87170768	"Contact ""C"""	Effect Monster	189	no
+87170768	Contact "C"	Effect Monster	189	no
 87182127	Ancient Gear Howitzer	Fusion Monster	189	no
 87321742	Raidraptor - Strangle Lanius	Effect Monster	189	no
 87624166	Ancient Forest	Spell Card	189	no
@@ -5469,7 +5469,7 @@ code	name	type	weekly_views	ported
 56809158	Mekk-Knight Red Moon	Effect Monster	168	no
 56840658	Poison Draw Frog	Effect Monster	168	no
 57139487	Chain Disappearance	Trap Card	168	no
-57288708	"World Legacy - ""World Chalice"""	Effect Monster	168	no
+57288708	World Legacy - "World Chalice"	Effect Monster	168	no
 57962537	Wind-Up Rat	Effect Monster	168	no
 58139128	Gravekeeper's Shaman	Effect Monster	168	no
 58169731	Wall of Disruption	Trap Card	168	no
@@ -5503,7 +5503,7 @@ code	name	type	weekly_views	ported
 63748694	Gunkan Suship Shari Red	Effect Monster	168	no
 63941169	Abyss-steam	Trap Card	168	no
 63947968	Fiend Reflection of the Millennium	Effect Monster	168	no
-64163367	A Cell Incubator	Spell Card	168	no
+64163367	"A" Cell Incubator	Spell Card	168	no
 64327901	Goblin Biker Grand Bash	Spell Card	168	no
 64911387	Materiactor Zeptwing	Effect Monster	168	no
 65037172	Cyberse Sage	Ritual Effect Monster	168	no
@@ -5590,7 +5590,7 @@ code	name	type	weekly_views	ported
 80170678	EN - Engage Neo Space	Spell Card	168	no
 80447641	Bat, the Forest Ninja	Tuner Monster	168	no
 80796456	Number 70: Malevolent Sin	XYZ Monster	168	no
-80978111	"Flying ""C"""	Effect Monster	168	no
+80978111	Flying "C"	Effect Monster	168	no
 81020646	Void Ogre Dragon	Synchro Monster	168	no
 81122844	Wind-Up Carrier Zenmaity	XYZ Monster	168	no
 81471108	ZW - Tornado Bringer	Effect Monster	168	no
@@ -5718,7 +5718,7 @@ code	name	type	weekly_views	ported
 77543769	Centur-Ion True Awakening	Trap Card	148	no
 90359458	Top Share	Spell Card	148	no
 94253655	Plunder Patrollship Brann	Synchro Monster	148	no
-98319530	Infernoble Arms - Almace	Spell Card	148	no
+98319530	"Infernoble Arms - Almace"	Spell Card	148	no
 39015	Assault Sentinel	Effect Monster	147	no
 191749	Hero Flash!!	Spell Card	147	no
 242146	Ballista of Rampart Smashing	Spell Card	147	no
@@ -5751,7 +5751,7 @@ code	name	type	weekly_views	ported
 4035199	Shapesnatch	Normal Monster	147	no script
 4081094	The Second Sarcophagus	Spell Card	147	no
 4145852	Zoodiac Ramram	Effect Monster	147	no
-4148264	"Shiny Black ""C"" Squadder"	Normal Monster	147	no script
+4148264	Shiny Black "C" Squadder	Normal Monster	147	no script
 4341721	Hallo-Ween!	Spell Card	147	no
 4542651	Yellow Luster Shield	Spell Card	147	no
 5206415	Thunder Dragonlord	Effect Monster	147	no
@@ -5879,7 +5879,7 @@ code	name	type	weekly_views	ported
 23442438	Synchro Chase	Spell Card	147	no
 23635815	Jerry Beans Man	Normal Monster	147	no script
 23869735	Fossil Excavation	Trap Card	147	no
-23874409	"Karakuri Shogun mdl 00 ""Burei"""	Synchro Monster	147	no
+23874409	Karakuri Shogun mdl 00 "Burei"	Synchro Monster	147	no
 24857466	Van'Dalgyon the Dark Dragon Lord	Effect Monster	147	no
 25034083	Decoyroid	Effect Monster	147	no
 25206027	Interplanetarypurplythorny Dragon	Effect Monster	147	no
@@ -6170,7 +6170,7 @@ code	name	type	weekly_views	ported
 72867001	Commander Souza, Swordmaster	Synchro Monster	147	no
 72913666	Ghostrick Warwolf	Effect Monster	147	no
 73167098	Aromalilith Magnolia	Fusion Monster	147	no
-73262676	A Cell Scatter Burst	Spell Card	147	no
+73262676	"A" Cell Scatter Burst	Spell Card	147	no
 73428497	Geargiarsenal	Effect Monster	147	no
 73616671	Illusion Magic	Spell Card	147	no
 73652465	Blackwing - Oroshi the Squall	Tuner Monster	147	no
@@ -6468,7 +6468,7 @@ code	name	type	weekly_views	ported
 14735698	Nekroz Mirror	Spell Card	126	no
 14745409	Noble Arms - Gallatin	Spell Card	126	no
 14761450	Penguin Squire	Tuner Monster	126	no
-15388353	"Nouvelles Restaurant ""At Table"""	Spell Card	126	no
+15388353	Nouvelles Restaurant "At Table"	Spell Card	126	no
 15394083	Tanngrisnir of the Nordic Beasts	Effect Monster	126	no
 15576074	Resonator Engine	Spell Card	126	no
 15734813	Soul Tiger	Normal Monster	126	no script
@@ -6702,7 +6702,7 @@ code	name	type	weekly_views	ported
 46263076	Earthbound Immortal Ccapac Apu	Effect Monster	126	no
 46294982	Hexe Trude	Effect Monster	126	no
 46448938	Spellbook of Judgment	Spell Card	126	no
-46647144	"World Legacy - ""World Lance"""	Effect Monster	126	no
+46647144	World Legacy - "World Lance"	Effect Monster	126	no
 46668237	Green Baboon, Defender of the Forest	Effect Monster	126	no
 46910446	Chthonian Alliance	Spell Card	126	no
 46939151	Earthbound Prisoner Ground Keeper	Tuner Monster	126	no
@@ -6834,7 +6834,7 @@ code	name	type	weekly_views	ported
 64268668	Cyber Ogre	Effect Monster	126	no
 64414267	Darktellarknight Batlamyus	XYZ Monster	126	no
 64662453	Iron Call	Spell Card	126	no
-64867422	Infernoble Arms - Hauteclere	Spell Card	126	no
+64867422	"Infernoble Arms - Hauteclere"	Spell Card	126	no
 65260293	Element Magician	Effect Monster	126	no
 65303664	Yellow Baboon, Archer of the Forest	Effect Monster	126	no
 65612386	Angmarl the Fiendish Monarch	Effect Monster	126	no
@@ -6844,7 +6844,7 @@ code	name	type	weekly_views	ported
 66472129	Dipsea Fiend	Effect Monster	126	no
 66729231	Gishki Zielgigas	Ritual Effect Monster	126	no
 66848311	Ashened for Eternity	Trap Card	126	no
-66976526	"Karakuri Steel Shogun mdl 00X ""Bureido"""	Synchro Monster	126	no
+66976526	Karakuri Steel Shogun mdl 00X "Bureido"	Synchro Monster	126	no
 67030233	Majestic Red Dragon	Synchro Monster	126	no
 67159705	Armored Cybern	Union Effect Monster	126	no
 67441879	Battlewasp Wind	Spell Card	126	no
@@ -6871,7 +6871,7 @@ code	name	type	weekly_views	ported
 70095046	Clear Vicious Knight	Effect Monster	126	no
 70105073	Ritual of the Matador	Spell Card	126	no
 70168345	Dark Magic Twin Burst	Spell Card	126	no
-70271583	"Karakuri Watchdog mdl 313 ""Saizan"""	Tuner Monster	126	no
+70271583	Karakuri Watchdog mdl 313 "Saizan"	Tuner Monster	126	no
 70345785	Yamadron	Normal Monster	126	no script
 70709488	Shinobi Insect Hagakuremino	Link Monster	126	no
 70913714	Old Entity Hastorr	Synchro Monster	126	no
@@ -7009,9 +7009,9 @@ code	name	type	weekly_views	ported
 90434926	Veil of Darkness	Spell Card	126	no
 90440725	Cyber Shadow Gardna	Trap Card	126	no
 90764871	Archfiend Strategy	Spell Card	126	no
-90861137	Infernoble Arms - Joyeuse	Spell Card	126	no
+90861137	"Infernoble Arms - Joyeuse"	Spell Card	126	no
 91070115	Alien Telepath	Effect Monster	126	no
-91231901	A Cell Recombination Device	Spell Card	126	no
+91231901	"A" Cell Recombination Device	Spell Card	126	no
 91323605	How Did Dai Get Here?	Trap Card	126	no
 91434602	Majesty Hyperion	Effect Monster	126	no
 91668401	Cyber Angel Izana	Ritual Effect Monster	126	no
@@ -7337,7 +7337,7 @@ code	name	type	weekly_views	ported
 24545464	Synchro Deflector	Trap Card	105	no
 24590232	King's Consonance	Trap Card	105	no
 24610207	Star Drawing	Effect Monster	105	no
-24621460	"Karakuri Komachi mdl 224 ""Ninishi"""	Tuner Monster	105	no
+24621460	Karakuri Komachi mdl 224 "Ninishi"	Tuner Monster	105	no
 24919805	Ruffian Railcar	Effect Monster	105	no
 25148255	Junk Anchor	Tuner Monster	105	no
 25343017	Hushed Psychic Cleric	Effect Monster	105	no
@@ -7389,7 +7389,7 @@ code	name	type	weekly_views	ported
 30118701	Todoroki the Earthbolt Star	Effect Monster	105	no
 30127518	Darkfall	Trap Card	105	no
 30131474	Borrel Supplier	Spell Card	105	no
-30230789	"Karakuri Merchant mdl 177 ""Inashichi"""	Effect Monster	105	no
+30230789	Karakuri Merchant mdl 177 "Inashichi"	Effect Monster	105	no
 30276969	Reese the Ice Mistress	Tuner Monster	105	no
 30492798	Djinn Disserere of Rituals	Effect Monster	105	no
 30646525	Garlandolf, King of Destruction	Ritual Effect Monster	105	no
@@ -7494,7 +7494,7 @@ code	name	type	weekly_views	ported
 40213117	Amores of Prophecy	Effect Monster	105	no
 40392714	Geira Guile the Cubic King	Effect Monster	105	no
 40428851	Ancient Warriors - Virtuous Liu Xuan	Effect Monster	105	no
-40441990	"World Legacy - ""World Key"""	Effect Monster	105	no
+40441990	World Legacy - "World Key"	Effect Monster	105	no
 40678060	Angelica's Angelic Ring	Spell Card	105	no
 40740224	Cross Keeper	Effect Monster	105	no
 40844552	Valkyrie of the Nordic Ascendant	Tuner Monster	105	yes
@@ -7643,7 +7643,7 @@ code	name	type	weekly_views	ported
 55725117	Prank-Kids Dropsies	Effect Monster	105	no
 55733143	Mimighoul Charm	Spell Card	105	no
 55758589	Photon Wyvern	Effect Monster	105	no
-55787576	"World Legacy - ""World Shield"""	Effect Monster	105	no
+55787576	World Legacy - "World Shield"	Effect Monster	105	no
 55888045	Number C106: Giant Red Hand	XYZ Monster	105	no
 56049970	Crystron Prasiortle	Effect Monster	105	no
 56051086	Number 43: Manipulator of Souls	XYZ Monster	105	no
@@ -7895,7 +7895,7 @@ code	name	type	weekly_views	ported
 83407038	Amazoness Onslaught	Trap Card	105	no
 83438826	Noble Arms - Arfeudutyr	Spell Card	105	no
 83446909	Batteryman Charger	Effect Monster	105	no
-83477829	"World Legacy - ""World Armor"""	Effect Monster	105	no
+83477829	World Legacy - "World Armor"	Effect Monster	105	no
 83584898	Darkworld Shackles	Spell Card	105	no
 83675475	Token Feastevil	Trap Card	105	no
 84055227	Maiden of Macabre	Effect Monster	105	no
@@ -8351,7 +8351,7 @@ code	name	type	weekly_views	ported
 24027078	Morgan, the Enchantress of Avalon	Effect Monster	84	no
 24050692	Ogdoadic Water Lily	Spell Card	84	no
 24073068	Gouki Suprex	Effect Monster	84	no
-24150026	"Karakuri Muso mdl 818 ""Haipa"""	Effect Monster	84	no
+24150026	Karakuri Muso mdl 818 "Haipa"	Effect Monster	84	no
 24212820	The Phantom Knights of Dark Gauntlets	Trap Card	84	no
 24413299	The Suppression Pluto	Effect Monster	84	no
 24419823	Minefieldriller	Effect Monster	84	no
@@ -8551,7 +8551,7 @@ code	name	type	weekly_views	ported
 41830887	Appliancer Copybokkle	Effect Monster	84	no
 42167046	Widespread Dud	Trap Card	84	no
 42175079	Volcanic Eruption	Trap Card	84	no
-42388271	"World Legacy - ""World Ark"""	Effect Monster	84	no
+42388271	World Legacy - "World Ark"	Effect Monster	84	no
 42444868	Rebirth of Parshath	Trap Card	84	no
 42472002	Noble Knight Custennin	Effect Monster	84	no
 42541548	Coach Goblin	Effect Monster	84	no
@@ -8781,7 +8781,7 @@ code	name	type	weekly_views	ported
 60832978	Double Resonator	Tuner Monster	84	no
 60884672	Great Sand Sea - Gold Golgonda	Spell Card	84	no
 60930169	Broken Blocker	Trap Card	84	no
-60946968	"Otherworld - The ""A"" Zone"	Spell Card	84	no
+60946968	Otherworld - The "A" Zone	Spell Card	84	no
 60954556	Lyrilusc - Sapphire Swallow	Effect Monster	84	no
 60999392	Machina Soldier	Effect Monster	84	no
 61011311	Zenmailfunction	Spell Card	84	no
@@ -8849,7 +8849,7 @@ code	name	type	weekly_views	ported
 66436257	Volcanic Counter	Effect Monster	84	no
 66451379	Graydle Alligator	Effect Monster	84	no
 66457138	Fluffal Leo	Effect Monster	84	no
-66625883	"Karakuri Strategist mdl 248 ""Nishipachi"""	Tuner Monster	84	no
+66625883	Karakuri Strategist mdl 248 "Nishipachi"	Tuner Monster	84	no
 66661678	Royal Knight of the Ice Barrier	Effect Monster	84	no
 66809920	Valkyrie Erste	Effect Monster	84	no
 66818682	Moon Dragon Quilla	Synchro Monster	84	no
@@ -9083,7 +9083,7 @@ code	name	type	weekly_views	ported
 83743222	Goddess Bow	Fusion Monster	84	no
 83810690	X-Saber Wayne	Synchro Monster	84	no
 84220251	Heraldry Reborn	Spell Card	84	no
-84332527	"Therion ""Bull"" Ain"	Effect Monster	84	no
+84332527	Therion "Bull" Ain	Effect Monster	84	no
 84341431	Archfiend Giant	Effect Monster	84	no
 84385264	Lycanthrope	Ritual Effect Monster	84	no
 84389640	Attack of the Cornered Rat	Trap Card	84	no
@@ -9198,7 +9198,7 @@ code	name	type	weekly_views	ported
 93431862	Destiny HERO - Dunker	Effect Monster	84	no
 93595154	Judgment of the Branded	Trap Card	84	no
 93662626	Igknight Veteran	Pendulum Normal Monster	84	no
-93724592	"Karakuri Ninja mdl 339 ""Sazank"""	Effect Monster	84	no
+93724592	Karakuri Ninja mdl 339 "Sazank"	Effect Monster	84	no
 93729065	Starving Venemy Dragon	Pendulum Effect Fusion Monster	84	no
 93730230	Chronomaly Crystal Chrononaut	XYZ Monster	84	no
 93816465	Zero Gardna	Effect Monster	84	no
@@ -9333,7 +9333,7 @@ code	name	type	weekly_views	ported
 2461031	Inzektor Ladybug	Effect Monster	63	no
 2521011	Brotherhood of the Fire Fist - Swallow	Effect Monster	63	no
 2542230	Red Cocoon	Trap Card	63	no
-2561846	"Corruption Cell ""A"""	Spell Card	63	no
+2561846	Corruption Cell "A"	Spell Card	63	no
 2602411	Wizard Buster Destruction Sword	Effect Monster	63	no
 2618045	Photon Chargeman	Effect Monster	63	no
 2752099	Rose Shaman	Effect Monster	63	no
@@ -9351,7 +9351,7 @@ code	name	type	weekly_views	ported
 3244563	Shield Spear	Trap Card	63	no
 3395226	Mozarta the Melodious Maestra	Effect Monster	63	no
 3534077	Coach Soldier Wolfbark	Effect Monster	63	no
-3846170	"Karakuri Soldier mdl 236 ""Nisamu"""	Effect Monster	63	no
+3846170	Karakuri Soldier mdl 236 "Nisamu"	Effect Monster	63	no
 3966653	Flower Cardian Boardefly	Synchro Monster	63	no
 4008212	Break the Destiny	Trap Card	63	no
 4079728	Gung-Ho! Springans!	XYZ Monster	63	no
@@ -9389,7 +9389,7 @@ code	name	type	weekly_views	ported
 6075533	Terror of Trishula	Trap Card	63	no
 6205579	Fusion Parasite	Effect Monster	63	no
 6256844	R-Genex Turbo	Effect Monster	63	no
-6276588	"Karakuri Ninja mdl 919 ""Kuick"""	Effect Monster	63	no
+6276588	Karakuri Ninja mdl 919 "Kuick"	Effect Monster	63	no
 6459419	Amazoness Shamanism	Trap Card	63	no
 6713443	Ultimate Fire Formation - Seito	Trap Card	63	no
 6859683	Success Probability 0%	Trap Card	63	no
@@ -9655,7 +9655,7 @@ code	name	type	weekly_views	ported
 20735371	Bye Bye Damage	Trap Card	63	no
 20788863	Salamangreat Gift	Trap Card	63	no
 20849090	Kozmo Forerunner	Effect Monster	63	no
-20985997	"Detonator Circle ""A"""	Trap Card	63	no
+20985997	Detonator Circle "A"	Trap Card	63	no
 21105106	Nekroz of Sophia	Ritual Effect Monster	63	no
 21155323	Goggle Golem	Gemini Monster	63	no
 21323861	Acid Rain	Spell Card	63	no
@@ -9910,7 +9910,7 @@ code	name	type	weekly_views	ported
 38975369	Gundari	Spirit Monster	63	no
 38988538	Dinomist Plesios	Pendulum Effect Monster	63	no
 39033131	Haunted Shrine	Trap Card	63	no
-39118197	"Karakuri Bushi mdl 6318 ""Muzanichiha"""	Effect Monster	63	no
+39118197	Karakuri Bushi mdl 6318 "Muzanichiha"	Effect Monster	63	no
 39229392	Overlay Sentinel	Effect Monster	63	no
 39261576	Particle Fusion	Spell Card	63	no
 39284521	Machina Cannon	Effect Monster	63	no
@@ -10080,7 +10080,7 @@ code	name	type	weekly_views	ported
 50418970	Spirit Burner	Spell Card	63	no
 50485594	Rescue Hamster	Pendulum Effect Monster	63	no
 50532786	Jawsman	Effect Monster	63	no
-50615578	"Karakuri Ninja mdl 7749 ""Nanashick"""	Effect Monster	63	no
+50615578	Karakuri Ninja mdl 7749 "Nanashick"	Effect Monster	63	no
 50684552	Wonder Garage	Trap Card	63	no
 50702124	Synchro Magnet	Tuner Monster	63	no
 50789693	Armored Kappa	XYZ Monster	63	no
@@ -10819,7 +10819,7 @@ code	name	type	weekly_views	ported
 93953933	Hydralander Orbit	Effect Monster	63	no
 94042337	Violent Rain	Normal Monster	63	no script
 94079037	Mine Mole	Effect Monster	63	no
-94081496	"Shiny Black ""C"""	Effect Monster	63	no
+94081496	Shiny Black "C"	Effect Monster	63	no
 94160895	Mariamne, the True Dracophoenix	Effect Monster	63	no
 94203886	Gagaga Child	Effect Monster	63	no
 94230224	Needle Ball	Flip Effect Monster	63	no
@@ -11166,7 +11166,7 @@ code	name	type	weekly_views	ported
 14505685	Cyberse Converter	Effect Monster	42	no
 14541657	Twilight Ninja Shingetsu	Effect Monster	42	no
 14568951	Blue Dragon Ninja	Effect Monster	42	no
-14729426	"Interplanetary Invader ""A"""	Effect Monster	42	no
+14729426	Interplanetary Invader "A"	Effect Monster	42	no
 14731897	Unity	Spell Card	42	no
 14759024	Constellar Zubeneschamali	Effect Monster	42	no
 14812659	Risebell the Star Psycher	Effect Monster	42	no
@@ -11184,7 +11184,7 @@ code	name	type	weekly_views	ported
 15458892	Starship Spy Plane	Effect Monster	42	no
 15555120	Hi-Speed Re-Level	Spell Card	42	no
 15627227	Overburst Dragon	Link Monster	42	no
-15721123	"Confronting the ""C"""	Effect Monster	42	no
+15721123	Confronting the "C"	Effect Monster	42	no
 15721392	Super Quantal Alphancall Appeal	Spell Card	42	no
 15792576	Sky Scourge Cidhels	Effect Monster	42	no
 15845914	Magicians of Bonds and Unity	Effect Monster	42	no
@@ -11292,7 +11292,7 @@ code	name	type	weekly_views	ported
 21623008	Sky Striker Maneuver - Vector Blast	Spell Card	42	no
 21648584	Raidraptor - Readiness	Trap Card	42	no
 21715135	Gagaga Academy Emergency Network	Spell Card	42	no
-21727231	"Therion ""Reaper"" Fum"	Effect Monster	42	no
+21727231	Therion "Reaper" Fum	Effect Monster	42	no
 21767650	Mermail Abyssmander	Effect Monster	42	no
 21846145	Abduction	Trap Card	42	no
 21887075	Endless Engine Argyro System	Spell Card	42	no
@@ -11363,7 +11363,7 @@ code	name	type	weekly_views	ported
 25700114	Duston Roller	Trap Card	42	no
 25788011	Risebell the Star Adjuster	Effect Monster	42	no
 25857977	D/D/D Vice King Requiem	Pendulum Effect Monster	42	no
-25904894	"Karakuri Super Shogun mdl 00N ""Bureibu"""	Synchro Monster	42	no
+25904894	Karakuri Super Shogun mdl 00N "Bureibu"	Synchro Monster	42	no
 25919316	Pitknight Filly	Link Monster	42	no
 25964547	Dream Mirror Hypnagogia	Trap Card	42	no
 26046205	Vengeful Shinobi	Effect Monster	42	no
@@ -11814,7 +11814,7 @@ code	name	type	weekly_views	ported
 48445393	Scrapstorm	Spell Card	42	no
 48447192	Sword of Sparkles	Spell Card	42	no
 48633301	T.G. Booster Raptor	Effect Monster	42	no
-48806195	"Therion ""Empress"" Alasia"	Effect Monster	42	no
+48806195	Therion "Empress" Alasia	Effect Monster	42	no
 48868994	Morphtronic Vacuumen	Effect Monster	42	no
 49082032	Resurgam Xyz	Trap Card	42	no
 49131917	Shinonome the Vaylantz Priestess	Pendulum Effect Monster	42	no
@@ -11822,7 +11822,7 @@ code	name	type	weekly_views	ported
 49202331	CXyz Skypalace Babylon	XYZ Monster	42	no
 49249907	Yosenju Magat	Effect Monster	42	no
 49267971	Blind Spot Strike	Spell Card	42	no
-49296203	"Karakuri Bonze mdl 9763 ""Kunamzan"""	Effect Monster	42	no
+49296203	Karakuri Bonze mdl 9763 "Kunamzan"	Effect Monster	42	no
 49366157	Majespecter Cyclone	Spell Card	42	no
 49394035	Vendread Core	Effect Monster	42	no
 49460512	Blackwing - Kogarashi the Wanderer	Tuner Monster	42	no
@@ -11964,7 +11964,7 @@ code	name	type	weekly_views	ported
 56827051	Ariel, Priestess of the Nekroz	Effect Monster	42	no
 56897896	Mono Synchron	Tuner Monster	42	yes
 56980148	Dinowrestler Systegosaur	Effect Monster	42	no
-57111330	"Therion ""Duke"" Yul"	Effect Monster	42	no
+57111330	Therion "Duke" Yul	Effect Monster	42	no
 57201737	Leodrake's Mane	Spell Card	42	no
 57232301	Shadow Severing Strike	Spell Card	42	no
 57246528	Synchro Transcend	Spell Card	42	no
@@ -12284,7 +12284,7 @@ code	name	type	weekly_views	ported
 75363626	Madolche Chouxvalier	Effect Monster	42	no
 75421661	Dododo Swordsman	Effect Monster	42	no
 75525309	Six Style - Dual Wield	Trap Card	42	no
-75690317	"Karakuri Gama mdl 4624 ""Shirokunishi"""	Tuner Monster	42	no
+75690317	Karakuri Gama mdl 4624 "Shirokunishi"	Tuner Monster	42	no
 75733063	Meklord Army of Skiel	Effect Monster	42	no
 75797046	Photon Alexandra Queen	XYZ Monster	42	no
 75833426	Madolche Tea Break	Trap Card	42	no
@@ -12311,7 +12311,7 @@ code	name	type	weekly_views	ported
 77683371	Dimension Conjurer	Effect Monster	42	no
 77710579	Meklord Nucleus Infinity Core	Effect Monster	42	no
 77751766	Summer Schoolwork Successful!	Trap Card	42	no
-77754169	"Super Armored Robot Armed Black Iron ""C"""	Effect Monster	42	no
+77754169	Super Armored Robot Armed Black Iron "C"	Effect Monster	42	no
 77783947	Yang Zing Unleashed	Trap Card	42	no
 77797992	Alpacaribou, Mystical Beast of the Forest	Effect Monster	42	no
 77826734	Pendulum Reborn	Trap Card	42	no
@@ -12557,7 +12557,7 @@ code	name	type	weekly_views	ported
 92200612	Shinobird Pigeon	Spirit Monster	42	no
 92219931	Simultaneous Loss	Trap Card	42	no
 92246806	Yosenju Kama 2	Effect Monster	42	no
-92300891	"Karakuri Barrel mdl 96 ""Shinkuro"""	Tuner Monster	42	no
+92300891	Karakuri Barrel mdl 96 "Shinkuro"	Tuner Monster	42	no
 92345028	Fury of Fire	Spell Card	42	no
 92379223	El Dorado Adelantado	Trap Card	42	no
 92391084	Wilmee	Normal Monster	42	no script
@@ -13660,7 +13660,7 @@ code	name	type	weekly_views	ported
 60681103	Divine Dragon Lord Felgrand		0	no
 60967717	Myutant Expansion	Trap Card	0	no
 61822419	Guilt-Gripping Morganite		0	no
-61944066	"Nouvelles Recipe Book ""Recettes de Nouvellez"""		0	no
+61944066	Nouvelles Recipe Book "Recettes de Nouvellez"		0	no
 62015408	Ghost Reaper & Winter Cherries		0	no
 62767644	Inferno of the Ashened		0	no
 63009228	Rescue Interlacer	Effect Monster	0	no
@@ -13719,7 +13719,7 @@ code	name	type	weekly_views	ported
 97738431	Numbers Overlay Boost	Trap Card	0	no
 97809599	Seal of the Ancients	Spell Card	0	no
 98022050	Animadorned Archosaur		0	no
-98349765	"Layer 19 ""Sudden Incursion! Super Quantum Black!!"""		0	no
+98349765	Layer 19 "Sudden Incursion! Super Quantum Black!!"		0	no
 98715423	Gravekeeper's Trap		0	no
 98881700	Crystal Shark		0	no
 99161253	Primite Fusion		0	no

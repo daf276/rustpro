@@ -1187,6 +1187,70 @@ pub mod aux {
             select_field_return_cards(duel, 1 - turn_p, g1)
         }
     }
+
+    // ReincarnationChecked, the upvalue guarding the global effect.
+    const REINCARNATION_CHECKED: u64 = 1 << 59;
+
+    // Auxiliary.EnableCheckReincarnation: the first call registers the granting effect for every Extra Deck monster.
+    pub fn enable_check_reincarnation(duel: &mut Duel) {
+        if duel.get_script_state(REINCARNATION_CHECKED) != 0 {
+            return;
+        }
+        duel.set_script_state(REINCARNATION_CHECKED, 1);
+        let e1 = duel.global_effect();
+        e1.set_type(duel, EFFECT_TYPE_SINGLE);
+        e1.set_code(duel, EFFECT_MATERIAL_CHECK);
+        e1.set_value(duel, Value::MaterialCheck(reincarnation_check_value));
+        let ge1 = duel.global_effect();
+        ge1.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_GRANT);
+        ge1.set_label_object(duel, Some(e1));
+        ge1.set_target_range(duel, 0xff, 0xff);
+        ge1.set_target_card(duel, |duel, _, c| {
+            c.is_type(duel, TYPE_FUSION | TYPE_RITUAL | TYPE_SYNCHRO | TYPE_XYZ | TYPE_LINK)
+        });
+        duel.register_effect(ge1, 0);
+    }
+
+    // Auxiliary.ReincarnationRitualFilter.
+    fn reincarnation_ritual_filter(c: CardId, duel: &Duel, rc: CardId, id: u32, tp: u8) -> bool {
+        c.is_summon_code(duel, Some(rc), SUMMON_TYPE_RITUAL.into(), tp, &[id])
+            && c.is_controler(duel, tp)
+            && c.is_location(duel, LOCATION_MZONE)
+    }
+
+    // Auxiliary.ReincarnationCheckValue.
+    fn reincarnation_check_value(duel: &mut Duel, _: EffectId, c: CardId) {
+        let g = c.get_material(duel);
+        let id = c.get_code(duel);
+        let tp = c.get_controler(duel);
+        let summoned_with_same_code =
+            |duel: &Duel, sumtype: u32| g.is_exists(duel, |m, duel| m.is_summon_code(duel, Some(c), sumtype.into(), tp, &[id]), 1, None);
+        let mut label = 3;
+        let rc = if c.is_link_monster(duel) {
+            summoned_with_same_code(duel, SUMMON_TYPE_LINK)
+        } else if c.is_type(duel, TYPE_FUSION) {
+            summoned_with_same_code(duel, SUMMON_TYPE_FUSION)
+        } else if c.is_type(duel, TYPE_RITUAL) {
+            label = 0;
+            if g.is_exists(duel, |m, duel| reincarnation_ritual_filter(m, duel, c, id, 0), 1, None) {
+                label = 1;
+            }
+            if g.is_exists(duel, |m, duel| reincarnation_ritual_filter(m, duel, c, id, 1), 1, None) {
+                label += 2;
+            }
+            label != 0
+        } else if c.is_type(duel, TYPE_SYNCHRO) {
+            summoned_with_same_code(duel, SUMMON_TYPE_SYNCHRO)
+        } else if c.is_type(duel, TYPE_XYZ) {
+            summoned_with_same_code(duel, SUMMON_TYPE_XYZ)
+        } else {
+            false
+        };
+        if rc {
+            let reset = RESET_EVENT + RESETS_STANDARD - RESET_TOFIELD;
+            c.register_flag_effect_full(duel, CARD_SALAMANGREAT_SANCTUARY, reset, 0, 1, label, 0);
+        }
+    }
 }
 
 pub struct Cost;
@@ -1636,6 +1700,7 @@ pub trait CardUtility: Copy {
     fn is_in_extra_mzone(self, duel: &Duel) -> bool;
     fn is_ritual_summoned(self, duel: &Duel) -> bool;
     fn is_special_summoned(self, duel: &Duel) -> bool;
+    fn is_reincarnation_summoned(self, duel: &Duel) -> bool;
     fn has_flag_effect(self, duel: &Duel, id: u32) -> bool;
     fn has_flag_effect_full(self, duel: &Duel, id: u32, count: usize) -> bool;
     fn announce_another_attribute(self, duel: &mut Duel, tp: u8) -> Script<u32>;
@@ -1708,6 +1773,15 @@ impl CardUtility for CardId {
 
     fn is_special_summoned(self, duel: &Duel) -> bool {
         self.is_summon_type(duel, &[SUMMON_TYPE_SPECIAL])
+    }
+
+    // Card.IsReincarnationSummoned.
+    fn is_reincarnation_summoned(self, duel: &Duel) -> bool {
+        let label = self
+            .get_flag_effect_labels(duel, CARD_SALAMANGREAT_SANCTUARY)
+            .into_iter()
+            .fold(0, |label, lab| label | lab);
+        label & (i64::from(self.get_summon_player(duel)) + 1) != 0
     }
 
     fn has_flag_effect(self, duel: &Duel, id: u32) -> bool {

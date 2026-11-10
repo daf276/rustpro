@@ -168,6 +168,10 @@ impl EffectId {
         duel.effects[self].labels()
     }
 
+    pub fn get_category(self, duel: &Duel) -> u64 {
+        duel.effects[self].category
+    }
+
     pub fn set_category(self, duel: &mut Duel, category: u64) {
         duel.effects[self].category = category;
     }

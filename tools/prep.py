@@ -14,7 +14,13 @@ NAMESPACES = "Duel|Card|Effect|Group|aux|Auxiliary|Cost|Fusion|Synchro|Xyz|Link|
 CALL = re.compile(rf"\b(?:{NAMESPACES})\.([A-Z]\w*)|:([A-Z]\w*)\s*\(")
 RARE = 3
 # Lua names whose Rust mirror is named differently (std's Clone takes `clone`).
-ALIASES = {"clone": "clone_effect"}
+ALIASES = {
+    "clone": "clone_effect",
+    "add_equip_procedure": "add_procedure",
+    "is_s_setable": "is_ssetable",
+    "s_set": "sset",
+    "detach_from_self": "detach_from_self_with",
+}
 # Lua calls with no function of their own in the port.
 NATIVE = {
     "create_group": "CardSet::default()",
@@ -25,6 +31,10 @@ NATIVE = {
     "not": "a closure negating the filter",
     "and": "a closure combining the filters",
     "true": "aux::TRUE (also the nil filter)",
+    "infinite_mats": "the constant Xyz::INFINITE_MATS",
+    "non_tuner_ex": "written inline (c.is_not_tuner(...) && the filter)",
+    "from_cards": "CardSet::from_iter",
+    "sub": "CardSet::difference",
 }
 
 

@@ -77,7 +77,7 @@ impl Trace {
 pub struct Message<'a>(Option<(&'a mut Vec<u8>, usize)>);
 
 impl Message<'_> {
-    fn bytes(&mut self, bytes: &[u8]) -> &mut Self {
+    pub(crate) fn bytes(&mut self, bytes: &[u8]) -> &mut Self {
         if let Some((buffer, _)) = &mut self.0 {
             buffer.extend_from_slice(bytes);
         }

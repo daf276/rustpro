@@ -441,6 +441,11 @@ impl CardId {
         duel.get_attribute(self)
     }
 
+    // As in `is_attribute_full`, `scard` changes nothing.
+    pub fn get_attribute_full(self, duel: &Duel, _scard: Option<CardId>, _sumtype: u64, _player: u8) -> u32 {
+        duel.get_attribute(self)
+    }
+
     pub fn is_attribute(self, duel: &Duel, attribute: u32) -> bool {
         self.is_attribute_full(duel, attribute, None, 0, PLAYER_NONE)
     }

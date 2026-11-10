@@ -21,6 +21,7 @@ def names(value, table):
     return "|".join(name for bit, name in enumerate(table) if value >> bit & 1)
 
 
+sys.stdout.reconfigure(encoding="utf-8")
 filters = dict(arg.split("=", 1) for arg in sys.argv[1:] if "=" in arg)
 kinds = [KINDS[arg] for arg in sys.argv[1:] if "=" not in arg]
 ported = {int(path.stem[1:]) for path in (ROOT / "crates/scripts/src/official").glob("c*.rs")}

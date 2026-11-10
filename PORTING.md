@@ -152,7 +152,7 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   `target/card/incremental/scripts-*` and `diff-*` to recover.
   Scenario Xyz materials come only from the fixed set: a card needing a specific material gets it attached through a
   ported `SUPPORT` card (Xyz Import, c1621413). An effect reacting to the opponent targeting a monster gets a targeting
-  card `| OPPONENT` in `SUPPORT` (Mage Power, c83746708). A card an effect summons or adds by name is ported first even
+  card `| OPPONENT` in `SUPPORT` (Mage Power, c83746708, which only targets face-up monsters; Mind Control, c37520316, in hand also takes face-down ones). A card an effect summons or adds by name is ported first even
   when the batch does not list it.
 
 ## Mirror API

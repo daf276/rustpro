@@ -86,6 +86,10 @@ pub mod aux {
         sum_type & SUMMON_TYPE_LINK == SUMMON_TYPE_LINK
     }
 
+    pub fn fuslimit(_: &Duel, _: EffectId, _: Option<EffectId>, _: u8, sum_type: u32, _: u8, _: u8) -> bool {
+        sum_type & SUMMON_TYPE_FUSION == SUMMON_TYPE_FUSION
+    }
+
     pub fn ritlimit(_: &Duel, _: EffectId, _: Option<EffectId>, _: u8, sum_type: u32, _: u8, _: u8) -> bool {
         sum_type & SUMMON_TYPE_RITUAL == SUMMON_TYPE_RITUAL
     }

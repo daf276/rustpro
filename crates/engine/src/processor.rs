@@ -1126,9 +1126,37 @@ impl Duel {
         let priority = arg.priority_player;
         match arg.step {
             0 => {
+                let check_player = if arg.is_opponent {
+                    1 - self.infos.turn_player
+                } else {
+                    self.infos.turn_player
+                };
                 self.core.select_chains.clear();
-                unported!(self, self.core.quick_f_chain.iter().map(|&(effect, _)| effect));
-                self.returns.set_i32(0, -1);
+                let mut index = 0;
+                while let Some((effect, chain)) = self.core.quick_f_chain.get(index).cloned() {
+                    let handler = self.get_handler(effect);
+                    let player = chain.triggering_player;
+                    if self.is_chainable(effect, player)
+                        && self.check_count_limit(effect, player)
+                        && self.is_has_relation(handler, effect, chain.chain_id)
+                    {
+                        if player == check_player {
+                            self.core.select_chains.push(chain);
+                        }
+                        index += 1;
+                    } else {
+                        self.core.quick_f_chain.remove(index);
+                    }
+                }
+                match self.core.select_chains.len() {
+                    0 => self.returns.set_i32(0, -1),
+                    1 => self.returns.set_i32(0, 0),
+                    _ => self.emplace_process(SelectChain {
+                        playerid: check_player,
+                        forced: true,
+                        ..SelectChain::default()
+                    }),
+                }
                 false
             }
             1 => {
@@ -1148,7 +1176,15 @@ impl Duel {
                     }
                     return false;
                 }
-                unported!(self, self.core.select_chains.first().map(|chain| chain.triggering_effect));
+                let Some(chain) = self.take_select_chain(self.returns.at_i32(0) as usize) else {
+                    return true;
+                };
+                let (effect, player) = (chain.triggering_effect, chain.triggering_player);
+                let handler = self.get_handler(effect);
+                self.cards[handler].set_status(STATUS_CHAINING, true);
+                self.dec_count(effect, player);
+                self.core.new_chains.push(chain);
+                self.core.quick_f_chain.retain(|&(other, _)| other != effect);
                 arg.step = RESTART;
                 false
             }

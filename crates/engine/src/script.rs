@@ -88,6 +88,9 @@ pub type InitialEffect = fn(&mut Duel, CardId);
 // A Fusion material check (tp, sg, fc) built by a closure over a card, kept with that card.
 pub type FusionCheck = (fn(&Duel, CardId, u8, CardSet, CardId) -> bool, CardId);
 
+// A Synchro material check (tp, sg, sc).
+pub type SynchroCheck = fn(&Duel, u8, CardSet, CardId) -> bool;
+
 // The scripts the oracle loads: utility.lua and the libraries it pulls in (their global effects), and c<code>.lua.
 #[derive(Debug, Clone, Copy)]
 pub struct Library {
@@ -286,6 +289,7 @@ impl Duel {
             script_groups,
             values_reset,
             fusion_check_additional,
+            synchro_check_additional,
             ritual_summoning_level,
             assumes,
             pending_resets,
@@ -322,6 +326,7 @@ impl Duel {
         self.script_groups.clone_from(script_groups);
         self.values_reset.clone_from(values_reset);
         self.fusion_check_additional = *fusion_check_additional;
+        self.synchro_check_additional = *synchro_check_additional;
         self.ritual_summoning_level.clone_from(ritual_summoning_level);
         self.assumes.clone_from(assumes);
         self.pending_resets.clone_from(pending_resets);

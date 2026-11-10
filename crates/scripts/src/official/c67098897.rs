@@ -37,24 +37,7 @@ pub const CHECKS: &[Check] = &[
 ];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
-    c.enable_revive_limit(duel);
-    Synchro::add_procedure::<Procedure>(duel, c);
-    let e0a = duel.create_effect(c);
-    e0a.set_type(duel, EFFECT_TYPE_FIELD);
-    e0a.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_IGNORE_IMMUNE);
-    e0a.set_code(duel, EFFECT_SYNCHRO_LEVEL);
-    e0a.set_range(duel, LOCATION_EXTRA);
-    e0a.set_target_range(duel, LOCATION_MZONE, LOCATION_MZONE);
-    e0a.set_target_card(duel, |duel, _, c| c.is_link(duel, &[1]));
-    e0a.set_value(
-        duel,
-        Value::Card(|duel, _, sc| if sc.is_set_card(duel, &[SET_YUMMY]) { 1 } else { -1 }),
-    );
-    c.register_effect(duel, e0a);
-    let e0b = e0a.clone_effect(duel);
-    e0b.set_code(duel, EFFECT_CANNOT_BE_SYNCHRO_MATERIAL);
-    e0b.set_value(duel, Value::Card(|duel, _, sc| i32::from(!sc.is_set_card(duel, &[SET_YUMMY]))));
-    c.register_effect(duel, e0b);
+    add_synchro_procedure(duel, c);
     let e1 = duel.create_effect(c);
     e1.set_description(duel, aux::stringid(ID, 0));
     e1.set_category(duel, CATEGORY_POSITION + CATEGORY_SET);
@@ -78,6 +61,28 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_target(duel, gysptg);
     e2.set_operation(duel, gyspop);
     c.register_effect(duel, e2);
+}
+
+// The Synchro Summon procedure and the Level 1 Tuner treatment of the Link-1 monsters of the "Yummy Way" Synchro Tuners.
+pub fn add_synchro_procedure(duel: &mut Duel, c: CardId) {
+    c.enable_revive_limit(duel);
+    Synchro::add_procedure::<Procedure>(duel, c);
+    let e0a = duel.create_effect(c);
+    e0a.set_type(duel, EFFECT_TYPE_FIELD);
+    e0a.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_IGNORE_IMMUNE);
+    e0a.set_code(duel, EFFECT_SYNCHRO_LEVEL);
+    e0a.set_range(duel, LOCATION_EXTRA);
+    e0a.set_target_range(duel, LOCATION_MZONE, LOCATION_MZONE);
+    e0a.set_target_card(duel, |duel, _, c| c.is_link(duel, &[1]));
+    e0a.set_value(
+        duel,
+        Value::Card(|duel, _, sc| if sc.is_set_card(duel, &[SET_YUMMY]) { 1 } else { -1 }),
+    );
+    c.register_effect(duel, e0a);
+    let e0b = e0a.clone_effect(duel);
+    e0b.set_code(duel, EFFECT_CANNOT_BE_SYNCHRO_MATERIAL);
+    e0b.set_value(duel, Value::Card(|duel, _, sc| i32::from(!sc.is_set_card(duel, &[SET_YUMMY]))));
+    c.register_effect(duel, e0b);
 }
 
 fn postg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bool> {
@@ -109,11 +114,11 @@ fn posop(duel: &mut Duel, a: &Args) -> Script<()> {
     Ok(())
 }
 
-fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
+pub fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
     c.is_set_card(duel, &[SET_YUMMY]) && c.is_can_be_special_summoned(duel, e, 0, tp, false, false)
 }
 
-fn gysptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+pub fn gysptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
     let (tp, e) = (a.tp, a.e);
     if chk == 0 {
         let c = e.get_handler(duel);
@@ -124,7 +129,7 @@ fn gysptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool
     Ok(false)
 }
 
-fn gyspop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn gyspop(duel: &mut Duel, a: &Args) -> Script<()> {
     let (tp, e) = (a.tp, a.e);
     let mut ft = duel.get_location_count(tp, LOCATION_MZONE);
     if ft <= 0 {

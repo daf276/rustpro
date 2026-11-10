@@ -1510,6 +1510,7 @@ pub trait CardUtility: Copy {
     fn is_owner(self, duel: &Duel, player: u8) -> bool;
     fn is_equip_spell(self, duel: &Duel) -> bool;
     fn is_previous_attribute_on_field(self, duel: &Duel, attribute: u32) -> bool;
+    fn is_previous_code_on_field(self, duel: &Duel, codes: &[u32]) -> bool;
     fn is_field_spell(self, duel: &Duel) -> bool;
     fn is_ritual_spell(self, duel: &Duel) -> bool;
     fn is_ritual_monster(self, duel: &Duel) -> bool;
@@ -1777,6 +1778,11 @@ impl CardUtility for CardId {
 
     fn is_previous_attribute_on_field(self, duel: &Duel, attribute: u32) -> bool {
         self.get_previous_attribute_on_field(duel) & attribute > 0
+    }
+
+    fn is_previous_code_on_field(self, duel: &Duel, codes: &[u32]) -> bool {
+        let previous = [self.get_previous_code_on_field(duel), self.get_previous_code2_on_field(duel)];
+        codes.iter().any(|code| previous.contains(code))
     }
 
     fn is_equip_spell(self, duel: &Duel) -> bool {
@@ -2085,13 +2091,14 @@ impl EffectUtility for EffectId {
     // Effect.HasSelfDiscardCost, which looks the cost up in a table of the library's own costs: Cost.SelfDiscard, Cost.SelfDiscardToGrave and
     // the Dragon Ruler ones, the only composite costs ported with it.
     fn has_self_discard_cost(self, duel: &Duel) -> bool {
-        let costs: [CostFn; 6] = [
+        let costs: [CostFn; 7] = [
             Cost::self_discard,
             Cost::self_discard_to_grave,
             DragonRuler::self_discard_to_grave_cost::<ATTRIBUTE_EARTH>,
             DragonRuler::self_discard_to_grave_cost::<ATTRIBUTE_WATER>,
             DragonRuler::self_discard_to_grave_cost::<ATTRIBUTE_FIRE>,
             DragonRuler::self_discard_to_grave_cost::<ATTRIBUTE_WIND>,
+            DragonRuler::self_discard_cost::<ATTRIBUTE_LIGHT>,
         ];
         self.get_cost(duel)
             .is_some_and(|cost| costs.into_iter().any(|known| std::ptr::fn_addr_eq(cost, known)))
@@ -2341,20 +2348,32 @@ impl Witchcrafter {
 pub struct DragonRuler;
 
 impl DragonRuler {
-    // DragonRuler.SelfDiscardToGraveCost(attr): Cost.AND(discard_with_other_cost(filter), Cost.SelfDiscardToGrave), whose first cost
-    // returns false when executed and so stops the second: it sends both cards.
-    pub fn self_discard_to_grave_cost<const ATTRIBUTE: u32>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+    // discard_with_other_cost(filter): returns false when executed, which stops the Cost.AND it is part of: it sends both cards.
+    fn discard_with_other_cost(duel: &mut Duel, args: &Args, chk: i32, filter: impl Fn(CardId, &Duel) -> bool) -> Script<bool> {
         let (c, tp) = (args.e.get_handler(duel), args.tp);
-        let filter = |c: CardId, duel: &Duel| c.is_attribute(duel, ATTRIBUTE) && c.is_discardable(duel) && c.is_able_to_grave_as_cost(duel);
         if chk == 0 {
-            return Ok(duel.is_existing_matching_card(filter, tp, LOCATION_HAND, 0, 1, Some(c.into()))
-                && c.is_discardable(duel)
-                && c.is_able_to_grave_as_cost(duel));
+            return Ok(duel.is_existing_matching_card(filter, tp, LOCATION_HAND, 0, 1, Some(c.into())));
         }
         duel.hint(HINT_SELECTMSG, tp, HINTMSG_DISCARD);
         let g = duel.select_matching_card(tp, filter, tp, LOCATION_HAND, 0, 1, 1, Some(c.into()))?;
         duel.send_to_grave(g.union(c.into()), REASON_COST | REASON_DISCARD)?;
         Ok(false)
+    }
+
+    // DragonRuler.SelfDiscardToGraveCost(attr): Cost.AND(discard_with_other_cost(filter), Cost.SelfDiscardToGrave).
+    pub fn self_discard_to_grave_cost<const ATTRIBUTE: u32>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        let c = args.e.get_handler(duel);
+        let filter = |c: CardId, duel: &Duel| c.is_attribute(duel, ATTRIBUTE) && c.is_discardable(duel) && c.is_able_to_grave_as_cost(duel);
+        let first = DragonRuler::discard_with_other_cost(duel, args, chk, filter)?;
+        Ok(chk == 0 && first && c.is_discardable(duel) && c.is_able_to_grave_as_cost(duel))
+    }
+
+    // DragonRuler.SelfDiscardCost(attr): Cost.AND(discard_with_other_cost(filter), Cost.SelfDiscard).
+    pub fn self_discard_cost<const ATTRIBUTE: u32>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        let c = args.e.get_handler(duel);
+        let filter = |c: CardId, duel: &Duel| (c.is_attribute(duel, ATTRIBUTE) || c.is_race(duel, RACE_DRAGON)) && c.is_discardable(duel);
+        let first = DragonRuler::discard_with_other_cost(duel, args, chk, filter)?;
+        Ok(chk == 0 && first && c.is_discardable(duel))
     }
 }
 

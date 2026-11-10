@@ -215,6 +215,11 @@ impl CardId {
         duel.cards[self].previous_code
     }
 
+    // The second of the codes Card.GetPreviousCodeOnField returns.
+    pub fn get_previous_code2_on_field(self, duel: &Duel) -> u32 {
+        duel.cards[self].previous_code2
+    }
+
     pub fn get_previous_type_on_field(self, duel: &Duel) -> u32 {
         duel.cards[self].previous_type
     }

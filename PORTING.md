@@ -66,7 +66,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   64 scenarios. Without `CHECKS` the card must resolve some effect (`Check::Resolves`). Others:
   `ResolvesEffect(aux::stringid(ID, n))` (chain links the card itself activated: `ResolvesEffect(0)` counts only its own
   effects without a description, never another card's), `ResolvesGranted(aux::stringid(ID, n))` (that effect resolving on
-  any card: for effects the card grants by equip, `EFFECT_TYPE_GRANT` or as Xyz material), `SpecialSummoned`, `SpecialSummonedCode(code)` (a token the card creates),
+  any card: for effects the card grants by equip, `EFFECT_TYPE_GRANT` or as Xyz material), `SpecialSummoned`, `SpecialSummonedCode(code)` (a token the card creates; `SpecialSummonedCode(0)` counts face-down Special Summons, whose
+  message names no card),
   `RitualMaterial` (the card under test used as a material; a Ritual Spell is checked with `SpecialSummonedCode`),
   `MaterialFrom(location)`, `CardHint(description)` (`MSG_CARD_HINT`, not `Duel.Hint(HINT_CARD, ...)`), `Message(MSG_*)` (from `engine::constants`; the
   message must be about the card or about no card), `TributeSummoned(n)`, `TributeSet(n)`, `Replaced`, and

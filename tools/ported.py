@@ -1,15 +1,17 @@
-"""Lists the monsters SUPPORT can use (ported, or Normal Monsters without a script): code, name, kind, level/rank/link,
-attribute and race, filtered by any mix of kind (normal, effect, tuner, fusion, synchro, xyz, link, ritual, pendulum),
-level, attribute, race and part of the name.
+"""Lists the cards SUPPORT can use (ported, or Normal Monsters without a script): code, name, kind, level/rank/link,
+attribute and race. Filters: kinds (normal, effect, tuner, fusion, synchro, xyz, link, ritual, pendulum; spell or trap,
+with quickplay, continuous, equip, field, counter; monsters unless spell or trap is given), level, attribute, race and
+part of the name.
 
-  python tools/ported.py [tuner] [synchro] [level=3] [attribute=WIND] [race=DRAGON] [name=Kuriboh]
+  python tools/ported.py [tuner] [synchro] [trap continuous] [level=3] [attribute=WIND] [race=DRAGON] [name=Kuriboh]
 """
 import sqlite3
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-KINDS = {"normal": 0x10, "effect": 0x20, "fusion": 0x40, "ritual": 0x80, "tuner": 0x1000, "synchro": 0x2000,
+KINDS = {"spell": 0x2, "trap": 0x4, "quickplay": 0x10000, "continuous": 0x20000, "equip": 0x40000, "field": 0x80000,
+         "counter": 0x100000, "normal": 0x10, "effect": 0x20, "fusion": 0x40, "ritual": 0x80, "tuner": 0x1000, "synchro": 0x2000,
          "token": 0x4000, "xyz": 0x800000, "pendulum": 0x1000000, "link": 0x4000000}
 ATTRIBUTES = ["EARTH", "WATER", "FIRE", "WIND", "LIGHT", "DARK", "DIVINE"]
 RACES = ["WARRIOR", "SPELLCASTER", "FAIRY", "FIEND", "ZOMBIE", "MACHINE", "AQUA", "PYRO", "ROCK", "WINGEDBEAST", "PLANT",
@@ -30,7 +32,8 @@ rows = database.execute("select d.id, t.name, d.type, d.level, d.attribute, d.ra
 scripted = lambda code: (ROOT / f"vendor/CardScripts/official/c{code}.lua").exists()
 for code, name, kind, level, attribute, race in sorted(rows, key=lambda row: (row[3] & 0xff, row[0])):
     usable = code in ported or kind & KINDS["normal"] and not scripted(code)
-    if not usable or not kind & 1 or kind & KINDS["token"] or any(not kind & bit for bit in kinds):
+    monster_wanted = not any(bit & (KINDS["spell"] | KINDS["trap"]) for bit in kinds)
+    if not usable or bool(kind & 1) != monster_wanted or kind & KINDS["token"] or any(not kind & bit for bit in kinds):
         continue
     if ("level" in filters and level & 0xff != int(filters["level"])
             or "attribute" in filters and filters["attribute"].upper() not in names(attribute, ATTRIBUTES)

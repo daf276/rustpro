@@ -1,5 +1,6 @@
 use crate::card::LocInfo;
 use crate::list::List;
+use std::cell::{Cell, RefCell};
 
 // Port of ProgressiveBuffer: the response buffer, read and written as arrays of T, reading 0 past the end.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -48,22 +49,23 @@ impl ProgressiveBuffer {
 
 // The message trace in the framing of OCG_DuelGetMessage: each message prefixed by its u32 length.
 // `count` numbers every message written, `mute` skips the next ones (a script rerun's messages that its earlier attempt
-// already wrote).
+// already wrote). Cells, so that a check on a copy of the duel can hand back what it wrote ([Duel::check_mut]).
 #[derive(Debug, Clone, Default)]
 pub struct Trace {
-    pub buffer: Option<Vec<u8>>,
-    pub count: u64,
-    pub mute: u64,
+    pub buffer: RefCell<Option<Vec<u8>>>,
+    pub count: Cell<u64>,
+    pub mute: Cell<u64>,
 }
 
 impl Trace {
     pub fn message(&mut self, id: u8) -> Message<'_> {
-        self.count += 1;
-        if self.mute > 0 {
-            self.mute -= 1;
+        *self.count.get_mut() += 1;
+        let mute = self.mute.get_mut();
+        if *mute > 0 {
+            *mute -= 1;
             return Message(None);
         }
-        let buffer = self.buffer.as_mut().map(|buffer| {
+        let buffer = self.buffer.get_mut().as_mut().map(|buffer| {
             let start = buffer.len();
             buffer.extend([0, 0, 0, 0, id]);
             (buffer, start)

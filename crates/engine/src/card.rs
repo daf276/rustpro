@@ -2457,6 +2457,9 @@ impl Duel {
         let value = |indestructable: EffectId| match self.effects[indestructable].value {
             Value::Int(value) => value,
             Value::Reason(value) => i32::from(value(self, indestructable, Some(effect), REASON_EFFECT, playerid)),
+            // Reset by an earlier check, so gone in the core though here only at the next processor step.
+            Value::ReasonMut(_) if self.pending_resets.borrow().contains(&indestructable) => 0,
+            Value::ReasonMut(value) => i32::from(self.check_mut(|duel| value(duel, indestructable, Some(effect), REASON_EFFECT, playerid))),
             _ => {
                 self.reach_unported(concat!(file!(), ":", line!()));
                 0

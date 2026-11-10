@@ -2459,8 +2459,7 @@ impl Duel {
         self.return_to_field_full(card, None, 0xff)
     }
 
-    // `position` None is the card's previous position. The core first refreshes the disabled zones, which stay as they
-    // are until a card disables zones.
+    // `position` None is the card's previous position.
     pub fn return_to_field_full(&mut self, card: CardId, position: Option<u32>, zone: u32) -> Script<bool> {
         let previous = self.cards[card].previous;
         if self.cards[card].current.reason & REASON_TEMPORARY == 0 {
@@ -2469,7 +2468,7 @@ impl Duel {
         let position = position.unwrap_or(previous.position);
         self.enable_field_effect(card, false);
         self.adjust_instant();
-        unported!(self, self.filter_field_effect(EFFECT_DISABLE_FIELD));
+        self.refresh_location_info_instant();
         let (player, location) = (previous.controler, u16::from(previous.location));
         let unit = crate::operations::MoveToField {
             step: 0,

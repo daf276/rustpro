@@ -493,6 +493,7 @@ impl Duel {
                         operation(duel, &args)?;
                         0
                     }
+                    Some(Operation::Returning(operation)) => operation(duel, &args)? as i32,
                     Some(Operation::Group(operation)) => {
                         let mut group = duel.core.cards_to_summon_g;
                         operation(duel, &args, &mut group)?;

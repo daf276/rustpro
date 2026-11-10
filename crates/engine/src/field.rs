@@ -2648,8 +2648,10 @@ impl Duel {
         if self.is_flag(DUEL_UNLIMITED_SUMMONS) {
             return i32::MAX - 100;
         }
-        unported!(self, self.filter_player_effect(playerid, EFFECT_SET_SUMMON_COUNT_LIMIT, true));
-        1
+        self.filter_player_effect(playerid, EFFECT_SET_SUMMON_COUNT_LIMIT, true)
+            .into_iter()
+            .map(|effect| self.get_own_value(effect))
+            .fold(1, i32::max)
     }
 
     pub(crate) fn field_get_draw_count(&self, playerid: u8) -> i32 {

@@ -196,13 +196,16 @@ impl Duel {
     }
 
     // Runs `read`, then puts back the effect ids and statuses and the field id counter its effect lookups changed in
-    // this duel: a condition becoming available takes a new id, which orders later lookups.
+    // this duel: a condition becoming available takes a new id, which orders later lookups. Script state a condition
+    // writes (Skyscraper's) goes back too.
     fn unchanged<T>(&self, read: impl FnOnce() -> T) -> T {
         let mut saved = SAVED.take();
         self.effects.save_cells(&mut saved);
         let field_id = self.infos.field_id.get();
+        let script_state = self.script_state.borrow().clone();
         let result = read();
         self.infos.field_id.set(field_id);
+        *self.script_state.borrow_mut() = script_state;
         self.effects.restore_cells(&saved);
         SAVED.set(saved);
         result

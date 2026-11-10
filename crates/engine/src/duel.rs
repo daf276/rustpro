@@ -87,8 +87,9 @@ pub struct Duel {
     pub(crate) library: Option<&'static Library>,
     // The database the duel's cards were read from, which Duel.CreateToken and Duel.AnnounceCard read at runtime.
     pub(crate) database: Option<&'static CardDatabase>,
-    // The scripts' own state for this duel (s.xxx tables and aux.GlobalCheck), keyed by script and slot.
-    pub(crate) script_state: List<(u64, i64), 16>,
+    // The scripts' own state for this duel (s.xxx tables and aux.GlobalCheck), keyed by script and slot. A cell, since
+    // Lua conditions and values write it too.
+    pub(crate) script_state: std::cell::RefCell<List<(u64, i64), 16>>,
     pub(crate) script_groups: Vec<(u64, CardSet)>,
     // aux.ToResetFuncTable: the functions the turn end runs, in the order the scripts registered them.
     pub(crate) values_reset: Vec<fn(&mut Duel)>,
@@ -165,7 +166,7 @@ impl Duel {
             result: None,
             library: None,
             database: None,
-            script_state: List::default(),
+            script_state: Default::default(),
             script_groups: Vec::new(),
             values_reset: Vec::new(),
             fusion_check_additional: None,

@@ -691,6 +691,16 @@ impl Duel {
         }
         for effect in self.filter_effect(card, EFFECT_XYZ_LEVEL, true) {
             let lev = match self.effects[effect].value {
+                Value::XyzLevels(value) => {
+                    let levels = value(self, effect, card, xyzc);
+                    if let [lev] = levels[..] {
+                        lev as u32
+                    } else if levels.contains(&(level as i32)) {
+                        return true;
+                    } else {
+                        continue;
+                    }
+                }
                 Value::XyzLevel(value) => value(self, effect, card, xyzc) as u32,
                 _ => self.get_value(effect, card) as u32,
             };

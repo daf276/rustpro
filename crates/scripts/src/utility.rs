@@ -2,7 +2,7 @@
 // methods they add.
 use engine::{Args, CardId, CardSet, CostFn, CostReplaceCall, CostReplaceCondition, Duel, EffectId, Operation, Script, Value};
 
-use crate::chain::EffectChain;
+use crate::chain::{DuelChain, EffectChain};
 use crate::constant::*;
 use crate::proc_fusion::Fusion;
 use crate::proc_workaround::{CardWorkaround, DuelWorkaround};
@@ -2339,6 +2339,145 @@ impl DragonRuler {
         duel.hint(HINT_SELECTMSG, tp, HINTMSG_DISCARD);
         let g = duel.select_matching_card(tp, filter, tp, LOCATION_HAND, 0, 1, 1, Some(c.into()))?;
         duel.send_to_grave(g.union(c.into()), REASON_COST | REASON_DISCARD)?;
+        Ok(false)
+    }
+}
+
+// The parameters of Effect.CreateMysteruneQPEffect: the unique effect's category, target and operation (the operation returns
+// whether to go on to the banishment), the cards banished from the opponent's Deck and the unique effect's extra property.
+// The uniquecode variant, which returns two effects, and a rmcount function have no caller.
+pub trait MysteruneQuickPlay {
+    const ID: u32;
+    const UNIQUECAT: u64;
+    const RMCOUNT: usize;
+    const UNIQUEPROP: Option<u32> = None;
+
+    fn uniquetg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bool>;
+
+    fn uniqueop(duel: &mut Duel, a: &Args) -> Script<bool>;
+}
+
+// The Mysterune functions of cards_specific_functions.lua.
+pub struct Mysterune;
+
+impl Mysterune {
+    pub fn create_qp_effect<P: MysteruneQuickPlay>(duel: &mut Duel, c: CardId) -> EffectId {
+        let e1 = duel.create_effect(c);
+        e1.set_type(duel, EFFECT_TYPE_ACTIVATE);
+        e1.set_code(duel, EVENT_FREE_CHAIN);
+        e1.set_hint_timing(duel, 0, TIMINGS_CHECK_MONSTER + TIMING_END_PHASE);
+        e1.set_count_limit_full(duel, 1, P::ID, EFFECT_COUNT_CODE_OATH);
+        e1.set_target(duel, Mysterune::choicetg::<P>);
+        e1
+    }
+
+    fn skipop(duel: &mut Duel, a: &Args) {
+        if !a.e.is_has_type(duel, EFFECT_TYPE_ACTIVATE) {
+            return;
+        }
+        let e1 = duel.create_effect(a.e.get_handler(duel));
+        e1.set_type(duel, EFFECT_TYPE_FIELD);
+        e1.set_code(duel, EFFECT_SKIP_BP);
+        e1.set_property(duel, EFFECT_FLAG_PLAYER_TARGET);
+        e1.set_target_range(duel, 1, 0);
+        let reset = RESET_PHASE + PHASE_BATTLE + RESET_SELF_TURN;
+        if duel.is_turn_player(a.tp) && duel.is_battle_phase() {
+            let turn = i64::from(duel.get_turn_count());
+            e1.set_label(duel, turn);
+            e1.set_condition(duel, |duel, a| i64::from(duel.get_turn_count()) != a.e.get_label(duel));
+            e1.set_reset_full(duel, reset, 2);
+        } else {
+            e1.set_reset_full(duel, reset, 1);
+        }
+        duel.register_effect(e1, a.tp);
+    }
+
+    fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
+        c.is_set_card(duel, &[SET_RUNICK])
+            && c.is_can_be_special_summoned(duel, e, 0, tp, false, false)
+            && duel.get_location_count_from_ex_full(tp, tp, None, c, ZONES_EMZ) > 0
+    }
+
+    fn sptg(duel: &mut Duel, a: &Args, chk: i32) -> bool {
+        let (e, tp) = (a.e, a.tp);
+        if chk == 0 {
+            return duel.is_existing_matching_card(|c, duel| Mysterune::spfilter(c, duel, e, tp), tp, LOCATION_EXTRA, 0, 1, None);
+        }
+        duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, tp, LOCATION_EXTRA as i32);
+        false
+    }
+
+    fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
+        let (e, tp) = (a.e, a.tp);
+        duel.hint(HINT_SELECTMSG, tp, HINTMSG_SPSUMMON);
+        let g = duel.select_matching_card(tp, |c, duel| Mysterune::spfilter(c, duel, e, tp), tp, LOCATION_EXTRA, 0, 1, 1, None)?;
+        if !g.is_empty() {
+            duel.special_summon_full(g, 0, tp, tp, false, false, POS_FACEUP, ZONES_EMZ)?;
+        }
+        Mysterune::skipop(duel, a);
+        Ok(())
+    }
+
+    fn rmtg<P: MysteruneQuickPlay>(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+        let tp = a.tp;
+        if chk == 0 {
+            return Ok(P::uniquetg(duel, a, 0, None)?
+                && P::RMCOUNT > 0
+                && duel.is_player_can_remove(tp, None)
+                && duel.get_field_group_count(tp, 0, LOCATION_DECK) >= P::RMCOUNT);
+        }
+        P::uniquetg(duel, a, 1, None)?;
+        if P::RMCOUNT > 0 {
+            duel.set_operation_info(0, CATEGORY_REMOVE, None, P::RMCOUNT as u8, 1 - tp, LOCATION_DECK as i32);
+        }
+        Ok(false)
+    }
+
+    fn rmop<P: MysteruneQuickPlay>(duel: &mut Duel, a: &Args) -> Script<()> {
+        let tp = a.tp;
+        if P::uniqueop(duel, a)? && duel.is_player_can_remove(tp, None) {
+            let rg = duel.get_decktop_group(1 - tp, P::RMCOUNT);
+            if !rg.is_empty() {
+                duel.disable_shuffle_check(true);
+                duel.break_effect()?;
+                duel.remove(rg, POS_FACEUP, REASON_EFFECT)?;
+            }
+        }
+        Mysterune::skipop(duel, a);
+        Ok(())
+    }
+
+    fn choicetg<P: MysteruneQuickPlay>(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bool> {
+        let (e, tp) = (a.e, a.tp);
+        if chkc.is_some() {
+            return P::uniquetg(duel, a, chk, chkc);
+        }
+        let b1 = Mysterune::rmtg::<P>(duel, a, 0)?;
+        let b2 = Mysterune::sptg(duel, a, 0);
+        if chk == 0 {
+            return Ok(b1 || b2);
+        }
+        match duel.select_effect(tp, &[(b1, aux::stringid(P::ID, 0)), (b2, aux::stringid(P::ID, 1))])? {
+            Some(1) => {
+                if let Some(property) = P::UNIQUEPROP {
+                    e.set_property(duel, property);
+                }
+                e.set_category(duel, P::UNIQUECAT | CATEGORY_REMOVE);
+                Mysterune::rmtg::<P>(duel, a, 1)?;
+                e.set_operation(duel, Mysterune::rmop::<P>);
+            }
+            Some(2) => {
+                e.set_category(duel, CATEGORY_SPECIAL_SUMMON);
+                e.set_property(duel, 0);
+                Mysterune::sptg(duel, a, 1);
+                e.set_operation(duel, Mysterune::spop);
+            }
+            _ => {
+                e.set_category(duel, 0);
+                e.set_property(duel, 0);
+                e.clear_operation(duel);
+            }
+        }
         Ok(false)
     }
 }

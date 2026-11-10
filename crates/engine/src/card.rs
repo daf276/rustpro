@@ -370,6 +370,8 @@ pub struct Card {
     pub release_param: u32,
     pub spsummon_param: u32,
     pub spsummon_code: u32,
+    pub spsummon_counter: PerPlayer<u16>,
+    pub spsummon_counter_rst: PerPlayer<u16>,
     pub attack_announce_count: u8,
     pub announce_count: u8,
     pub attacked_count: u8,
@@ -1035,6 +1037,8 @@ impl Duel {
         {
             self.cards[card].unique_fieldid = 0;
         }
+        self.cards[card].spsummon_counter = Default::default();
+        self.cards[card].spsummon_counter_rst = Default::default();
     }
 
     pub(crate) fn cancel_field_effect(&mut self, card: CardId) {

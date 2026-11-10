@@ -253,6 +253,11 @@ impl EffectId {
         duel.effects[self].operation = Some(Operation::Event(operation));
     }
 
+    // Effect.SetOperation(nil).
+    pub fn clear_operation(self, duel: &mut Duel) {
+        duel.effects[self].operation = None;
+    }
+
     // Effect.SetOperation for library functions that cannot reach a prompt; a debug build checks they never do.
     pub fn set_promptless_operation(self, duel: &mut Duel, operation: OperationFn) {
         duel.effects[self].operation = Some(Operation::Promptless(operation));

@@ -4174,13 +4174,38 @@ impl Duel {
                     );
                 }
                 if self.cards[target].current.location == LOCATION_MZONE {
-                    unported!(
-                        self,
-                        self.filter_player_effect(0, EFFECT_MUST_USE_MZONE, false)
-                            .into_iter()
-                            .chain(self.filter_player_effect(1, EFFECT_MUST_USE_MZONE, false))
-                            .chain(self.filter_effect(target, EFFECT_MUST_USE_MZONE, true))
-                    );
+                    let limits: EffectSet = self
+                        .filter_player_effect(0, EFFECT_MUST_USE_MZONE, false)
+                        .into_iter()
+                        .chain(self.filter_player_effect(1, EFFECT_MUST_USE_MZONE, false))
+                        .chain(self.filter_effect(target, EFFECT_MUST_USE_MZONE, true))
+                        .collect();
+                    let real_reason = match reason {
+                        LOCATION_REASON_NONE => LOCATION_REASON_CONTROL,
+                        LOCATION_REASON_SUMMON | LOCATION_REASON_SPSUMMON | LOCATION_REASON_SET => LOCATION_REASON_TOFIELD,
+                        other => other,
+                    };
+                    let current = self.cards[target].current;
+                    for effect in limits {
+                        let peffect = &self.effects[effect];
+                        if peffect.is_flag(EFFECT_FLAG_COUNT_LIMIT) && peffect.count_limit == 0 {
+                            continue;
+                        }
+                        // The core passes the card to the value of an effect without a player target.
+                        unported!(
+                            self,
+                            (peffect.operation.is_some()
+                                || (!peffect.is_flag(EFFECT_FLAG_PLAYER_TARGET) && matches!(peffect.value, Value::Zones(_))))
+                            .then_some(effect)
+                        );
+                        let mut value = self.get_zones_value(effect, current.controler, move_player, real_reason);
+                        if self.get_handler_player(effect) != current.controler {
+                            value >>= 16;
+                        }
+                        if value & (1 << current.sequence) != 0 {
+                            self.dec_count(effect, PLAYER_NONE);
+                        }
+                    }
                     if let Some(pre_monster) = self.is_affected_by_effect(target, EFFECT_PRE_MONSTER) {
                         let mut card_type = match self.effects[pre_monster].value {
                             Value::Int(value) => value as u32,

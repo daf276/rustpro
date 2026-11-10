@@ -23,6 +23,8 @@ NATIVE = {
     "filter_bool_function": "a closure",
     "filter_bool_function_ex": "a closure",
     "not": "a closure negating the filter",
+    "and": "a closure combining the filters",
+    "true": "aux::TRUE (also the nil filter)",
 }
 
 

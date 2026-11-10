@@ -22,6 +22,8 @@ ALIASES = {
     "detach_from_self": "detach_from_self_with",
     "add_persistent_procedure": "add_procedure",
     "add_union_procedure": "add_procedure",
+    "add_cannot_be_special_summoned": "add_must_be_special_summoned",
+    "persistent_target_filter": "target_filter",
 }
 # Lua calls with no function of their own in the port.
 NATIVE = {
@@ -40,6 +42,12 @@ NATIVE = {
     "add_card": "CardSet::insert",
     "remove_card": "CardSet::remove",
     "field_summon_proc_tg": "set_target_card(fun1) (see c89252153)",
+    "filter_summon_code": "written inline (c.is_summon_code(duel, Some(sc), sumtype, tp, &[code]))",
+    "target_bool_function": "a closure passed to set_target_card",
+    "match": "CardSet::filter / keep_matching",
+    "level": "CardId::set_level (Card.Level with a value)",
+    "has_flag_effect": "get_flag_effect(...) > 0",
+    "add_proc_fun_rep": "FusionMix with SUB = false and the filter repeated",
 }
 
 

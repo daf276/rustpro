@@ -697,7 +697,7 @@ impl Synchro {
         duel.may_have_effect(HAND_CHECK) && sg.is_exists(duel, check_hand, 1, None)
     }
 
-    // The rest of CheckP43: the EFFECT_SYNCHRO_MATERIAL_CUSTOM checks, the level sum and a free zone.
+    // The rest of CheckP43: the EFFECT_SYNCHRO_MATERIAL_CUSTOM checks, Synchro.CheckAdditional, the level sum and a free zone.
     fn level_matches(duel: &Duel, tsg: CardSet, ntsg: CardSet, sg: CardSet, s: &Search) -> bool {
         let (lv, sc, tp) = (s.lv, s.sc, s.tp);
         let mut lvchk = false;

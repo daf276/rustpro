@@ -4,9 +4,9 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 2009101;
 
-// No other "Blackwing" monster is ported, so the Special Summon from the hand is only reported.
-pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (26202165, MZONE | OPPONENT)];
-pub const CHECKS: &[Check] = &[Check::Report(&Check::SpecialSummoned), Check::ResolvesEffect(aux::stringid(ID, 0))];
+// Copies in the hand, with Bora and a copy on the field to Special Summon them beside.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, MZONE), (49003716, MZONE), (26202165, MZONE | OPPONENT)];
+pub const CHECKS: &[Check] = &[Check::SpecialSummoned, Check::ResolvesEffect(aux::stringid(ID, 0))];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e1 = duel.create_effect(c);

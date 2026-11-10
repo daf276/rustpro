@@ -24,13 +24,30 @@ pub const CHECKS: &[Check] = &[
 ];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
+    add_summon_and_return_effects::<ID, ATTRIBUTE_WATER>(duel, c);
+    let e3 = duel.create_effect(c);
+    e3.set_description(duel, aux::stringid(ID, 2));
+    e3.set_category(duel, CATEGORY_TOGRAVE);
+    e3.set_type(duel, EFFECT_TYPE_IGNITION);
+    e3.set_range(duel, LOCATION_HAND);
+    e3.set_count_limit(duel, 1, ID);
+    e3.set_cost(duel, DragonRuler::self_discard_to_grave_cost::<ATTRIBUTE_WATER>);
+    e3.set_target(duel, tgtg);
+    e3.set_operation(duel, tgop);
+    c.register_effect(duel, e3);
+    add_banished_search_effect::<ID, ATTRIBUTE_WATER>(duel, c);
+}
+
+// The effects the Level 7 Dragon Rulers of the four attributes share: the Special Summon from the hand or Graveyard and the
+// return to the hand, then (after the effect of their own) the search when banished.
+pub fn add_summon_and_return_effects<const ID: u32, const ATTRIBUTE: u32>(duel: &mut Duel, c: CardId) {
     let e1 = duel.create_effect(c);
     e1.set_description(duel, aux::stringid(ID, 0));
     e1.set_category(duel, CATEGORY_SPECIAL_SUMMON);
     e1.set_type(duel, EFFECT_TYPE_IGNITION);
     e1.set_range(duel, LOCATION_HAND | LOCATION_GRAVE);
     e1.set_count_limit(duel, 1, ID);
-    e1.set_cost(duel, selfspcost);
+    e1.set_cost(duel, selfspcost::<ATTRIBUTE>);
     e1.set_target(duel, selfsptg);
     e1.set_operation(duel, selfspop);
     c.register_effect(duel, e1);
@@ -47,16 +64,9 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_target(duel, rthtg);
     e2.set_operation(duel, rthop);
     c.register_effect(duel, e2);
-    let e3 = duel.create_effect(c);
-    e3.set_description(duel, aux::stringid(ID, 2));
-    e3.set_category(duel, CATEGORY_TOGRAVE);
-    e3.set_type(duel, EFFECT_TYPE_IGNITION);
-    e3.set_range(duel, LOCATION_HAND);
-    e3.set_count_limit(duel, 1, ID);
-    e3.set_cost(duel, DragonRuler::self_discard_to_grave_cost::<ATTRIBUTE_WATER>);
-    e3.set_target(duel, tgtg);
-    e3.set_operation(duel, tgop);
-    c.register_effect(duel, e3);
+}
+
+pub fn add_banished_search_effect<const ID: u32, const ATTRIBUTE: u32>(duel: &mut Duel, c: CardId) {
     let e4 = duel.create_effect(c);
     e4.set_description(duel, aux::stringid(ID, 3));
     e4.set_category(duel, CATEGORY_TOHAND + CATEGORY_SEARCH);
@@ -64,20 +74,26 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e4.set_property(duel, EFFECT_FLAG_DELAY);
     e4.set_code(duel, EVENT_REMOVE);
     e4.set_count_limit(duel, 1, ID);
-    e4.set_target(duel, thtg);
-    e4.set_operation(duel, thop);
+    e4.set_target(duel, thtg::<ATTRIBUTE>);
+    e4.set_operation(duel, thop::<ATTRIBUTE>);
     c.register_effect(duel, e4);
 }
 
-fn spcostfilter(c: CardId, duel: &Duel) -> bool {
-    (c.is_race(duel, RACE_DRAGON) || c.is_attribute(duel, ATTRIBUTE_WATER))
+fn spcostfilter<const ATTRIBUTE: u32>(c: CardId, duel: &Duel) -> bool {
+    (c.is_race(duel, RACE_DRAGON) || c.is_attribute(duel, ATTRIBUTE))
         && c.is_able_to_remove_as_cost(duel)
         && (c.is_location(duel, LOCATION_HAND) || aux::sp_elim_filter(c, duel, true, false))
 }
 
-fn selfspcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+fn selfspcost<const ATTRIBUTE: u32>(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     let (c, tp) = (a.e.get_handler(duel), a.tp);
-    let rg = duel.get_matching_group(spcostfilter, tp, LOCATION_HAND | LOCATION_MZONE | LOCATION_GRAVE, 0, Some(c.into()));
+    let rg = duel.get_matching_group(
+        spcostfilter::<ATTRIBUTE>,
+        tp,
+        LOCATION_HAND | LOCATION_MZONE | LOCATION_GRAVE,
+        0,
+        Some(c.into()),
+    );
     if chk == 0 {
         return Ok(rg.len() > 1 && aux::select_unselect_group_check(duel, rg, 2, 2, &aux::chkf_mmz(tp, 1)));
     }
@@ -143,22 +159,22 @@ fn tgop(duel: &mut Duel, a: &Args) -> Script<()> {
     Ok(())
 }
 
-fn thfilter(c: CardId, duel: &Duel) -> bool {
-    c.is_race(duel, RACE_DRAGON) && c.is_attribute(duel, ATTRIBUTE_WATER) && c.is_able_to_hand(duel)
+fn thfilter<const ATTRIBUTE: u32>(c: CardId, duel: &Duel) -> bool {
+    c.is_race(duel, RACE_DRAGON) && c.is_attribute(duel, ATTRIBUTE) && c.is_able_to_hand(duel)
 }
 
-fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+fn thtg<const ATTRIBUTE: u32>(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
     if chk == 0 {
-        return Ok(duel.is_existing_matching_card(thfilter, a.tp, LOCATION_DECK, 0, 1, None));
+        return Ok(duel.is_existing_matching_card(thfilter::<ATTRIBUTE>, a.tp, LOCATION_DECK, 0, 1, None));
     }
     duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, a.tp, LOCATION_DECK as i32);
     Ok(false)
 }
 
-fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
+fn thop<const ATTRIBUTE: u32>(duel: &mut Duel, a: &Args) -> Script<()> {
     let tp = a.tp;
     duel.hint(HINT_SELECTMSG, tp, HINTMSG_ATOHAND);
-    let g = duel.select_matching_card(tp, thfilter, tp, LOCATION_DECK, 0, 1, 1, None)?;
+    let g = duel.select_matching_card(tp, thfilter::<ATTRIBUTE>, tp, LOCATION_DECK, 0, 1, 1, None)?;
     if !g.is_empty() {
         duel.send_to_hand(g, PLAYER_NONE, REASON_EFFECT)?;
         duel.confirm_cards(1 - tp, g)?;

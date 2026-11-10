@@ -88,7 +88,7 @@ pub type InitialEffect = fn(&mut Duel, CardId);
 // A Fusion material check (tp, sg, fc) built by a closure over a card, kept with that card.
 pub type FusionCheck = (fn(&Duel, CardId, u8, CardSet, CardId) -> bool, CardId);
 
-// proc_synchro.lua's Synchro.CheckAdditional (tp, sg, sc), a function the scripts set around a Synchro Summon.
+// A Synchro material check (tp, sg, sc).
 pub type SynchroCheck = fn(&Duel, u8, CardSet, CardId) -> bool;
 
 // The scripts the oracle loads: utility.lua and the libraries it pulls in (their global effects), and c<code>.lua.

@@ -94,7 +94,7 @@ pub struct Duel {
     pub(crate) values_reset: Vec<fn(&mut Duel)>,
     // proc_fusion.lua's Fusion.CheckAdditional, a function value the scripts set around a Fusion Summon.
     pub(crate) fusion_check_additional: Option<FusionCheck>,
-    // proc_synchro.lua's Synchro.CheckAdditional.
+    // proc_synchro.lua's Synchro.CheckAdditional, a function value the scripts set around a Synchro Summon.
     pub(crate) synchro_check_additional: Option<SynchroCheck>,
     // proc_ritual.lua's Ritual.SummoningLevel, which Ritual.Filter sets while a check runs.
     pub(crate) ritual_summoning_level: std::cell::Cell<Option<u32>>,

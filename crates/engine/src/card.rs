@@ -356,6 +356,7 @@ pub struct Card {
     pub previous: CardState,
     pub previous_type: u32,
     pub previous_attribute: u32,
+    pub previous_race: u64,
     pub previous_attack: i32,
     pub previous_code: u32,
     pub previous_code2: u32,

@@ -53,7 +53,7 @@ The `card` profile is a release build with incremental compilation, so a card ed
 
 ## Status
 
-2,150 card files are ported, covering 1,997 of the 2,000 most viewed cards of the TCG Advanced pool (by ygoprodeck weekly views; 68 of them are Normal Monsters without a script). The ported and script-less cards make up 71% of the pool's views. Three of the top 2,000 wait on engine mechanisms or on cards they list (see `PLAN.md`). `porting/queue.tsv` lists the pool in porting order and what is ported.
+2,160 card files are ported, covering all of the 2,000 most viewed cards of the TCG Advanced pool (by ygoprodeck weekly views; 68 of them are Normal Monsters without a script). The ported and script-less cards make up 71% of the pool's views. `porting/queue.tsv` lists the pool in porting order and what is ported.
 
 ## Accuracy
 

@@ -148,8 +148,9 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   A trigger on its own destruction needs a destroyer that can hit the card (Raigeki only hits the opponent; Dark Hole
   also clears what the trigger needs, so a single-target destroyer is best). An effect without `SetDescription` is
   `ResolvesEffect(0)`, and a `SetDescription` the Lua does not have shows up as a `MSG_SELECT_IDLECMD` or
-  `MSG_SELECT_CHAIN` diff. `EFFECT_EXTRA_FUSION_MATERIAL` (a card letting the player use extra Fusion materials, such as
-  Lunalight Masquerade) is unported: skip such cards. A Link whose effect needs its materials to qualify gets only qualifying materials. `cargo check -p scripts -j 7` finds compile errors first. Never kill a
+  `MSG_SELECT_CHAIN` diff. A card letting other cards be Fusion materials (`EFFECT_EXTRA_FUSION_MATERIAL`, Lunalight Masquerade) is
+  checked from a material's file with `MaterialFrom(location)`, which counts only the card under test (c11317977).
+  A condition, value, target or filter that writes `s[...]` calls `duel.set_script_state(ID << 16 | slot, v)` on `&Duel`. A Link whose effect needs its materials to qualify gets only qualifying materials. `cargo check -p scripts -j 7` finds compile errors first. Never kill a
   build midway (`timeout` on `cargo run`): it corrupts the incremental cache (hundreds of `LNK2019`); delete
   `target/card/incremental/scripts-*` and `diff-*` to recover.
   Scenario Xyz materials come only from the fixed set: a card needing a specific material gets it attached through a

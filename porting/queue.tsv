@@ -1162,7 +1162,7 @@ code	name	type	weekly_views	ported
 70903634	Right Arm of the Forbidden One	Normal Monster	841	no script
 89812483	Max Metalmorph	Trap Card	841	yes
 342673	Dark Magician the Magician of Black Magic	Effect Monster	840	yes
-2344618	Lunalight Masquerade	Spell Card	840	no
+2344618	Lunalight Masquerade	Spell Card	840	yes
 4041838	Ninja Grandmaster Sasuke	Effect Monster	840	yes
 4810828	Sauravis, the Ancient and Ascended	Ritual Effect Monster	840	yes
 4906301	Necro Gardna	Effect Monster	840	yes
@@ -1723,7 +1723,7 @@ code	name	type	weekly_views	ported
 53257892	Gigaplant	Gemini Monster	588	yes
 57882509	Mask of Weakness	Trap Card	588	yes
 58201062	Spectral, Dragon Ruler of Flickers	Effect Monster	588	yes
-63035430	Skyscraper	Spell Card	588	no
+63035430	Skyscraper	Spell Card	588	yes
 63542003	Keldo the Sacred Protector	Effect Monster	588	yes
 64804316	Ghostrick Siren	Effect Monster	588	yes
 65892310	Brionac, the Magical Ice Dragon	Synchro Monster	588	yes
@@ -1947,7 +1947,7 @@ code	name	type	weekly_views	ported
 25774450	Mystic Box	Spell Card	507	yes
 44822037	Angel Statue - Azurune	Trap Card	507	yes
 59616123	Trap Stun	Trap Card	507	yes
-11911336	Spellbook of the Grand Circle	Spell Card	506	no
+11911336	Spellbook of the Grand Circle	Spell Card	506	yes
 66574418	The Black Stone of Legend	Effect Monster	506	yes
 70797118	Thunder Nyan Nyan	Effect Monster	506	yes
 97584500	Ghostrick Mummy	Effect Monster	506	yes
@@ -2365,7 +2365,7 @@ code	name	type	weekly_views	ported
 41006930	Strike Ninja	Effect Monster	421	no
 42055234	Dragonmaid Tinkhec	Effect Monster	421	no
 45247637	Mark of the Rose	Spell Card	421	no
-48016074	Charmers of the Grand Circle	Fusion Monster	421	no
+48016074	Charmers of the Grand Circle	Fusion Monster	421	yes
 58332301	Evil HERO Dark Gaia	Fusion Monster	421	yes
 68396121	Number C107: Neo Galaxy-Eyes Tachyon Dragon	XYZ Monster	421	yes
 76891401	Sea Dragon Lord Gishilnodon	Synchro Monster	421	no
@@ -2418,7 +2418,7 @@ code	name	type	weekly_views	ported
 36319131	Fighting Flame Dragon	Fusion Monster	420	yes
 36857073	Hot Red Dragon Archfiend Bane	Synchro Monster	420	yes
 37267041	Silent Swordsman LV7	Effect Monster	420	no
-37970940	Aussa the Earth Charmer	Flip Effect Monster	420	no
+37970940	Aussa the Earth Charmer	Flip Effect Monster	420	yes
 40418351	Cyberdark Dragon	Fusion Monster	420	no
 40916023	Aqua Spirit	Effect Monster	420	no
 44729197	Steamroid	Effect Monster	420	no
@@ -2514,7 +2514,7 @@ code	name	type	weekly_views	ported
 14105623	Odd-Eyes Arc Pendulum Dragon	Pendulum Normal Monster	399	no
 14517422	Darklord Contact	Spell Card	399	no
 15717011	The Light - Hex-Sealed Fusion	Effect Monster	399	no
-19327348	Dharc the Dark Charmer	Flip Effect Monster	399	no
+19327348	Dharc the Dark Charmer	Flip Effect Monster	399	yes
 20765952	Mask of Dispel	Spell Card	399	no
 21340051	Boar Soldier	Effect Monster	399	no
 23015896	Fire King High Avatar Garunix	Effect Monster	399	yes
@@ -2862,7 +2862,7 @@ code	name	type	weekly_views	ported
 73129314	Heart of Gaia	Effect Monster	357	no
 73216412	Worm Drake	Normal Monster	357	no script
 73452089	Dark Cavalry	Fusion Monster	357	yes
-74364659	Eria the Water Charmer	Flip Effect Monster	357	no
+74364659	Eria the Water Charmer	Flip Effect Monster	357	yes
 75191028	GMX - COMPREX	Fusion Monster	357	no
 75380687	Amulet Dragon	Fusion Monster	357	no
 76039636	Doom Dozer	Effect Monster	357	no
@@ -3082,7 +3082,7 @@ code	name	type	weekly_views	ported
 60394026	Ryzeal Plugin	Spell Card	316	no
 83319154	Annihilate Retroglight	Trap Card	316	no
 111280	Dark Magic Expanded	Spell Card	315	no
-759393	Hiita the Fire Charmer	Flip Effect Monster	315	no
+759393	Hiita the Fire Charmer	Flip Effect Monster	315	yes
 1248895	Chain Destruction	Trap Card	315	no
 1527418	Wiz, Sage Fur Hire	Effect Monster	315	no
 1995985	Silent Swordsman LV3	Effect Monster	315	no
@@ -3151,7 +3151,7 @@ code	name	type	weekly_views	ported
 36708764	Roulette Spider	Spell Card	315	no
 37164373	Madolche Queen Tiaramisu	XYZ Monster	315	no
 37313348	Turtle Tiger	Normal Monster	315	no script
-37744402	Wynn the Wind Charmer	Flip Effect Monster	315	no
+37744402	Wynn the Wind Charmer	Flip Effect Monster	315	yes
 37750912	Stardust Illumination	Spell Card	315	no
 38129297	Double Interlock	Spell Card	315	no
 38552107	Horn of Light	Spell Card	315	no
@@ -3407,7 +3407,7 @@ code	name	type	weekly_views	ported
 72575145	Demotion	Spell Card	294	yes
 72664875	Crimson Nova Trinity the Dark Cubic Lord	Fusion Monster	294	no
 72705654	Tachyon Cloudragon	Effect Monster	294	no
-73318863	Lyna the Light Charmer	Flip Effect Monster	294	no
+73318863	Lyna the Light Charmer	Flip Effect Monster	294	yes
 75376965	Enchanting Mermaid	Normal Monster	294	no script
 75434695	Elemental HERO Woodsman	Effect Monster	294	yes
 76211194	Meda Bat	Normal Monster	294	no script

@@ -20,6 +20,9 @@ pub enum Check {
     Resolves,
     // The effect with this description (aux::stringid) resolves.
     ResolvesEffect(u64),
+    // The effect with this description resolves on any card: an effect the card grants (equip, EFFECT_TYPE_GRANT, Xyz
+    // material) is activated by the monster that receives it.
+    ResolvesGranted(u64),
     SpecialSummoned,
     // A card with this code, such as a token the card creates, is Special Summoned.
     SpecialSummonedCode(u32),

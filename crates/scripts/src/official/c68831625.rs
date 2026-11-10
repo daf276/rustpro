@@ -19,10 +19,9 @@ pub const SUPPORT: &[(u32, u16)] = &[
     (54265980, MZONE),
     (31010081, MZONE),
 ];
-// The granted effect chains as the equipped monster, so the check cannot count it.
 pub const CHECKS: &[Check] = &[
     Check::ResolvesEffect(aux::stringid(ID, 0)),
-    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 1))),
+    Check::ResolvesGranted(aux::stringid(ID, 1)),
 ];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {

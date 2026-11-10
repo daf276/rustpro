@@ -734,6 +734,12 @@ pub fn check_count(check: Check, card: u32, tally: &Tally) -> u32 {
     match check {
         Check::Resolves => tally.resolutions(card),
         Check::ResolvesEffect(description) => get(&tally.effects, (card, description)),
+        Check::ResolvesGranted(description) => tally
+            .effects
+            .iter()
+            .filter(|((_, effect), _)| *effect == description)
+            .map(|(_, count)| count)
+            .sum(),
         Check::SpecialSummoned => get(&tally.special_summons, card),
         Check::SpecialSummonedCode(code) => get(&tally.special_summons, code),
         Check::RitualMaterial => get(&tally.ritual_materials, card),

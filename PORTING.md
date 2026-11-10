@@ -65,7 +65,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - `pub const CHECKS: &[Check]` (`crate::testing::Check`), each needing a count above 0 in both the first 13 and all
   64 scenarios. Without `CHECKS` the card must resolve some effect (`Check::Resolves`). Others:
   `ResolvesEffect(aux::stringid(ID, n))` (chain links the card itself activated: `ResolvesEffect(0)` counts only its own
-  effects without a description, never another card's), `SpecialSummoned`, `SpecialSummonedCode(code)` (a token the card creates),
+  effects without a description, never another card's), `ResolvesGranted(aux::stringid(ID, n))` (that effect resolving on
+  any card: for effects the card grants by equip, `EFFECT_TYPE_GRANT` or as Xyz material), `SpecialSummoned`, `SpecialSummonedCode(code)` (a token the card creates),
   `RitualMaterial` (the card under test used as a material; a Ritual Spell is checked with `SpecialSummonedCode`),
   `MaterialFrom(location)`, `CardHint(description)`, `Message(MSG_*)` (from `engine::constants`; the
   message must be about the card or about no card), `TributeSummoned(n)`, `TributeSet(n)`, `Replaced`, and

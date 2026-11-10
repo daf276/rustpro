@@ -462,7 +462,11 @@ impl Synchro {
     // requirements, and no effect of the codes CheckP41 to CheckP43 look up.
     fn is_plain<P: SynchroProcedure>(duel: &Duel) -> bool {
         let codes = [EFFECT_SYNCHRO_MAT_RESTRICTION, HAND_CHECK, EFFECT_SYNCHRO_MATERIAL_CUSTOM];
-        P::REQ1.is_none() && P::REQ2.is_none() && P::REQM.is_none() && !codes.iter().any(|&code| duel.may_have_effect(code))
+        P::REQ1.is_none()
+            && P::REQ2.is_none()
+            && P::REQM.is_none()
+            && duel.get_synchro_check_additional().is_none()
+            && !codes.iter().any(|&code| duel.may_have_effect(code))
     }
 
     fn level_reachable<P: SynchroProcedure>(duel: &Duel, g: CardSet, s: &Search) -> bool {
@@ -714,7 +718,8 @@ impl Synchro {
                 lvchk |= tlvchk;
             }
         }
-        (lvchk || sg.check_with_sum_equal(duel, |c, duel| s.levels.get(duel, c, sc), lv, sg.len(), sg.len()))
+        duel.get_synchro_check_additional().is_none_or(|check| check(duel, tp, sg, sc))
+            && (lvchk || sg.check_with_sum_equal(duel, |c, duel| s.levels.get(duel, c, sc), lv, sg.len(), sg.len()))
             && ((sc.is_location(duel, LOCATION_EXTRA) && duel.get_location_count_from_ex(tp, tp, Some(sg), sc) > 0)
                 || (!sc.is_location(duel, LOCATION_EXTRA) && duel.get_mzone_count(tp, Some(sg)) > 0))
     }
@@ -1134,6 +1139,7 @@ impl Synchro {
         }
         unported!(duel, g.is_exists(duel, |mc, duel| mc.get_flag_effect(duel, 3096468) != 0, 1, None));
         duel.send_to_grave(g, REASON_MATERIAL + REASON_SYNCHRO)?;
+        duel.set_synchro_check_additional(None);
         Ok(())
     }
 }

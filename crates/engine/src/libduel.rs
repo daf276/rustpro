@@ -19,7 +19,7 @@ use crate::processor::{
     AnnounceAttribute, AnnounceCard, AnnounceNumber, AnnounceRace, SelectCard, SelectOption, SelectPlace, SelectPosition, SelectYesNo,
     SortDeck,
 };
-use crate::script::{FusionCheck, Procedure, Script};
+use crate::script::{FusionCheck, Procedure, Script, SynchroCheck};
 
 // What Duel.GetChainInfo pushes for one CHAININFO flag.
 #[derive(Debug, Clone, Copy)]
@@ -2715,6 +2715,14 @@ impl Duel {
 
     pub fn get_fusion_check_additional(&self) -> Option<FusionCheck> {
         self.fusion_check_additional
+    }
+
+    pub fn get_synchro_check_additional(&self) -> Option<SynchroCheck> {
+        self.synchro_check_additional
+    }
+
+    pub fn set_synchro_check_additional(&mut self, check: Option<SynchroCheck>) {
+        self.synchro_check_additional = check;
     }
 
     pub fn set_fusion_check_additional(&mut self, check: Option<FusionCheck>) {

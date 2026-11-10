@@ -44,7 +44,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.register_effect(duel, e3);
 }
 
-fn dircon(duel: &Duel, a: &Args) -> bool {
+pub fn dircon(duel: &Duel, a: &Args) -> bool {
     let tp = a.e.get_handler_player(duel);
     super::c53183600::toon_world_on_field(duel, tp)
         && !duel.is_existing_matching_card(

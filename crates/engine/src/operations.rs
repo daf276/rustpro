@@ -1987,7 +1987,7 @@ impl Duel {
                     return true;
                 }
                 // Phase 2: cards leaving the field also snapshot their previous code, type, stats and set codes here; only
-                // the code and the type are kept so far.
+                // the code, the type, the attribute and the ATK are kept so far.
                 let mut leave_p = CardSet::default();
                 let targets = arg.targets;
                 for card in targets.iter() {
@@ -2000,8 +2000,10 @@ impl Duel {
                         };
                         if self.cards[card].current.position & POS_FACEUP == 0 {
                             self.cards[card].previous_attribute = self.cards[card].data.attribute;
+                            self.cards[card].previous_attack = self.cards[card].data.attack;
                         } else if self.cards[card].current.location & LOCATION_MZONE != 0 {
                             self.cards[card].previous_attribute = self.get_attribute(card);
+                            self.cards[card].previous_attack = self.get_attack(card);
                         }
                     }
                     if !self.is_leaving_field(card) {
@@ -5568,7 +5570,22 @@ impl Duel {
                 if ct <= 1 {
                     return false;
                 }
-                unported!(self, Some(ct));
+                let mut infos = Vec::new();
+                for (card, &seq) in state.set.iter().zip(&state.seq) {
+                    if self.cards[card].data.card_type & TYPE_FIELD != 0 {
+                        continue;
+                    }
+                    infos.push(self.cards.get_info_location(card));
+                    if let Some(slot) = self.player[toplayer].zone_mut(LOCATION_SZONE, seq.into()) {
+                        *slot = Some(card);
+                    }
+                    self.cards[card].current.sequence = seq.into();
+                }
+                let mut message = self.trace.message(MSG_SHUFFLE_SET_CARD);
+                message.u8(LOCATION_SZONE).u8(ct);
+                for info in infos.into_iter().chain((0..ct).map(|_| LocInfo::default())) {
+                    message.loc(info);
+                }
                 false
             }
             7 => {

@@ -193,6 +193,13 @@ impl CardId {
         duel.cards[self].previous.controler
     }
 
+    pub fn get_destination(self, duel: &Duel) -> u32 {
+        match duel.destination_probe.get() {
+            Some((card, destination)) if card == self => u32::from(destination),
+            _ => u32::from(duel.cards[self].sendto_param.location),
+        }
+    }
+
     pub fn get_previous_location(self, duel: &Duel) -> u32 {
         u32::from(duel.cards[self].previous.location)
     }
@@ -214,6 +221,10 @@ impl CardId {
 
     pub fn get_previous_attribute_on_field(self, duel: &Duel) -> u32 {
         duel.cards[self].previous_attribute
+    }
+
+    pub fn get_previous_attack_on_field(self, duel: &Duel) -> i32 {
+        duel.cards[self].previous_attack
     }
 
     pub fn reset_effect(self, duel: &mut Duel, code: u32, reset_type: u32) {

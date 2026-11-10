@@ -295,6 +295,7 @@ impl Duel {
             immune_effects,
             equip_cards,
             unported,
+            destination_probe: _,
         } = source;
         self.cards.sync_from(cards);
         self.player.clone_from(player);

@@ -124,6 +124,9 @@ pub struct Duel {
     pub(crate) immune_effects: List<(CardId, EffectId), 16>,
     // The first unported call site an effect reached, set in checks that only read.
     pub(crate) unported: std::cell::Cell<Option<&'static str>>,
+    // The card and destination a cost check sets as sendto_param.location while it asks the redirects (see cost_destination);
+    // None between calls.
+    pub(crate) destination_probe: std::cell::Cell<Option<(CardId, u8)>>,
 }
 
 impl Duel {
@@ -178,6 +181,7 @@ impl Duel {
             immune_effects: List::default(),
             equip_cards: CardSet::default(),
             unported: std::cell::Cell::new(None),
+            destination_probe: std::cell::Cell::new(None),
         })
     }
 

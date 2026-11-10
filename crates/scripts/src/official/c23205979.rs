@@ -55,7 +55,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.register_effect(duel, e6);
 }
 
-fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+pub fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
     if chk == 0 {
         return Ok(true);
     }
@@ -63,7 +63,7 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool
     Ok(false)
 }
 
-fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
     let g = duel.get_field_group(a.ep, LOCATION_HAND, 0);
     if g.is_empty() {
         return Ok(());
@@ -73,13 +73,13 @@ fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
     Ok(())
 }
 
-fn register(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn register(duel: &mut Duel, a: &Args) -> Script<()> {
     a.e.get_handler(duel)
         .register_flag_effect_full(duel, ID + 1, RESET_CHAIN, 0, 1, i64::from(a.ev), 0);
     Ok(())
 }
 
-fn desop1(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn desop1(duel: &mut Duel, a: &Args) -> Script<()> {
     let c = a.e.get_handler(duel);
     let Some(g) = duel.get_chain_info::<Option<CardSet>>(a.ev as u8, CHAININFO_TARGET_CARDS) else {
         return Ok(());
@@ -97,7 +97,7 @@ fn desop1(duel: &mut Duel, a: &Args) -> Script<()> {
     Ok(())
 }
 
-fn desop2(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn desop2(duel: &mut Duel, a: &Args) -> Script<()> {
     let c = a.e.get_handler(duel);
     if c.has_flag_effect(duel, ID) && c.is_has_effect(duel, EFFECT_DISABLE).is_none() && !c.is_disabled(duel) {
         duel.destroy(c, REASON_EFFECT)?;

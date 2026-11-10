@@ -555,6 +555,19 @@ pub mod aux {
         g.len() < 2 || g.into_iter().any(|c| checkrecbin(duel, c, g, 0, f))
     }
 
+    // Group.CheckSameProperty: whether the cards share a bit of the property f returns, and the shared bits.
+    pub fn check_same_property(duel: &Duel, g: CardSet, f: &dyn Fn(CardId, &Duel) -> u64) -> (bool, u64) {
+        let mut prop: Option<u64> = None;
+        for tc in g {
+            let value = prop.map_or_else(|| f(tc, duel), |prop| prop & f(tc, duel));
+            if value == 0 {
+                return (false, 0);
+            }
+            prop = Some(value);
+        }
+        (true, prop.unwrap_or(0))
+    }
+
     // Group.CheckDifferentProperty: whether the cards can each take a different one of the properties f returns.
     pub fn check_different_property(duel: &Duel, g: CardSet, f: &dyn Fn(CardId, &Duel) -> Vec<u32>) -> bool {
         fn checkrec(duel: &Duel, c: CardId, g: CardSet, taken: &mut Vec<u32>, f: &dyn Fn(CardId, &Duel) -> Vec<u32>) -> bool {

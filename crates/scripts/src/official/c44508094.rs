@@ -49,7 +49,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.register_effect(duel, e2);
 }
 
-fn condition(duel: &Duel, a: &Args) -> bool {
+pub fn condition(duel: &Duel, a: &Args) -> bool {
     let Some(re) = a.re else { return false };
     if a.e.get_handler(duel).is_status(duel, STATUS_BATTLE_DESTROYED) || !duel.is_chain_negatable(a.ev as u8) {
         return false;

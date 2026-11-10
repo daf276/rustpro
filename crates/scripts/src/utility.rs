@@ -1651,6 +1651,7 @@ pub trait CardUtility: Copy {
     fn is_owner(self, duel: &Duel, player: u8) -> bool;
     fn is_equip_spell(self, duel: &Duel) -> bool;
     fn is_previous_attribute_on_field(self, duel: &Duel, attribute: u32) -> bool;
+    fn is_previous_type_on_field(self, duel: &Duel, card_type: u32) -> bool;
     fn is_previous_code_on_field(self, duel: &Duel, codes: &[u32]) -> bool;
     fn is_field_spell(self, duel: &Duel) -> bool;
     fn is_ritual_spell(self, duel: &Duel) -> bool;
@@ -1935,6 +1936,10 @@ impl CardUtility for CardId {
 
     fn is_previous_attribute_on_field(self, duel: &Duel, attribute: u32) -> bool {
         self.get_previous_attribute_on_field(duel) & attribute > 0
+    }
+
+    fn is_previous_type_on_field(self, duel: &Duel, card_type: u32) -> bool {
+        self.get_previous_type_on_field(duel) & card_type > 0
     }
 
     fn is_previous_code_on_field(self, duel: &Duel, codes: &[u32]) -> bool {

@@ -305,6 +305,10 @@ impl EffectId {
         duel.dec_count(self, player);
     }
 
+    pub fn get_field_id(self, duel: &Duel) -> u32 {
+        duel.effects.id(self)
+    }
+
     pub fn get_label(self, duel: &Duel) -> i64 {
         duel.effects[self].labels().first().copied().unwrap_or(0)
     }

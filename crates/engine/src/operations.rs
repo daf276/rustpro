@@ -50,6 +50,13 @@ pub struct SwapControl {
     pub self_selected_sequence: u32,
 }
 
+#[derive(Debug, Clone)]
+pub struct SelfDestroyUnique {
+    pub step: u16,
+    pub unique_card: CardId,
+    pub playerid: u8,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct SelfDestroy {
     pub step: u16,
@@ -862,6 +869,66 @@ impl Duel {
             _ => {
                 self.core.operated_set.clear();
                 self.returns.set_i32(0, 0);
+                true
+            }
+        }
+    }
+
+    // Processors::SelfDestroyUnique: one of the cards a SetUniqueOnField rule covers is kept and the rest are destroyed.
+    pub(crate) fn process_self_destroy_unique(&mut self, arg: &mut SelfDestroyUnique) -> bool {
+        let (ucard, playerid) = (arg.unique_card, arg.playerid);
+        match arg.step {
+            0 if self.unique_cards(playerid).contains(&ucard) => {
+                let targets = self.get_unique_target(ucard, playerid, None);
+                if targets.len() <= 1 {
+                    self.cards[ucard].unique_fieldid = targets.get_first().map_or(0, |card| self.cards[card].fieldid);
+                    self.core.unique_destroy_set.remove(ucard);
+                    return true;
+                }
+                let controlled = |player: u8, any: bool| -> Cards16 {
+                    let cards = targets.iter().filter(|&card| self.cards[card].current.controler == player);
+                    cards.filter(|&card| any || self.cards[card].unique_fieldid != u32::MAX).collect()
+                };
+                let (chooser, select_cards) = [(playerid, false), (1 - playerid, false), (playerid, true), (1 - playerid, true)]
+                    .into_iter()
+                    .map(|(player, any)| (player, controlled(player, any)))
+                    .find(|(_, cards)| !cards.is_empty())
+                    .unwrap_or((playerid, Cards16::default()));
+                self.core.select_cards = select_cards;
+                if let &[only] = &*self.core.select_cards {
+                    self.return_cards.clear();
+                    self.return_cards.list.push(only);
+                } else {
+                    self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(chooser).u64(534);
+                    self.emplace_process(SelectCard {
+                        playerid: chooser,
+                        min: 1,
+                        max: 1,
+                        ..SelectCard::default()
+                    });
+                }
+                false
+            }
+            1 if let Some(&kept) = self.return_cards.list.first() => {
+                let mut targets = self.get_unique_target(ucard, playerid, None);
+                self.cards[ucard].unique_fieldid = self.cards[kept].fieldid;
+                targets.remove(kept);
+                let (reason_effect, reason_player) = (
+                    self.cards[ucard].unique.map(|unique| unique.effect),
+                    self.cards[ucard].current.controler,
+                );
+                for card in targets.iter() {
+                    let target = &mut self.cards[card];
+                    target.temp.reason_effect = target.current.reason_effect;
+                    target.temp.reason_player = target.current.reason_player;
+                    target.current.reason_effect = reason_effect;
+                    target.current.reason_player = reason_player;
+                }
+                self.field_destroy(targets, None, REASON_RULE, PLAYER_SELFDES, PLAYER_NONE, 0, 0);
+                false
+            }
+            _ => {
+                self.core.unique_destroy_set.remove(ucard);
                 true
             }
         }

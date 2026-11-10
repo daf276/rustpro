@@ -9,7 +9,7 @@ use crate::effect::{
 };
 use crate::libduel::ReleaseOptions;
 use crate::list::List;
-use crate::operations::SelfDestroy;
+use crate::operations::{SelfDestroy, SelfDestroyUnique};
 use crate::processor::{Adjust, Unit};
 use crate::script::Replay;
 
@@ -284,6 +284,7 @@ pub struct Processor {
     pub chain_attack_target: Option<CardId>,
     pub attack_player: bool,
     pub selfdes_disabled: bool,
+    pub unique_destroy_set: CardSet,
     pub self_destroy_set: CardSet,
     pub overdraw: PerPlayer<bool>,
     pub shuffle_check_disabled: bool,
@@ -437,6 +438,7 @@ clone_by_field!(Processor {
     chain_attack_target,
     attack_player,
     selfdes_disabled,
+    unique_destroy_set,
     self_destroy_set,
     overdraw,
     shuffle_check_disabled,
@@ -582,6 +584,7 @@ impl Processor {
             chain_attack_target: None,
             attack_player: false,
             selfdes_disabled: false,
+            unique_destroy_set: CardSet::default(),
             self_destroy_set: CardSet::default(),
             overdraw: PerPlayer::default(),
             shuffle_check_disabled: false,
@@ -2489,7 +2492,7 @@ impl Duel {
     }
 
     // core.unique_cards[controler]: the cards on the field with SetUniqueOnField whose rule covers that player's cards.
-    fn unique_cards(&self, controler: u8) -> Vec<CardId> {
+    pub(crate) fn unique_cards(&self, controler: u8) -> Vec<CardId> {
         let on_field = (0..2).flat_map(|p| {
             let player = &self.player[p];
             player.list_mzone.into_iter().chain(player.list_szone).flatten()
@@ -2505,7 +2508,7 @@ impl Duel {
     }
 
     // card::get_unique_target.
-    fn get_unique_target(&self, ucard: CardId, controler: u8, icard: Option<CardId>) -> CardSet {
+    pub(crate) fn get_unique_target(&self, ucard: CardId, controler: u8, icard: Option<CardId>) -> CardSet {
         let mut cards = CardSet::default();
         let Some(unique) = self.cards[ucard].unique else { return cards };
         for p in 0..2 {
@@ -3152,14 +3155,14 @@ impl Duel {
         }
     }
 
-    // EFFECT_SELF_TOGRAVE comes with the cards that use it, and so does the destruction of a card with more than one
-    // SetUniqueOnField target (Processors::SelfDestroyUnique).
+    // EFFECT_SELF_TOGRAVE comes with the cards that use it.
     pub(crate) fn adjust_self_destroy_set(&mut self) {
-        if self.core.selfdes_disabled || !self.core.self_destroy_set.is_empty() {
+        if self.core.selfdes_disabled || !self.core.unique_destroy_set.is_empty() || !self.core.self_destroy_set.is_empty() {
             return;
         }
         let mut p = self.infos.turn_player;
         for _ in 0..2 {
+            let mut uniq_set = Vec::new();
             for ucard in self.unique_cards(p) {
                 let target = &self.cards[ucard];
                 if !target.is_position(POS_FACEUP)
@@ -3169,8 +3172,20 @@ impl Duel {
                     continue;
                 }
                 let targets = self.get_unique_target(ucard, p, None);
-                unported!(self, (targets.len() > 1).then_some(ucard));
-                self.cards[ucard].unique_fieldid = targets.get_first().map_or(0, |card| self.cards[card].fieldid);
+                if targets.len() > 1 {
+                    uniq_set.push(ucard);
+                } else {
+                    self.cards[ucard].unique_fieldid = targets.get_first().map_or(0, |card| self.cards[card].fieldid);
+                }
+            }
+            uniq_set.sort_by_key(|&card| self.cards[card].fieldid);
+            for ucard in uniq_set {
+                self.emplace_process(SelfDestroyUnique {
+                    step: 0,
+                    unique_card: ucard,
+                    playerid: p,
+                });
+                self.core.unique_destroy_set.insert(ucard);
             }
             p = 1 - p;
         }

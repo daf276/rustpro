@@ -2331,6 +2331,7 @@ pub trait DuelUtility {
     fn move_to_deck_bottom(&mut self, targets: CardSet) -> Script<()>;
     fn move_to_deck_top(&mut self, targets: CardSet) -> Script<()>;
     fn place_field_spell(&mut self, c: CardId, tp: u8) -> Script<bool>;
+    fn activate_field_spell(&mut self, c: CardId, tp: u8) -> Script<bool>;
     fn count_heads(&self, results: &[u8]) -> usize;
     fn call_coin(&mut self, tp: u8) -> Script<bool>;
     fn summon_or_set(&mut self, tp: u8, c: CardId, ignore_count: bool, procedure: Option<EffectId>, min_tribute: u8) -> Script<()>;
@@ -2413,6 +2414,20 @@ impl DuelUtility for Duel {
             return Ok(false);
         }
         Ok(res)
+    }
+
+    // Duel.ActivateFieldSpell(c, e, tp, ...) with target_p left out; the cost of the activate effect is not run.
+    fn activate_field_spell(&mut self, c: CardId, tp: u8) -> Script<bool> {
+        if !self.place_field_spell(c, tp)? {
+            return Ok(false);
+        }
+        let te = c.get_activate_effect(self);
+        unported!(self, te.is_none_or(|te| te.get_cost(self).is_some()));
+        let Some(te) = te else { return Ok(false) };
+        te.use_count_limit_full(self, tp, 1, true);
+        let chain = u32::from(self.get_current_chain());
+        self.raise_event(c, 4179255, Some(te), 0, tp, tp, chain)?;
+        Ok(true)
     }
 
     // Duel.MoveToDeckBottom(count, tp): the top card of the Deck, `count` times.

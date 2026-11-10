@@ -95,6 +95,7 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - A continuous effect with an operation forms no chain link, so `ResolvesEffect` never counts it: check what it does
   (`Message(MSG_DAMAGE)` and the like), as `Report` if other cards do the same. `aux.SpElimFilter(c, true)` with a nil
   third argument accepts only Graveyard monsters.
+- The card under test is placed besides its own `SUPPORT` copies: a `SetUniqueOnField` card gets none there.
 - A Link Monster `SUPPORT` places never sits in an Extra Monster Zone, so effects on the zones it points to need a
   real Link Summon.
 - `(code, DECK)` for an Extra Deck monster and `(code, EXTRA)` for a Main Deck monster are silently dropped. An

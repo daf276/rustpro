@@ -2478,7 +2478,7 @@ impl DuelUtility for Duel {
 }
 
 // Card.EquipByEffectLimit.
-fn equip_by_effect_limit(duel: &Duel, e: EffectId, c: CardId) -> bool {
+pub(crate) fn equip_by_effect_limit(duel: &Duel, e: EffectId, c: CardId) -> bool {
     e.get_owner(duel) == c
         && c.get_card_effect(duel, 89785779 + EFFECT_EQUIP_LIMIT)
             .into_iter()

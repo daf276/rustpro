@@ -80,6 +80,7 @@ pub trait EffectChain: Copy {
     fn set_chain_data_group(self, duel: &mut Duel, slot: u8, group: CardSet);
     fn is_card_setcode(self, duel: &Duel, setcode: u16) -> bool;
     fn is_card_attribute(self, duel: &Duel, attribute: u32) -> bool;
+    fn get_card_level(self, duel: &Duel) -> u32;
 }
 
 impl EffectChain for EffectId {
@@ -111,6 +112,23 @@ impl EffectChain for EffectId {
     // Effect.IsCardAttribute.
     fn is_card_attribute(self, duel: &Duel, attribute: u32) -> bool {
         properties_card(duel, self).is_some_and(|card| card.is_attribute(duel, attribute))
+    }
+
+    // Effect.GetCardLevel: the handler's level while it is face-up and related to the chain link being resolved, else the
+    // level recorded when it activated. An effect that is not the chain link reads its owner.
+    fn get_card_level(self, duel: &Duel) -> u32 {
+        unported!(duel, self.is_has_property(duel, EFFECT_FLAG_FIELD_ONLY));
+        let triggering =
+            duel.get_current_chain() > 0 && duel.get_chain_info::<Option<EffectId>>(0, CHAININFO_TRIGGERING_EFFECT) == Some(self);
+        if !(self.is_activated(duel) && triggering) {
+            return self.get_owner(duel).get_level(duel);
+        }
+        let handler = self.get_handler(duel);
+        if handler.is_relate_to_effect(duel, self) && handler.is_faceup(duel) {
+            handler.get_level(duel)
+        } else {
+            duel.get_chain_info::<u32>(0, CHAININFO_TRIGGERING_LEVEL)
+        }
     }
 }
 

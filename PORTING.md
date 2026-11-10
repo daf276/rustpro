@@ -102,7 +102,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - The card under test is placed besides its own `SUPPORT` copies: a `SetUniqueOnField` card gets none there.
 - A Link Monster `SUPPORT` places never sits in an Extra Monster Zone, so effects on the zones it points to need a
   real Link Summon.
-- `(code, DECK)` for an Extra Deck monster and `(code, EXTRA)` for a Main Deck monster are silently dropped. An
+- `(code, DECK)` or `(code, HAND)` for an Extra Deck monster and `(code, EXTRA)` for a Main Deck monster are silently
+  dropped. An
   exact-count `aux.SelectUnselectGroup` can stall the random player past the decision limit ("no MSG_WIN within 5000
   decisions"); the Extra Deck size changes the odds (Gordian Slicer pads it to 17).
   An effect that needs an attack on a specific face-up
@@ -112,7 +113,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - `SpecialSummoned` counts the card under test being summoned; what a card summons is `SpecialSummonedCode`.
 - `Replaced` counts the card under test's own replaced move (a destruction replaced, or a `REASON_REPLACE` move such as
   a cost-replace banish): an effect that replaces another card's destruction is
-  checked from that card's file (with the replacing card in its `SUPPORT`).
+  checked from that card's file (with the replacing card in its `SUPPORT`). A card replacing its own destruction without
+  moving is not counted: check its prompt with `Message(MSG_SELECT_EFFECTYN)` (c71100270).
 - A battle-timed effect (`EVENT_PRE_DAMAGE_CALCULATE` and the like) needs several copies and materials-proof support,
   since random play uses monsters as Link/Xyz materials and activates hand Spells early; Polymerization stays in hand
   for a reveal or discard cost. A card whose only target is an unported archetype member is `Report`.
@@ -125,7 +127,9 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   A Spell that Special Summons another card is checked by `SpecialSummonedCode(code)`.
   A trigger on its own destruction needs a destroyer that can hit the card (Raigeki only hits the opponent; Dark Hole
   also clears what the trigger needs, so a single-target destroyer is best). An effect without `SetDescription` is
-  `ResolvesEffect(0)`. A Link whose effect needs its materials to qualify gets only qualifying materials. `cargo check -p scripts -j 7` finds compile errors first. Never kill a
+  `ResolvesEffect(0)`, and a `SetDescription` the Lua does not have shows up as a `MSG_SELECT_IDLECMD` or
+  `MSG_SELECT_CHAIN` diff. `EFFECT_EXTRA_FUSION_MATERIAL` (a card letting the player use extra Fusion materials, such as
+  Lunalight Masquerade) is unported: skip such cards. A Link whose effect needs its materials to qualify gets only qualifying materials. `cargo check -p scripts -j 7` finds compile errors first. Never kill a
   build midway (`timeout` on `cargo run`): it corrupts the incremental cache (hundreds of `LNK2019`); delete
   `target/card/incremental/scripts-*` and `diff-*` to recover.
   Scenario Xyz materials come only from the fixed set: a card needing a specific material gets it attached through a

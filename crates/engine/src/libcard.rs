@@ -248,6 +248,10 @@ impl CardId {
         duel.cards[self].previous.position & (position & 0xff) != 0
     }
 
+    pub fn get_position(self, duel: &Duel) -> u32 {
+        duel.cards[self].current.position
+    }
+
     pub fn get_previous_position(self, duel: &Duel) -> u32 {
         duel.cards[self].previous.position
     }

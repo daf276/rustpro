@@ -175,13 +175,13 @@ impl Duel {
                     self.core.replay.log.push(answer);
                 }
                 self.copy_from(&mut lock(&snapshot));
-                (snapshot, self.trace.count - self.core.replay.messages)
+                (snapshot, self.trace.count.get() - self.core.replay.messages)
             }
             None => (self.snapshot(), 0),
         };
         self.core.replay.cursor = 0;
-        self.trace.mute = mute;
-        let start = self.trace.count;
+        self.trace.mute.set(mute);
+        let start = self.trace.count.get();
         self.core.replay.stack.push((effect, player));
         let result = call(self);
         self.core.replay.stack.pop();
@@ -190,7 +190,7 @@ impl Duel {
             Ok(value) => {
                 // duel::restore_assumes, which the core runs once the outermost Lua call returns.
                 self.assumes.get_mut().clear();
-                debug_assert_eq!(self.trace.mute, 0, "a rerun wrote fewer messages than its previous attempt");
+                debug_assert_eq!(self.trace.mute.get(), 0, "a rerun wrote fewer messages than its previous attempt");
                 self.core.replay.log.clear();
                 self.core.replay.messages = 0;
                 self.core.replay.spare = Spare(Some(snapshot));
@@ -209,12 +209,15 @@ impl Duel {
     // A check whose Lua registers and resets effects (a summon procedure's condition) runs on a copy, since checks only
     // read the duel. What it registers it resets again before it returns, so what later lookups can tell apart is
     // brought back: the ids it took, the ids and statuses is_available changed, and the effects of this duel it reset,
-    // which are reset here at the next processor step (and on the copies of later checks before they start).
+    // which are reset here at the next processor step (and on the copies of later checks before they start), and the
+    // messages it wrote, which those resets do not write again.
     pub fn check_mut<T>(&self, check: impl FnOnce(&mut Duel) -> T) -> T {
         let mut copy = self.clone();
         copy.reset_pending();
         let result = check(&mut copy);
-        debug_assert_eq!(copy.trace.count, self.trace.count, "a check wrote messages");
+        self.trace.buffer.swap(&copy.trace.buffer);
+        self.trace.count.swap(&copy.trace.count);
+        self.trace.mute.swap(&copy.trace.mute);
         debug_assert!(
             copy.effects.added_since(&self.effects).next().is_none(),
             "a check kept an effect it registered"
@@ -234,11 +237,13 @@ impl Duel {
     }
 
     pub(crate) fn reset_pending(&mut self) {
+        let trace = std::mem::take(&mut self.trace);
         for effect in std::mem::take(self.pending_resets.get_mut()) {
             if let Some(handler) = self.effects[effect].handler {
                 self.card_remove_effect(handler, effect);
             }
         }
+        self.trace = trace;
     }
 
     // A copy without the trace and the replay state, which live on across attempts.

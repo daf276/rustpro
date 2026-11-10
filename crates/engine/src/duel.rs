@@ -193,11 +193,11 @@ impl Duel {
 
     // Collects messages in the framing of OCG_DuelGetMessage; off by default, so simulation never writes them.
     pub fn set_trace(&mut self, enabled: bool) {
-        self.trace.buffer = enabled.then(Vec::new);
+        *self.trace.buffer.get_mut() = enabled.then(Vec::new);
     }
 
     pub fn take_trace(&mut self) -> Vec<u8> {
-        self.trace.buffer.as_mut().map(std::mem::take).unwrap_or_default()
+        self.trace.buffer.get_mut().as_mut().map(std::mem::take).unwrap_or_default()
     }
 
     // OCG_DuelNewCard: sequence 0 in the deck is the top, so the last card added is drawn first.

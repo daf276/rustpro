@@ -2412,18 +2412,26 @@ impl Duel {
         }
     }
 
+    fn value_reason_mut(&mut self, effect: EffectId, card: CardId) -> i32 {
+        let current = self.cards[card].current;
+        match self.effects[effect].value {
+            Value::ReasonMut(value) => i32::from(value(self, effect, current.reason_effect, current.reason, current.reason_player)),
+            _ => self.value_reason(effect, card),
+        }
+    }
+
     // The EFFECT_INDESTRUCTABLE_COUNT effects that keep the card from being destroyed: with a count limit while it lasts, without
     // one as often as their value says, counting this destruction.
     fn indestructable_by_count(&mut self, card: CardId) -> EffectSet {
         let mut counted = EffectSet::default();
         for effect in self.filter_effect(card, EFFECT_INDESTRUCTABLE_COUNT, true) {
             if self.effects[effect].is_flag(EFFECT_FLAG_COUNT_LIMIT) {
-                if self.effects[effect].count_limit != 0 && self.value_reason(effect, card) != 0 {
+                if self.effects[effect].count_limit != 0 && self.value_reason_mut(effect, card) != 0 {
                     counted.push(effect);
                 }
                 continue;
             }
-            let times = self.value_reason(effect, card);
+            let times = self.value_reason_mut(effect, card);
             if times == 0 {
                 continue;
             }

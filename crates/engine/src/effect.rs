@@ -147,6 +147,8 @@ pub enum Value {
     Zones(fn(&Duel, EffectId, u8, u8, u32) -> i32),
     // value(e, re, r, rp): EFFECT_DESTROY_SUBSTITUTE.
     Reason(fn(&Duel, EffectId, Option<EffectId>, u32, u8) -> bool),
+    // value(e, re, r, rp), which may reset the effect: EFFECT_INDESTRUCTABLE_COUNT.
+    ReasonMut(fn(&mut Duel, EffectId, Option<EffectId>, u32, u8) -> bool),
     // value(e, re), called for what it does when the card is activated: EFFECT_TRAP_ACT_IN_SET_TURN.
     Activation(fn(&mut Duel, EffectId, EffectId)),
     // value(e, damp, rc): EFFECT_CHANGE_BATTLE_DAMAGE.
@@ -1309,6 +1311,7 @@ impl Duel {
             | Value::XyzLevel(_)
             | Value::Zones(_)
             | Value::Reason(_)
+            | Value::ReasonMut(_)
             | Value::HandSynchro(_)
             | Value::ExtraMaterial(_)
             | Value::CostReplace(_)

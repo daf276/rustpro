@@ -439,10 +439,10 @@ impl Duel {
         self.core.units.pop();
         let picks = std::mem::take(&mut self.returns);
         self.returns.data = self.core.replay.log.pop().unwrap_or_default();
-        self.core.replay.messages = self.trace.count;
+        self.core.replay.messages = self.trace.count.get();
         let buffer = self.trace.buffer.take();
         self.run();
-        self.trace.buffer = buffer;
+        *self.trace.buffer.get_mut() = buffer;
         self.returns = picks;
     }
 

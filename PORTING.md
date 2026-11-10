@@ -66,7 +66,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   64 scenarios. Without `CHECKS` the card must resolve some effect (`Check::Resolves`). Others:
   `ResolvesEffect(aux::stringid(ID, n))` (chain links the card itself activated: `ResolvesEffect(0)` counts only its own
   effects without a description, never another card's), `SpecialSummoned`, `SpecialSummonedCode(code)` (a token the card creates),
-  `RitualMaterial`, `MaterialFrom(location)`, `CardHint(description)`, `Message(MSG_*)` (from `engine::constants`; the
+  `RitualMaterial` (the card under test used as a material; a Ritual Spell is checked with `SpecialSummonedCode`),
+  `MaterialFrom(location)`, `CardHint(description)`, `Message(MSG_*)` (from `engine::constants`; the
   message must be about the card or about no card), `TributeSummoned(n)`, `TributeSet(n)`, `Replaced`, and
   `Report(&check)`, which only writes the count out. Check each effect that needs a specific path; use another check
   than `Resolves` only for a card that has no effect a scenario can resolve, and say why in one comment line.
@@ -107,6 +108,9 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   Extra Deck copies. A Flip effect needs 3-5 face-down copies in `MZONE`, an attacker such as Elfnote Lucina (13597785)
   in `MZONE | OPPONENT`, and no Dark Hole in hand (put it in `DECK`). An optional trigger on being discarded needs
   extra copies in hand.
+- Random play picks uniformly among the legal actions, so an effect needing an exact board (say exactly 2 monsters) is
+  rare; `Raigeki | OPPONENT` and fewer hand cards in `SUPPORT` help. A card reusing another card's `Procedure` struct
+  makes it `pub` there.
 - `Duel.CheckReleaseGroup(tp, nil, 1, c)` is `ReleaseOptions { exception: Some(c), ..ReleaseOptions::new(tp) }` (c78371393).
 - `(code, DECK)` or `(code, HAND)` for an Extra Deck monster and `(code, EXTRA)` for a Main Deck monster are silently
   dropped. An

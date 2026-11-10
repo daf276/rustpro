@@ -151,6 +151,7 @@ impl Duel {
             code2: self.get_another_code(card),
             card_type: self.get_type(card),
             level: self.get_level(card),
+            rank: self.get_rank(card),
             attribute: self.get_attribute(card),
             race: self.get_race(card),
             attack: self.get_attack(card),

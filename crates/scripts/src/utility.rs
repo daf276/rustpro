@@ -119,6 +119,11 @@ pub mod aux {
         (duel.get_mzone_count(tp, Some(sg)) > 0, false)
     }
 
+    // aux.ReleaseCheckTarget with its dg as a capture, a check of Duel.CheckReleaseGroupCost.
+    pub fn release_check_target(dg: CardSet) -> impl Fn(&Duel, CardSet, u8, CardSet) -> (bool, bool) {
+        move |duel, sg, _, _| (dg.is_exists(duel, TRUE, 1, Some(sg)), false)
+    }
+
     // The required and filter parameters of Auxiliary.AddLavaProcedure; a nil filter is Card.IsMonster.
     pub trait LavaProcedure {
         const REQUIRED: usize;

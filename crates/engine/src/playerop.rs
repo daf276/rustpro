@@ -8,7 +8,7 @@ use crate::list::List;
 use crate::processor::{
     AnnounceAttribute, AnnounceCard, AnnounceNumber, AnnounceRace, SelectBattleCmd, SelectCard, SelectChain, SelectCounter,
     SelectEffectYesNo, SelectIdleCmd, SelectOption, SelectPlace, SelectPosition, SelectSum, SelectTributeP, SelectUnselectCard,
-    SelectYesNo, SortCard,
+    SelectYesNo, SortCard, SortChain,
 };
 
 impl Duel {
@@ -362,6 +362,31 @@ impl Duel {
                     return false;
                 }
             }
+        }
+        true
+    }
+
+    // Processors::SortChain of the turn player's chain links: the answer of the SortCard prompt is each one's new position.
+    pub(crate) fn process_sort_chain(&mut self, arg: &mut SortChain) -> bool {
+        if arg.step == 0 {
+            self.core.select_cards = self.core.tpchain.iter().map(|&effect| self.get_handler(effect)).collect();
+            self.emplace_process(SortCard {
+                playerid: arg.playerid,
+                is_chain: true,
+                ..SortCard::default()
+            });
+            return false;
+        }
+        if self.returns.at_u8(0) != u8::MAX {
+            let positions = self
+                .core
+                .tpchain
+                .iter()
+                .enumerate()
+                .map(|(index, &effect)| (self.returns.at_u8(index), effect));
+            let mut sorted: Vec<_> = positions.collect();
+            sorted.sort_by_key(|&(position, _)| position);
+            self.core.tpchain = sorted.into_iter().map(|(_, effect)| effect).collect();
         }
         true
     }

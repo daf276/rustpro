@@ -1043,6 +1043,21 @@ pub mod aux {
         rp != e.get_handler_player(duel)
     }
 
+    // Auxiliary.CheckStealEquip(c, e, tp).
+    pub fn check_steal_equip(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
+        if c.is_facedown(duel) || !c.is_controler_can_be_changed(duel) || !c.is_controler(duel, 1 - tp) {
+            return false;
+        }
+        if e.get_handler(duel).is_location(duel, LOCATION_SZONE) {
+            return true;
+        }
+        if !duel.is_duel_type(DUEL_TRAP_MONSTERS_NOT_USE_ZONE) && c.is_type(duel, TYPE_TRAPMONSTER) {
+            return duel.get_location_count_full(tp, LOCATION_SZONE, tp, LOCATION_REASON_CONTROL, 0xff) > 0
+                && duel.get_location_count_full(tp, LOCATION_SZONE, tp, 0, 0xff) >= 2;
+        }
+        true
+    }
+
     // Auxiliary.cannotmatfilter(...) applied: whether `sumtype` is one of the summon types in `allowed`.
     pub fn cannotmatfilter(allowed: &[u64], sumtype: u64) -> bool {
         let tot = allowed.iter().fold(0, |tot, &value| tot | value);

@@ -923,14 +923,27 @@ impl Duel {
 
     // field::swap_card(pcard1, pcard2): two cards of one zone kind swap places (Duel.SwapSequence checks the kind).
     pub(crate) fn swap_card(&mut self, card1: CardId, card2: CardId) {
+        let (s1, s2) = (self.cards[card1].current.sequence, self.cards[card2].current.sequence);
+        self.swap_card_to(card1, card2, s1, s2);
+    }
+
+    // field::swap_card(pcard1, pcard2, new_sequence1, new_sequence2): each card also takes the zone chosen for it. Cards of
+    // different locations (the core removes and adds them) come with the cards that swap them.
+    pub(crate) fn swap_card_to(&mut self, card1: CardId, card2: CardId, new1: u32, new2: u32) {
         let (current1, current2) = (self.cards[card1].current, self.cards[card2].current);
         let (p1, p2, location) = (current1.controler, current2.controler, current1.location);
         let (s1, s2) = (current1.sequence, current2.sequence);
         let (info1, info2) = (self.cards.get_info_location(card1), self.cards.get_info_location(card2));
-        if location & LOCATION_ONFIELD == 0 || current2.location != location || (p1 == p2 && s1 == s2) {
+        if location & LOCATION_ONFIELD == 0 || current2.location != location {
             return;
         }
-        for (card, current, controler, sequence) in [(card1, current1, p2, s2), (card2, current2, p1, s1)] {
+        if (new1 != s1 && !self.is_location_useable(p1, u16::from(location), new1))
+            || (new2 != s2 && !self.is_location_useable(p2, u16::from(location), new2))
+            || (p1 == p2 && (new1 == s2 || new2 == s1))
+        {
+            return;
+        }
+        for (card, current, controler, sequence) in [(card1, current1, p2, new2), (card2, current2, p1, new1)] {
             let target = &mut self.cards[card];
             target.previous.controler = current.controler;
             target.previous.location = current.location;
@@ -953,14 +966,22 @@ impl Duel {
             }
             self.player[p].used_location &= !(1 << (sequence + shift));
         }
-        for (p, sequence, card) in [(p2, s2, card1), (p1, s1, card2)] {
+        for (p, sequence, card) in [(p2, new2, card1), (p1, new1, card2)] {
             if let Some(slot) = self.player[p].zone_mut(location, sequence) {
                 *slot = Some(card);
             }
             self.player[p].used_location |= 1 << (sequence + shift);
         }
         let (code1, code2) = (self.cards[card1].data.code, self.cards[card2].data.code);
-        self.trace.message(MSG_SWAP).u32(code1).loc(info1).u32(code2).loc(info2);
+        if s1 == new1 && s2 == new2 {
+            self.trace.message(MSG_SWAP).u32(code1).loc(info1).u32(code2).loc(info2);
+            return;
+        }
+        let moves = [(code1, info1, card1), (code2, info2, card2)];
+        for (code, from, card) in if s1 == new1 { moves } else { [moves[1], moves[0]] } {
+            let to = self.cards.get_info_location(card);
+            self.trace.message(MSG_MOVE).u32(code).loc(from).loc(to).u32(0);
+        }
     }
 
     // The MSG_MOVE that move_card writes when a card changes place within one location.

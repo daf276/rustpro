@@ -36,6 +36,20 @@ pub struct GetControl {
     pub remaining: CardSet,
 }
 
+// `index` stands for the core's iterators over the targets.
+#[derive(Debug, Clone, Default)]
+pub struct SwapControl {
+    pub step: u16,
+    pub reason_effect: Option<EffectId>,
+    pub reason_player: u8,
+    pub targets1: CardSet,
+    pub targets2: CardSet,
+    pub reset_phase: u16,
+    pub reset_count: u8,
+    pub index: usize,
+    pub self_selected_sequence: u32,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct SelfDestroy {
     pub step: u16,
@@ -706,6 +720,133 @@ impl Duel {
             _ => {
                 self.core.operated_set = arg.targets;
                 self.returns.set_i32(0, arg.targets.len() as i32);
+                true
+            }
+        }
+    }
+
+    // Unique cards (unique_code) come with the cards that have them.
+    pub(crate) fn process_swap_control(&mut self, arg: &mut SwapControl) -> bool {
+        let pair = |duel: &Self, arg: &SwapControl| {
+            let (card1, card2) = (arg.targets1.iter().nth(arg.index)?, arg.targets2.iter().nth(arg.index)?);
+            Some((card1, card2, duel.cards[card1].current, duel.cards[card2].current))
+        };
+        match arg.step {
+            0 => {
+                arg.step = 9;
+                if arg.targets1.is_empty() || arg.targets1.len() != arg.targets2.len() {
+                    return false;
+                }
+                for card in arg.targets1.iter().chain(arg.targets2) {
+                    self.filter_disable_related_cards(card);
+                }
+                let (Some(first1), Some(first2)) = (arg.targets1.first(), arg.targets2.first()) else {
+                    return false;
+                };
+                let (p1, p2) = (self.cards[first1].current.controler, self.cards[first2].current.controler);
+                if p1 == p2 || p1 == PLAYER_NONE || p2 == PLAYER_NONE {
+                    return false;
+                }
+                for (targets, player) in [(arg.targets1, p1), (arg.targets2, p2)] {
+                    let ineligible = |card| {
+                        let target = &self.cards[card];
+                        target.overlay_target.is_some()
+                            || target.current.controler != player
+                            || target.current.location != LOCATION_MZONE
+                            || self.is_affected_by_effect(card, EFFECT_CANNOT_CHANGE_CONTROL).is_some()
+                            || arg
+                                .reason_effect
+                                .is_some_and(|effect| !self.is_affect_by_effect(card, Some(effect)))
+                    };
+                    if targets.iter().any(ineligible) {
+                        return false;
+                    }
+                }
+                for (targets, player) in [(arg.targets1, p1), (arg.targets2, p2)] {
+                    let in_extra_zone = targets.iter().filter(|&card| self.cards[card].current.sequence >= 5).count() as i32;
+                    let useable = self.get_useable_count(None, player, LOCATION_MZONE, arg.reason_player, LOCATION_REASON_CONTROL, 0xff);
+                    if useable.0 - in_extra_zone < 0 {
+                        return false;
+                    }
+                }
+                arg.index = 0;
+                arg.step = 0;
+                false
+            }
+            1 | 2 => {
+                let Some((card1, card2, current1, current2)) = pair(self, arg) else {
+                    arg.step = 3;
+                    return false;
+                };
+                if arg.step == 2 {
+                    arg.self_selected_sequence = u32::from(self.returns.at_u8(2));
+                }
+                let (chooser, other) = if arg.step == 1 { (current1, card2) } else { (current2, card1) };
+                let useable = self.get_useable_count(
+                    None,
+                    chooser.controler,
+                    LOCATION_MZONE,
+                    arg.reason_player,
+                    LOCATION_REASON_CONTROL,
+                    0xff,
+                );
+                let flag = (useable.1 & !(1 << chooser.sequence) & 0xff) | !0x1f_u32;
+                let code = self.cards[other].data.code;
+                self.trace
+                    .message(MSG_HINT)
+                    .u8(HINT_SELECTMSG)
+                    .u8(chooser.controler)
+                    .u64(u64::from(code));
+                self.emplace_process(SelectPlace {
+                    playerid: chooser.controler,
+                    count: 1,
+                    flag,
+                    ..SelectPlace::default()
+                });
+                false
+            }
+            3 => {
+                let Some((card1, card2, current1, current2)) = pair(self, arg) else {
+                    return true;
+                };
+                let new_sequence2 = u32::from(self.returns.at_u8(2));
+                self.swap_card_to(card1, card2, arg.self_selected_sequence, new_sequence2);
+                for card in [card1, card2] {
+                    self.reset(card, RESET_CONTROL, RESET_EVENT);
+                }
+                self.set_control(card1, current2.controler, arg.reset_phase, arg.reset_count.into());
+                self.set_control(card2, current1.controler, arg.reset_phase, arg.reset_count.into());
+                for card in [card1, card2] {
+                    self.cards[card].set_status(STATUS_ATTACK_CANCELED, true);
+                }
+                arg.index += 1;
+                arg.step = 0;
+                false
+            }
+            4 => {
+                arg.targets1 = arg.targets1.union(arg.targets2);
+                for card in arg.targets1 {
+                    self.filter_disable_related_cards(card);
+                    let controler = self.cards[card].current.controler;
+                    for event in [EVENT_CONTROL_CHANGED, EVENT_MOVE] {
+                        self.field_raise_single_event(card, event, arg.reason_effect, REASON_EFFECT, arg.reason_player, controler, 0);
+                    }
+                }
+                for event in [EVENT_CONTROL_CHANGED, EVENT_MOVE] {
+                    self.field_raise_event(Some(arg.targets1), event, arg.reason_effect, REASON_EFFECT, arg.reason_player, 0, 0);
+                }
+                self.process_single_event();
+                self.process_instant_event();
+                false
+            }
+            5 => {
+                self.core.operated_set = arg.targets1;
+                self.returns.set_i32(0, 1);
+                true
+            }
+            _ => {
+                self.core.operated_set.clear();
+                self.returns.set_i32(0, 0);
                 true
             }
         }

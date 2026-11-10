@@ -2473,8 +2473,9 @@ impl Duel {
         mg: Option<CardSet>,
         ex: bool,
         releasable: u32,
+        pos: u32,
     ) -> u32 {
-        let (rcount, params) = self.summon_release_list(target, release_list, ex_list, mg, ex, releasable);
+        let (rcount, params) = self.summon_release_list(target, release_list, ex_list, mg, ex, releasable, pos);
         for (card, param) in params {
             self.cards[card].release_param = param;
         }
@@ -2490,9 +2491,15 @@ impl Duel {
         mg: Option<CardSet>,
         ex: bool,
         releasable: u32,
+        pos: u32,
     ) -> (u32, List<(CardId, u32), 16>) {
         let p = self.cards[target].current.controler;
-        unported!(self, self.filter_effect(target, EFFECT_ADD_EXTRA_TRIBUTE, true));
+        let mut ex_tribute = CardSet::default();
+        for effect in self.filter_effect(target, EFFECT_ADD_EXTRA_TRIBUTE, true) {
+            if self.get_own_value(effect) as u32 & pos != 0 {
+                self.filter_inrange_cards(effect, &mut ex_tribute);
+            }
+        }
         let release_param = |duel: &Self, card: CardId| {
             if duel.is_affected_by_effect_target(card, EFFECT_TRIPLE_TRIBUTE, target).is_some() {
                 3
@@ -2527,7 +2534,7 @@ impl Duel {
             if self.is_affected_by_effect(card, EFFECT_EXTRA_RELEASE).is_some() {
                 ex_list.insert(card);
                 rcount += param;
-            } else if ex {
+            } else if ex || ex_tribute.contains(card) {
                 release_list.insert(card);
                 rcount += param;
             } else {
@@ -2656,7 +2663,29 @@ impl Duel {
         count
     }
 
-    // The EFFECT_ADD_EXTRA_TRIBUTE position filter (`pos`) comes with the cards that register it.
+    // Adds the cards in the ranges of a field effect that its target function accepts; only the Monster Zone comes with the
+    // cards that call it.
+    fn filter_inrange_cards(&self, effect: EffectId, cards: &mut CardSet) {
+        let peffect = &self.effects[effect];
+        let own = self.get_handler_player(effect);
+        if peffect.is_flag(EFFECT_FLAG_PLAYER_TARGET | EFFECT_FLAG_SPSUM_PARAM) || own == PLAYER_NONE {
+            return;
+        }
+        unported!(
+            self,
+            ((peffect.s_range | peffect.o_range) & !u16::from(LOCATION_MZONE) != 0).then_some(effect)
+        );
+        for (player, range) in [(own, peffect.s_range), (1 - own, peffect.o_range)] {
+            if range & u16::from(LOCATION_MZONE) != 0 {
+                for card in self.player[player].list_mzone.into_iter().flatten() {
+                    if self.is_fit_target_function(effect, card) {
+                        cards.insert(card);
+                    }
+                }
+            }
+        }
+    }
+
     pub(crate) fn field_check_tribute(
         &self,
         card: CardId,
@@ -2666,12 +2695,13 @@ impl Duel {
         toplayer: u8,
         zone: u32,
         releasable: u32,
+        pos: u32,
     ) -> bool {
         let sumplayer = self.cards[card].current.controler;
         let ex = toplayer == 1 - sumplayer;
         let (mut release_list, mut ex_list) = (CardSet::default(), CardSet::default());
         let m = self
-            .summon_release_list(card, &mut release_list, &mut ex_list, mg, ex, releasable)
+            .summon_release_list(card, &mut release_list, &mut ex_list, mg, ex, releasable, pos)
             .0 as i32;
         let mut max = max.min(m);
         if min > max {

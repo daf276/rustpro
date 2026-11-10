@@ -1925,13 +1925,14 @@ impl Duel {
                     controler,
                     zone & new_zone,
                     releasable,
+                    POS_FACEUP,
                 )
             });
             return (i32::from(found), procedures);
         }
         let controler = self.cards[card].current.controler;
         (
-            i32::from(self.field_check_tribute(card, i32::from(min), i32::from(max), None, controler, zone, 0xff00ff)),
+            i32::from(self.field_check_tribute(card, i32::from(min), i32::from(max), None, controler, zone, 0xff00ff, POS_FACEUP)),
             procedures,
         )
     }
@@ -2035,7 +2036,7 @@ impl Duel {
         }
         let controler = self.cards[card].current.controler;
         (
-            i32::from(self.field_check_tribute(card, min, max, None, controler, zone, 0xff00ff)),
+            i32::from(self.field_check_tribute(card, min, max, None, controler, zone, 0xff00ff, POS_FACEDOWN_DEFENSE)),
             procedures,
         )
     }

@@ -161,6 +161,7 @@ impl EffectId {
 
     // Effect.SetLabel with several values.
     pub fn set_labels(self, duel: &mut Duel, labels: &[i64]) {
+        unported!(duel, (labels.len() > duel.effects[self].label.len()).then_some(self));
         duel.effects[self].set_labels(labels);
     }
 

@@ -464,13 +464,13 @@ impl Duel {
     pub fn get_tribute_group(&self, card: CardId) -> CardSet {
         let mut group = CardSet::default();
         let mut ex_list = CardSet::default();
-        self.summon_release_list(card, &mut group, &mut ex_list, None, false, 0xff00ff);
+        self.summon_release_list(card, &mut group, &mut ex_list, None, false, 0xff00ff, POS_FACEUP);
         group.union(ex_list)
     }
 
     // Duel.CheckTribute with every argument; toplayer is the card's controller where Lua leaves it out.
     pub fn check_tribute(&self, card: CardId, min: i32, max: i32, mg: Option<CardSet>, toplayer: u8, zone: u32) -> bool {
-        self.field_check_tribute(card, min, max, mg, toplayer, zone, 0xff00ff)
+        self.field_check_tribute(card, min, max, mg, toplayer, zone, 0xff00ff, POS_FACEUP)
     }
 
     pub fn select_tribute(
@@ -488,7 +488,15 @@ impl Duel {
             return Ok(CardSet::default());
         }
         let (mut release_cards, mut release_cards_ex) = (CardSet::default(), CardSet::default());
-        self.get_summon_release_list(card, &mut release_cards, &mut release_cards_ex, mg, toplayer != player, 0xff00ff);
+        self.get_summon_release_list(
+            card,
+            &mut release_cards,
+            &mut release_cards_ex,
+            mg,
+            toplayer != player,
+            0xff00ff,
+            POS_FACEUP,
+        );
         self.core.release_cards = release_cards;
         self.core.release_cards_ex = release_cards_ex;
         self.core.release_cards_ex_oneof.clear();

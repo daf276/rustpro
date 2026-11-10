@@ -3218,7 +3218,7 @@ impl Duel {
     }
 
     // Step 2 of SummonRule and MonsterSet without a procedure: the tribute selection, if the card needs one.
-    fn select_summon_tributes(&mut self, target: CardId, player: u8, required: i32, min_tribute: u8, advance: bool, zone: u32) {
+    fn select_summon_tributes(&mut self, target: CardId, player: u8, required: i32, min_tribute: u8, advance: bool, zone: u32, pos: u32) {
         self.core.select_cards.clear();
         let (min, max) = ((required & 0xffff).max(i32::from(min_tribute)), required >> 16);
         if max == 0 || !advance {
@@ -3226,7 +3226,7 @@ impl Duel {
             return;
         }
         let (mut release_cards, mut release_cards_ex) = (CardSet::default(), CardSet::default());
-        let rcount = self.get_summon_release_list(target, &mut release_cards, &mut release_cards_ex, None, false, 0xff00ff);
+        let rcount = self.get_summon_release_list(target, &mut release_cards, &mut release_cards_ex, None, false, 0xff00ff, pos);
         self.core.release_cards = release_cards;
         self.core.release_cards_ex = release_cards_ex;
         self.core.release_cards_ex_oneof.clear();
@@ -3372,6 +3372,7 @@ impl Duel {
                             controler,
                             new_zone & arg.zone,
                             releasable,
+                            POS_FACEUP,
                         ) {
                             continue;
                         }
@@ -3403,7 +3404,7 @@ impl Duel {
                 }
                 let required = self.get_summon_tribute_count(target);
                 let advance = self.field_is_player_can_summon(SUMMON_TYPE_ADVANCE, sumplayer, target, sumplayer);
-                self.select_summon_tributes(target, sumplayer, required, arg.min_tribute, advance, arg.zone);
+                self.select_summon_tributes(target, sumplayer, required, arg.min_tribute, advance, arg.zone, POS_FACEUP);
                 arg.step = 4;
                 false
             }
@@ -3774,7 +3775,15 @@ impl Duel {
                 }
                 let required = self.get_set_tribute_count(target);
                 let advance = self.is_player_can_mset(SUMMON_TYPE_ADVANCE, setplayer, target, setplayer);
-                self.select_summon_tributes(target, setplayer, required, arg.min_tribute, advance, arg.zone);
+                self.select_summon_tributes(
+                    target,
+                    setplayer,
+                    required,
+                    arg.min_tribute,
+                    advance,
+                    arg.zone,
+                    POS_FACEDOWN_DEFENSE,
+                );
                 arg.step = 3;
                 false
             }

@@ -1,6 +1,5 @@
 // Port of proc_synchro.lua: Synchro.AddProcedure with its condition, target and operation, and
-// Synchro.AddHandMaterialEffect. A Synchro Monster's EFFECT_MATERIAL_CHECK operation, the Majestic and Dark Synchro
-// procedures and Synchro.Send come with the cards that use them.
+// Synchro.AddHandMaterialEffect. The Majestic and Dark Synchro procedures and Synchro.Send come with the cards that use them.
 use engine::{Args, CardId, CardSet, Duel, EffectId, Operation, Script, Target, Value};
 
 use crate::constant::*;
@@ -915,8 +914,23 @@ impl Synchro {
         let Some(c) = c else { return Ok(()) };
         let g = e.get_label_object_group(duel).unwrap_or_default();
         c.set_material(duel, Some(g));
-        let mat_check_eff = c.is_has_effect(duel, EFFECT_MATERIAL_CHECK);
-        unported!(duel, mat_check_eff.is_some_and(|eff| eff.get_operation(duel).is_some()));
+        if let Some(eff) = c.is_has_effect(duel, EFFECT_MATERIAL_CHECK) {
+            let operation = eff.get_operation(duel);
+            unported!(
+                duel,
+                !matches!(operation, None | Some(Operation::Event(_) | Operation::Promptless(_)))
+            );
+            if let Some(Operation::Event(op) | Operation::Promptless(op)) = operation {
+                op(
+                    duel,
+                    &Args {
+                        e: eff,
+                        c: Some(c),
+                        ..Args::default()
+                    },
+                )?;
+            }
+        }
         // GetValue with arguments returns the function itself, so every hand material uses up its count.
         for mc in g {
             if let Some(handmatfilter) = mc.is_has_effect(duel, EFFECT_SYNCHRO_MAT_FROM_HAND) {

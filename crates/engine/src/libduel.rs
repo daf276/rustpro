@@ -1260,6 +1260,10 @@ impl Duel {
         self.infos.turn_player
     }
 
+    pub fn enable_global_flag(&mut self, flag: u32) {
+        self.core.global_flag |= flag;
+    }
+
     pub fn check_phase_activity(&self) -> bool {
         self.core.phase_action
     }

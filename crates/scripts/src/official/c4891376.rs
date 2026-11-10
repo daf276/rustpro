@@ -52,7 +52,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.register_effect(duel, e2);
 }
 
-fn valcheck(duel: &mut Duel, _: EffectId, c: CardId) {
+pub fn valcheck(duel: &mut Duel, _: EffectId, c: CardId) {
     let g = c.get_material(duel);
     if g.is_exists(duel, |c, duel| c.is_type(duel, TYPE_TUNER), 2, None) {
         let e1 = duel.create_effect(c);

@@ -1615,6 +1615,35 @@ impl Duel {
         Ok(self.returns.at_i32(0) != 0)
     }
 
+    // Duel.MajesticCopy without a reset, so the copies last until the End Phase.
+    pub fn majestic_copy(&mut self, pcard: CardId, ccard: CardId) {
+        let reset = RESET_EVENT + 0x1fe_0000 + RESET_PHASE + u32::from(PHASE_END) + RESET_SELF_TURN + RESET_OPPO_TURN;
+        let single = self.registered_effects(Container::Single, ccard);
+        for peffect in single.into_iter().chain(self.registered_effects(Container::Field, ccard)) {
+            let effect = &self.effects[peffect];
+            if (effect.effect_type & 0x7c == 0 && !effect.is_flag2(EFFECT_FLAG2_MAJESTIC_MUST_COPY)) || !effect.is_flag(EFFECT_FLAG_INITIAL)
+            {
+                continue;
+            }
+            let ceffect = self.clone_effect(peffect);
+            let copy = &mut self.effects[ceffect];
+            copy.owner = pcard;
+            copy.flag[0] &= !EFFECT_FLAG_INITIAL;
+            copy.effect_owner = PLAYER_NONE;
+            (copy.reset_flag, copy.reset_count) = (reset, 1);
+            self.recharge(ceffect);
+            let copy = &mut self.effects[ceffect];
+            if copy.effect_type & EFFECT_TYPE_TRIGGER_F != 0 {
+                copy.effect_type = copy.effect_type & !EFFECT_TYPE_TRIGGER_F | EFFECT_TYPE_TRIGGER_O;
+                copy.flag[0] |= EFFECT_FLAG_DELAY;
+            }
+            if copy.effect_type & EFFECT_TYPE_QUICK_F != 0 {
+                copy.effect_type = copy.effect_type & !EFFECT_TYPE_QUICK_F | EFFECT_TYPE_QUICK_O;
+            }
+            self.card_add_effect(pcard, ceffect);
+        }
+    }
+
     // What Card.CheckActivateEffect does to the chain link being built when a script calls it with copy_info.
     pub fn set_current_chain_event(&mut self, event: Event) {
         if let Some(chain) = self.core.current_chain.last_mut() {

@@ -13,12 +13,21 @@ use crate::operations::{SelfDestroy, SelfDestroyUnique};
 use crate::processor::{Adjust, Unit};
 use crate::script::Replay;
 
-// The filter of the cards a release may use.
 pub(crate) type ReleaseFilter<'a> = &'a dyn Fn(CardId, &Duel) -> bool;
 
 // Per-player arrays indexed by player id like the core's `x[playerid]`; any id but 0 reads player 1.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Copy, Default, PartialEq, Eq)]
 pub struct PerPlayer<T>(pub [T; 2]);
+
+impl<T: Clone> Clone for PerPlayer<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.0.clone_from(&source.0);
+    }
+}
 
 impl<T> Index<u8> for PerPlayer<T> {
     type Output = T;
@@ -36,9 +45,7 @@ impl<T> IndexMut<u8> for PerPlayer<T> {
     }
 }
 
-// The monster a count of zones for a summon from the Extra Deck is for; without a card the core places its temporary
-// card there, with no type, or with the type Duel.GetLocationCountFromEx names (face-up if a Pendulum).
-// The temporary card has no link markers, so it never links the Extra Monster Zones.
+// The monster an Extra Deck zone count is for; without a card, the core's temp card with no type or the type GetLocationCountFromEx names.
 #[derive(Debug, Clone, Copy)]
 pub struct FromEx {
     pub card: Option<CardId>,
@@ -71,8 +78,7 @@ impl FromEx {
     }
 }
 
-// The zones a count reads: the field's, or with monsters left out (Duel.GetMZoneCount and GetLocationCountFromEx
-// swap in a monster zone list without them), or with a monster placed for check_extra_link.
+// The zones a count reads: the field's, without some monsters (Duel.GetMZoneCount), or with a monster placed for check_extra_link.
 #[derive(Debug, Clone, Copy)]
 pub struct Zones {
     pub used: PerPlayer<u32>,
@@ -82,7 +88,7 @@ pub struct Zones {
 }
 
 // player_info; tag and relay duels (extra_lists_*) are unsupported.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct PlayerInfo {
     pub lp: i32,
     pub start_count: i32,
@@ -99,7 +105,34 @@ pub struct PlayerInfo {
     pub list_extra: Pile,
 }
 
+clone_by_field!(PlayerInfo {
+    lp,
+    start_count,
+    draw_count,
+    used_location,
+    disabled_location,
+    extra_p_count,
+    list_mzone,
+    list_szone,
+    list_main,
+    list_grave,
+    list_hand,
+    list_remove,
+    list_extra
+});
+
 impl PlayerInfo {
+    pub fn pile(&self, location: u8) -> Option<&Pile> {
+        match location {
+            LOCATION_DECK => Some(&self.list_main),
+            LOCATION_HAND => Some(&self.list_hand),
+            LOCATION_GRAVE => Some(&self.list_grave),
+            LOCATION_REMOVED => Some(&self.list_remove),
+            LOCATION_EXTRA => Some(&self.list_extra),
+            _ => None,
+        }
+    }
+
     pub fn zone_mut(&mut self, location: u8, sequence: u32) -> Option<&mut Option<CardId>> {
         let sequence = sequence as usize;
         if location == LOCATION_MZONE {
@@ -164,9 +197,8 @@ impl ReturnCards {
     }
 }
 
-// processor in field.h, reduced to what the port reads so far. `units` keeps its front at the end; the chain lists
-// are std::list in the core and Vecs here.
-#[derive(Debug)]
+// processor in field.h, reduced to what the port reads so far; `units` keeps its front at the end.
+#[derive(Debug, Default)]
 pub struct Processor {
     pub units: Vec<Unit>,
     pub subunits: Vec<Unit>,
@@ -245,8 +277,7 @@ pub struct Processor {
     pub destroy_canceled: CardSet,
     // The cards an EFFECT_DESTROY_SUBSTITUTE destroys in place of those destroyed by battle.
     pub battle_destroy_rep: CardSet,
-    // What is left of the cards a battle destroys once the Destroy unit of BattleCommand step 28 has run; the core
-    // shares that group between both units.
+    // What is left of the cards a battle destroys after BattleCommand step 28's Destroy; the core shares the group between both.
     pub battle_destroyed: CardSet,
     pub operated_set: CardSet,
     pub reseted_effects: List<EffectId, 16>,
@@ -330,8 +361,7 @@ pub struct Processor {
     pub must_select_cards: std::cell::Cell<CardSet>,
     // temp.attack and temp.defense of a card while get_attack or get_defense evaluates it: (card, is attack, value).
     pub stat_temp: std::cell::RefCell<List<(CardId, bool, i32), 4>>,
-    // temp.base_attack and temp.base_defense of a card while get_base_attack, get_base_defense, get_attack or get_defense
-    // evaluates it: (card, is attack, value).
+    // temp.base_attack and temp.base_defense of a card while the stat functions evaluate it: (card, is attack, value).
     pub base_stat_temp: std::cell::RefCell<List<(CardId, bool, i32), 4>>,
     // temp.type of a card while get_type evaluates it: (card, value).
     pub type_temp: std::cell::RefCell<List<(CardId, u32), 4>>,
@@ -484,147 +514,11 @@ clone_by_field!(Processor {
 impl Processor {
     pub fn new(duel_options: u64) -> Self {
         Self {
-            units: Vec::new(),
-            subunits: Vec::new(),
-            presented: None,
-            replay: Replay::default(),
-            just_sent_cards: CardSet::default(),
-            select_cards: Default::default(),
-            unselect_cards: Default::default(),
-            select_options: Default::default(),
-            coin_results: Default::default(),
-            dice_results: Default::default(),
-            select_effects: Default::default(),
-            cards_to_summon_g: CardSet::default(),
-            custom_counters: Default::default(),
-            release_cards: CardSet::default(),
-            release_cards_ex: CardSet::default(),
-            release_cards_ex_oneof: CardSet::default(),
-            summonable_cards: Default::default(),
-            spsummonable_cards: Default::default(),
-            repositionable_cards: Default::default(),
-            msetable_cards: Default::default(),
-            ssetable_cards: Default::default(),
-            attackable_cards: Default::default(),
-            point_event: Default::default(),
-            instant_event: Default::default(),
-            queue_event: Default::default(),
-            delayed_activate_event: Default::default(),
-            full_event: Default::default(),
-            single_event: Default::default(),
-            solving_event: Default::default(),
-            sub_solving_event: Default::default(),
-            select_chains: Vec::new(),
-            tpchain: Vec::new(),
-            current_chain: Vec::new(),
-            real_chain_count: 0,
-            ignition_priority_chains: Vec::new(),
-            continuous_chain: Vec::new(),
-            readjust_map: Default::default(),
-            desrep_chain: Vec::new(),
-            replace_targets: Vec::new(),
-            solving_continuous: Vec::new(),
-            sub_solving_continuous: Vec::new(),
-            delayed_continuous_tp: Vec::new(),
-            delayed_continuous_ntp: Vec::new(),
-            continuous_tp: Vec::new(),
-            continuous_ntp: Vec::new(),
-            new_fchain: Vec::new(),
-            new_fchain_s: Vec::new(),
-            new_ochain: Vec::new(),
-            new_ochain_s: Vec::new(),
-            new_fchain_b: Vec::new(),
-            new_ochain_b: Vec::new(),
-            new_ochain_h: Vec::new(),
-            new_chains: Vec::new(),
-            delayed_quick_tmp: Vec::new(),
-            delayed_quick: Vec::new(),
-            quick_f_chain: Vec::new(),
-            chain_limit: Vec::new(),
-            chain_limit_p: Vec::new(),
-            leave_confirmed: CardSet::default(),
-            special_summoning: CardSet::default(),
-            equiping_cards: CardSet::default(),
-            ss_tograve_set: CardSet::default(),
-            delayed_enable_set: CardSet::default(),
-            destroy_canceled: CardSet::default(),
-            battle_destroy_rep: CardSet::default(),
-            battle_destroyed: CardSet::default(),
-            operated_set: CardSet::default(),
-            reseted_effects: List::default(),
-            effect_count_code: CountCodes::default(),
-            effect_count_code_duel: CountCodes::default(),
-            effect_count_code_chain: CountCodes::default(),
-            global_flag: 0,
-            chain_solving: false,
-            conti_solving: false,
-            conti_player: PLAYER_NONE,
-            check_level: 0,
-            win_player: 5,
-            win_reason: 0,
-            re_adjust: false,
-            reason_effect: std::cell::Cell::new(None),
-            reason_player: std::cell::Cell::new(PLAYER_NONE),
-            attacker: None,
-            attack_target: None,
-            pre_field: [0; 2],
-            opp_mzone: Default::default(),
-            attack_rollback: false,
-            battle_damage: PerPlayer::default(),
-            summon_count: PerPlayer::default(),
-            extra_summon: PerPlayer::default(),
-            spe_effect: PerPlayer::default(),
             duel_options,
-            to_bp: false,
-            to_m2: false,
-            to_ep: false,
-            skip_m2: false,
-            chain_attack: false,
-            chain_attacker_id: 0,
-            chain_attack_target: None,
-            attack_player: false,
-            selfdes_disabled: false,
-            unique_destroy_set: CardSet::default(),
-            self_destroy_set: CardSet::default(),
-            overdraw: PerPlayer::default(),
-            shuffle_check_disabled: false,
-            shuffle_hand_check: PerPlayer::default(),
-            trap_monster_adjust_set: PerPlayer::default(),
-            shuffle_deck_check: PerPlayer::default(),
-            deck_reversed: false,
-            flip_delayed: false,
-            damage_calculated: false,
-            hand_adjusted: false,
-            summon_state_count: PerPlayer::default(),
-            normalsummon_state_count: PerPlayer::default(),
-            flipsummon_state_count: PerPlayer::default(),
-            spsummon_state_count: PerPlayer::default(),
-            spsummon_state_count_rst: PerPlayer::default(),
-            spsummon_state_count_tmp: PerPlayer::default(),
-            spsummon_once_map: PerPlayer::default(),
-            spsummon_rst: false,
-            attack_state_count: PerPlayer::default(),
-            battle_phase_count: PerPlayer::default(),
-            battled_count: PerPlayer::default(),
-            phase_action: false,
-            hint_timing: PerPlayer::default(),
-            current_player: 0,
-            force_turn_end: false,
-            attack_cancelable: false,
-            attack_cost_paid: 0,
-            summon_depth: 0,
-            summon_cancelable: false,
-            reserved: None,
-            effect_damage_step: 0,
-            summoning_card: None,
-            spsummon_group: CardSet::default(),
-            fusion_materials: CardSet::default(),
-            copy_reset: 0,
-            copy_reset_count: 0,
-            must_select_cards: Default::default(),
-            stat_temp: Default::default(),
-            base_stat_temp: Default::default(),
-            type_temp: Default::default(),
+            conti_player: PLAYER_NONE,
+            win_player: 5,
+            reason_player: std::cell::Cell::new(PLAYER_NONE),
+            ..Self::default()
         }
     }
 }
@@ -804,18 +698,13 @@ impl Duel {
             self.core.just_sent_cards.insert(card);
         }
         let target = &mut self.cards[card];
-        target.previous.controler = current.controler;
-        target.previous.location = current.location;
-        target.previous.sequence = current.sequence;
-        target.previous.position = current.position;
-        target.previous.pzone = current.pzone;
+        target.previous.set_place(current);
         target.current.controler = PLAYER_NONE;
         target.current.location = 0;
         target.current.sequence = 0;
     }
 
-    // Moving cards: draw(), discard_deck(), swap_control(), control_adjust() and this; checks the rule redirection
-    // of Fusion/Synchro/Xyz/Link monsters.
+    // Checks the rule redirection of Fusion/Synchro/Xyz/Link monsters.
     pub(crate) fn move_card(&mut self, playerid: u8, card: CardId, location: u8, sequence: u8, pzone: bool) -> bool {
         if !self.is_location_useable(playerid, u16::from(location), u32::from(sequence)) {
             return false;
@@ -868,12 +757,7 @@ impl Duel {
                     if !self.core.current_chain.is_empty() {
                         self.core.just_sent_cards.insert(card);
                     }
-                    let target = &mut self.cards[card];
-                    target.previous.controler = current.controler;
-                    target.previous.location = current.location;
-                    target.previous.sequence = current.sequence;
-                    target.previous.position = current.position;
-                    target.previous.pzone = current.pzone;
+                    self.cards[card].previous.set_place(current);
                     let shift = if location == LOCATION_MZONE { 0 } else { 8 };
                     if let Some(slot) = self.player[preplayer].zone_mut(location, presequence) {
                         *slot = None;
@@ -939,8 +823,7 @@ impl Duel {
         self.swap_card_to(card1, card2, s1, s2);
     }
 
-    // field::swap_card(pcard1, pcard2, new_sequence1, new_sequence2): each card also takes the zone chosen for it. Cards of
-    // different locations (the core removes and adds them) come with the cards that swap them.
+    // field::swap_card(pcard1, pcard2, new_sequence1, new_sequence2); swapping cards of different locations is not ported.
     pub(crate) fn swap_card_to(&mut self, card1: CardId, card2: CardId, new1: u32, new2: u32) {
         let (current1, current2) = (self.cards[card1].current, self.cards[card2].current);
         let (p1, p2, location) = (current1.controler, current2.controler, current1.location);
@@ -957,11 +840,7 @@ impl Duel {
         }
         for (card, current, controler, sequence) in [(card1, current1, p2, new2), (card2, current2, p1, new1)] {
             let target = &mut self.cards[card];
-            target.previous.controler = current.controler;
-            target.previous.location = current.location;
-            target.previous.sequence = current.sequence;
-            target.previous.position = current.position;
-            target.previous.pzone = current.pzone;
+            target.previous.set_place(current);
             target.current.controler = controler;
             target.current.sequence = sequence;
         }
@@ -1073,8 +952,7 @@ impl Duel {
         true
     }
 
-    // Usable LOCATION_MZONE or LOCATION_SZONE count of playerid requested by uplayer (may be negative), and the
-    // flag of blocked zones; uplayer PLAYER_NONE ignores EFFECT_MAX_MZONE and EFFECT_MAX_SZONE.
+    // The usable zone count (may be negative) and blocked zones of playerid for uplayer; PLAYER_NONE ignores EFFECT_MAX_MZONE/SZONE.
     pub(crate) fn get_useable_count(
         &self,
         card: Option<CardId>,
@@ -1084,14 +962,11 @@ impl Duel {
         reason: u32,
         zone: u32,
     ) -> (i32, u32) {
+        let zones = self.zones();
         if location == LOCATION_MZONE && card.is_some_and(|card| self.cards[card].current.location == LOCATION_EXTRA) {
-            return self.get_useable_count_fromex(card, playerid, uplayer, zone);
+            return self.get_useable_count_fromex_in(&zones, FromEx::card(self, card), playerid, uplayer, zone);
         }
-        self.get_useable_count_other(card, playerid, location, uplayer, reason, zone)
-    }
-
-    pub(crate) fn get_useable_count_fromex(&self, card: Option<CardId>, playerid: u8, uplayer: u8, zone: u32) -> (i32, u32) {
-        self.get_useable_count_fromex_in(&self.zones(), FromEx::card(self, card), playerid, uplayer, zone)
+        self.get_useable_count_other_in(&zones, card, playerid, location, uplayer, reason, zone)
     }
 
     pub(crate) fn get_useable_count_fromex_in(&self, zones: &Zones, summoned: FromEx, playerid: u8, uplayer: u8, zone: u32) -> (i32, u32) {
@@ -1144,16 +1019,15 @@ impl Duel {
         if !self.is_flag(DUEL_EMZONE) {
             return 0x1f;
         }
-        let fsx = summoned.card_type & (self.get_extra_deck_types() & !TYPE_LINK) != 0;
-        if self.is_flag(DUEL_FSX_MMZONE) && summoned.facedown && fsx {
+        let fusion_synchro_xyz = summoned.card_type & (self.get_extra_deck_types() & !TYPE_LINK) != 0;
+        if self.is_flag(DUEL_FSX_MMZONE) && summoned.facedown && fusion_synchro_xyz {
             0x7f
         } else {
             self.get_linked_zone(zones, playerid, false) | (1 << 5) | (1 << 6)
         }
     }
 
-    // field::get_linked_zone without `free`: the zones the player's and the opponent's Link monsters point to, the
-    // opponent's mirrored into the high half.
+    // field::get_linked_zone without `free`: the zones Link monsters point to, the opponent's mirrored into the high half.
     pub(crate) fn get_linked_zone(&self, zones: &Zones, playerid: u8, actually_linked: bool) -> u32 {
         let pointed = |p: u8| {
             let mzone = zones.mzone[p].into_iter().flatten();
@@ -1221,8 +1095,7 @@ impl Duel {
         .fold(0, |rotated, (_, to)| rotated | to)
     }
 
-    // card::get_linked_zone without `free`: bit s is the controller's monster zone s, 8 + s their spell zone, 16 and
-    // up the opponent's.
+    // card::get_linked_zone without `free`: bit s the controller's monster zone s, 8 + s their spell zone, 16 up the opponent's.
     pub(crate) fn card_linked_zone(&self, zones: &Zones, card: CardId) -> u32 {
         let (_, location, s, _) = self.link_state(zones, card);
         if self.link_type(zones, card) & TYPE_LINK == 0
@@ -1368,8 +1241,7 @@ impl Duel {
         }
     }
 
-    // field::check_extra_link: whether the summoned monster, placed in the free Extra Monster Zone `sequence`, would
-    // link both.
+    // field::check_extra_link: whether the summoned monster, placed in the free Extra Monster Zone `sequence`, links both.
     fn check_extra_link(&self, zones: &Zones, playerid: u8, summoned: FromEx, sequence: usize) -> bool {
         let Some(card) = summoned.card else { return false };
         if zones.mzone[playerid].get(sequence).copied().flatten().is_some() {
@@ -1401,17 +1273,7 @@ impl Duel {
             }
             location if location == u16::from(LOCATION_MZONE) => player.list_mzone.get(sequence),
             location if location == u16::from(LOCATION_SZONE) => player.list_szone.get(sequence),
-            location => {
-                let list = match location as u8 {
-                    LOCATION_DECK => &player.list_main,
-                    LOCATION_HAND => &player.list_hand,
-                    LOCATION_GRAVE => &player.list_grave,
-                    LOCATION_REMOVED => &player.list_remove,
-                    LOCATION_EXTRA => &player.list_extra,
-                    _ => return None,
-                };
-                return list.get(sequence).copied();
-            }
+            location => return player.pile(location as u8)?.get(sequence).copied(),
         };
         slot.copied().flatten()
     }
@@ -1422,6 +1284,7 @@ impl Duel {
         if own > 1 {
             return group;
         }
+        let outer = usize::from(self.is_flag(DUEL_3_COLUMNS_FIELD));
         let mut player = own;
         for location in [location1, location2] {
             let info = &self.player[player];
@@ -1432,7 +1295,7 @@ impl Duel {
                 add(&info.list_mzone.map(|card| card.filter(|&card| !summoning(card))));
             } else {
                 if zones & LOCATION_MMZONE != 0 {
-                    add(info.list_mzone.get(..5).unwrap_or_default());
+                    add(info.list_mzone.get(outer..5 - outer).unwrap_or_default());
                 }
                 if zones & LOCATION_EMZONE != 0 {
                     add(info.list_mzone.get(5..).unwrap_or_default());
@@ -1442,7 +1305,7 @@ impl Duel {
                 add(&info.list_szone);
             } else {
                 if zones & LOCATION_STZONE != 0 {
-                    add(info.list_szone.get(..5).unwrap_or_default());
+                    add(info.list_szone.get(outer..5 - outer).unwrap_or_default());
                 }
                 if zones & LOCATION_FZONE != 0 {
                     add(info.list_szone.get(5..6).unwrap_or_default());
@@ -1452,24 +1315,14 @@ impl Duel {
                     add(&pzones.map(|card| card.filter(|&card| self.cards[card].current.pzone)));
                 }
             }
-            for (bit, list) in [
-                (LOCATION_HAND, &info.list_hand),
-                (LOCATION_DECK, &info.list_main),
-                (LOCATION_EXTRA, &info.list_extra),
-                (LOCATION_GRAVE, &info.list_grave),
-                (LOCATION_REMOVED, &info.list_remove),
-            ] {
+            for bit in [LOCATION_HAND, LOCATION_DECK, LOCATION_EXTRA, LOCATION_GRAVE, LOCATION_REMOVED] {
                 if location & u32::from(bit) != 0 {
-                    list.iter().for_each(|&card| group.insert(card));
+                    info.pile(bit).into_iter().flatten().for_each(|&card| group.insert(card));
                 }
             }
             player = 1 - player;
         }
         group
-    }
-
-    fn get_useable_count_other(&self, card: Option<CardId>, playerid: u8, location: u8, uplayer: u8, reason: u32, zone: u32) -> (i32, u32) {
-        self.get_useable_count_other_in(&self.zones(), card, playerid, location, uplayer, reason, zone)
     }
 
     pub(crate) fn get_useable_count_other_in(
@@ -1642,11 +1495,7 @@ impl Duel {
             }
             return;
         }
-        let list = if location == LOCATION_HAND {
-            &self.player[playerid].list_hand
-        } else {
-            &self.player[playerid].list_extra
-        };
+        let Some(list) = self.player[playerid].pile(location) else { return };
         let mut message = self.trace.message(if location == LOCATION_HAND {
             MSG_SHUFFLE_HAND
         } else {
@@ -1659,8 +1508,7 @@ impl Duel {
         drop(message);
         if location == LOCATION_HAND {
             self.core.shuffle_hand_check[playerid] = false;
-            // The hint effects of the shuffled cards are shown again. The core walks each card's indexer in address
-            // order; a card in the hand carries at most one such hint here.
+            // The core walks each card's indexer in address order; a hand card carries at most one such hint here.
             for card in self.player[playerid].list_hand.clone() {
                 for effect in self.card_effects(card) {
                     let peffect = &self.effects[effect];
@@ -1846,19 +1694,7 @@ impl Duel {
         if peffect.is_disable_related() {
             self.update_disable_check_list(effect);
         }
-        if flag & EFFECT_FLAG_OATH != 0 {
-            let reason_effect = self.core.reason_effect.get();
-            self.field_effects.oath.push((effect, reason_effect));
-        }
-        if reset_flag & RESET_PHASE != 0 {
-            self.field_effects.pheff.push(effect);
-        }
-        if reset_flag & RESET_CHAIN != 0 {
-            self.field_effects.cheff.push(effect);
-        }
-        if flag & EFFECT_FLAG_COUNT_LIMIT != 0 {
-            self.field_effects.rechargeable.push(effect);
-        }
+        self.field_effects.track(effect, flag, reset_flag, self.core.reason_effect.get());
         if flag & EFFECT_FLAG_PLAYER_TARGET != 0 && flag & EFFECT_FLAG_CLIENT_HINT != 0 {
             self.player_hint(effect, owner_player, PHINT_DESC_ADD);
         }
@@ -1898,26 +1734,14 @@ impl Duel {
         if peffect.is_disable_related() {
             self.update_disable_check_list(effect);
         }
-        if flag & EFFECT_FLAG_OATH != 0 {
-            self.field_effects.oath.retain(|&(oath, _)| oath != effect);
-        }
-        if reset_flag & RESET_PHASE != 0 {
-            remove_item(&mut self.field_effects.pheff, &effect);
-        }
-        if reset_flag & RESET_CHAIN != 0 {
-            remove_item(&mut self.field_effects.cheff, &effect);
-        }
-        if flag & EFFECT_FLAG_COUNT_LIMIT != 0 {
-            remove_item(&mut self.field_effects.rechargeable, &effect);
-        }
+        self.field_effects.untrack(effect, flag, reset_flag);
         self.mark_reseted(effect);
         if flag & EFFECT_FLAG_PLAYER_TARGET != 0 && flag & EFFECT_FLAG_CLIENT_HINT != 0 {
             self.player_hint(effect, owner, PHINT_DESC_REMOVE);
         }
     }
 
-    // card::refresh_control_status: the controller the newest EFFECT_SET_CONTROL gives, else the owner.
-    // EFFECT_REMOVE_BRAINWASHING comes with the cards that register it.
+    // card::refresh_control_status: the newest EFFECT_SET_CONTROL's controller, else the owner; EFFECT_REMOVE_BRAINWASHING is not ported.
     pub(crate) fn refresh_control_status(&self, card: CardId) -> (u8, Option<EffectId>) {
         match self.filter_effect(card, EFFECT_SET_CONTROL, true).last() {
             Some(&effect) => (self.get_value(effect, card) as u8, Some(effect)),
@@ -2076,8 +1900,7 @@ impl Duel {
         }
     }
 
-    // field::adjust_grant_effect: gives a copy of the label object effect to each card the granting effect affects,
-    // and takes it back from the ones it no longer does.
+    // field::adjust_grant_effect: gives each affected card a copy of the label object effect, and takes it back from the others.
     pub(crate) fn adjust_grant_effect(&mut self) -> bool {
         let mut adjusted = false;
         let mut at = 0;
@@ -2150,15 +1973,9 @@ impl Duel {
             if range & LOCATION_SZONE != 0 {
                 player.list_szone.iter().flatten().for_each(|&card| add(card));
             }
-            for (location, list) in [
-                (LOCATION_GRAVE, &player.list_grave),
-                (LOCATION_REMOVED, &player.list_remove),
-                (LOCATION_HAND, &player.list_hand),
-                (LOCATION_DECK, &player.list_main),
-                (LOCATION_EXTRA, &player.list_extra),
-            ] {
+            for location in [LOCATION_GRAVE, LOCATION_REMOVED, LOCATION_HAND, LOCATION_DECK, LOCATION_EXTRA] {
                 if range & location != 0 {
-                    list.iter().for_each(|&card| add(card));
+                    player.pile(location).into_iter().flatten().for_each(|&card| add(card));
                 }
             }
             own = 1 - own;
@@ -2202,8 +2019,7 @@ impl Duel {
             .find(|&effect| self.is_target_player(effect, playerid) && self.is_available(effect))
     }
 
-    // filter_matching_card: the cards of locations `location1` (own side) and `location2` that pass the filter, in
-    // zone order, into `group`; with `count` it stops as soon as that many pass. Returns whether it stopped early.
+    // The cards of `location1` (own side) and `location2` that pass, in zone order; returns whether it stopped at `count`.
     pub(crate) fn filter_matching_card(
         &self,
         filter: &mut dyn FnMut(&Duel, CardId) -> bool,
@@ -2239,53 +2055,47 @@ impl Duel {
             group.insert(card);
             false
         };
+        let outer = usize::from(self.is_flag(DUEL_3_COLUMNS_FIELD));
         let mut player = own;
         for location in [location1, location2] {
             let info = &self.player[player];
             let monster = |card: CardId| !self.cards[card].get_status(STATUS_SUMMONING | STATUS_SUMMON_DISABLED | STATUS_SPSUMMON_STEP);
             let spell = |card: CardId| !self.cards[card].is_status(STATUS_ACTIVATE_DISABLED);
             let location = location as u16;
-            let mut zones =
+            let mut stops_in =
                 |list: &[Option<CardId>], extra: &dyn Fn(CardId) -> bool| list.iter().flatten().any(|&card| check(self, card, extra(card)));
             let (mzone, szone) = (&info.list_mzone, &info.list_szone);
             if location & u16::from(LOCATION_MZONE) != 0 {
-                if zones(mzone, &monster) {
+                if stops_in(mzone, &monster) {
                     return true;
                 }
             } else {
-                if location & LOCATION_MMZONE != 0 && zones(mzone.get(..5).unwrap_or_default(), &monster) {
+                if location & LOCATION_MMZONE != 0 && stops_in(mzone.get(..5).unwrap_or_default(), &monster) {
                     return true;
                 }
-                if location & LOCATION_EMZONE != 0 && zones(mzone.get(5..).unwrap_or_default(), &monster) {
+                if location & LOCATION_EMZONE != 0 && stops_in(mzone.get(5 + outer..7 - outer).unwrap_or_default(), &monster) {
                     return true;
                 }
             }
             if location & u16::from(LOCATION_SZONE) != 0 {
-                if zones(szone, &spell) {
+                if stops_in(szone, &spell) {
                     return true;
                 }
             } else {
-                if location & LOCATION_STZONE != 0 && zones(szone.get(..5).unwrap_or_default(), &spell) {
+                if location & LOCATION_STZONE != 0 && stops_in(szone.get(outer..5 - outer).unwrap_or_default(), &spell) {
                     return true;
                 }
-                if location & LOCATION_FZONE != 0 && zones(szone.get(5..6).unwrap_or_default(), &spell) {
+                if location & LOCATION_FZONE != 0 && stops_in(szone.get(5..6).unwrap_or_default(), &spell) {
                     return true;
                 }
                 let pzone = |card: CardId| self.cards[card].current.pzone && spell(card);
                 let pzones = [self.get_pzone_index(0), self.get_pzone_index(1)].map(|index| szone.get(index as usize).copied().flatten());
-                if location & LOCATION_PZONE != 0 && zones(&pzones, &pzone) {
+                if location & LOCATION_PZONE != 0 && stops_in(&pzones, &pzone) {
                     return true;
                 }
             }
-            let location = u32::from(location);
-            for (bit, list) in [
-                (LOCATION_DECK, &info.list_main),
-                (LOCATION_EXTRA, &info.list_extra),
-                (LOCATION_HAND, &info.list_hand),
-                (LOCATION_GRAVE, &info.list_grave),
-                (LOCATION_REMOVED, &info.list_remove),
-            ] {
-                if location & u32::from(bit) != 0 && list.iter().any(|&card| check(self, card, true)) {
+            for bit in [LOCATION_DECK, LOCATION_EXTRA, LOCATION_HAND, LOCATION_GRAVE, LOCATION_REMOVED] {
+                if location & u16::from(bit) != 0 && info.pile(bit).into_iter().flatten().any(|&card| check(self, card, true)) {
                     return true;
                 }
             }
@@ -2300,9 +2110,7 @@ impl Duel {
         }
     }
 
-    // Fills direct_attackable and returns the monsters the card can attack, following the core's atype: 1 for monsters
-    // that can only be attacked, 2 for a card that can only attack some monsters, 3 for one that must attack a monster
-    // and 4 otherwise; one attack per turn.
+    // Fills direct_attackable and returns the attackable monsters; atype 1: only be attacked, 2: only attack, 3: must attack, 4: any.
     pub(crate) fn field_get_attack_target(&mut self, card: CardId, chain_attack: bool, select_target: bool) -> Cards16 {
         self.cards[card].direct_attackable = 0;
         let p = self.cards[card].current.controler;
@@ -2507,7 +2315,6 @@ impl Duel {
             .collect()
     }
 
-    // card::get_unique_target.
     pub(crate) fn get_unique_target(&self, ucard: CardId, controler: u8, icard: Option<CardId>) -> CardSet {
         let mut cards = CardSet::default();
         let Some(unique) = self.cards[ucard].unique else { return cards };
@@ -2575,8 +2382,7 @@ impl Duel {
         (cards.len() >= 2).then_some(unique.effect)
     }
 
-    // Puts the cards the target may tribute into the sets, sets their release_param and returns their total release
-    // count; `mg` restricts them to its cards.
+    // Puts the cards the target may tribute into the sets, sets their release_param and returns the total; `mg` restricts them.
     pub(crate) fn get_summon_release_list(
         &mut self,
         target: CardId,
@@ -2656,8 +2462,7 @@ impl Duel {
         (rcount, params)
     }
 
-    // Puts the cards the player may release for a non-summon reason into the set, matching `fun`. What EFFECT_EXTRA_RELEASE
-    // and EFFECT_EXTRA_RELEASE_NONSUM add from the opponent's monsters comes with the cards that register them.
+    // Puts the cards the player may release for a non-summon reason into the set, matching `fun`.
     pub(crate) fn get_release_list(
         &self,
         playerid: u8,
@@ -2777,8 +2582,7 @@ impl Duel {
         count
     }
 
-    // Adds the cards in the ranges of a field effect that its target function accepts; only the Monster Zone comes with the
-    // cards that call it.
+    // Adds the cards in the ranges of a field effect that its target function accepts.
     fn filter_inrange_cards(&self, effect: EffectId, cards: &mut CardSet) {
         let peffect = &self.effects[effect];
         let own = self.get_handler_player(effect);
@@ -2849,15 +2653,12 @@ impl Duel {
         s > -fcount && max.max(0) > -fcount
     }
 
-    // The shared shape of the is_player_can_* checks: a matching player effect without a target forbids it, one with
-    // a target forbids it for the cards its target takes (further parameters the core passes come with the cards whose
-    // targets read them).
+    // A matching player effect without a target forbids the action, one with a target only for the cards it takes.
     #[inline(always)]
     fn is_player_can(&self, playerid: u8, code: u32, card: CardId) -> bool {
         self.is_player_can_for_reason(playerid, code, card, 0)
     }
 
-    // `reason` is what the codes whose check reads one pass; the others ignore it.
     fn is_player_can_for_reason(&self, playerid: u8, code: u32, card: CardId, reason: u32) -> bool {
         if !self.field_effects.registry.has_code(code) {
             return true;
@@ -2869,23 +2670,35 @@ impl Duel {
         !self
             .filter_player_effect(playerid, code, true)
             .into_iter()
-            .any(|effect| match self.effects[effect].target {
-                Target::Card(target) => target(self, effect, card),
-                Target::PlayerCard(target) => target(self, effect, card, playerid, reason),
-                _ => true,
-            })
+            .any(|effect| self.limit_targets(effect, card, playerid, Some(reason), None))
+    }
+
+    #[inline]
+    fn limit_targets(
+        &self,
+        limit: EffectId,
+        card: CardId,
+        player: u8,
+        reason: Option<u32>,
+        summon: Option<(u32, u8, u8, Option<EffectId>)>,
+    ) -> bool {
+        match (self.effects[limit].target, reason, summon) {
+            (Target::Card(target), _, _) => target(self, limit, card),
+            (Target::PlayerCard(target), Some(reason), _) => target(self, limit, card, player, reason),
+            (Target::SpSummon(target), _, Some((sumtype, first, second, effect))) => {
+                target(self, limit, card, player, sumtype, first, second, effect)
+            }
+            _ => true,
+        }
     }
 
     // EFFECT_CANNOT_SUMMON and EFFECT_CANNOT_FLIP_SUMMON, whose target may read the summoning player, type and target player.
     fn is_player_can_summon_target(&self, playerid: u8, code: u32, card: CardId, sumtype: u32, toplayer: u8) -> bool {
+        let summon = Some((sumtype, POS_FACEUP as u8, toplayer, None));
         !self
             .filter_player_effect(playerid, code, true)
             .into_iter()
-            .any(|effect| match self.effects[effect].target {
-                Target::Card(target) => target(self, effect, card),
-                Target::SpSummon(target) => target(self, effect, card, playerid, sumtype, POS_FACEUP as u8, toplayer, None),
-                _ => true,
-            })
+            .any(|effect| self.limit_targets(effect, card, playerid, None, summon))
     }
 
     pub(crate) fn field_is_player_can_summon(&self, sumtype: u32, playerid: u8, card: CardId, toplayer: u8) -> bool {
@@ -2893,8 +2706,7 @@ impl Duel {
         self.is_player_can_summon_target(playerid, EFFECT_CANNOT_SUMMON, card, sumtype | SUMMON_TYPE_NORMAL, toplayer)
     }
 
-    // The core passes only the card and the player; the parameters a target reads past them are nil in Lua, which
-    // cards read as the player.
+    // The core passes only the card and the player; cards read the nil parameters past them as the player.
     pub(crate) fn is_player_can_flipsummon(&self, playerid: u8, card: CardId) -> bool {
         self.is_player_can_summon_target(playerid, EFFECT_CANNOT_FLIP_SUMMON, card, 0, playerid)
     }
@@ -2904,24 +2716,11 @@ impl Duel {
         if !self.field_effects.registry.has_code(EFFECT_CANNOT_MSET) {
             return true;
         }
+        let summon = Some((sumtype | SUMMON_TYPE_NORMAL, toplayer, POS_FACEDOWN as u8, None));
         !self
             .filter_player_effect(playerid, EFFECT_CANNOT_MSET, true)
             .into_iter()
-            .any(|effect| match self.effects[effect].target {
-                Target::Card(target) => target(self, effect, card),
-                Target::PlayerCard(target) => target(self, effect, card, playerid, 0),
-                Target::SpSummon(target) => target(
-                    self,
-                    effect,
-                    card,
-                    playerid,
-                    sumtype | SUMMON_TYPE_NORMAL,
-                    toplayer,
-                    POS_FACEDOWN as u8,
-                    None,
-                ),
-                _ => true,
-            })
+            .any(|effect| self.limit_targets(effect, card, playerid, Some(0), summon))
     }
 
     pub(crate) fn is_player_can_sset(&self, playerid: u8, card: CardId) -> bool {
@@ -2960,8 +2759,6 @@ impl Duel {
         self.cards[card].current.location == LOCATION_HAND && self.is_player_can(playerid, EFFECT_CANNOT_DISCARD_HAND, card)
     }
 
-    // field::is_player_can_spsummon(peffect, ...): the special summon counters and
-    // the once-per-turn summons come with the cards and libraries that use them.
     pub(crate) fn is_player_can_spsummon(
         &self,
         effect: Option<EffectId>,
@@ -2992,11 +2789,7 @@ impl Duel {
         let forbidden = self
             .filter_player_effect(playerid, EFFECT_CANNOT_SPECIAL_SUMMON, true)
             .into_iter()
-            .any(|limit| match self.effects[limit].target {
-                Target::Card(target) => target(self, limit, card),
-                Target::SpSummon(target) => target(self, limit, card, playerid, sumtype, sumpos, toplayer, effect),
-                _ => true,
-            });
+            .any(|limit| self.limit_targets(limit, card, playerid, None, Some((sumtype, sumpos, toplayer, effect))));
         if forbidden {
             return false;
         }
@@ -3007,8 +2800,7 @@ impl Duel {
         self.check_spsummon_once(card, playerid) && self.check_spsummon_counter(playerid, 1)
     }
 
-    // The positions of `positions` the EFFECT_FORCE_SPSUMMON_POSITION effects of a player leave for the card, `caller` being the
-    // player the targets read as the one summoning.
+    // The positions the EFFECT_FORCE_SPSUMMON_POSITION effects leave of `positions`; the targets read `caller` as the summoner.
     pub(crate) fn force_spsummon_positions(
         &self,
         forcing: &EffectSet,
@@ -3019,14 +2811,9 @@ impl Duel {
         toplayer: u8,
         effect: Option<EffectId>,
     ) -> u8 {
-        forcing.into_iter().fold(positions, |positions, forcing| {
-            let applies = match self.effects[*forcing].target {
-                Target::Card(target) => target(self, *forcing, card),
-                Target::SpSummon(target) => target(self, *forcing, card, caller, sumtype, positions, toplayer, effect),
-                _ => true,
-            };
-            if applies {
-                positions & self.get_value(*forcing, card) as u8
+        forcing.into_iter().fold(positions, |positions, &forcing| {
+            if self.limit_targets(forcing, card, caller, None, Some((sumtype, positions, toplayer, effect))) {
+                positions & self.get_value(forcing, card) as u8
             } else {
                 positions
             }
@@ -3086,8 +2873,7 @@ impl Duel {
         })
     }
 
-    // field::check_card_counter: the counters of this activity that no card has failed for the player yet count a player's
-    // summon of `cards` when its filter fails for one of them.
+    // field::check_card_counter: the activity's counters still 0 for the player count once a card of `cards` fails their filter.
     pub(crate) fn check_card_counter(&mut self, cards: CardSet, activity: u8, playerid: u8) {
         for index in 0..self.core.custom_counters.len() {
             let Some(counter) = self.core.custom_counters.get(index).copied() else {
@@ -3109,7 +2895,6 @@ impl Duel {
         }
     }
 
-    // EFFECT_LEFT_SPSUMMON_COUNT values come with the cards that register them.
     pub(crate) fn is_player_can_spsummon_count(&self, playerid: u8, count: u32) -> bool {
         unported!(self, self.filter_player_effect(playerid, EFFECT_LEFT_SPSUMMON_COUNT, true));
         self.check_spsummon_counter(playerid, count as u8 as u16)
@@ -3155,7 +2940,6 @@ impl Duel {
         }
     }
 
-    // EFFECT_SELF_TOGRAVE comes with the cards that use it.
     pub(crate) fn adjust_self_destroy_set(&mut self) {
         if self.core.selfdes_disabled || !self.core.unique_destroy_set.is_empty() || !self.core.self_destroy_set.is_empty() {
             return;
@@ -3280,8 +3064,7 @@ impl Duel {
         }
     }
 
-    // field::get_chain: the solving continuous effect's chain for 0 while one runs, else as chain_at but clamping
-    // counts past the chain to the newest link.
+    // field::get_chain: the solving continuous effect's chain for 0, else as chain_at but clamping counts past the chain.
     pub(crate) fn get_chain(&mut self, chaincount: u8) -> Option<&mut Chain> {
         match self.chain_slot(chaincount)? {
             (true, _) => self.core.continuous_chain.last_mut(),
@@ -3315,8 +3098,7 @@ impl Duel {
         Some((false, index.checked_sub(1)?))
     }
 
-    // field::get_cteffect: whether activating a face-down continuous trap with a plain activation could also apply one
-    // of its trigger or quick effects; `store` collects them as the choices.
+    // field::get_cteffect: whether a plain continuous trap activation could also apply a trigger or quick effect; `store` collects them.
     pub(crate) fn get_cteffect(&mut self, effect: EffectId, playerid: u8, store: bool) -> bool {
         if !self.is_plain_continuous_trap_activation(effect) {
             return false;

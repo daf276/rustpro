@@ -1,12 +1,14 @@
 #![forbid(unsafe_code)]
 
-// A call site whose effect code no ported card registers yet: an effect reaching it marks the duel's result as
-// untrustworthy ([Duel::unported_site]), and fails a debug assertion.
+// A call site no ported card reaches yet: reaching it marks the duel's result untrustworthy ([Duel::unported_site]).
 macro_rules! unported {
     ($duel:expr, $effects:expr $(,)?) => {
         if ::std::iter::IntoIterator::into_iter($effects).next().is_some() {
             $duel.reach_unported(concat!(file!(), ":", line!()));
         }
+    };
+    ($duel:expr) => {
+        $duel.reach_unported(concat!(file!(), ":", line!()))
     };
 }
 

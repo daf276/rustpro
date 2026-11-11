@@ -7,16 +7,15 @@ use carddata::Card as CardData;
 
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{Container, EffectId, EffectSet, Operation, Target, Value, container_key, remove_item};
-use crate::field::PerPlayer;
+use crate::effect::{Container, EffectId, EffectSet, Operation, Target, Value, container_key, misread};
+use crate::field::{Cards8, PerPlayer};
 use crate::list::{List, Marks};
 use crate::script::{Args, Procedure};
 
 // Card 0 and two 60-card Main and 15-card Extra Decks leave 105 ids for tokens (Side Decks are not in a duel).
 pub const MAX_CARDS: usize = 256;
 
-// The card's index in creation order, which orders cards as ocgcore's `cardid` does. Card 0 is the core's temp_card,
-// the owner of global effects. Stored plus one, so that an Option<CardId> takes no more space.
+// The index in creation order, which orders cards as ocgcore's `cardid`; card 0 is the core's temp_card. Stored plus one.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CardId(NonZeroU16);
 
@@ -158,8 +157,7 @@ pub struct Cards {
 }
 
 impl Cards {
-    // Makes these equal to `source`, which must have been equal apart from the cards either changed since they last
-    // synced.
+    // `source` must have been equal apart from the cards either changed since they last synced.
     pub fn sync_from(&mut self, source: &Self) {
         self.list.truncate(source.list.len());
         self.list.extend_from_slice(source.list.get(self.list.len()..).unwrap_or_default());
@@ -232,12 +230,11 @@ pub struct LocInfo {
     pub position: u32,
 }
 
-// The codes get_attack or get_defense reads: its update, set, final, swap final and base codes, and the other stat's base.
 struct StatCodes {
     attack: bool,
     update: u32,
     set: u32,
-    final_: u32,
+    set_final: u32,
     swap_final: u32,
     base: u32,
     other_base: u32,
@@ -247,7 +244,7 @@ const ATTACK: StatCodes = StatCodes {
     attack: true,
     update: EFFECT_UPDATE_ATTACK,
     set: EFFECT_SET_ATTACK,
-    final_: EFFECT_SET_ATTACK_FINAL,
+    set_final: EFFECT_SET_ATTACK_FINAL,
     swap_final: EFFECT_SWAP_ATTACK_FINAL,
     base: EFFECT_SET_BASE_ATTACK,
     other_base: EFFECT_SET_BASE_DEFENSE,
@@ -257,7 +254,7 @@ const DEFENSE: StatCodes = StatCodes {
     attack: false,
     update: EFFECT_UPDATE_DEFENSE,
     set: EFFECT_SET_DEFENSE,
-    final_: EFFECT_SET_DEFENSE_FINAL,
+    set_final: EFFECT_SET_DEFENSE_FINAL,
     swap_final: EFFECT_SWAP_DEFENSE_FINAL,
     base: EFFECT_SET_BASE_DEFENSE,
     other_base: EFFECT_SET_BASE_ATTACK,
@@ -285,6 +282,11 @@ impl CardState {
             || (location & LOCATION_STZONE != 0 && self.location == LOCATION_SZONE && self.sequence < 5)
             || (location & LOCATION_FZONE != 0 && self.location == LOCATION_SZONE && self.sequence == 5)
             || (location & LOCATION_PZONE != 0 && self.location == LOCATION_SZONE && self.pzone)
+    }
+
+    pub fn set_place(&mut self, from: CardState) {
+        (self.controler, self.location, self.sequence, self.position, self.pzone) =
+            (from.controler, from.location, from.sequence, from.position, from.pzone);
     }
 }
 
@@ -333,8 +335,7 @@ impl Default for StaticData {
 }
 
 impl StaticData {
-    // Data no database holds (the stats Duel.IsPlayerCanSpecialSummonMonster gives the temp card), kept for the life of
-    // the thread: each distinct value is leaked once.
+    // Data no database holds (the stats Duel.IsPlayerCanSpecialSummonMonster gives the temp card), leaked once per value.
     pub fn interned(data: CardData) -> Self {
         thread_local! {
             static INTERNED: std::cell::RefCell<HashMap<CardData, &'static CardData>> = std::cell::RefCell::default();
@@ -399,8 +400,7 @@ pub struct Card {
     pub unique_fieldid: u32,
 }
 
-// What SetUniqueOnField with a filter function stores on the card: unique_function, unique_pos, unique_location and
-// unique_effect. A code argument comes with the cards that pass one.
+// What SetUniqueOnField with a filter function stores (unique_function, _pos, _location, _effect); a code argument is not ported.
 #[derive(Debug, Clone, Copy)]
 pub struct Unique {
     pub filter: fn(CardId, &Duel) -> bool,
@@ -565,8 +565,7 @@ impl Duel {
         self.get_type_for(card, None, 0, PLAYER_NONE)
     }
 
-    // card::get_type(scard, sumtype, playerid): the type as material of `scard` summoned by `sumtype`. Type effects
-    // with an operation, which apply only to such checks, come with the cards that register them.
+    // card::get_type(scard, sumtype, playerid): the type as material of `scard` summoned by `sumtype`.
     #[inline(always)]
     pub(crate) fn get_type_for(&self, card: CardId, _scard: Option<CardId>, sumtype: u64, _playerid: u8) -> u32 {
         if let Some(card_type) = self.get_assumed_property(card, ASSUME_TYPE) {
@@ -600,61 +599,80 @@ impl Duel {
             return temp;
         }
         self.core.type_temp.borrow_mut().push((card, data_type));
-        let mut card_type = data_type;
-        for effect in self.filter_effects(card, &[EFFECT_ADD_TYPE, EFFECT_REMOVE_TYPE, EFFECT_CHANGE_TYPE]) {
-            unported!(self, self.effects[effect].operation.map(|_| effect));
-            let value = self.get_value(effect, card) as u32;
-            match self.effects[effect].code {
-                EFFECT_ADD_TYPE => card_type |= value,
-                EFFECT_REMOVE_TYPE => card_type &= !value,
-                _ => card_type = value,
-            }
+        let codes = [EFFECT_ADD_TYPE, EFFECT_REMOVE_TYPE, EFFECT_CHANGE_TYPE];
+        let card_type = self.changed_bits(card, data_type.into(), codes, |card_type| {
             if let Some(entry) = self.core.type_temp.borrow_mut().last_mut() {
-                entry.1 = card_type;
+                entry.1 = card_type as u32;
             }
-        }
+        }) as u32;
         self.core.type_temp.borrow_mut().pop();
         card_type
     }
 
+    fn changed_bits(&self, card: CardId, base: u64, [add, remove, change]: [u32; 3], each: impl Fn(u64)) -> u64 {
+        let mut bits = base;
+        for effect in self.filter_effects(card, &[add, remove, change]) {
+            unported!(self, self.effects[effect].operation.map(|_| effect));
+            let value = i64::from(self.get_value(effect, card)) as u64;
+            match self.effects[effect].code {
+                code if code == add => bits |= value,
+                code if code == remove => bits &= !value,
+                _ => bits = value,
+            }
+            each(bits);
+        }
+        bits
+    }
+
+    pub(crate) fn is_monster_now(&self, card: CardId) -> bool {
+        self.cards[card].data.card_type & TYPE_MONSTER != 0
+            || self.get_type(card) & TYPE_MONSTER != 0
+            || self.is_affected_by_effect(card, EFFECT_PRE_MONSTER).is_some()
+    }
+
+    fn has_rank_level(&self, card: CardId) -> bool {
+        self.is_affected_by_effect(card, EFFECT_RANK_LEVEL).is_some() || self.is_affected_by_effect(card, EFFECT_RANK_LEVEL_S).is_some()
+    }
+
     pub(crate) fn get_level(&self, card: CardId) -> u32 {
         let (data, status) = (*self.cards[card].data, self.cards[card].status);
-        if (data.card_type & TYPE_XYZ != 0
-            && self.is_affected_by_effect(card, EFFECT_RANK_LEVEL).is_none()
-            && self.is_affected_by_effect(card, EFFECT_RANK_LEVEL_S).is_none())
+        if (data.card_type & TYPE_XYZ != 0 && !self.has_rank_level(card))
             || data.card_type & TYPE_LINK != 0
             || status & STATUS_NO_LEVEL != 0
-            || (data.card_type & TYPE_MONSTER == 0
-                && self.get_type(card) & TYPE_MONSTER == 0
-                && self.is_affected_by_effect(card, EFFECT_PRE_MONSTER).is_none())
+            || !self.is_monster_now(card)
         {
             return 0;
         }
-        let mut level = data.level as i32;
         unported!(
             self,
             [EFFECT_RANK_LEVEL_S, EFFECT_LEVEL_RANK_S]
                 .into_iter()
                 .filter_map(|code| self.is_affected_by_effect(card, code))
         );
-        let (mut up, mut upc) = (0, 0);
         let codes = [EFFECT_UPDATE_LEVEL, EFFECT_CHANGE_LEVEL, EFFECT_CHANGE_LEVEL_FINAL];
-        if codes.iter().any(|&code| self.may_have_effect(code)) {
-            for effect in self.filter_effects(card, &codes) {
-                let value = self.get_value(effect, card);
-                match self.effects[effect].code {
-                    EFFECT_UPDATE_LEVEL if self.is_single_unranged(effect) => up += value,
-                    EFFECT_UPDATE_LEVEL => upc += value,
-                    EFFECT_CHANGE_LEVEL => (level, up) = (value, 0),
-                    _ => (level, up, upc) = (value, 0, 0),
-                }
+        self.clamp_level(card, self.updated_value(card, data.level as i32, &codes))
+    }
+
+    fn updated_value(&self, card: CardId, base: i32, codes: &[u32]) -> i32 {
+        let (mut value, mut up, mut upc) = (base, 0, 0);
+        for effect in self.filter_effects(card, codes) {
+            let new = self.get_value(effect, card);
+            match codes.iter().position(|&code| code == self.effects[effect].code) {
+                Some(1) => (value, up) = (new, 0),
+                Some(2) => (value, up, upc) = (new, 0, 0),
+                _ if self.is_single_unranged(effect) => up += new,
+                _ => upc += new,
             }
         }
-        level += up + upc;
-        if level < 1 && self.get_type(card) & TYPE_MONSTER != 0 && self.is_affected_by_effect(card, EFFECT_ALLOW_NEGATIVE).is_none() {
-            level = 1;
+        value + up + upc
+    }
+
+    fn clamp_level(&self, card: CardId, value: i32) -> u32 {
+        if value < 1 && self.get_type(card) & TYPE_MONSTER != 0 && self.is_affected_by_effect(card, EFFECT_ALLOW_NEGATIVE).is_none() {
+            1
+        } else {
+            value as u32
         }
-        level as u32
     }
 
     pub(crate) fn get_rank(&self, card: CardId) -> u32 {
@@ -675,22 +693,8 @@ impl Duel {
                 .into_iter()
                 .filter_map(|code| self.is_affected_by_effect(card, code))
         );
-        let mut rank = data.level as i32;
-        let (mut up, mut upc) = (0, 0);
-        for effect in self.filter_effects(card, &[EFFECT_UPDATE_RANK, EFFECT_CHANGE_RANK, EFFECT_CHANGE_RANK_FINAL]) {
-            let value = self.get_value(effect, card);
-            match self.effects[effect].code {
-                EFFECT_UPDATE_RANK if self.is_single_unranged(effect) => up += value,
-                EFFECT_UPDATE_RANK => upc += value,
-                EFFECT_CHANGE_RANK => (rank, up) = (value, 0),
-                _ => (rank, up, upc) = (value, 0, 0),
-            }
-        }
-        rank += up + upc;
-        if rank < 1 && self.get_type(card) & TYPE_MONSTER != 0 && self.is_affected_by_effect(card, EFFECT_ALLOW_NEGATIVE).is_none() {
-            rank = 1;
-        }
-        rank as u32
+        let codes = [EFFECT_UPDATE_RANK, EFFECT_CHANGE_RANK, EFFECT_CHANGE_RANK_FINAL];
+        self.clamp_level(card, self.updated_value(card, data.level as i32, &codes))
     }
 
     pub(crate) fn check_xyz_level(&self, card: CardId, xyzc: CardId, level: u32) -> bool {
@@ -720,27 +724,13 @@ impl Duel {
     }
 
     pub(crate) fn get_attribute(&self, card: CardId) -> u32 {
-        if self.cards[card].data.card_type & TYPE_MONSTER == 0
-            && self.get_type(card) & TYPE_MONSTER == 0
-            && self.is_affected_by_effect(card, EFFECT_PRE_MONSTER).is_none()
-        {
+        if !self.is_monster_now(card) {
             return 0;
         }
-        let mut attribute = self.cards[card].data.attribute;
-        for effect in self.filter_effects(card, &[EFFECT_ADD_ATTRIBUTE, EFFECT_REMOVE_ATTRIBUTE, EFFECT_CHANGE_ATTRIBUTE]) {
-            let peffect = &self.effects[effect];
-            unported!(self, peffect.operation.is_some().then_some(effect));
-            let value = self.get_value(effect, card) as u32;
-            match peffect.code {
-                EFFECT_ADD_ATTRIBUTE => attribute |= value,
-                EFFECT_REMOVE_ATTRIBUTE => attribute &= !value,
-                _ => attribute = value,
-            }
-        }
-        attribute
+        let codes = [EFFECT_ADD_ATTRIBUTE, EFFECT_REMOVE_ATTRIBUTE, EFFECT_CHANGE_ATTRIBUTE];
+        self.changed_bits(card, self.cards[card].data.attribute.into(), codes, |_| {}) as u32
     }
 
-    // card::get_assumed_property.
     fn get_assumed_property(&self, card: CardId, assume: u32) -> Option<u64> {
         let assumes = self.assumes.borrow();
         assumes
@@ -753,24 +743,11 @@ impl Duel {
         if let Some(race) = self.get_assumed_property(card, ASSUME_RACE) {
             return race;
         }
-        if self.cards[card].data.card_type & TYPE_MONSTER == 0
-            && self.get_type(card) & TYPE_MONSTER == 0
-            && self.is_affected_by_effect(card, EFFECT_PRE_MONSTER).is_none()
-        {
+        if !self.is_monster_now(card) {
             return 0;
         }
-        let mut race = self.cards[card].data.race;
-        for effect in self.filter_effects(card, &[EFFECT_ADD_RACE, EFFECT_REMOVE_RACE, EFFECT_CHANGE_RACE]) {
-            let peffect = &self.effects[effect];
-            unported!(self, peffect.operation.is_some().then_some(effect));
-            let value = i64::from(self.get_value(effect, card)) as u64;
-            match peffect.code {
-                EFFECT_ADD_RACE => race |= value,
-                EFFECT_REMOVE_RACE => race &= !value,
-                _ => race = value,
-            }
-        }
-        race
+        let codes = [EFFECT_ADD_RACE, EFFECT_REMOVE_RACE, EFFECT_CHANGE_RACE];
+        self.changed_bits(card, self.cards[card].data.race, codes, |_| {})
     }
 
     // get_lscale and get_rscale, without the temp value the core keeps against a value that reads its own scale.
@@ -780,24 +757,12 @@ impl Duel {
         if !self.cards[card].current.is_location(LOCATION_PZONE) {
             return scale;
         }
-        let (update, change) = if right {
-            (EFFECT_UPDATE_RSCALE, EFFECT_CHANGE_RSCALE)
+        let codes = if right {
+            [EFFECT_UPDATE_RSCALE, EFFECT_CHANGE_RSCALE]
         } else {
-            (EFFECT_UPDATE_LSCALE, EFFECT_CHANGE_LSCALE)
+            [EFFECT_UPDATE_LSCALE, EFFECT_CHANGE_LSCALE]
         };
-        let (mut scale, mut up, mut upc) = (scale as i32, 0, 0);
-        for effect in self.filter_effects(card, &[update, change]) {
-            let value = self.get_value(effect, card);
-            if self.effects[effect].code != update {
-                scale = value;
-                up = 0;
-            } else if self.is_single_unranged(effect) {
-                up += value;
-            } else {
-                upc += value;
-            }
-        }
-        (scale + up + upc) as u32
+        self.updated_value(card, scale as i32, &codes) as u32
     }
 
     // card::get_set_card with match_setcode: whether one of the card's archetypes matches `setcode`.
@@ -882,22 +847,6 @@ impl Duel {
         self.get_stat_value(card, &ATTACK)
     }
 
-    // The `code` (EFFECT_SET_BASE_ATTACK or _DEFENSE) effects other than a card's own unranged ones apply first, in id
-    // order; returns the base they leave and the other effects.
-    fn continuous_base(&self, card: CardId, code: u32, base: i32, effects: EffectSet) -> (i32, EffectSet) {
-        let mut base = base;
-        let mut rest = EffectSet::default();
-        for effect in effects {
-            if self.effects[effect].code == code && !self.is_single_unranged(effect) {
-                base = self.get_value(effect, card).max(0);
-                self.set_temp_base_stat(base);
-            } else {
-                rest.push(effect);
-            }
-        }
-        (base, rest)
-    }
-
     fn temp_base_stat(&self, card: CardId, attack: bool) -> Option<i32> {
         let temp = self.core.base_stat_temp.borrow();
         temp.iter().find(|&&(c, a, _)| c == card && a == attack).map(|&(_, _, value)| value)
@@ -922,10 +871,21 @@ impl Duel {
         self.get_base_stat(card, EFFECT_SET_BASE_DEFENSE, &[EFFECT_SWAP_BASE_AD], self.cards[card].data.defense)
     }
 
+    // `swaps` are skipped for Link monsters.
     fn get_base_stat(&self, card: CardId, code: u32, swaps: &[u32], base: i32) -> i32 {
-        let base = self.get_stat(card, &[], swaps, base);
         let target = &self.cards[card];
-        if target.current.location != LOCATION_MZONE || target.get_status(STATUS_SUMMONING | STATUS_SPSUMMON_STEP) {
+        let in_mzone = target.current.location == LOCATION_MZONE && !target.get_status(STATUS_SUMMONING | STATUS_SPSUMMON_STEP);
+        let base = if !self.is_monster_now(card) {
+            0
+        } else if !in_mzone {
+            return base;
+        } else {
+            let swaps = if target.data.card_type & TYPE_LINK != 0 { &[][..] } else { swaps };
+            unported!(self, swaps.iter().flat_map(|&code| self.filter_effect(card, code, true)));
+            unported!(self, self.is_affected_by_effect(card, EFFECT_REVERSE_UPDATE));
+            base.max(0)
+        };
+        if !in_mzone {
             return base;
         }
         let attack = code == EFFECT_SET_BASE_ATTACK;
@@ -933,12 +893,15 @@ impl Duel {
             return value;
         }
         self.core.base_stat_temp.borrow_mut().push((card, attack, base));
-        let (base, effects) = self.continuous_base(card, code, base, self.filter_effects(card, &[code]));
-        let value = effects.iter().fold(base, |_, &effect| {
-            let value = self.get_value(effect, card).max(0);
-            self.set_temp_base_stat(value);
-            value
-        });
+        let effects = self.filter_effects(card, &[code]);
+        let mut value = base;
+        // The effects other than the card's own unranged ones apply first, in id order.
+        for single in [false, true] {
+            for &effect in effects.iter().filter(|&&effect| self.is_single_unranged(effect) == single) {
+                value = self.get_value(effect, card).max(0);
+                self.set_temp_base_stat(value);
+            }
+        }
         self.core.base_stat_temp.borrow_mut().pop();
         value
     }
@@ -950,14 +913,10 @@ impl Duel {
         self.get_stat_value(card, &DEFENSE)
     }
 
-    // card::get_attack and card::get_defense, which differ only in the codes they read. The ASSUME_* overrides come with
-    // the cards that need them.
+    // card::get_attack and card::get_defense, which differ only in their codes; the ASSUME_* overrides are not ported.
     fn get_stat_value(&self, card: CardId, stat: &StatCodes) -> i32 {
         let target = &self.cards[card];
-        if target.data.card_type & TYPE_MONSTER == 0
-            && self.get_type(card) & TYPE_MONSTER == 0
-            && self.is_affected_by_effect(card, EFFECT_PRE_MONSTER).is_none()
-        {
+        if !self.is_monster_now(card) {
             return 0;
         }
         let (own, other) = if stat.attack {
@@ -974,7 +933,7 @@ impl Duel {
         let (mut base, mut other_base) = (own.max(0), other.max(0));
         self.core.stat_temp.borrow_mut().push((card, stat.attack, base));
         self.core.base_stat_temp.borrow_mut().push((card, stat.attack, base));
-        let mut codes: List<u32, 8> = [stat.update, stat.set, stat.final_, stat.swap_final, stat.base]
+        let mut codes: List<u32, 8> = [stat.update, stat.set, stat.set_final, stat.swap_final, stat.base]
             .into_iter()
             .collect();
         if target.data.card_type & TYPE_LINK == 0 {
@@ -1012,11 +971,11 @@ impl Duel {
                         up = 0;
                     }
                 }
-                code if code == stat.final_ && self.is_single_unranged(effect) => {
+                code if code == stat.set_final && self.is_single_unranged(effect) => {
                     (set, up, upc) = (self.get_value(effect, card), 0, 0);
                 }
-                code if code == stat.final_ && peffect.is_flag(EFFECT_FLAG_DELAY) => delayed_finals.push(effect),
-                code if code == stat.final_ => finals.push(effect),
+                code if code == stat.set_final && peffect.is_flag(EFFECT_FLAG_DELAY) => delayed_finals.push(effect),
+                code if code == stat.set_final => finals.push(effect),
                 code if code == stat.base => (base, set) = (self.get_value(effect, card).max(0), -1),
                 code if code == stat.swap_final => (set, up, upc) = (self.get_value(effect, card), 0, 0),
                 code if code == stat.other_base => other_base = self.get_value(effect, card).max(0),
@@ -1057,32 +1016,10 @@ impl Duel {
         temp.iter().find(|&&(c, a, _)| c == card && a == attack).map(|&(_, _, value)| value)
     }
 
-    // Nested evaluations pop what they push, so the running one is the last entry.
     fn set_temp_stat(&self, value: i32) {
         if let Some(entry) = self.core.stat_temp.borrow_mut().last_mut() {
             entry.2 = value;
         }
-    }
-
-    // The checks get_base_attack starts with; `swaps` are skipped for Link monsters.
-    fn get_stat(&self, card: CardId, codes: &[u32], swaps: &[u32], base: i32) -> i32 {
-        let target = &self.cards[card];
-        if target.data.card_type & TYPE_MONSTER == 0
-            && self.get_type(card) & TYPE_MONSTER == 0
-            && self.is_affected_by_effect(card, EFFECT_PRE_MONSTER).is_none()
-        {
-            return 0;
-        }
-        if target.current.location != LOCATION_MZONE || target.get_status(STATUS_SUMMONING | STATUS_SPSUMMON_STEP) {
-            return base;
-        }
-        let swaps = if target.data.card_type & TYPE_LINK != 0 { &[][..] } else { swaps };
-        unported!(
-            self,
-            codes.iter().chain(swaps).flat_map(|&code| self.filter_effect(card, code, true))
-        );
-        unported!(self, self.is_affected_by_effect(card, EFFECT_REVERSE_UPDATE));
-        base.max(0)
     }
 
     pub(crate) fn apply_field_effect(&mut self, card: CardId) {
@@ -1118,7 +1055,8 @@ impl Duel {
     fn in_field_range(&self, effect: EffectId, card: CardId) -> bool {
         let peffect = &self.effects[effect];
         self.in_range(effect, card)
-            || (peffect.range & u16::from(LOCATION_HAND) != 0
+            || (self.cards[card].current.controler != PLAYER_NONE
+                && peffect.range & u16::from(LOCATION_HAND) != 0
                 && peffect.effect_type & EFFECT_TYPE_TRIGGER_O != 0
                 && peffect.code & EVENT_PHASE == 0)
     }
@@ -1151,25 +1089,17 @@ impl Duel {
         self.refresh_disable_status(card);
         if enabled {
             self.cards[card].set_status(STATUS_EFFECT_ENABLED, true);
-            let registry = &self.field_effects.registry;
-            for (_, effect) in registry.all(Container::Single, Some(card)) {
-                if self.effects[effect].is_flag(EFFECT_FLAG_SINGLE_RANGE) && self.in_range(effect, card) {
-                    self.effects.set_id(effect, self.next_field_id());
-                }
-            }
-            for (_, effect) in registry.all(Container::Field, Some(card)) {
-                if self.in_range(effect, card) {
-                    self.effects.set_id(effect, self.next_field_id());
-                }
-            }
-            if self.cards[card].current.location == LOCATION_SZONE {
-                for (_, effect) in registry.all(Container::Equip, Some(card)) {
-                    self.effects.set_id(effect, self.next_field_id());
-                }
-            }
-            for (_, effect) in registry.all(Container::Target, Some(card)) {
-                if self.in_range(effect, card) {
-                    self.effects.set_id(effect, self.next_field_id());
+            let in_szone = self.cards[card].current.location == LOCATION_SZONE;
+            for container in [Container::Single, Container::Field, Container::Equip, Container::Target] {
+                for (_, effect) in self.field_effects.registry.all(container, Some(card)) {
+                    let renewed = match container {
+                        Container::Single => self.effects[effect].is_flag(EFFECT_FLAG_SINGLE_RANGE) && self.in_range(effect, card),
+                        Container::Equip => in_szone,
+                        _ => self.in_range(effect, card),
+                    };
+                    if renewed {
+                        self.effects.set_id(effect, self.next_field_id());
+                    }
                 }
             }
             if self.cards[card].get_status(STATUS_DISABLED) {
@@ -1196,7 +1126,6 @@ impl Duel {
         let (effect_type, code) = (peffect.effect_type, peffect.code);
         let mut check_target = Some(card);
         let container = if effect_type & EFFECT_TYPE_SINGLE != 0 {
-            // A new stat-setting effect replaces the ones it overrides.
             let replaced: &[u32] = match code {
                 _ if peffect.is_flag(EFFECT_FLAG_SINGLE_RANGE) => &[],
                 EFFECT_SET_ATTACK | EFFECT_SET_BASE_ATTACK => &[EFFECT_SET_ATTACK, EFFECT_SET_ATTACK_FINAL, EFFECT_SET_BASE_ATTACK],
@@ -1222,6 +1151,8 @@ impl Duel {
             check_target = self.cards[card].equiping_target;
             Container::Equip
         } else if effect_type & EFFECT_TYPE_TARGET != 0 {
+            // The effect lookups skip the target effects that the core walks through effect_target_owner.
+            unported!(self);
             check_target = None;
             Container::Target
         } else if effect_type & EFFECT_TYPE_XMATERIAL != 0 {
@@ -1273,16 +1204,8 @@ impl Duel {
         }
         let peffect = &self.effects[effect];
         let (reset_flag, flag) = (peffect.reset_flag, peffect.flag[0]);
-        if effect_type & EFFECT_TYPE_FIELD != 0 {
-            let controler = self.cards[card].current.controler;
-            if self.in_range(effect, card)
-                || (controler != PLAYER_NONE
-                    && self.effects[effect].range & u16::from(LOCATION_HAND) != 0
-                    && effect_type & EFFECT_TYPE_TRIGGER_O != 0
-                    && code & EVENT_PHASE == 0)
-            {
-                self.add_effect(effect, PLAYER_NONE);
-            }
+        if effect_type & EFFECT_TYPE_FIELD != 0 && self.in_field_range(effect, card) {
+            self.add_effect(effect, PLAYER_NONE);
         }
         if self.cards[card].current.controler != PLAYER_NONE
             && let Some(target) = check_target
@@ -1290,20 +1213,9 @@ impl Duel {
         {
             self.add_to_disable_check_list(target);
         }
-        if flag & EFFECT_FLAG_OATH != 0 {
-            self.field_effects.oath.push((effect, reason_effect));
-        }
-        if reset_flag & RESET_PHASE != 0 {
-            self.field_effects.pheff.push(effect);
-            if self.effects[effect].reset_count == 0 {
-                self.effects[effect].reset_count += 1;
-            }
-        }
-        if reset_flag & RESET_CHAIN != 0 {
-            self.field_effects.cheff.push(effect);
-        }
-        if flag & EFFECT_FLAG_COUNT_LIMIT != 0 {
-            self.field_effects.rechargeable.push(effect);
+        self.field_effects.track(effect, flag, reset_flag, reason_effect);
+        if reset_flag & RESET_PHASE != 0 && self.effects[effect].reset_count == 0 {
+            self.effects[effect].reset_count += 1;
         }
         if flag & EFFECT_FLAG_CLIENT_HINT != 0 {
             let (location, description) = (self.cards.get_info_location(card), self.effects[effect].description);
@@ -1319,9 +1231,7 @@ impl Duel {
         id
     }
 
-    // card::copy_effect: the effects the script of `code` registers for the card, with the given reset; returns the copy id,
-    // or -1 for a Normal Monster. The effects the script marks uncopyable are never added. A copying card that is a
-    // non-Effect Monster also gets EFFECT_ADD_TYPE, which comes with the cards that reach it.
+    // card::copy_effect: the effects the script of `code` registers, with the given reset; the copy id, or -1 for a Normal Monster.
     pub(crate) fn card_copy_effect(&mut self, card: CardId, code: u32, reset: u32, count: u8) -> i32 {
         let database = self.database;
         if database
@@ -1341,7 +1251,7 @@ impl Duel {
         (self.core.copy_reset, self.core.copy_reset_count) = (copy_reset, copy_reset_count);
         let data_type = self.cards[card].data.card_type;
         if data_type & TYPE_MONSTER != 0 && data_type & TYPE_EFFECT == 0 {
-            self.reach_unported(concat!(file!(), ":", line!()));
+            unported!(self);
         }
         i32::from(self.infos.copy_id) - 1
     }
@@ -1370,7 +1280,7 @@ impl Duel {
         self.effects[effect].card_key = None;
         if effect_type & EFFECT_TYPE_FIELD != 0
             && effect_type & (EFFECT_TYPE_SINGLE | EFFECT_TYPE_EQUIP | EFFECT_TYPE_TARGET | EFFECT_TYPE_XMATERIAL) == 0
-            && self.in_field_range_of_removal(effect, card)
+            && self.in_field_range(effect, card)
         {
             self.remove_effect(effect);
         }
@@ -1380,18 +1290,7 @@ impl Duel {
         {
             self.add_to_disable_check_list(target);
         }
-        if flag & EFFECT_FLAG_OATH != 0 {
-            self.field_effects.oath.retain(|&(oath, _)| oath != effect);
-        }
-        if reset_flag & RESET_PHASE != 0 {
-            remove_item(&mut self.field_effects.pheff, &effect);
-        }
-        if reset_flag & RESET_CHAIN != 0 {
-            remove_item(&mut self.field_effects.cheff, &effect);
-        }
-        if flag & EFFECT_FLAG_COUNT_LIMIT != 0 {
-            remove_item(&mut self.field_effects.rechargeable, &effect);
-        }
+        self.field_effects.untrack(effect, flag, reset_flag);
         let code = self.effects[effect].code;
         if code & 0xf_0000 == EFFECT_COUNTER_PERMIT && effect_type & EFFECT_TYPE_SINGLE != 0 {
             self.remove_permitted_counters(card, code as u16);
@@ -1410,33 +1309,22 @@ impl Duel {
         self.mark_reseted(effect);
     }
 
-    fn in_field_range_of_removal(&self, effect: EffectId, card: CardId) -> bool {
-        let peffect = &self.effects[effect];
-        self.in_range(effect, card)
-            || (self.cards[card].current.controler != PLAYER_NONE
-                && peffect.range & u16::from(LOCATION_HAND) != 0
-                && peffect.effect_type & EFFECT_TYPE_TRIGGER_O != 0
-                && peffect.code & EVENT_PHASE == 0)
-    }
-
     pub(crate) fn filter_disable_related_cards(&mut self, card: CardId) {
         for effect in self.card_effects(card) {
-            {
-                if !self.effects[effect].is_disable_related() {
-                    continue;
-                }
-                let effect_type = self.effects[effect].effect_type;
-                if effect_type & EFFECT_TYPE_FIELD != 0 {
-                    self.update_disable_check_list(effect);
-                } else if effect_type & EFFECT_TYPE_EQUIP != 0 {
-                    if let Some(target) = self.cards[card].equiping_target {
-                        self.add_to_disable_check_list(target);
-                    }
-                } else if effect_type & EFFECT_TYPE_XMATERIAL != 0
-                    && let Some(target) = self.cards[card].overlay_target
-                {
+            if !self.effects[effect].is_disable_related() {
+                continue;
+            }
+            let effect_type = self.effects[effect].effect_type;
+            if effect_type & EFFECT_TYPE_FIELD != 0 {
+                self.update_disable_check_list(effect);
+            } else if effect_type & EFFECT_TYPE_EQUIP != 0 {
+                if let Some(target) = self.cards[card].equiping_target {
                     self.add_to_disable_check_list(target);
                 }
+            } else if effect_type & EFFECT_TYPE_XMATERIAL != 0
+                && let Some(target) = self.cards[card].overlay_target
+            {
+                self.add_to_disable_check_list(target);
             }
         }
     }
@@ -1595,7 +1483,7 @@ impl Duel {
             .any(|relation| relation.card == card && relation.effect == effect)
     }
 
-    // card::filter_effect: the card's own effects, those of its equips, targets and materials, then the field's.
+    // card::filter_effect: the card's own effects, those of its equips and materials, then the field's.
     #[inline(always)]
     pub(crate) fn filter_effect(&self, card: CardId, code: u32, sort: bool) -> EffectSet {
         if !self.field_effects.registry.has_code(code) {
@@ -1637,19 +1525,17 @@ impl Duel {
         }));
     }
 
-    // The effects of `code` of the cards equipped to the card (equip_effect of its equiping_cards, by card id). Hot
-    // lookups test `equip_cards` first, as nothing is equipped in most duels.
+    // equip_effect of the equiping_cards by card id; hot lookups test `equip_cards` first, as most duels equip nothing.
     fn equip_effects(&self, card: CardId, code: u32) -> impl Iterator<Item = EffectId> + '_ {
         self.equiping_cards(card)
             .into_iter()
             .flat_map(move |equip| self.field_effects.registry.equal_range(Container::Equip, Some(equip), code))
     }
 
-    // The effects of `code` of the card's Xyz materials in overlay order (xmaterial_effect), without those that also
-    // apply to the field.
+    // xmaterial_effect of the Xyz materials in overlay order, without those that also apply to the field.
     pub(crate) fn xmaterial_effects(&self, card: CardId, code: u32) -> impl Iterator<Item = EffectId> + '_ {
-        let mut materials: Vec<CardId> = if self.overlay_cards.is_empty() {
-            Vec::new()
+        let mut materials: Cards8 = if self.overlay_cards.is_empty() {
+            Cards8::default()
         } else {
             self.xyz_materials(card).into_iter().collect()
         };
@@ -1746,7 +1632,6 @@ impl Duel {
         effects
     }
 
-    // card::filter_immune_effect.
     pub(crate) fn filter_immune_effect(&self, card: CardId) -> EffectSet {
         let registry = &self.field_effects.registry;
         let mut effects: EffectSet = registry.equal_range(Container::Single, Some(card), EFFECT_IMMUNE_EFFECT).collect();
@@ -1883,9 +1768,7 @@ impl Duel {
             && self.is_affected_by_effect(card, EFFECT_UNSUMMONABLE_CARD).is_none()
     }
 
-    // Puts every summon procedure except the ordinary summon in the set (see is_can_be_summoned); the i32 is
-    // TRUE/FALSE for the ordinary summon, or -1/-2 when a limiting procedure decides alone. Summon procedures come
-    // with the cards that register them.
+    // The summon procedures besides the ordinary summon; the i32 is TRUE/FALSE for that, or -1/-2 when a limiting procedure decides.
     pub(crate) fn filter_summon_procedure(
         &self,
         card: CardId,
@@ -1894,7 +1777,7 @@ impl Duel {
         min_tribute: u8,
         zone: u32,
     ) -> (i32, EffectSet) {
-        let check = |duel: &Self, effect| duel.check_summon_procedure(card, effect, playerid, ignore_count, min_tribute, zone);
+        let check = |duel: &Self, effect| duel.check_normal_procedure(card, effect, playerid, ignore_count, min_tribute, zone, false);
         let limits = self.filter_effect(card, EFFECT_LIMIT_SUMMON_PROC, true);
         if !limits.is_empty() {
             let procedures: EffectSet = limits.into_iter().filter(|&effect| check(self, effect)).collect();
@@ -1921,10 +1804,7 @@ impl Duel {
         if max < min {
             return (0, procedures);
         }
-        if !ignore_count
-            && self.core.extra_summon[playerid] == 0
-            && self.core.summon_count[playerid] >= self.get_summon_count_limit(playerid)
-        {
+        if !ignore_count && self.summon_count_reached(playerid) {
             let controler = self.cards[card].current.controler;
             let found = self.filter_effect(card, EFFECT_EXTRA_SUMMON_COUNT, true).into_iter().any(|effect| {
                 let (new_min, new_zone, releasable) = self.extra_summon_values(effect, 0x1f);
@@ -1948,18 +1828,17 @@ impl Duel {
         )
     }
 
-    // What an EFFECT_EXTRA_SUMMON_COUNT effect's value returns: the minimum Tributes, the zones (`default_zone` if it names
-    // none) and the releasable mask. Only a plain integer value comes with the cards ported so far.
+    // What an EFFECT_EXTRA_SUMMON_COUNT value returns: the minimum Tributes, the zones and the releasable mask.
     pub(crate) fn extra_summon_values(&self, effect: EffectId, default_zone: u32) -> (u8, u32, u32) {
         let Value::Int(min) = self.effects[effect].value else {
-            self.reach_unported(concat!(file!(), ":", line!()));
+            unported!(self);
             return (0, default_zone, 0xff00ff);
         };
         (min as u8, default_zone, 0xff00ff)
     }
 
-    // card::check_summon_procedure; the script checks min_tribute with Duel.CheckTribute.
-    pub(crate) fn check_summon_procedure(
+    // card::check_summon_procedure and card::check_set_procedure; the script checks min_tribute with Duel.CheckTribute.
+    fn check_normal_procedure(
         &self,
         card: CardId,
         effect: EffectId,
@@ -1967,6 +1846,7 @@ impl Duel {
         ignore_count: bool,
         min_tribute: u8,
         zone: u32,
+        set: bool,
     ) -> bool {
         if !self.check_count_limit(effect, playerid) {
             return false;
@@ -1977,19 +1857,26 @@ impl Duel {
         } else {
             playerid
         };
-        if !self.field_is_player_can_summon(self.get_value(effect, card) as u32, playerid, card, toplayer)
-            || self.check_unique_onfield(card, toplayer, LOCATION_MZONE).is_some()
-        {
+        let sumtype = self.get_value(effect, card) as u32;
+        let allowed = if set {
+            self.is_player_can_mset(sumtype, playerid, card, toplayer)
+        } else {
+            self.field_is_player_can_summon(sumtype, playerid, card, toplayer)
+                && self.check_unique_onfield(card, toplayer, LOCATION_MZONE).is_none()
+        };
+        if !allowed {
             return false;
         }
-        if !ignore_count
-            && self.core.extra_summon[playerid] == 0
-            && self.core.summon_count[playerid] >= self.get_summon_count_limit(playerid)
-        {
-            unported!(self, self.filter_effect(card, EFFECT_EXTRA_SUMMON_COUNT, true));
+        if !ignore_count && self.summon_count_reached(playerid) {
+            let extra = if set { EFFECT_EXTRA_SET_COUNT } else { EFFECT_EXTRA_SUMMON_COUNT };
+            unported!(self, self.filter_effect(card, extra, true));
             return false;
         }
         self.is_summonable(card, effect, min_tribute, zone, 0xff00ff)
+    }
+
+    fn summon_count_reached(&self, playerid: u8) -> bool {
+        self.core.extra_summon[playerid] == 0 && self.core.summon_count[playerid] >= self.get_summon_count_limit(playerid)
     }
 
     // card::is_summonable: the procedure's condition (e, c, minc, zone, relzone, exeff) with exeff nil.
@@ -2014,7 +1901,7 @@ impl Duel {
         min_tribute: u8,
         zone: u32,
     ) -> (i32, EffectSet) {
-        let check = |duel: &Self, effect| duel.check_set_procedure(card, effect, playerid, ignore_count, min_tribute, zone);
+        let check = |duel: &Self, effect| duel.check_normal_procedure(card, effect, playerid, ignore_count, min_tribute, zone, true);
         let limits = self.filter_effect(card, EFFECT_LIMIT_SET_PROC, true);
         if !limits.is_empty() {
             let procedures: EffectSet = limits.into_iter().filter(|&effect| check(self, effect)).collect();
@@ -2038,10 +1925,7 @@ impl Duel {
         if max < min {
             return (0, procedures);
         }
-        if !ignore_count
-            && self.core.extra_summon[playerid] == 0
-            && self.core.summon_count[playerid] >= self.get_summon_count_limit(playerid)
-        {
+        if !ignore_count && self.summon_count_reached(playerid) {
             unported!(self, self.filter_effect(card, EFFECT_EXTRA_SET_COUNT, true));
             return (0, procedures);
         }
@@ -2050,38 +1934,6 @@ impl Duel {
             i32::from(self.field_check_tribute(card, min, max, None, controler, zone, 0xff00ff, POS_FACEDOWN_DEFENSE)),
             procedures,
         )
-    }
-
-    // card::check_set_procedure.
-    pub(crate) fn check_set_procedure(
-        &self,
-        card: CardId,
-        effect: EffectId,
-        playerid: u8,
-        ignore_count: bool,
-        min_tribute: u8,
-        zone: u32,
-    ) -> bool {
-        if !self.check_count_limit(effect, playerid) {
-            return false;
-        }
-        let peffect = &self.effects[effect];
-        let toplayer = if peffect.is_flag(EFFECT_FLAG_SPSUM_PARAM) && peffect.o_range != 0 {
-            1 - playerid
-        } else {
-            playerid
-        };
-        if !self.is_player_can_mset(self.get_value(effect, card) as u32, playerid, card, toplayer) {
-            return false;
-        }
-        if !ignore_count
-            && self.core.extra_summon[playerid] == 0
-            && self.core.summon_count[playerid] >= self.get_summon_count_limit(playerid)
-        {
-            unported!(self, self.filter_effect(card, EFFECT_EXTRA_SET_COUNT, true));
-            return false;
-        }
-        self.is_summonable(card, effect, min_tribute, zone, 0xff00ff)
     }
 
     // Whether playerid can normal summon the card; `procedure` restricts to one summon procedure (c80921533).
@@ -2134,24 +1986,20 @@ impl Duel {
 
     // The min/max number of tributes for an ordinary advance summon, packed as min + (max << 16).
     pub(crate) fn get_summon_tribute_count(&self, card: CardId) -> i32 {
-        let level = self.get_level(card);
-        let (min, max) = match level {
-            ..5 => return 0,
-            5..7 => (1, 1),
-            _ => (2, 2),
-        };
-        unported!(self, self.filter_effect(card, EFFECT_DECREASE_TRIBUTE, true));
-        min + (max << 16)
+        self.tribute_count(card, EFFECT_DECREASE_TRIBUTE)
     }
 
     pub(crate) fn get_set_tribute_count(&self, card: CardId) -> i32 {
-        let level = self.get_level(card);
-        let (min, max) = match level {
+        self.tribute_count(card, EFFECT_DECREASE_TRIBUTE_SET)
+    }
+
+    fn tribute_count(&self, card: CardId, decrease: u32) -> i32 {
+        let (min, max) = match self.get_level(card) {
             ..5 => return 0,
             5..7 => (1, 1),
             _ => (2, 2),
         };
-        unported!(self, self.filter_effect(card, EFFECT_DECREASE_TRIBUTE_SET, true));
+        unported!(self, self.filter_effect(card, decrease, true));
         min + (max << 16)
     }
 
@@ -2277,8 +2125,7 @@ impl Duel {
         procedures
     }
 
-    // card::is_spsummonable: the procedure's condition (e, c, must, materials, min, max), with the materials the core
-    // keeps in must_use_mats and friends passed in `procedure`, which the procedure summon then carries.
+    // card::is_spsummonable: the condition (e, c, must, materials, min, max), `procedure` holding what the core keeps in must_use_mats.
     pub(crate) fn is_spsummonable(&self, card: CardId, effect: EffectId, procedure: Procedure) -> bool {
         let args = Args {
             e: effect,
@@ -2292,8 +2139,7 @@ impl Duel {
         self.check_procedure_condition_with(card, effect, &args)
     }
 
-    // A summon procedure's condition (e, c), run with the procedure as the reason effect and the card's controller
-    // as the reason player.
+    // A summon procedure's condition (e, c).
     pub(crate) fn check_procedure_condition(&self, card: CardId, effect: EffectId) -> bool {
         let args = Args {
             e: effect,
@@ -2304,9 +2150,8 @@ impl Duel {
     }
 
     fn check_procedure_condition_with(&self, card: CardId, effect: EffectId, args: &Args) -> bool {
-        let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
-        self.core.reason_effect.set(Some(effect));
-        self.core.reason_player.set(self.cards[card].current.controler);
+        let reason_effect = self.core.reason_effect.replace(Some(effect));
+        let reason_player = self.core.reason_player.replace(self.cards[card].current.controler);
         let result = self.effects[effect]
             .condition
             .is_none_or(|condition| self.check_condition(condition, args));
@@ -2421,7 +2266,6 @@ impl Duel {
             && self.is_affected_by_effect(card, EFFECT_UNRELEASABLE_NONSUM).is_none()
     }
 
-    // EFFECT_UNRELEASABLE_EFFECT comes with the cards that register it.
     pub(crate) fn is_releasable_by_effect(&self, card: CardId, effect: Option<EffectId>) -> bool {
         if effect.is_none() {
             return true;
@@ -2503,7 +2347,6 @@ impl Duel {
         target.overlay_target.is_none() && target.current.location & (LOCATION_GRAVE | LOCATION_REMOVED) == 0
     }
 
-    // Values are functions of (e, re, rp), or of (e, re, rp, c) when they read the card the core also passes.
     pub(crate) fn check_indestructable_by_effect(&self, card: CardId, effect: Option<EffectId>, playerid: u8) -> Option<EffectId> {
         let effect = effect?;
         self.filter_effect(card, EFFECT_INDESTRUCTABLE_EFFECT, true)
@@ -2513,7 +2356,7 @@ impl Duel {
                 Value::EffectPlayer(value) => value(self, indestructable, effect, playerid),
                 Value::EffectPlayerCard(value) => value(self, indestructable, effect, playerid, card),
                 _ => {
-                    self.reach_unported(concat!(file!(), ":", line!()));
+                    unported!(self);
                     false
                 }
             })
@@ -2531,7 +2374,7 @@ impl Duel {
             Value::ReasonMut(_) if self.pending_resets.borrow().contains(&indestructable) => 0,
             Value::ReasonMut(value) => i32::from(self.check_mut(|duel| value(duel, indestructable, Some(effect), REASON_EFFECT, playerid))),
             _ => {
-                self.reach_unported(concat!(file!(), ":", line!()));
+                unported!(self);
                 0
             }
         };
@@ -2569,7 +2412,7 @@ impl Duel {
                 Value::Int(value) => value != 0,
                 Value::Reason(value) => value(self, indestructable, current.reason_effect, current.reason, current.reason_player),
                 _ => {
-                    self.reach_unported(concat!(file!(), ":", line!()));
+                    unported!(self);
                     false
                 }
             })
@@ -2583,7 +2426,7 @@ impl Duel {
                 Value::Int(value) => value != 0,
                 Value::SpSummonCondition(value) => value(self, condition, se, sp, st, pos, tp),
                 _ => {
-                    self.reach_unported(concat!(file!(), ":", line!()));
+                    unported!(self);
                     true
                 }
             })
@@ -2613,7 +2456,7 @@ impl Duel {
             match self.effects[effect].value {
                 Value::MaterialCheck(value) => value(self, effect, card),
                 Value::Int(_) => {}
-                _ => debug_assert!(false, "a material check read with the wrong parameters"),
+                _ => misread("a material check"),
             }
         }
     }
@@ -2656,12 +2499,12 @@ impl Duel {
             return;
         }
         let sequence = self.xyz_materials(card).len() as u32;
-        let mat = &mut self.cards[material];
-        mat.overlay_target = Some(card);
-        mat.pre_overlay_target = None;
-        mat.current.controler = PLAYER_NONE;
-        mat.current.location = LOCATION_OVERLAY;
-        mat.current.sequence = sequence;
+        let pmaterial = &mut self.cards[material];
+        pmaterial.overlay_target = Some(card);
+        pmaterial.pre_overlay_target = None;
+        pmaterial.current.controler = PLAYER_NONE;
+        pmaterial.current.location = LOCATION_OVERLAY;
+        pmaterial.current.sequence = sequence;
         self.overlay_cards.insert(material);
         for effect in self.xmaterial_field_effects(material) {
             self.add_effect(effect, PLAYER_NONE);
@@ -2676,16 +2519,17 @@ impl Duel {
             self.core.just_sent_cards.insert(material);
         }
         self.overlay_cards.remove(material);
-        let mat = &mut self.cards[material];
-        let current = mat.current;
-        mat.previous.controler = current.controler;
-        mat.previous.location = current.location;
-        mat.previous.sequence = current.sequence;
-        mat.previous.pzone = current.pzone;
-        mat.current.controler = PLAYER_NONE;
-        mat.current.location = 0;
-        mat.current.sequence = 0;
-        mat.pre_overlay_target = mat.overlay_target.take();
+        let pmaterial = &mut self.cards[material];
+        let current = pmaterial.current;
+        // Not set_place: the core keeps the previous position here.
+        pmaterial.previous.controler = current.controler;
+        pmaterial.previous.location = current.location;
+        pmaterial.previous.sequence = current.sequence;
+        pmaterial.previous.pzone = current.pzone;
+        pmaterial.current.controler = PLAYER_NONE;
+        pmaterial.current.location = 0;
+        pmaterial.current.sequence = 0;
+        pmaterial.pre_overlay_target = pmaterial.overlay_target.take();
         for other in self.xyz_materials(card) {
             let sequence = &mut self.cards[other].current.sequence;
             if *sequence > current.sequence {
@@ -2765,9 +2609,7 @@ impl Duel {
             && !(self.cards[card].data.card_type & TYPE_TOKEN != 0 && u32::from(position) & POS_FACEDOWN != 0)
     }
 
-    // Where a cost would send the card after the redirects that leaving the field and the destination apply (the
-    // core sets sendto_param.location to `destination` meanwhile, which Card.GetDestination reads through the probe).
-    // Also whether a redirect applied.
+    // Where a cost would send the card after the redirects, and whether one applied; Card.GetDestination reads the probe meanwhile.
     fn cost_destination(&self, card: CardId, destination: u8) -> (u32, bool) {
         self.destination_probe.set(Some((card, destination)));
         let result = self.cost_destination_redirected(card, destination);
@@ -2890,7 +2732,6 @@ impl Duel {
     }
 }
 
-// Materials of Synchro and Link Summons, and Link ratings.
 impl Duel {
     pub(crate) fn is_not_tuner(&self, card: CardId, scard: Option<CardId>, playerid: u8) -> bool {
         if self.get_type_for(card, scard, SUMMON_TYPE_SYNCHRO.into(), playerid) & TYPE_TUNER == 0 {
@@ -2902,35 +2743,23 @@ impl Duel {
     }
 
     pub(crate) fn get_synchro_level(&self, card: CardId, scard: CardId) -> u32 {
-        let data_type = self.cards[card].data.card_type;
-        if data_type & TYPE_LINK != 0 && self.is_affected_by_effect(card, EFFECT_SYNCHRO_LEVEL).is_none() {
-            return 0;
-        }
-        if (data_type & TYPE_XYZ != 0 || self.cards[card].status & STATUS_NO_LEVEL != 0)
-            && self.is_affected_by_effect(card, EFFECT_RANK_LEVEL).is_none()
-            && self.is_affected_by_effect(card, EFFECT_RANK_LEVEL_S).is_none()
-        {
-            return 0;
-        }
-        match self.filter_effect(card, EFFECT_SYNCHRO_LEVEL, true).first() {
-            Some(&effect) => self.get_value(effect, scard) as u32,
-            None => self.get_level(card),
-        }
+        self.material_level(card, scard, EFFECT_SYNCHRO_LEVEL, true)
     }
 
     pub(crate) fn get_ritual_level(&self, card: CardId, rcard: CardId) -> u32 {
+        self.material_level(card, rcard, EFFECT_RITUAL_LEVEL, false)
+    }
+
+    fn material_level(&self, card: CardId, other: CardId, code: u32, allow_link: bool) -> u32 {
         let data_type = self.cards[card].data.card_type;
-        if data_type & TYPE_LINK != 0 {
+        if data_type & TYPE_LINK != 0 && !(allow_link && self.is_affected_by_effect(card, code).is_some()) {
             return 0;
         }
-        if (data_type & TYPE_XYZ != 0 || self.cards[card].status & STATUS_NO_LEVEL != 0)
-            && self.is_affected_by_effect(card, EFFECT_RANK_LEVEL).is_none()
-            && self.is_affected_by_effect(card, EFFECT_RANK_LEVEL_S).is_none()
-        {
+        if (data_type & TYPE_XYZ != 0 || self.cards[card].status & STATUS_NO_LEVEL != 0) && !self.has_rank_level(card) {
             return 0;
         }
-        match self.filter_effect(card, EFFECT_RITUAL_LEVEL, true).first() {
-            Some(&effect) => self.get_value(effect, rcard) as u32,
+        match self.filter_effect(card, code, true).first() {
+            Some(&effect) => self.get_value(effect, other) as u32,
             None => self.get_level(card),
         }
     }
@@ -2947,12 +2776,7 @@ impl Duel {
             self,
             self.filter_effects(card, &[EFFECT_UPDATE_LINK, EFFECT_CHANGE_LINK, EFFECT_CHANGE_LINK_FINAL])
         );
-        let link = target.data.level;
-        if link < 1 && self.get_type(card) & TYPE_MONSTER != 0 && self.is_affected_by_effect(card, EFFECT_ALLOW_NEGATIVE).is_none() {
-            1
-        } else {
-            link
-        }
+        self.clamp_level(card, target.data.level as i32)
     }
 
     // The values of EFFECT_CANNOT_BE_MATERIAL: whether one forbids the card as material of `scard`.
@@ -2964,10 +2788,7 @@ impl Duel {
                 .any(|effect| match self.effects[effect].value {
                     Value::Int(value) => value != 0,
                     Value::Material(value) => value(self, effect, scard, sumtype, playerid),
-                    _ => {
-                        debug_assert!(false, "a material limit read with the wrong parameters");
-                        false
-                    }
+                    _ => misread("a material limit"),
                 })
     }
 
@@ -2998,9 +2819,7 @@ impl Duel {
         let target = &self.cards[card];
         let data_type = target.data.card_type;
         if Some(card) == scard
-            || (data_type & TYPE_XYZ != 0
-                && self.is_affected_by_effect(card, EFFECT_RANK_LEVEL).is_none()
-                && self.is_affected_by_effect(card, EFFECT_RANK_LEVEL_S).is_none())
+            || (data_type & TYPE_XYZ != 0 && !self.has_rank_level(card))
             || (data_type & TYPE_LINK != 0 && self.is_affected_by_effect(card, EFFECT_SYNCHRO_LEVEL).is_none())
             || self.get_type_for(card, scard, SUMMON_TYPE_SYNCHRO.into(), playerid) & TYPE_MONSTER == 0
         {
@@ -3032,7 +2851,6 @@ impl Duel {
         !self.is_forbidden_material(card, scard, SUMMON_TYPE_SYNCHRO.into(), playerid)
     }
 
-    // EFFECT_EXTRA_RITUAL_MATERIAL, which lets a monster in the GY be a material, comes with the cards that register it.
     pub(crate) fn is_can_be_ritual_material(&self, card: CardId, scard: Option<CardId>, playerid: u8) -> bool {
         if Some(card) == scard || self.get_type(card) & TYPE_MONSTER == 0 {
             return false;
@@ -3092,7 +2910,6 @@ impl Duel {
         !self.is_forbidden_material(card, scard, SUMMON_TYPE_LINK.into(), playerid)
     }
 
-    // EFFECT_CANNOT_BE_FUSION_MATERIAL values that are functions of (e, c, sumtype) come with the cards that register them.
     pub(crate) fn is_can_be_fusion_material(&self, card: CardId, fcard: Option<CardId>, summon_type: u64, playerid: u8) -> bool {
         if Some(card) == fcard || self.cards[card].is_status(STATUS_FORBIDDEN) {
             return false;
@@ -3103,7 +2920,7 @@ impl Duel {
             .any(|effect| match self.effects[effect].value {
                 Value::Int(value) => value != 0,
                 _ => {
-                    self.reach_unported(concat!(file!(), ":", line!()));
+                    unported!(self);
                     false
                 }
             });
@@ -3120,9 +2937,7 @@ impl Duel {
             || self.is_affected_by_effect(card, EFFECT_EXTRA_FUSION_MATERIAL).is_some()
     }
 
-    // card::fusion_check and card::fusion_filter_valid: the EFFECT_FUSION_MATERIAL effects whose condition (e, g, gc,
-    // chkf) holds, each run with the effect as the reason effect and its handler's player as the reason player. The core
-    // walks the single effects from the code to the end of the container and skips other codes.
+    // card::fusion_check and card::fusion_filter_valid: the EFFECT_FUSION_MATERIAL effects whose condition (e, g, gc, chkf) holds.
     pub(crate) fn fusion_materials_valid(
         &self,
         card: CardId,
@@ -3137,9 +2952,8 @@ impl Duel {
                 let Some(condition) = self.effects[effect].condition else {
                     return false;
                 };
-                let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
-                self.core.reason_effect.set(Some(effect));
-                self.core.reason_player.set(self.get_handler_player(effect));
+                let reason_effect = self.core.reason_effect.replace(Some(effect));
+                let reason_player = self.core.reason_player.replace(self.get_handler_player(effect));
                 let args = Args {
                     e: effect,
                     materials: g,
@@ -3162,26 +2976,9 @@ impl Duel {
 
     // card::get_summon_code as Card.GetCode with a summon card reads it: the codes in ascending order.
     pub(crate) fn get_summon_codes(&self, card: CardId, scard: Option<CardId>, sumtype: u64, playerid: u8) -> Vec<u32> {
-        let mut effects = self.filter_effect(card, EFFECT_ADD_CODE, false);
-        effects.extend(self.filter_effect(card, EFFECT_REMOVE_CODE, false));
-        effects.extend(self.filter_effect(card, EFFECT_CHANGE_CODE, false));
-        effects.sort_by_key(|&effect| self.effects.id(effect));
-        let (mut codes, mut changed) = (Vec::new(), false);
-        for effect in effects {
-            let Some(Operation::CodeCondition(condition)) = self.effects[effect].operation else {
-                continue;
-            };
-            if !condition(self, scard, sumtype, playerid) {
-                continue;
-            }
-            let value = self.get_value(effect, card) as u32;
-            match self.effects[effect].code {
-                EFFECT_ADD_CODE => codes.push(value),
-                EFFECT_REMOVE_CODE => codes.retain(|&other| other != value),
-                _ => (codes, changed) = (vec![value], true),
-            }
-        }
-        if !changed {
+        let effects = self.filter_effects(card, &[EFFECT_ADD_CODE, EFFECT_REMOVE_CODE, EFFECT_CHANGE_CODE]);
+        let mut codes = Vec::new();
+        if !self.apply_summon_codes(card, effects, scard, sumtype, playerid, &mut codes) {
             codes.extend(
                 [self.get_code(card), self.get_another_code(card)]
                     .into_iter()
@@ -3195,12 +2992,23 @@ impl Duel {
 
     // card::get_summon_code as Card.IsSummonCode reads it.
     pub(crate) fn is_summon_code(&self, card: CardId, scard: Option<CardId>, sumtype: u64, playerid: u8, codes: &[u32]) -> bool {
-        let mut effects = self.filter_effect(card, EFFECT_ADD_CODE, false);
-        effects.extend(self.filter_effect(card, EFFECT_REMOVE_CODE, false));
-        effects.extend(self.filter_effect(card, EFFECT_CHANGE_CODE, false));
-        effects.sort_by_key(|&effect| self.effects.id(effect));
-        let (code, another) = (self.get_code(card), self.get_another_code(card));
-        let mut summon_codes: Vec<u32> = [code, another].into_iter().filter(|&code| code != 0).collect();
+        let effects = self.filter_effects(card, &[EFFECT_ADD_CODE, EFFECT_REMOVE_CODE, EFFECT_CHANGE_CODE]);
+        let mut summon_codes = vec![self.get_code(card)];
+        summon_codes.extend(Some(self.get_another_code(card)).filter(|&code| code != 0));
+        self.apply_summon_codes(card, effects, scard, sumtype, playerid, &mut summon_codes);
+        codes.iter().any(|other| summon_codes.contains(other))
+    }
+
+    fn apply_summon_codes(
+        &self,
+        card: CardId,
+        effects: EffectSet,
+        scard: Option<CardId>,
+        sumtype: u64,
+        playerid: u8,
+        codes: &mut Vec<u32>,
+    ) -> bool {
+        let mut changed = false;
         for effect in effects {
             let Some(Operation::CodeCondition(condition)) = self.effects[effect].operation else {
                 continue;
@@ -3210,17 +3018,16 @@ impl Duel {
             }
             let value = self.get_value(effect, card) as u32;
             match self.effects[effect].code {
-                EFFECT_ADD_CODE => summon_codes.push(value),
-                EFFECT_REMOVE_CODE => summon_codes.retain(|&other| other != value),
-                _ => summon_codes = vec![value],
+                EFFECT_ADD_CODE => codes.push(value),
+                EFFECT_REMOVE_CODE => codes.retain(|&other| other != value),
+                _ => (*codes, changed) = (vec![value], true),
             }
         }
-        codes.iter().any(|other| summon_codes.contains(other))
+        changed
     }
 }
 
-// card::counters, kept per duel sorted by card and counter type: the permanent count, then the count a negation
-// removes.
+// card::counters, kept per duel sorted by card and counter type: the permanent count, then the one a negation removes.
 impl Duel {
     fn counter_slot(&self, card: CardId, counter_type: u16) -> Result<usize, usize> {
         self.counters
@@ -3441,8 +3248,7 @@ impl Duel {
         false
     }
 
-    // field::get_overlay_group: the materials of the cards of `group`, or of the monsters on the sides `self_side` and
-    // `oppo` of `playerid`, leaving out monsters being summoned.
+    // field::get_overlay_group: the materials of `group`'s cards, or of the monsters on the named sides, without those being summoned.
     pub(crate) fn field_overlay_group(&self, playerid: u8, self_side: u8, oppo: u8, group: Option<CardSet>) -> CardSet {
         let targets = group.unwrap_or_else(|| {
             [(playerid, self_side), (1 - playerid, oppo)]
@@ -3458,7 +3264,6 @@ impl Duel {
             .collect()
     }
 
-    // EFFECT_OVERLAY_REMOVE_REPLACE comes with the cards that register it.
     pub(crate) fn is_player_can_remove_overlay_card(
         &self,
         playerid: u8,
@@ -3475,10 +3280,8 @@ impl Duel {
     }
 }
 
-// Columns.
 impl Duel {
-    // card::get_column_zone: the zones of the card's column widened by `left` and `right`, the opponent's in the high
-    // half, without the card's own zone.
+    // card::get_column_zone: the card's column widened by `left` and `right`, the opponent's in the high half, without its own zone.
     pub(crate) fn get_column_zone(&self, card: CardId, loc1: u32, left: i32, right: i32) -> u32 {
         let current = self.cards[card].current;
         let (loc2, own_sequence) = (u32::from(current.location), current.sequence as i32);

@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use carddata::{CardDatabase, Deck as Decklist};
 use engine::{DUEL_MODE_MR5, DuelRecord, PlayerOptions, Position, PositionError, Prompt, Xoshiro256StarStar};
+use fiber::Fiber;
 use numpy::{PyArray1, PyArray2, PyArrayDyn, PyArrayMethods, PyReadonlyArray1};
 use pyo3::create_exception;
 use pyo3::exceptions::PyException;
@@ -145,19 +146,19 @@ impl Tensors {
 /// One duel, for search: `record` holds how it came about unless it was taken from a batch or determinized.
 #[pyclass]
 struct Duel {
-    duel: Mutex<engine::Duel>,
+    duel: Mutex<Fiber>,
     record: Option<DuelRecord>,
 }
 
 impl Duel {
     fn replay(database: &Database, record: DuelRecord) -> PyResult<Self> {
         Ok(Self {
-            duel: Mutex::new(record.replay(database.0, &LIBRARY).map_err(fail)?),
+            duel: Mutex::new(Fiber::new(record.replay(database.0, &LIBRARY).map_err(fail)?)),
             record: Some(record),
         })
     }
 
-    fn duel(&mut self) -> &mut engine::Duel {
+    fn duel(&mut self) -> &mut Fiber {
         exclusive(&mut self.duel)
     }
 }
@@ -228,7 +229,7 @@ impl Duel {
     fn determinize(&mut self, player: u8, seed: u64, pool: Deck) -> PyResult<Self> {
         let mut rng = Xoshiro256StarStar::new(StdRng::seed_from_u64(seed).random());
         Ok(Self {
-            duel: Mutex::new(self.duel().determinize(player, &mut rng, &pool.0).map_err(fail)?),
+            duel: Mutex::new(Fiber::new(self.duel().determinize(player, &mut rng, &pool.0).map_err(fail)?)),
             record: None,
         })
     }
@@ -399,7 +400,7 @@ impl Batch {
     fn duel(&mut self, slot: usize) -> Option<Duel> {
         let duel = exclusive(&mut self.batch).duel(slot)?.clone();
         Some(Duel {
-            duel: Mutex::new(duel),
+            duel: Mutex::new(Fiber::new(duel)),
             record: None,
         })
     }

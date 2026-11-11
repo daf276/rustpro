@@ -7,7 +7,7 @@ use crate::constants::*;
 use crate::effect::{EffectId, Effects, Event, FieldEffect};
 use crate::field::{FieldInfo, PerPlayer, PlayerInfo, Processor, Relations, ReturnCards, Tributes};
 use crate::list::List;
-use crate::processor::{OcgStatus, Startup};
+use crate::processor::{OcgStatus, Startup, Unit};
 use crate::rng::Xoshiro256StarStar;
 use crate::script::{FusionCheck, Library, Replay, SynchroCheck};
 
@@ -365,16 +365,32 @@ impl Duel {
         self.run()
     }
 
-    pub(crate) fn run(&mut self) -> Status {
+    // Runs until a prompt after [Duel::answer].
+    pub fn run(&mut self) -> Status {
+        self.run_units(false).unwrap_or(Status::Awaiting)
+    }
+
+    // As [Duel::run], but None before the unit that runs a script function, where a runner moves to its own stack.
+    pub fn run_to_script(&mut self) -> Option<Status> {
+        self.run_units(true)
+    }
+
+    fn run_units(&mut self, to_script: bool) -> Option<Status> {
         // While units run, only emplace_process touches the unit stacks, and it pushes to core.subunits.
         let mut units = std::mem::take(&mut self.core.units);
         let status = loop {
             if self.result.is_some() {
-                break Status::End;
+                break Some(Status::End);
             }
-            match self.process_unit(&mut units) {
-                OcgStatus::Awaiting => break Status::Awaiting,
-                OcgStatus::End => break Status::End,
+            self.next_unit(&mut units);
+            let status = match units.last() {
+                Some(Unit::Execute(_)) if to_script => break None,
+                Some(Unit::Execute(_)) => self.process_apart(&mut units),
+                _ => self.process_last(&mut units),
+            };
+            match status {
+                OcgStatus::Awaiting => break Some(Status::Awaiting),
+                OcgStatus::End => break Some(Status::End),
                 OcgStatus::Continue => {}
             }
         };

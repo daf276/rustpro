@@ -1,5 +1,6 @@
 // Players are relative to the observer (0 itself, 1 its opponent, 2 neither), -1 is none, codes are the raw u32 bits.
 use engine::{Action, Choice, Duel, Observation, ObservationSink, Prompt, SeenCard, SeenLink};
+use fiber::Fiber;
 use rayon::prelude::*;
 
 use crate::encoding::{ACTIONS, EncodingError, slot};
@@ -163,7 +164,7 @@ impl<'a> Tensors<'a> {
     // Each duel's observation for the player its prompt waits for, empty rows for None or no prompt.
     pub(crate) fn par_write<'d>(
         &mut self,
-        duels: impl IndexedParallelIterator<Item = Option<&'d mut Duel>>,
+        duels: impl IndexedParallelIterator<Item = Option<&'d mut Fiber>>,
     ) -> Result<(), (usize, EncodingError)> {
         let rows = self.global.par_iter_mut().zip(self.cards.par_iter_mut());
         let rows = rows.zip(self.chain.par_iter_mut()).zip(self.actions.par_iter_mut());

@@ -62,4 +62,4 @@ pub use libduel::{ChainInfo, ExtraSummon, FromChainInfo, MonsterStats, ReleaseOp
 pub use libeffect::CountCode;
 pub use observation::{Choice, DeterminizeError, MAX_DECLARED_CODES, Observation, ObservationSink, SeenCard, SeenLink};
 pub use rng::Xoshiro256StarStar;
-pub use script::{Args, FusionCheck, InitialEffect, Interrupt, Library, Script, SynchroCheck};
+pub use script::{Args, FusionCheck, InitialEffect, Interrupt, Library, Resumed, SUSPEND, Script, SynchroCheck};

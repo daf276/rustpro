@@ -520,6 +520,7 @@ fn play(
     };
     let mut engine = engine::Duel::from_position(&position, &vendor.cards, &scripts::LIBRARY, duel_seed)?;
     engine.set_trace(true);
+    let mut engine = fiber::Fiber::new(engine);
     let mut record = DuelRecord {
         seed: duel_seed,
         position,

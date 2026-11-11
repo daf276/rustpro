@@ -1,5 +1,6 @@
-// Script entry points and coroutines: a prompting function bails, then reruns from a snapshot with the logged answers, muted.
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+// Script entry points and coroutines: a prompting function bails, then reruns from a snapshot with the logged answers, muted;
+// under a runner with its own stack (crate fiber) it waits at the prompt instead, and only copies of the duel rerun.
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
 
 use crate::buffer::ProgressiveBuffer;
 use crate::card::{CardId, CardSet};
@@ -120,19 +121,32 @@ pub struct Replay {
     pub cursor: usize,
     // The trace count when the last attempt started; the next attempt mutes what was written since, as it writes that again.
     pub messages: u64,
-    // The duel before the pending function's first attempt; set while one of its prompts waits. Clones share it.
+    // The duel before the running function's first attempt. Clones share it.
     pub snapshot: Option<Snapshot>,
     pub spare: Spare,
     // The prompt a nested loop met with no answer logged, shown on top of the function's unit once the function is left.
     pub prompt: Option<Unit>,
     // The unit stack of a yield's nested run, kept for its capacity.
     pub units: Vec<Unit>,
+    // The stack of an Execute unit run apart from the outer units, kept for its capacity.
+    pub apart: Vec<Unit>,
     pub interrupted: bool,
     // The running functions' effects and players, innermost last, restored as the reason after an action's units ran.
     pub stack: List<(EffectId, u8), 4>,
 }
 
 pub type Snapshot = Arc<Mutex<Duel>>;
+
+// What a function waiting at a prompt is resumed with.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Resumed {
+    Answered,
+    Cancelled,
+}
+
+// Set by a runner that keeps a waiting function on a stack of its own (crate fiber): returns once the prompt is answered,
+// or None for a duel it does not run, which interrupts the function to be rerun from its snapshot.
+pub static SUSPEND: OnceLock<fn(&mut Duel) -> Option<Resumed>> = OnceLock::new();
 
 // Panics only follow bugs, so a poisoned snapshot is used as it is.
 pub(crate) fn lock(snapshot: &Snapshot) -> MutexGuard<'_, Duel> {
@@ -178,6 +192,8 @@ impl Duel {
             }
             return result.ok();
         }
+        // The outer units (Duel::process_apart) are not part of the copies.
+        let units = std::mem::take(&mut self.core.units);
         let (snapshot, mute) = match self.replay.snapshot.take() {
             Some(snapshot) => {
                 // No answer is empty; an empty one reruns to the prompt that waits (Duel::rerun_to_prompt).
@@ -190,13 +206,16 @@ impl Duel {
             }
             None => (self.snapshot(), 0),
         };
+        self.core.units = units;
         self.replay.cursor = 0;
         self.trace.mute.set(mute);
-        let start = self.trace.count.get();
+        self.replay.messages = self.trace.count.get();
+        self.replay.snapshot = Some(snapshot);
         self.replay.stack.push((effect, player));
         let result = call(self);
         self.replay.stack.pop();
         self.replay.interrupted = false;
+        let snapshot = self.replay.snapshot.take();
         match result {
             Ok(value) => {
                 // duel::restore_assumes, which the core runs once the outermost Lua call returns.
@@ -204,13 +223,12 @@ impl Duel {
                 debug_assert_eq!(self.trace.mute.get(), 0, "a rerun wrote fewer messages than its previous attempt");
                 self.replay.log.clear();
                 self.replay.messages = 0;
-                self.replay.spare = Spare(Some(snapshot));
+                self.replay.spare = Spare(snapshot);
                 Some(value)
             }
             Err(Interrupt) => {
                 if self.result.is_none() {
-                    self.replay.messages = start;
-                    self.replay.snapshot = Some(snapshot);
+                    self.replay.snapshot = snapshot;
                 }
                 None
             }
@@ -311,6 +329,38 @@ impl Duel {
         Ok(())
     }
 
+    // A function's prompt waits here, shown on the outer units as an interrupted function's is, until the runner resumes it.
+    fn wait_for_answer(&mut self, units: &mut Vec<Unit>) -> bool {
+        let Some(suspend) = SUSPEND.get().filter(|_| self.replay.snapshot.is_some() && !self.replay.interrupted) else {
+            return false;
+        };
+        let stack = std::mem::take(&mut self.replay.stack);
+        self.core.units.extend(units.pop());
+        let resumed = suspend(self);
+        units.extend(self.core.units.pop());
+        self.replay.stack = stack;
+        if resumed != Some(Resumed::Answered) {
+            return false;
+        }
+        self.replay.log.push(self.returns.data.clone());
+        self.replay.cursor += 1;
+        true
+    }
+
+    // An Execute unit runs apart, the outer units on `core.units` with a copy of it, where a clone taken while its
+    // function waits finds them.
+    pub(crate) fn process_apart(&mut self, units: &mut Vec<Unit>) -> OcgStatus {
+        let mut apart = std::mem::take(&mut self.replay.apart);
+        apart.extend(units.last().cloned());
+        std::mem::swap(units, &mut self.core.units);
+        let status = self.process_last(&mut apart);
+        std::mem::swap(units, &mut self.core.units);
+        units.pop();
+        units.append(&mut apart);
+        self.replay.apart = apart;
+        status
+    }
+
     fn run_yield(&mut self, units: &mut Vec<Unit>) -> Script<()> {
         loop {
             if self.result.is_some() {
@@ -327,8 +377,10 @@ impl Duel {
                             self.replay.cursor += 1;
                         }
                         None => {
-                            self.replay.prompt = units.pop();
-                            self.replay.interrupted = true;
+                            if !self.wait_for_answer(units) {
+                                self.replay.prompt = units.pop();
+                                self.replay.interrupted = true;
+                            }
                         }
                     }
                 }

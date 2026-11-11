@@ -254,13 +254,14 @@ impl Duel {
         Ok(out)
     }
 
-    /// A duel agreeing with what `player` sees, the hidden cards drawn from `pool` (the opponent's deck, as known or assumed).
-    fn determinize(&mut self, player: u8, seed: u64, pool: Deck) -> PyResult<Self> {
-        let mut rng = Xoshiro256StarStar::new(StdRng::seed_from_u64(seed).random());
-        Ok(Self {
-            duel: Mutex::new(self.duel().determinize(player, &mut rng, &pool.0).map_err(fail)?),
-            record: None,
-        })
+    /// A duel agreeing with what `player` sees, the hidden cards drawn from `pool` (the opponent's deck, as known or assumed),
+    /// written into `out` if given.
+    #[pyo3(signature = (player, seed, pool, out = None))]
+    fn determinize(&mut self, py: Python<'_>, player: u8, seed: u64, pool: Deck, out: Option<Py<Self>>) -> PyResult<Py<Self>> {
+        let rng = || Xoshiro256StarStar::new(StdRng::seed_from_u64(seed).random());
+        let duel = &*self.duel();
+        let write = |target: &mut engine::Duel| duel.determinize_into(player, &mut rng(), &pool.0, target).map_err(fail);
+        Self::copy(py, out, None, write, || duel.determinize(player, &mut rng(), &pool.0).map_err(fail))
     }
 
     fn position<'py>(&mut self, py: Python<'py>) -> PyResult<Bound<'py, PyBytes>> {

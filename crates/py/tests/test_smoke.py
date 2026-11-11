@@ -97,6 +97,8 @@ def test_determinize_shows_no_more_than_the_observation(database, deck):
                 assert (getattr(shown, name) == getattr(seen, name)).all(), name
             truth = duel.observe(1 - player)
             resampled += (determinized.observe(1 - player).cards != truth.cards).any()
+            assert duel.determinize(player, step, deck, out=pooled) is pooled
+            assert (pooled.observe(1 - player).cards == determinized.observe(1 - player).cards).all()
         duel.apply(int(rng.choice(duel.legal_actions())))
     assert hidden > 0 and resampled > 0
     replayed = ygo_sim.Duel.from_record(database, duel.record())

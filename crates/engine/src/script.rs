@@ -286,7 +286,7 @@ impl Duel {
                 script_groups, values_reset, fusion_check_additional, synchro_check_additional, ritual_summoning_level, assumes,
                 pending_resets, material_cards, overlay_cards, counters, card_targets, card_relations, announced_cards,
                 indestructable_effects, battled_cards, immune_effects, equip_cards, unported;
-            rest: core, trace: _, destination_probe: _);
+            rest: core, trace: _, destination_probe: _, idle_memo: _);
         let (replay, own) = (std::mem::take(&mut core.replay), std::mem::take(&mut self.core.replay));
         self.core.clone_from(core);
         (core.replay, self.core.replay) = (replay, own);

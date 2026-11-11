@@ -1,5 +1,5 @@
 // Port of proc_synchro.lua; the Dark Synchro procedure and Synchro.Send come with the cards that use them.
-use engine::{Args, CardId, CardSet, ConditionFn, Duel, EffectId, Operation, Script, Target, TargetFn, Value};
+use engine::{Args, CardId, CardSet, ConditionFn, Duel, EffectId, Operation, Script, SynchroMaterials, Target, TargetFn, Value};
 
 use crate::constant::*;
 use crate::utility::aux;
@@ -67,6 +67,25 @@ fn req(requirement: Option<Requirement>, duel: &Duel, g: CardSet, sc: CardId, tp
 
 const SYNCHRO_MATERIAL: u64 = SUMMON_TYPE_SYNCHRO as u64 | MATERIAL_SYNCHRO;
 const HAND_CHECK: u32 = EFFECT_HAND_SYNCHRO + EFFECT_SYNCHRO_CHECK;
+
+// Every code Card.IsCanBeSynchroMaterial and Card.GetSynchroLevel look up for a card; sharing the materials relies on it.
+const MATERIAL_CODES: [u32; 15] = [
+    EFFECT_RANK_LEVEL,
+    EFFECT_RANK_LEVEL_S,
+    EFFECT_LEVEL_RANK_S,
+    EFFECT_SYNCHRO_LEVEL,
+    EFFECT_ADD_TYPE,
+    EFFECT_REMOVE_TYPE,
+    EFFECT_CHANGE_TYPE,
+    EFFECT_SYNCHRO_MATERIAL,
+    EFFECT_CANNOT_BE_SYNCHRO_MATERIAL,
+    EFFECT_CANNOT_BE_MATERIAL,
+    EFFECT_PRE_MONSTER,
+    EFFECT_UPDATE_LEVEL,
+    EFFECT_CHANGE_LEVEL,
+    EFFECT_CHANGE_LEVEL_FINAL,
+    EFFECT_ALLOW_NEGATIVE,
+];
 
 // What the recursive checks share; a forced minimum or maximum of 0 is nil.
 struct Search {
@@ -226,6 +245,13 @@ impl Synchro {
 
     // The materials both the condition and the target start from: (g, pg, mgchk) and their levels.
     fn materials(duel: &Duel, c: CardId, tp: u8, mg: Option<CardSet>) -> (CardSet, CardSet, bool, Levels) {
+        // A Synchro monster in the Extra Deck is none of the cards tested, so what they give does not depend on it.
+        let shareable = mg.is_none() && c.is_location(duel, LOCATION_EXTRA);
+        if shareable && let Some(shared) = duel.shared_synchro_materials(tp) {
+            let (dg, g) = (shared.candidates, shared.materials);
+            let pg = aux::get_must_be_material_group(duel, tp, Some(dg), tp, Some(c), Some(g), REASON_SYNCHRO);
+            return (g, pg, false, Levels(shared.levels));
+        }
         let synchmatfilter = |mc: CardId, duel: &Duel| {
             let handmatfilter = mc.is_has_effect(duel, EFFECT_SYNCHRO_MAT_FROM_HAND);
             (mc.is_location(duel, LOCATION_MZONE)
@@ -237,7 +263,25 @@ impl Synchro {
         };
         let dg = mg
             .unwrap_or_else(|| duel.get_matching_group(synchmatfilter, tp, LOCATION_MZONE | LOCATION_HAND, LOCATION_MZONE, Some(c.into())));
-        Synchro::usable_materials(duel, c, tp, dg, mg.is_some())
+        let (g, pg, mgchk, levels) = Synchro::usable_materials(duel, c, tp, dg, mg.is_some());
+        if shareable && Synchro::materials_reach_no_effect(duel, tp) {
+            duel.share_synchro_materials(SynchroMaterials {
+                player: tp,
+                candidates: dg,
+                materials: g,
+                levels: levels.0,
+            });
+        }
+        (g, pg, mgchk, levels)
+    }
+
+    // Whether [Synchro::materials] ran no effect: it tests the cards in the Monster Zones, and the hand for MATERIAL_FROM_HAND.
+    fn materials_reach_no_effect(duel: &Duel, tp: u8) -> bool {
+        let tested = duel.get_field_group(tp, LOCATION_MZONE, LOCATION_MZONE);
+        !duel.may_have_effect(EFFECT_SYNCHRO_MAT_FROM_HAND)
+            && MATERIAL_CODES
+                .iter()
+                .all(|&code| !duel.may_have_effect(code) || !tested.iter().any(|mc| duel.may_be_affected_by(mc, code)))
     }
 
     // The materials of Synchro.MajesticCondition and Synchro.MajesticTarget, as [Synchro::materials] has them.

@@ -2792,6 +2792,16 @@ impl Duel {
                 })
     }
 
+    // False when a lookup of the code for the card finds no effect to test, so that it runs nothing (true may be a false alarm).
+    pub fn may_be_affected_by(&self, card: CardId, code: u32) -> bool {
+        let registry = &self.field_effects.registry;
+        registry.has_code(code)
+            && (registry.equal_range(Container::Single, Some(card), code).next().is_some()
+                || registry.equal_range(Container::Aura, None, code).next().is_some()
+                || self.equip_effects(card, code).next().is_some()
+                || self.xmaterial_effects(card, code).next().is_some())
+    }
+
     // The core tests the summon types with `&`, and they share bits (a Synchro type takes the Fusion branch).
     pub(crate) fn is_can_be_material(&self, card: CardId, scard: Option<CardId>, sumtype: u64, playerid: u8) -> bool {
         if Some(card) == scard {

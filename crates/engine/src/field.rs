@@ -3,7 +3,7 @@ use std::ops::{Index, IndexMut};
 
 use crate::card::{CardId, CardSet, LocInfo, Relation};
 use crate::constants::*;
-use crate::duel::Duel;
+use crate::duel::{Duel, Shared};
 use crate::effect::{
     Chain, ChainLimit, Container, CounterFilter, CustomCounter, EffectId, EffectSet, Event, Target, container_key, remove_item,
 };
@@ -183,6 +183,43 @@ pub type PendingEvents = List<Event, 1>;
 pub type FieldIds = List<u32, 8>;
 pub type Relations = List<Relation, 16>;
 pub type CountCodes = List<(u64, u32), 8>;
+
+// The codes field_check_tribute looks up for the card, its player and the monsters on the field.
+const TRIBUTE_CODES: [u32; 10] = [
+    EFFECT_ADD_EXTRA_TRIBUTE,
+    EFFECT_CANNOT_RELEASE,
+    EFFECT_UNRELEASABLE_SUM,
+    EFFECT_TRIBUTE_LIMIT,
+    EFFECT_TRIPLE_TRIBUTE,
+    EFFECT_DOUBLE_TRIBUTE,
+    EFFECT_EXTRA_RELEASE,
+    EFFECT_EXTRA_RELEASE_SUM,
+    EFFECT_MUST_USE_MZONE,
+    EFFECT_MAX_MZONE,
+];
+
+// The counts of field_check_tribute for its key (sumplayer, toplayer, zone, releasable), which decide it for every min and max.
+#[derive(Debug, Clone, Copy)]
+pub struct Tributes {
+    key: (u8, u8, u32, u32),
+    count: i32,
+    extra: i32,
+    free: i32,
+    own: i32,
+    freed: i32,
+    limit: i32,
+}
+
+impl Tributes {
+    fn suffice(self, min: i32, max: i32) -> bool {
+        let max = max.min(self.count);
+        min <= max
+            && (self.free > 0 || max > 0)
+            && self.free + self.freed > 0
+            && self.own > -self.limit
+            && (max - self.extra).max(0) > -self.limit
+    }
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct ReturnCards {
@@ -2601,6 +2638,15 @@ impl Duel {
         }
     }
 
+    // For the checks of the idle step; the Tributes are shared only while no effect enters them.
+    pub(crate) fn open_idle_memo(&self) {
+        let registry = &self.field_effects.registry;
+        if !TRIBUTE_CODES.iter().any(|&code| registry.has_code(code)) {
+            self.idle_memo.tributes.set(Shared::Open);
+        }
+        self.idle_memo.synchro_materials.set(Shared::Open);
+    }
+
     pub(crate) fn field_check_tribute(
         &self,
         card: CardId,
@@ -2613,19 +2659,27 @@ impl Duel {
         pos: u32,
     ) -> bool {
         let sumplayer = self.cards[card].current.controler;
+        let key = (sumplayer, toplayer, zone, releasable);
+        let shared = self.idle_memo.tributes.get();
+        if let Shared::Filled(tributes) = shared
+            && mg.is_none()
+            && tributes.key == key
+        {
+            return tributes.suffice(min, max);
+        }
+        // An open memo means no effect is looked up here: counting past a failed test runs nothing, and the counts fit any card.
+        let share = mg.is_none() && matches!(shared, Shared::Open);
         let ex = toplayer == 1 - sumplayer;
         let (mut release_list, mut ex_list) = (CardSet::default(), CardSet::default());
-        let m = self
+        let count = self
             .summon_release_list(card, &mut release_list, &mut ex_list, mg, ex, releasable, pos)
             .0 as i32;
-        let mut max = max.min(m);
-        if min > max {
+        if !share && min > max.min(count) {
             return false;
         }
         let zone = zone & (0x1f & self.get_forced_zones(Some(card), toplayer, LOCATION_MZONE, sumplayer, LOCATION_REASON_TOFIELD));
-        let mut s = 0;
-        let (mut ct, _) = self.get_tofield_count(Some(card), toplayer, LOCATION_MZONE, sumplayer, LOCATION_REASON_TOFIELD, zone);
-        if ct <= 0 && max <= 0 {
+        let (free, _) = self.get_tofield_count(Some(card), toplayer, LOCATION_MZONE, sumplayer, LOCATION_REASON_TOFIELD, zone);
+        if !share && free <= 0 && max.min(count) <= 0 {
             return false;
         }
         let to_check = if !ex_list.is_empty() && ex_list.len() as i32 >= min {
@@ -2633,21 +2687,32 @@ impl Duel {
         } else {
             release_list
         };
+        let (mut own, mut freed) = (0, 0);
         for tribute in to_check.iter() {
             let current = self.cards[tribute].current;
             if current.location == LOCATION_MZONE && current.controler == toplayer {
-                s += 1;
+                own += 1;
                 if (zone >> current.sequence) & 1 != 0 {
-                    ct += 1;
+                    freed += 1;
                 }
             }
         }
-        if ct <= 0 {
+        if !share && free + freed <= 0 {
             return false;
         }
-        max -= ex_list.len() as i32;
-        let fcount = self.get_mzone_limit(toplayer, sumplayer, LOCATION_REASON_TOFIELD);
-        s > -fcount && max.max(0) > -fcount
+        let tributes = Tributes {
+            key,
+            count,
+            extra: ex_list.len() as i32,
+            free,
+            own,
+            freed,
+            limit: self.get_mzone_limit(toplayer, sumplayer, LOCATION_REASON_TOFIELD),
+        };
+        if share {
+            self.idle_memo.tributes.set(Shared::Filled(tributes));
+        }
+        tributes.suffice(min, max)
     }
 
     // A matching player effect without a target forbids the action, one with a target only for the cards it takes.

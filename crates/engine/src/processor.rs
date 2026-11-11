@@ -2,7 +2,7 @@
 use crate::card::{Card, CardId, CardSet, LocInfo, SendtoParam};
 use crate::chain::{AddChain, Execute, ExecuteKind, SolveChain, SolveContinuous};
 use crate::constants::*;
-use crate::duel::Duel;
+use crate::duel::{Duel, IdleMemo};
 use crate::effect::{Chain, Container, EffectId, Event, Value};
 use crate::field::PerPlayer;
 use crate::operations::{
@@ -1318,6 +1318,8 @@ impl Duel {
                     return false;
                 }
                 self.collect_command_activations(false);
+                // Until the memo closes below, the duel is only read: every check takes `&self`.
+                self.open_idle_memo();
                 self.core.summonable_cards.clear();
                 let mzone = self.player[turn_player].list_mzone;
                 for card in self.player[turn_player]
@@ -1379,6 +1381,7 @@ impl Duel {
                         self.core.ssetable_cards.push(card);
                     }
                 }
+                self.idle_memo = IdleMemo::default();
                 self.emplace_process(SelectIdleCmd {
                     playerid: turn_player,
                     ..SelectIdleCmd::default()

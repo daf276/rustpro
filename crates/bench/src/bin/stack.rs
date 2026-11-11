@@ -1,20 +1,15 @@
-// The simulation stack on Elfnote mirror matches beside PLAN.md's targets; `--features mimalloc` compares allocators.
+// The simulation stack on Elfnote mirror matches beside PLAN.md's targets; `--features system-allocator` compares allocators.
 use std::alloc::{GlobalAlloc, Layout};
 use std::cell::Cell;
 use std::hint::black_box;
 use std::io::Write;
 use std::time::Instant;
 
-use bench::{BenchResult, flags, load_decks, play, run_batch, setup};
+use bench::{Allocator as Inner, BenchResult, flags, load_decks, play, run_batch, setup};
 use carddata::{CardDatabase, Deck, Decks};
 use engine::{Duel, Prompt, Xoshiro256StarStar};
 use rayon::prelude::*;
 use sim::{AutoAdvance, Buffers};
-
-#[cfg(feature = "mimalloc")]
-use mimalloc::MiMalloc as Inner;
-#[cfg(not(feature = "mimalloc"))]
-use std::alloc::System as Inner;
 
 struct Counting;
 
@@ -226,7 +221,7 @@ fn main() -> BenchResult<()> {
     let (cards, decks) = load_decks(false, true)?;
     let seeds = seed..seed + duels;
     let out = &mut std::io::stdout().lock();
-    let allocator = if cfg!(feature = "mimalloc") { "mimalloc" } else { "system" };
+    let allocator = if cfg!(feature = "system-allocator") { "system" } else { "mimalloc" };
     writeln!(
         out,
         "Elfnote mirror, seeds {seeds:?}, {allocator} allocator, size_of::<Duel>() = {} B",

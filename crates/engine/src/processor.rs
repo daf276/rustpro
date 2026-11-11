@@ -372,9 +372,7 @@ impl Duel {
 
     // field::process; `units` is core.units, taken out by `run` so the front unit runs in place, or a script's nested stack.
     pub(crate) fn process_unit(&mut self, units: &mut Vec<Unit>) -> OcgStatus {
-        if !self.pending_resets.get_mut().is_empty() {
-            self.reset_pending();
-        }
+        self.reset_pending();
         if !self.core.subunits.is_empty() {
             self.core.subunits.reverse();
             units.append(&mut self.core.subunits);
@@ -388,8 +386,10 @@ impl Duel {
             return OcgStatus::Continue;
         }
         // A script function's prompt, shown on top of the unit that ran the function.
-        if let Some(prompt) = self.core.presented.take() {
-            units.push(*prompt);
+        if self.replay.stack.is_empty()
+            && let Some(prompt) = self.replay.prompt.take()
+        {
+            units.push(prompt);
             return OcgStatus::Awaiting;
         }
         if needs_answer { OcgStatus::Awaiting } else { OcgStatus::Continue }
@@ -403,13 +403,28 @@ impl Duel {
                 break (true, needs_answer);
             }
             *arg.step() = arg.step().wrapping_add(1);
-            if needs_answer || !self.core.subunits.is_empty() || self.result.is_some() || self.core.presented.is_some() {
+            if needs_answer || self.steps_end() {
                 break (false, needs_answer);
             }
-            if self.core.replay.interrupted {
-                break (false, false);
+        }
+    }
+
+    // For a unit a step emplaces last: runs it at once when no unit waits before it, as process_unit would next.
+    fn run_or_emplace<U: Steps + Into<Unit>>(&mut self, mut unit: U, process: impl Fn(&mut Self, &mut U) -> bool) {
+        if self.core.subunits.is_empty() {
+            self.reset_pending();
+            let (done, _) = self.run_steps(&mut unit, process, false);
+            self.reset_pending();
+            if done {
+                return;
             }
         }
+        self.emplace_process(unit);
+    }
+
+    // After a step: a unit to run first, the end of the duel, or a script function left at a prompt.
+    fn steps_end(&self) -> bool {
+        !self.core.subunits.is_empty() || self.result.is_some() || self.replay.prompt.is_some() || self.replay.interrupted
     }
 
     // Flip effects of the damage step wait until damage calculation, then trigger before the others.
@@ -464,7 +479,10 @@ impl Duel {
                     }
                 }
                 // Effects taking control non-permanently last until the End Phase, not until the end of the turn.
-                for effect in self.field_effects.pheff.clone() {
+                for index in 0..self.field_effects.pheff.len() {
+                    let Some(&effect) = self.field_effects.pheff.get(index) else {
+                        break;
+                    };
                     let (code, reset_flag, reset_count) = {
                         let peffect = &self.effects[effect];
                         (peffect.code, peffect.reset_flag, peffect.reset_count)
@@ -3056,205 +3074,207 @@ impl Duel {
 
     // Steps 5 and 13 adjust brainwashing and deck reversal, which come with the cards that cause them.
     fn process_adjust(&mut self, arg: &mut Adjust) -> bool {
-        match arg.step {
-            0 => {
-                self.core.re_adjust = false;
-                false
-            }
-            1 => {
-                if !self.core.force_turn_end {
-                    self.check_win();
+        // A step runs on into the next within one call, unless it left what run_steps stops for between two steps.
+        macro_rules! steps {
+            ($($step:literal => $body:block)*) => {$(
+                if arg.step == $step {
+                    $body
+                    if self.steps_end() {
+                        return false;
+                    }
+                    arg.step += 1;
                 }
-                false
-            }
-            2 => {
-                let turn_player = self.infos.turn_player;
-                for p in [turn_player, 1 - turn_player] {
-                    let player = &self.player[p];
-                    for card in player.list_mzone.into_iter().chain(player.list_szone).flatten() {
-                        self.add_to_disable_check_list(card);
+            )*};
+        }
+        loop {
+            steps! {
+                0 => {
+                    self.core.re_adjust = false;
+                }
+                1 => {
+                    if !self.core.force_turn_end {
+                        self.check_win();
                     }
                 }
-                self.adjust_disable_check_list();
-                self.emplace_process(RefreshLoc::default());
-                false
-            }
-            5 => {
-                arg.step = 7;
-                false
-            }
-            8 => {
-                if self.adjust_grant_effect() {
-                    self.core.re_adjust = true;
-                }
-                false
-            }
-            9 => {
-                if self.core.selfdes_disabled {
-                    arg.step = 10;
-                    return false;
-                }
-                self.adjust_self_destroy_set();
-                false
-            }
-            10 => {
-                let mut destroy_set = CardSet::default();
-                let turn_player = self.infos.turn_player;
-                for p in [turn_player, 1 - turn_player] {
-                    for card in self.player[p].list_szone.into_iter().take(5).flatten() {
-                        if let Some(target) = self.cards[card].equiping_target
-                            && self.is_affected_by_effect_target(card, EFFECT_EQUIP_LIMIT, target).is_none()
-                        {
-                            destroy_set.insert(card);
+                2 => {
+                    let turn_player = self.infos.turn_player;
+                    for p in [turn_player, 1 - turn_player] {
+                        let player = &self.player[p];
+                        for card in player.list_mzone.into_iter().chain(player.list_szone).flatten() {
+                            self.add_to_disable_check_list(card);
                         }
                     }
+                    self.adjust_disable_check_list();
+                    self.run_or_emplace(RefreshLoc::default(), Self::process_refresh_loc);
                 }
-                if !destroy_set.is_empty() {
-                    self.core.re_adjust = true;
-                    self.field_destroy(destroy_set, None, REASON_RULE, PLAYER_NONE, PLAYER_NONE, LOCATION_GRAVE, 0);
-                }
-                false
-            }
-            11 => {
-                let turn_player = self.infos.turn_player;
-                let mut pos_adjust = CardSet::default();
-                for p in [turn_player, 1 - turn_player] {
-                    for card in self.player[p].list_mzone.into_iter().flatten() {
-                        let card_type = self.cards[card].data.card_type;
-                        if (card_type & TYPE_LINK != 0 && card_type & TYPE_MONSTER != 0)
-                            || self.is_affected_by_effect(card, EFFECT_CANNOT_CHANGE_POS_E).is_some()
-                        {
-                            continue;
-                        }
-                        let Some(&effect) = self.filter_effect(card, EFFECT_SET_POSITION, true).last() else {
-                            continue;
-                        };
-                        let pos = self.get_value(effect, card) as u32;
-                        if pos & 0xff != self.cards[card].current.position {
-                            pos_adjust.insert(card);
-                            self.cards[card].position_param = pos;
-                            let just_pos = self.cards[card].is_status(STATUS_JUST_POS);
-                            self.cards[card].set_status(STATUS_CONTINUOUS_POS, just_pos);
-                        } else {
-                            self.cards[card].set_status(STATUS_CONTINUOUS_POS, false);
-                        }
-                        self.cards[card].set_status(STATUS_JUST_POS, false);
-                    }
-                }
-                if !pos_adjust.is_empty() {
-                    self.core.re_adjust = true;
-                    self.emplace_process(ChangePos {
-                        step: 0,
-                        reason_player: PLAYER_NONE,
-                        enable: true,
-                        oppo_selection: false,
-                        reason_effect: None,
-                        targets: pos_adjust,
-                        to_grave_set: CardSet::default(),
-                    });
-                }
-                false
-            }
-            12 => {
-                for p in 0..2 {
-                    for &card in &self.player[p].list_hand {
-                        let public = self.is_affected_by_effect(card, EFFECT_PUBLIC).is_some();
-                        if !public && self.cards[card].is_position(POS_FACEUP) {
-                            self.core.shuffle_hand_check[p] = true;
-                        }
-                        self.cards[card].current.position = if public { POS_FACEUP } else { POS_FACEDOWN };
-                    }
-                }
-                let turn_player = self.infos.turn_player;
-                if self.core.shuffle_hand_check[turn_player] {
-                    self.shuffle(turn_player, LOCATION_HAND);
-                }
-                if self.core.shuffle_hand_check[1 - turn_player] {
-                    self.shuffle(1 - turn_player, LOCATION_HAND);
-                }
-                false
-            }
-            15 => {
-                self.field_raise_event(None, EVENT_ADJUST, None, 0, PLAYER_NONE, PLAYER_NONE, 0);
-                self.process_instant_event();
-                false
-            }
-            16 => {
-                if self.core.re_adjust {
-                    arg.step = RESTART;
-                    return false;
-                }
-                self.shuffle_checked();
-                true
-            }
-            14 => {
-                self.adjust_attack();
-                false
-            }
-            4 => {
-                // core.last_control_changed_id is read only with EFFECT_REMOVE_BRAINWASHING.
-                let turn_player = self.infos.turn_player;
-                let (mut adjust_set, mut reason_cards) = (PerPlayer::<CardSet>::default(), CardSet::default());
-                for p in 0..2 {
-                    for card in self.player[p].list_mzone.into_iter().flatten() {
-                        let (reference, effect) = self.refresh_control_status(card);
-                        if self.cards[card].current.controler == reference
-                            || self.is_affected_by_effect(card, EFFECT_CANNOT_CHANGE_CONTROL).is_some()
-                        {
-                            continue;
-                        }
-                        adjust_set[p].insert(card);
-                        if let Some(effect) = effect
-                            && (self.effects[effect].effect_type & EFFECT_TYPE_SINGLE == 0 || self.effects[effect].condition.is_some())
-                        {
-                            reason_cards.insert(self.get_handler(effect));
+                3 => {
+                    self.core.trap_monster_adjust_set = PerPlayer::default();
+                    for p in 0..2 {
+                        for card in self.player[p].list_mzone.into_iter().flatten() {
+                            if self.get_type(card) & TYPE_TRAPMONSTER != 0
+                                && self.is_affected_by_effect(card, EFFECT_DISABLE_TRAPMONSTER).is_some()
+                            {
+                                self.core.trap_monster_adjust_set[p].insert(card);
+                            }
                         }
                     }
+                    if !self.core.trap_monster_adjust_set[0].is_empty() || !self.core.trap_monster_adjust_set[1].is_empty() {
+                        self.core.re_adjust = true;
+                        self.emplace_process(TrapMonsterAdjust::default());
+                    }
                 }
-                if !adjust_set[0].is_empty() || !adjust_set[1].is_empty() {
-                    self.core.re_adjust = true;
-                    for (targets, playerid) in [
-                        (adjust_set[1 - turn_player], turn_player),
-                        (adjust_set[turn_player], 1 - turn_player),
-                    ] {
-                        self.emplace_process(GetControl {
-                            chose_player: PLAYER_NONE,
-                            targets,
-                            playerid,
-                            zone: 0xff,
-                            ..GetControl::default()
+                4 => {
+                    // core.last_control_changed_id is read only with EFFECT_REMOVE_BRAINWASHING.
+                    let turn_player = self.infos.turn_player;
+                    let (mut adjust_set, mut reason_cards) = (PerPlayer::<CardSet>::default(), CardSet::default());
+                    for p in 0..2 {
+                        for card in self.player[p].list_mzone.into_iter().flatten() {
+                            let (reference, effect) = self.refresh_control_status(card);
+                            if self.cards[card].current.controler == reference
+                                || self.is_affected_by_effect(card, EFFECT_CANNOT_CHANGE_CONTROL).is_some()
+                            {
+                                continue;
+                            }
+                            adjust_set[p].insert(card);
+                            if let Some(effect) = effect
+                                && (self.effects[effect].effect_type & EFFECT_TYPE_SINGLE == 0 || self.effects[effect].condition.is_some())
+                            {
+                                reason_cards.insert(self.get_handler(effect));
+                            }
+                        }
+                    }
+                    if !adjust_set[0].is_empty() || !adjust_set[1].is_empty() {
+                        self.core.re_adjust = true;
+                        for (targets, playerid) in [
+                            (adjust_set[1 - turn_player], turn_player),
+                            (adjust_set[turn_player], 1 - turn_player),
+                        ] {
+                            self.emplace_process(GetControl {
+                                chose_player: PLAYER_NONE,
+                                targets,
+                                playerid,
+                                zone: 0xff,
+                                ..GetControl::default()
+                            });
+                        }
+                        for card in reason_cards {
+                            let readjusts = self.core.readjust_map.entry(card).or_default();
+                            *readjusts += 1;
+                            if *readjusts > 3 {
+                                self.field_destroy(card.into(), None, REASON_RULE, PLAYER_NONE, PLAYER_NONE, LOCATION_GRAVE, 0);
+                            }
+                        }
+                    }
+                    arg.step = 7;
+                }
+                8 => {
+                    if self.adjust_grant_effect() {
+                        self.core.re_adjust = true;
+                    }
+                }
+                9 => {
+                    if self.core.selfdes_disabled {
+                        arg.step = 10;
+                    } else {
+                        self.adjust_self_destroy_set();
+                    }
+                }
+                10 => {
+                    let mut destroy_set = CardSet::default();
+                    let turn_player = self.infos.turn_player;
+                    for p in [turn_player, 1 - turn_player] {
+                        for card in self.player[p].list_szone.into_iter().take(5).flatten() {
+                            if let Some(target) = self.cards[card].equiping_target
+                                && self.is_affected_by_effect_target(card, EFFECT_EQUIP_LIMIT, target).is_none()
+                            {
+                                destroy_set.insert(card);
+                            }
+                        }
+                    }
+                    if !destroy_set.is_empty() {
+                        self.core.re_adjust = true;
+                        self.field_destroy(destroy_set, None, REASON_RULE, PLAYER_NONE, PLAYER_NONE, LOCATION_GRAVE, 0);
+                    }
+                }
+                11 => {
+                    let turn_player = self.infos.turn_player;
+                    let mut pos_adjust = CardSet::default();
+                    for p in [turn_player, 1 - turn_player] {
+                        for card in self.player[p].list_mzone.into_iter().flatten() {
+                            let card_type = self.cards[card].data.card_type;
+                            if (card_type & TYPE_LINK != 0 && card_type & TYPE_MONSTER != 0)
+                                || self.is_affected_by_effect(card, EFFECT_CANNOT_CHANGE_POS_E).is_some()
+                            {
+                                continue;
+                            }
+                            let Some(&effect) = self.filter_effect(card, EFFECT_SET_POSITION, true).last() else {
+                                continue;
+                            };
+                            let pos = self.get_value(effect, card) as u32;
+                            if pos & 0xff != self.cards[card].current.position {
+                                pos_adjust.insert(card);
+                                self.cards[card].position_param = pos;
+                                let just_pos = self.cards[card].is_status(STATUS_JUST_POS);
+                                self.cards[card].set_status(STATUS_CONTINUOUS_POS, just_pos);
+                            } else {
+                                self.cards[card].set_status(STATUS_CONTINUOUS_POS, false);
+                            }
+                            self.cards[card].set_status(STATUS_JUST_POS, false);
+                        }
+                    }
+                    if !pos_adjust.is_empty() {
+                        self.core.re_adjust = true;
+                        self.emplace_process(ChangePos {
+                            step: 0,
+                            reason_player: PLAYER_NONE,
+                            enable: true,
+                            oppo_selection: false,
+                            reason_effect: None,
+                            targets: pos_adjust,
+                            to_grave_set: CardSet::default(),
                         });
                     }
-                    for card in reason_cards {
-                        let readjusts = self.core.readjust_map.entry(card).or_default();
-                        *readjusts += 1;
-                        if *readjusts > 3 {
-                            self.field_destroy(card.into(), None, REASON_RULE, PLAYER_NONE, PLAYER_NONE, LOCATION_GRAVE, 0);
+                }
+                12 => {
+                    for p in 0..2 {
+                        for &card in &self.player[p].list_hand {
+                            let public = self.is_affected_by_effect(card, EFFECT_PUBLIC).is_some();
+                            if !public && self.cards[card].is_position(POS_FACEUP) {
+                                self.core.shuffle_hand_check[p] = true;
+                            }
+                            let position = if public { POS_FACEUP } else { POS_FACEDOWN };
+                            // A write marks the card for the next script snapshot to copy.
+                            if self.cards[card].current.position != position {
+                                self.cards[card].current.position = position;
+                            }
                         }
                     }
-                }
-                false
-            }
-            3 => {
-                self.core.trap_monster_adjust_set = PerPlayer::default();
-                for p in 0..2 {
-                    for card in self.player[p].list_mzone.into_iter().flatten() {
-                        if self.get_type(card) & TYPE_TRAPMONSTER != 0
-                            && self.is_affected_by_effect(card, EFFECT_DISABLE_TRAPMONSTER).is_some()
-                        {
-                            self.core.trap_monster_adjust_set[p].insert(card);
-                        }
+                    let turn_player = self.infos.turn_player;
+                    if self.core.shuffle_hand_check[turn_player] {
+                        self.shuffle(turn_player, LOCATION_HAND);
                     }
+                    if self.core.shuffle_hand_check[1 - turn_player] {
+                        self.shuffle(1 - turn_player, LOCATION_HAND);
+                    }
+                    arg.step = 13;
                 }
-                if !self.core.trap_monster_adjust_set[0].is_empty() || !self.core.trap_monster_adjust_set[1].is_empty() {
-                    self.core.re_adjust = true;
-                    self.emplace_process(TrapMonsterAdjust::default());
+                14 => {
+                    self.adjust_attack();
                 }
-                false
+                15 => {
+                    self.field_raise_event(None, EVENT_ADJUST, None, 0, PLAYER_NONE, PLAYER_NONE, 0);
+                    self.process_instant_event();
+                }
             }
-            13 => false,
-            _ => true,
+            if arg.step != 16 || !self.core.re_adjust {
+                break;
+            }
+            arg.step = 0;
         }
+        if arg.step == 16 {
+            self.shuffle_checked();
+        }
+        true
     }
 
     // Adjust step 14: cancels the attack once a battler left or cannot attack; a change to the opponent's monsters replays it.
@@ -3313,6 +3333,10 @@ impl Duel {
                 }
                 for code in [EFFECT_USE_EXTRA_MZONE, EFFECT_USE_EXTRA_SZONE] {
                     unported!(self, self.filter_field_effect(code));
+                }
+                // Steps 1, 3 and 5 only pass on without an effect to run.
+                if arg.disfield_effects.is_empty() {
+                    arg.step = 6;
                 }
                 false
             }

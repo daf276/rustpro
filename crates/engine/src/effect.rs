@@ -379,6 +379,8 @@ impl Effect {
 pub struct Effects {
     list: Shared<Effect, CHUNK>,
     cells: Vec<Cell<CellChunk>>,
+    // Bit i: a cell of chunk i changed since a copy last synced; the last bit stands for every chunk from it on.
+    cells_changed: Cell<u64>,
     free: List<EffectId, 32>,
     scratch: Effect,
 }
@@ -404,9 +406,18 @@ impl Effects {
         id
     }
 
+    // Makes this equal to `source`, which must differ only in what either marked since they last synced.
     pub fn sync_from(&mut self, source: &Self) {
         self.list.sync_from(&source.list);
-        self.cells.clone_from(&source.cells);
+        self.cells.truncate(source.cells.len());
+        let changed = self.cells_changed.take() | source.cells_changed.take();
+        for (chunk, (cell, value)) in self.cells.iter().zip(&source.cells).enumerate() {
+            if changed >> chunk.min(63) & 1 != 0 {
+                cell.set(value.get());
+            }
+        }
+        self.cells
+            .extend_from_slice(source.cells.get(self.cells.len()..).unwrap_or_default());
         self.free.clone_from(&source.free);
     }
 
@@ -438,7 +449,12 @@ impl Effects {
 
     fn set_cell(&self, effect: EffectId, update: impl FnOnce((u32, u16)) -> (u32, u16)) {
         if let Some(cell) = self.cell(effect) {
-            cell.set(update(cell.get()));
+            let value = update(cell.get());
+            if value != cell.get() {
+                cell.set(value);
+                self.cells_changed
+                    .set(self.cells_changed.get() | 1 << (effect.index() / CHUNK).min(63));
+            }
         }
     }
 
@@ -456,6 +472,7 @@ impl Effects {
         self.all_cells()
             .zip(source.all_cells())
             .for_each(|(cell, value)| cell.set(value.get()));
+        self.cells_changed.set(u64::MAX);
     }
 
     // The card effects registered here that are not in `other`, a copy of these effects.
@@ -1587,7 +1604,7 @@ impl Duel {
         let tp = self.infos.turn_player;
         let pid = self.get_handler_player(effect);
         let owner_code = self.cards[self.effects[effect].owner].data.code;
-        let peffect = &mut self.effects[effect];
+        let peffect = &self.effects[effect];
         match reset_type {
             RESET_EVENT => {
                 if peffect.reset_flag & RESET_EVENT == 0 {
@@ -1604,12 +1621,14 @@ impl Duel {
                 if peffect.reset_flag & RESET_PHASE == 0 {
                     return false;
                 }
+                let mut reset_count = peffect.reset_count;
                 if ((peffect.reset_flag & RESET_SELF_TURN != 0 && pid == tp) || (peffect.reset_flag & RESET_OPPO_TURN != 0 && pid != tp))
                     && reset_level & 0x3ff & peffect.reset_flag != 0
                 {
-                    peffect.reset_count = peffect.reset_count.wrapping_sub(1);
+                    reset_count = reset_count.wrapping_sub(1);
+                    self.effects[effect].reset_count = reset_count;
                 }
-                peffect.reset_count == 0
+                reset_count == 0
             }
             RESET_CODE => {
                 peffect.code == reset_level

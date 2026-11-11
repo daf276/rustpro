@@ -9,7 +9,7 @@ use crate::field::{FieldInfo, PerPlayer, PlayerInfo, Processor, Relations, Retur
 use crate::list::List;
 use crate::processor::{OcgStatus, Startup};
 use crate::rng::Xoshiro256StarStar;
-use crate::script::{FusionCheck, Library, SynchroCheck};
+use crate::script::{FusionCheck, Library, Replay, SynchroCheck};
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum DuelError {
@@ -124,6 +124,7 @@ pub struct Duel {
     pub(crate) field_effects: FieldEffect,
     pub(crate) relations: Relations,
     pub(crate) core: Processor,
+    pub(crate) replay: Replay,
     pub(crate) returns: ProgressiveBuffer,
     pub(crate) return_cards: ReturnCards,
     pub(crate) nil_event: Event,
@@ -197,6 +198,7 @@ impl Duel {
             field_effects: FieldEffect::default(),
             relations: Relations::default(),
             core: Processor::new(options.flags),
+            replay: Replay::default(),
             returns: ProgressiveBuffer::default(),
             return_cards: ReturnCards::default(),
             nil_event: Event {

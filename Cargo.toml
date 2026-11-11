@@ -25,6 +25,13 @@ opt-level = 3
 inherits = "release"
 lto = "fat"
 codegen-units = 1
+panic = "abort"
+
+# The sim profile for the Python module: pyo3 raises a panic as an exception, which needs unwinding.
+[profile.python]
+inherits = "sim"
+panic = "unwind"
+
 [profile.card]
 inherits = "release"
 incremental = true

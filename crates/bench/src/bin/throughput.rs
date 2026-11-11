@@ -2,12 +2,15 @@ use std::hint::black_box;
 use std::io::Write;
 use std::time::{Duration, Instant};
 
-use bench::{BenchResult, MAX_ACTIONS, flags, load_decks, play, run_batch, setup};
+use bench::{Allocator, BenchResult, MAX_ACTIONS, flags, load_decks, play, run_batch, setup};
 use carddata::{CardDatabase, Decks};
 use engine::Duel;
 use rand::rngs::StdRng;
 use rayon::prelude::*;
 use sim::AutoAdvance;
+
+#[global_allocator]
+static GLOBAL: Allocator = Allocator;
 
 const CLONE_DUELS: u64 = 500;
 const CLONE_EVERY: u64 = 16;

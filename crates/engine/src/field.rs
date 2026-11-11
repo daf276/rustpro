@@ -2,6 +2,7 @@ use std::num::NonZeroU64;
 use std::ops::{DerefMut, Index, IndexMut};
 
 use crate::card::{CardId, CardSet, LocInfo, Relation};
+use crate::chain::Continuous;
 use crate::constants::*;
 use crate::duel::{Duel, Shared};
 use crate::effect::{
@@ -9,9 +10,8 @@ use crate::effect::{
 };
 use crate::libduel::ReleaseOptions;
 use crate::list::List;
-use crate::operations::{SelfDestroy, SelfDestroyUnique};
+use crate::operations::{SelfDestroy, SelfDestroyUnique, SendToArgs};
 use crate::processor::{Adjust, Unit};
-use crate::script::Replay;
 
 pub(crate) type ReleaseFilter<'a> = &'a dyn Fn(CardId, &Duel) -> bool;
 
@@ -239,9 +239,6 @@ impl ReturnCards {
 pub struct Processor {
     pub units: Vec<Unit>,
     pub subunits: Vec<Unit>,
-    // A prompt to show in place of the unit that ran a script function, which waits for the answer.
-    pub presented: Option<Box<Unit>>,
-    pub replay: Replay,
     pub just_sent_cards: CardSet,
     pub select_cards: Cards16,
     pub unselect_cards: Cards16,
@@ -284,13 +281,13 @@ pub struct Processor {
     pub desrep_chain: Vec<Chain>,
     // The group a Destroy shares with its DestroyReplace and OperationReplace units, innermost last.
     pub replace_targets: Vec<CardSet>,
-    pub solving_continuous: Vec<Chain>,
-    pub sub_solving_continuous: Vec<Chain>,
-    pub delayed_continuous_tp: Vec<Chain>,
-    pub delayed_continuous_ntp: Vec<Chain>,
+    pub solving_continuous: Vec<Continuous>,
+    pub sub_solving_continuous: Vec<Continuous>,
+    pub delayed_continuous_tp: Vec<Continuous>,
+    pub delayed_continuous_ntp: Vec<Continuous>,
     // The continuous effects an event triggers for the turn player and the other, kept for their capacity.
-    pub continuous_tp: Vec<Chain>,
-    pub continuous_ntp: Vec<Chain>,
+    pub continuous_tp: Vec<Continuous>,
+    pub continuous_ntp: Vec<Continuous>,
     pub new_fchain: Vec<Chain>,
     pub new_fchain_s: Vec<Chain>,
     pub new_ochain: Vec<Chain>,
@@ -306,6 +303,8 @@ pub struct Processor {
     pub quick_f_chain: Vec<(EffectId, Chain)>,
     pub chain_limit: Vec<ChainLimit>,
     pub chain_limit_p: Vec<ChainLimit>,
+    // What the SendTo units between their steps 4 and 9 keep, innermost last.
+    pub send_to_args: Vec<SendToArgs>,
     pub leave_confirmed: CardSet,
     pub special_summoning: CardSet,
     pub equiping_cards: CardSet,
@@ -407,8 +406,6 @@ pub struct Processor {
 clone_by_field!(Processor {
     units,
     subunits,
-    presented,
-    replay,
     just_sent_cards,
     select_cards,
     unselect_cards,
@@ -463,6 +460,7 @@ clone_by_field!(Processor {
     quick_f_chain,
     chain_limit,
     chain_limit_p,
+    send_to_args,
     leave_confirmed,
     special_summoning,
     equiping_cards,
@@ -1563,7 +1561,10 @@ impl Duel {
             return;
         };
         for (sequence, &card) in list.iter().enumerate() {
-            self.cards[card].current.sequence = sequence as u32;
+            // A write marks the card for the next script snapshot to copy.
+            if self.cards[card].current.sequence != sequence as u32 {
+                self.cards[card].current.sequence = sequence as u32;
+            }
         }
         if let Some(slot) = self.list_mut(playerid, location) {
             *slot = list;
@@ -3007,7 +3008,7 @@ impl Duel {
             if target.is_status(STATUS_DISABLED) && target.is_status(STATUS_TO_DISABLE) && !target.is_status(STATUS_TO_ENABLE) {
                 self.reset(card, RESET_DISABLE, RESET_EVENT);
             }
-            self.cards[card].set_status(STATUS_TO_ENABLE | STATUS_TO_DISABLE, false);
+            self.cards.set_status(card, STATUS_TO_ENABLE | STATUS_TO_DISABLE, false);
         }
     }
 

@@ -1,10 +1,10 @@
-// Port of libcard.cpp: the Card methods on CardId. Methods a library script replaces carry a `_core` suffix and the
-// replacement takes the Lua name in the scripts crate.
+// Port of libcard.cpp: the Card methods on CardId.
 use crate::card::{CardId, CardSet, Unique};
 use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{Container, EffectId, EffectSet, Event, Value};
 use crate::field::PerPlayer;
+use crate::libeffect::{flag_code, reset_both_turns};
 use crate::script::Script;
 
 impl CardId {
@@ -45,15 +45,11 @@ impl CardId {
         label: i64,
         description: u64,
     ) -> EffectId {
-        let mut reset = reset;
-        if reset & RESET_PHASE != 0 && reset & (RESET_SELF_TURN | RESET_OPPO_TURN) == 0 {
-            reset |= RESET_SELF_TURN | RESET_OPPO_TURN;
-        }
         let effect = duel.new_effect(self);
         let peffect = &mut duel.effects[effect];
         peffect.effect_type = EFFECT_TYPE_SINGLE;
-        peffect.code = (code & 0xfff_ffff) | 0x1000_0000;
-        peffect.reset_flag = reset;
+        peffect.code = flag_code(code);
+        peffect.reset_flag = reset_both_turns(reset);
         peffect.flag[0] = flag | EFFECT_FLAG_CANNOT_DISABLE;
         peffect.reset_count = count.max(1);
         peffect.set_labels(&[label]);
@@ -204,8 +200,7 @@ impl CardId {
         u32::from(duel.cards[self].previous.location)
     }
 
-    // Card.IsPreviousSetCard: the archetypes of the card's previous code and set code effects, which come with the
-    // cards that change a code or add an archetype; until then they are the archetypes it has.
+    // The previous archetypes are the current ones until a card that changes a code or adds an archetype is ported.
     pub fn is_previous_set_card(self, duel: &Duel, setcodes: &[u16]) -> bool {
         self.is_set_card(duel, setcodes)
     }
@@ -339,15 +334,12 @@ impl CardId {
         self.is_discardable_full(duel, REASON_COST, None)
     }
 
-    // `player` None is the reason player.
     pub fn is_discardable_full(self, duel: &Duel, reason: u32, player: Option<u8>) -> bool {
         let player = player.unwrap_or_else(|| duel.core.reason_player.get());
         (reason != REASON_COST || duel.is_affected_by_effect(self, EFFECT_CANNOT_USE_AS_COST).is_none())
             && duel.is_player_can_discard_hand(player, self)
     }
-}
 
-impl CardId {
     pub fn get_sequence(self, duel: &Duel) -> u32 {
         duel.cards[self].current.sequence
     }
@@ -367,7 +359,6 @@ impl CardId {
         duel.cards[self].data = crate::card::StaticData::interned(data);
     }
 
-    // Lua passes the levels to match as further arguments.
     pub fn is_level(self, duel: &Duel, levels: &[u32]) -> bool {
         levels.contains(&duel.get_level(self))
     }
@@ -486,7 +477,6 @@ impl CardId {
         duel.get_race(self) & race != 0
     }
 
-    // Lua passes a table of archetypes or a single one; `setcodes` holds them.
     pub fn is_set_card(self, duel: &Duel, setcodes: &[u16]) -> bool {
         setcodes.iter().any(|&setcode| duel.is_set_card(self, setcode))
     }
@@ -500,8 +490,7 @@ impl CardId {
         setcodes.iter().any(|&setcode| duel.is_original_set_card(self, setcode))
     }
 
-    // Card.IsSetCard as material: card::get_summon_set_card, whose code and archetype effects with an operation come with
-    // the cards that register them.
+    // Card.IsSetCard as material (card::get_summon_set_card); code and archetype effects with an operation come with their cards.
     pub fn is_set_card_full(self, duel: &Duel, setcodes: &[u16], _scard: Option<CardId>, _sumtype: u64, _player: u8) -> bool {
         let codes = [EFFECT_REMOVE_CODE, EFFECT_CHANGE_SETCODE];
         unported!(duel, codes.into_iter().flat_map(|code| duel.filter_effect(self, code, true)));
@@ -560,8 +549,7 @@ impl CardId {
             .is_none()
     }
 
-    // Card.SetUniqueOnField with a filter function; `s_count` and `o_count` are the unique_pos of the player's and the
-    // opponent's cards.
+    // Card.SetUniqueOnField with a filter function; `s_count` and `o_count` are the player's and the opponent's unique_pos.
     pub fn set_unique_on_field(self, duel: &mut Duel, s_count: u8, o_count: u8, filter: fn(CardId, &Duel) -> bool, location: u32) {
         let location = (location & u32::from(LOCATION_ONFIELD)) as u8;
         let effect = duel.new_effect(self);
@@ -684,13 +672,9 @@ impl CardId {
             .any(|&(card, related, _)| card == self && related == target)
     }
 
-    // Card.IsGeminiState and Card.EnableGeminiState, under the names proc_gemini.lua gives them.
+    // Card.IsGeminiState, under the name proc_gemini.lua gives it.
     pub fn is_gemini_status(self, duel: &Duel) -> bool {
         duel.is_affected_by_effect(self, EFFECT_GEMINI_STATUS).is_some()
-    }
-
-    pub fn enable_gemini_status(self, duel: &mut Duel) {
-        duel.add_status_effect(self, EFFECT_GEMINI_STATUS, 64, RESET_EVENT + 0x1fe_0000);
     }
 
     pub fn get_card_effect(self, duel: &Duel, code: u32) -> EffectSet {
@@ -721,8 +705,7 @@ impl CardId {
             .map(|(effect, _)| effect)
     }
 
-    // Card.CheckActivateEffect with copy_info: also the event of an effect that is not Free Chain (field::check_event_c). The
-    // core copies it into the chain link being built when a script calls this outside a condition, target check or filter.
+    // Card.CheckActivateEffect with copy_info: also the event of an effect that is not Free Chain (field::check_event_c).
     pub fn check_activate_effect_event(self, duel: &Duel, neglect_con: bool, neglect_cost: bool) -> Option<(EffectId, Option<Event>)> {
         let (reason_effect, reason_player) = (duel.core.reason_effect.get()?, duel.core.reason_player.get());
         let registered: Vec<_> = duel
@@ -934,19 +917,11 @@ impl CardId {
     }
 
     pub fn is_synchro_summonable(self, duel: &Duel, must: Option<CardSet>, materials: Option<CardSet>) -> bool {
-        self.is_synchro_summonable_full(duel, must, materials, 0, 0)
-    }
-
-    pub fn is_synchro_summonable_full(self, duel: &Duel, must: Option<CardSet>, materials: Option<CardSet>, min: u16, max: u16) -> bool {
-        duel.spsummonable_rule(self, TYPE_SYNCHRO, SUMMON_TYPE_SYNCHRO, must, materials, min, max)
+        duel.spsummonable_rule(self, TYPE_SYNCHRO, SUMMON_TYPE_SYNCHRO, must, materials, 0, 0)
     }
 
     pub fn is_xyz_summonable(self, duel: &Duel, must: Option<CardSet>, materials: Option<CardSet>) -> bool {
-        self.is_xyz_summonable_full(duel, must, materials, 0, 0)
-    }
-
-    pub fn is_xyz_summonable_full(self, duel: &Duel, must: Option<CardSet>, materials: Option<CardSet>, min: u16, max: u16) -> bool {
-        duel.spsummonable_rule(self, TYPE_XYZ, SUMMON_TYPE_XYZ, must, materials, min, max)
+        duel.spsummonable_rule(self, TYPE_XYZ, SUMMON_TYPE_XYZ, must, materials, 0, 0)
     }
 
     pub fn is_link_summonable(self, duel: &Duel, must: Option<CardSet>, materials: Option<CardSet>) -> bool {
@@ -964,10 +939,6 @@ impl CardId {
     pub fn is_summonable_full(self, duel: &Duel, ignore_count: bool, procedure: Option<EffectId>, min_tribute: u16, zone: u16) -> bool {
         let player = duel.core.reason_player.get();
         duel.is_can_be_summoned(self, player, ignore_count, procedure, min_tribute as u8, u32::from(zone))
-    }
-
-    pub fn is_msetable(self, duel: &Duel, ignore_count: bool, procedure: Option<EffectId>) -> bool {
-        self.is_msetable_full(duel, ignore_count, procedure, 0, 0xff)
     }
 
     pub fn is_msetable_full(self, duel: &Duel, ignore_count: bool, procedure: Option<EffectId>, min_tribute: u16, zone: u32) -> bool {
@@ -988,26 +959,27 @@ impl CardId {
 
     // The labels of all flag effects of the code, all the values Lua gets (none for its nil).
     pub fn get_flag_effect_labels(self, duel: &Duel, code: u32) -> Vec<i64> {
-        let code = (code & 0xfff_ffff) | 0x1000_0000;
-        let effects = duel.field_effects.registry.equal_range(Container::Single, Some(self), code);
+        let effects = duel
+            .field_effects
+            .registry
+            .equal_range(Container::Single, Some(self), flag_code(code));
         effects
             .map(|effect| duel.effects[effect].labels().first().copied().unwrap_or(0))
             .collect()
     }
 
     pub fn get_flag_effect(self, duel: &Duel, code: u32) -> usize {
-        let code = (code & 0xfff_ffff) | 0x1000_0000;
-        duel.field_effects.registry.equal_range(Container::Single, Some(self), code).count()
+        duel.field_effects
+            .registry
+            .equal_range(Container::Single, Some(self), flag_code(code))
+            .count()
     }
 
     pub fn reset_flag_effect(self, duel: &mut Duel, code: u32) {
-        duel.reset(self, (code & 0xfff_ffff) | 0x1000_0000, RESET_CODE);
+        duel.reset(self, flag_code(code), RESET_CODE);
     }
-}
 
-impl CardId {
-    // Card.AssumeProperty, called inside checks. Only card::get_race and card::get_type read an assumed property so far;
-    // the other kinds (and the invalid ones the core rejects with a Lua error) come with the cards that assume them.
+    // Only card::get_race and card::get_type read an assumed property so far; the other kinds come with their cards.
     pub fn assume_property(self, duel: &Duel, assume: u32, value: u64) {
         if assume != ASSUME_RACE && assume != ASSUME_TYPE {
             duel.reach_unported(concat!(file!(), ":", line!()));
@@ -1148,7 +1120,6 @@ impl CardId {
         self.is_can_be_synchro_material_full(duel, Some(scard), None, None)
     }
 
-    // `player` None is the reason player.
     pub fn is_can_be_synchro_material_full(self, duel: &Duel, scard: Option<CardId>, _tuner: Option<CardId>, player: Option<u8>) -> bool {
         let player = player.unwrap_or_else(|| duel.core.reason_player.get());
         duel.is_can_be_synchro_material(self, scard, player)
@@ -1160,13 +1131,7 @@ impl CardId {
     }
 
     pub fn is_can_be_material(self, duel: &Duel, sumtype: u64) -> bool {
-        self.is_can_be_material_full(duel, sumtype, None, None)
-    }
-
-    // `player` None is the reason player.
-    pub fn is_can_be_material_full(self, duel: &Duel, sumtype: u64, scard: Option<CardId>, player: Option<u8>) -> bool {
-        let player = player.unwrap_or_else(|| duel.core.reason_player.get());
-        duel.is_can_be_material(self, scard, sumtype, player)
+        duel.is_can_be_material(self, None, sumtype, duel.core.reason_player.get())
     }
 
     pub fn get_link(self, duel: &Duel) -> u32 {
@@ -1187,7 +1152,6 @@ impl CardId {
         duel.get_ritual_level(self, rc)
     }
 
-    // The player is the reason player.
     pub fn is_can_be_ritual_material(self, duel: &Duel, sc: Option<CardId>) -> bool {
         duel.is_can_be_ritual_material(self, sc, duel.core.reason_player.get())
     }
@@ -1200,7 +1164,7 @@ impl CardId {
         duel.material_cards(self).len()
     }
 
-    // `sumtype` is SUMMON_TYPE_FUSION where Lua leaves it out; the player is the reason player.
+    // `sumtype` is SUMMON_TYPE_FUSION where Lua leaves it out.
     pub fn is_can_be_fusion_material(self, duel: &Duel, fc: Option<CardId>, sumtype: u64) -> bool {
         duel.is_can_be_fusion_material(self, fc, sumtype, duel.core.reason_player.get())
     }
@@ -1287,14 +1251,7 @@ impl CardId {
     }
 
     pub fn copy_effect(self, duel: &mut Duel, code: u32, reset: u32, count: u8) -> i32 {
-        let count = count.max(1);
-        let both_turns = RESET_SELF_TURN | RESET_OPPO_TURN;
-        let reset = if reset & RESET_PHASE != 0 && reset & both_turns == 0 {
-            reset | both_turns
-        } else {
-            reset
-        };
-        duel.card_copy_effect(self, code, reset, count)
+        duel.card_copy_effect(self, code, reset_both_turns(reset), count.max(1))
     }
 
     pub fn get_turn_counter(self, duel: &Duel) -> u16 {
@@ -1313,7 +1270,6 @@ impl CardId {
         duel.cards[self].current.reason & reason != 0
     }
 
-    // Lua passes the summon types to match as further arguments.
     pub fn is_summon_type(self, duel: &Duel, summon_types: &[u32]) -> bool {
         let summon_type = duel.cards[self].summon.summon_type & 0xff00_ffff;
         summon_types.iter().any(|&wanted| wanted & !summon_type == 0)
@@ -1323,7 +1279,6 @@ impl CardId {
         self.is_ssetable_full(duel, false, None)
     }
 
-    // `player` None is the reason player.
     pub fn is_ssetable_full(self, duel: &Duel, ignore_field: bool, player: Option<u8>) -> bool {
         let player = player.unwrap_or_else(|| duel.core.reason_player.get());
         duel.is_setable_szone(self, player, ignore_field)
@@ -1348,7 +1303,6 @@ impl CardId {
         duel.cards[self].data.card_type & TYPE_LINK == 0 && self.is_monster_now(duel) && duel.get_defense(self) >= defense
     }
 
-    // Lua passes the values to match as further arguments.
     pub fn is_attack(self, duel: &Duel, attacks: &[i32]) -> bool {
         self.is_monster_now(duel) && attacks.contains(&duel.get_attack(self))
     }
@@ -1372,7 +1326,6 @@ impl CardId {
         self.get_original_race(duel) & race != 0
     }
 
-    // Lua passes the values to match as further arguments.
     pub fn is_defense(self, duel: &Duel, defenses: &[i32]) -> bool {
         duel.cards[self].data.card_type & TYPE_LINK == 0 && self.is_monster_now(duel) && defenses.contains(&duel.get_defense(self))
     }
@@ -1381,7 +1334,6 @@ impl CardId {
         self.is_releasable_full(duel, REASON_COST, None)
     }
 
-    // `player` None is the reason player.
     pub fn is_releasable_full(self, duel: &Duel, reason: u32, player: Option<u8>) -> bool {
         let player = player.unwrap_or_else(|| duel.core.reason_player.get());
         duel.is_releasable_by_nonsummon(self, player, reason)
@@ -1391,7 +1343,6 @@ impl CardId {
         self.is_releasable_by_effect_full(duel, None, None)
     }
 
-    // `effect` and `player` None are the reason effect and player.
     pub fn is_releasable_by_effect_full(self, duel: &Duel, effect: Option<EffectId>, player: Option<u8>) -> bool {
         let effect = effect.or(duel.core.reason_effect.get());
         let player = player.unwrap_or_else(|| duel.core.reason_player.get());
@@ -1454,8 +1405,7 @@ impl CardId {
     pub fn remove_counter(self, duel: &mut Duel, player: u8, counter_type: u16, count: u16, reason: u32) -> Script<bool> {
         unported!(duel, (counter_type == 0).then_some(()));
         duel.field_remove_counter(reason, Some(self), player, 0, 0, counter_type, count);
-        duel.yield_script()?;
-        Ok(duel.returns.at_i32(0) != 0)
+        duel.yield_success()
     }
 
     pub fn set_counter_limit(self, duel: &mut Duel, counter_type: u16, limit: u32) {
@@ -1463,38 +1413,29 @@ impl CardId {
         let peffect = &mut duel.effects[effect];
         peffect.effect_type = EFFECT_TYPE_SINGLE;
         peffect.code = EFFECT_COUNTER_LIMIT | u32::from(counter_type);
-        peffect.value = crate::effect::Value::Int(limit as i32);
+        peffect.value = Value::Int(limit as i32);
         duel.card_add_effect(self, effect);
     }
 
+    // The range and target filter arguments come with the cards that pass them.
     pub fn enable_counter_permit(self, duel: &mut Duel, counter_type: u16) {
-        self.enable_counter_permit_full(duel, counter_type, None);
-    }
-
-    // `range` None is the monster zone for a monster, the spell zones otherwise; a target filter comes with the cards
-    // that pass one.
-    pub fn enable_counter_permit_full(self, duel: &mut Duel, counter_type: u16, range: Option<u16>) {
-        let range = range.unwrap_or(if duel.cards[self].data.card_type & TYPE_MONSTER != 0 {
+        let range = if duel.cards[self].data.card_type & TYPE_MONSTER != 0 {
             u16::from(LOCATION_MZONE)
         } else {
             u16::from(LOCATION_SZONE) | LOCATION_FZONE
-        });
+        };
         let effect = duel.new_effect(self);
         let peffect = &mut duel.effects[effect];
         peffect.effect_type = EFFECT_TYPE_SINGLE;
         peffect.code = EFFECT_COUNTER_PERMIT | u32::from(counter_type);
-        peffect.value = crate::effect::Value::Int(i32::from(range));
+        peffect.value = Value::Int(i32::from(range));
         duel.card_add_effect(self, effect);
     }
-}
 
-impl CardId {
     pub fn is_previous_controler(self, duel: &Duel, player: u8) -> bool {
         duel.cards[self].previous.controler == player
     }
-}
 
-impl CardId {
     pub fn get_location(self, duel: &Duel) -> u32 {
         let card = &duel.cards[self];
         if card.get_status(STATUS_SUMMONING | STATUS_SUMMON_DISABLED | STATUS_ACTIVATE_DISABLED | STATUS_SPSUMMON_STEP) {
@@ -1503,14 +1444,11 @@ impl CardId {
             u32::from(card.current.location)
         }
     }
-}
 
-impl CardId {
     pub fn get_rank(self, duel: &Duel) -> u32 {
         duel.get_rank(self)
     }
 
-    // Lua passes the ranks to match as further arguments.
     pub fn is_rank(self, duel: &Duel, ranks: &[u32]) -> bool {
         ranks.contains(&duel.get_rank(self))
     }
@@ -1520,7 +1458,6 @@ impl CardId {
         current > 0 && current <= rank
     }
 
-    // Lua passes the Link Ratings to match as further arguments.
     pub fn is_link(self, duel: &Duel, links: &[u32]) -> bool {
         links.contains(&duel.get_link(self))
     }
@@ -1529,8 +1466,7 @@ impl CardId {
         duel.check_xyz_level(self, xyzc, level)
     }
 
-    // `player` and `reason` are those Lua defaults to when a call leaves them out: the reason player and
-    // REASON_XYZ | REASON_MATERIAL.
+    // Where a Lua call leaves them out, `player` is the reason player and `reason` REASON_XYZ | REASON_MATERIAL.
     pub fn is_can_be_xyz_material(self, duel: &Duel, scard: Option<CardId>, player: u8, reason: u32) -> bool {
         duel.is_can_be_xyz_material(self, scard, player, reason)
     }
@@ -1544,11 +1480,7 @@ impl CardId {
     }
 
     pub fn get_column_group_count(self, duel: &Duel) -> usize {
-        self.get_column_group_count_full(duel, 0, 0)
-    }
-
-    pub fn get_column_group_count_full(self, duel: &Duel, left: i32, right: i32) -> usize {
-        duel.get_column_cards(self, left, right).len()
+        duel.get_column_cards(self, 0, 0).len()
     }
 
     pub fn get_overlay_count(self, duel: &Duel) -> usize {
@@ -1564,7 +1496,6 @@ impl CardId {
             return Ok(0);
         }
         duel.field_remove_overlay_card(reason, Some(self.into()), player, 0, 0, min, max);
-        duel.yield_script()?;
-        Ok(duel.returns.at_i32(0))
+        duel.yield_count()
     }
 }

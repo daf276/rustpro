@@ -1,5 +1,4 @@
-// Gamestates outside the process. Effects hold function pointers, which safe code cannot write out and read back, so
-// neither format holds the duel's memory: a Position describes a duel to build, a DuelRecord replays one exactly.
+// Gamestates outside the process; effects hold function pointers, so a Position describes a duel and a DuelRecord replays one.
 use carddata::{CardDatabase, Deck};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -7,16 +6,11 @@ use serde::{Deserialize, Serialize};
 use crate::action::{Action, ActionError};
 use crate::card::CardId;
 use crate::constants::*;
-use crate::duel::{Duel, DuelError, DuelOptions, NewCardInfo, PlayerOptions};
-use crate::field::Pile;
+use crate::duel::{Duel, DuelError, DuelOptions, NewCardInfo, PlayerOptions, deck_cards};
 use crate::processor::{Startup, Turn};
 use crate::script::Library;
 
-// What a puzzle sets up before the duel starts: the duel mode, Debug.SetPlayerInfo of both players, the turn and phase
-// it starts in (at the beginning of that phase), and the cards Debug.AddCard places in order (a card placed on an
-// occupied field zone becomes an Xyz material of the card there) with their Debug.PreAddCounter counters.
-// A starting point, not a snapshot: it leaves out what resolved effects left behind (lingering effects, once-per-turn
-// usage, flag effects, script state), equip and target relations, summon types, and a chain or prompt in progress.
+// A puzzle's setup, not a snapshot: lingering effects, relations, summon types and a chain or prompt in progress are left out.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Position {
     pub flags: u64,
@@ -60,25 +54,12 @@ impl Position {
         }
     }
 
-    // Duel::add_deck: the Main Deck from the bottom, then the Extra Deck.
     pub fn add_deck(&mut self, team: u8, deck: &Deck) {
-        let main = deck.main.iter().map(|&code| (code, LOCATION_DECK));
-        for (code, location) in main.chain(deck.extra.iter().map(|&code| (code, LOCATION_EXTRA))) {
-            let info = NewCardInfo {
-                team,
-                duelist: 0,
-                code,
-                con: team,
-                loc: location.into(),
-                seq: 0,
-                pos: POS_FACEDOWN_DEFENSE,
-            };
-            self.cards.push(PlacedCard {
-                info,
-                proc_complete: false,
-                counters: Vec::new(),
-            });
-        }
+        self.cards.extend(deck_cards(team, deck).map(|info| PlacedCard {
+            info,
+            proc_complete: false,
+            counters: Vec::new(),
+        }));
     }
 
     pub fn to_bytes(&self) -> Result<Vec<u8>, FormatError> {
@@ -173,69 +154,13 @@ impl Duel {
         Ok(duel)
     }
 
-    // What a puzzle sets up to start from this duel's cards, LP and turn (see [Position]). The hands are given, so
-    // no player draws a starting hand.
+    // What a puzzle sets up to start from this duel's cards, LP and turn (see [Position]); no player draws a starting hand.
     pub fn position(&self) -> Position {
         let infos = &self.infos;
         let (turn, phase) = match infos.phase {
             0 => (infos.turn_id + 1, PHASE_DRAW),
             phase => (infos.turn_id, turn_start(phase).map_or(phase, |(_, start)| start)),
         };
-        let placed = |card: CardId, con: u8, loc: u32, seq: u32, pos: u32| {
-            let pcard = &self.cards[card];
-            let counters = self.counters.iter().filter(|&&(other, ..)| other == card);
-            PlacedCard {
-                info: NewCardInfo {
-                    team: pcard.owner,
-                    duelist: 0,
-                    code: pcard.data.code,
-                    con,
-                    loc,
-                    seq,
-                    pos,
-                },
-                proc_complete: pcard.is_status(STATUS_PROC_COMPLETE),
-                counters: counters.map(|&(_, counter_type, counts)| (counter_type, counts)).collect(),
-            }
-        };
-        let mut cards = Vec::new();
-        for p in 0..2 {
-            let player = &self.player[p];
-            let pile = |(list, location): (&Pile, u8)| -> Vec<PlacedCard> {
-                let position = |card: CardId| self.cards[card].current.position;
-                list.iter()
-                    .map(|&card| placed(card, p, location.into(), 0, position(card)))
-                    .collect()
-            };
-            let piles = [(&player.list_main, LOCATION_DECK), (&player.list_hand, LOCATION_HAND)];
-            cards.extend(piles.into_iter().flat_map(&pile));
-            let zones = player.list_mzone.iter().map(|&card| (LOCATION_MZONE, card));
-            let zones = zones
-                .enumerate()
-                .chain(player.list_szone.iter().map(|&card| (LOCATION_SZONE, card)).enumerate());
-            for (sequence, (location, card)) in zones {
-                let Some(card) = card else { continue };
-                let (sequence, current) = (sequence as u32, self.cards[card].current);
-                let (loc, seq) = match current.pzone {
-                    true => (u32::from(LOCATION_PZONE), u32::from(self.get_pzone_index(0) != sequence)),
-                    false => (location.into(), sequence),
-                };
-                cards.push(placed(card, p, loc, seq, current.position));
-                let mut materials: Vec<CardId> = self.xyz_materials(card).iter().collect();
-                materials.sort_by_key(|&material| self.cards[material].current.sequence);
-                cards.extend(
-                    materials
-                        .into_iter()
-                        .map(|material| placed(material, p, location.into(), sequence, 0)),
-                );
-            }
-            let piles = [
-                (&player.list_grave, LOCATION_GRAVE),
-                (&player.list_remove, LOCATION_REMOVED),
-                (&player.list_extra, LOCATION_EXTRA),
-            ];
-            cards.extend(piles.into_iter().flat_map(pile));
-        }
         let lp = |p: u8| PlayerOptions {
             starting_lp: self.player[p].lp as u32,
             starting_draw_count: 0,
@@ -247,13 +172,43 @@ impl Duel {
             turn: turn as u16,
             turn_player: infos.turn_player,
             phase,
-            cards,
+            cards: self.located_cards().into_iter().map(|card| self.placed_card(card)).collect(),
+        }
+    }
+
+    fn placed_card(&self, card: CardId) -> PlacedCard {
+        let pcard = &self.cards[card];
+        let (current, pos) = match pcard.overlay_target {
+            Some(xyz) => (self.cards[xyz].current, 0),
+            None => (pcard.current, pcard.current.position),
+        };
+        let (loc, seq) = if current.location & LOCATION_ONFIELD == 0 {
+            (current.location.into(), 0)
+        } else if current.pzone && pcard.overlay_target.is_none() {
+            (LOCATION_PZONE.into(), u32::from(self.get_pzone_index(0) != current.sequence))
+        } else {
+            (current.location.into(), current.sequence)
+        };
+        PlacedCard {
+            info: NewCardInfo {
+                team: pcard.owner,
+                duelist: 0,
+                code: pcard.data.code,
+                con: current.controler,
+                loc,
+                seq,
+                pos,
+            },
+            proc_complete: pcard.is_status(STATUS_PROC_COMPLETE),
+            counters: (self.counters.iter())
+                .filter(|&&(other, ..)| other == card)
+                .map(|&(_, counter_type, counts)| (counter_type, counts))
+                .collect(),
         }
     }
 }
 
-// A duel as its caller recorded it: the setup, the seed and every action since. The duel depends on nothing else, so a
-// replay reaches exactly the recorded state.
+// The setup, the seed and every action since, which is all a duel depends on, so a replay reaches the recorded state.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DuelRecord {
     pub seed: [u64; 4],

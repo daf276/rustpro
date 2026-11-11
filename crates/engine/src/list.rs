@@ -7,8 +7,7 @@ use std::sync::Arc;
 pub struct List<T: Copy + Default, const N: usize> {
     len: u16,
     inline: [T; N],
-    // Holds every item, and `len` stays 0, while not empty. Keeps its capacity once emptied, so a list that spills
-    // again does not allocate again; a clone of an empty Vec allocates nothing.
+    // While not empty it holds every item and `len` stays 0; it keeps its capacity once emptied.
     spilled: Vec<T>,
 }
 
@@ -220,10 +219,7 @@ impl<T: Copy + Default, const N: usize> IntoIterator for List<T, N> {
     }
 }
 
-// A Vec in chunks of N items (a multiple of 8) that clones share until one of them writes to a chunk, which then copies
-// that chunk alone; the last chunk's slots past the end stay readable. It also marks the runs of 8 items that changed
-// (the last mark covers every item from 504 on), so that a copy kept in sync with it, such as a script snapshot, is
-// brought up to date by copying only those into its own chunks.
+// A Vec in copy-on-write chunks of N items (a multiple of 8), marking the runs of 8 that changed so sync_from copies only those.
 #[derive(Debug, Clone)]
 pub struct Shared<T, const N: usize> {
     chunks: Vec<Arc<[T; N]>>,
@@ -272,8 +268,7 @@ impl<T: Copy + Default, const N: usize> Shared<T, N> {
         }
     }
 
-    // Makes this equal to `source`. The two must have been equal apart from the runs either marked since, as a copy is
-    // to its original after either synced with the other.
+    // Makes this equal to `source`, which must differ only in the runs either marked since they last synced.
     pub fn sync_from(&mut self, source: &Self) {
         self.chunks.truncate(source.chunks.len());
         let common = N * self.chunks.len();
@@ -306,8 +301,7 @@ impl<T: Copy + Default, const N: usize> Shared<T, N> {
     }
 }
 
-// One bit per item of a list of at most 64 * W items: what changed since a copy of it last synced. `mark` wraps a larger
-// index instead of checking it, which keeps a branch out of every write it guards.
+// One bit per item changed since a copy last synced; `mark` wraps an index past 64 * W, keeping a branch out of every write.
 #[derive(Debug, Clone)]
 pub struct Marks<const W: usize>([Cell<u64>; W]);
 

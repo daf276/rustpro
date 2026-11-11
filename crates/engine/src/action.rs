@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::buffer::ProgressiveBuffer;
-use crate::card::CardSet;
+use crate::card::{CardId, CardSet};
 use crate::constants::*;
 use crate::duel::{Duel, Status};
 use crate::list::List;
@@ -22,8 +22,7 @@ pub enum Prompt {
     Card { player: u8, cancelable: bool, min: u8, max: u8 },
     // Like Card, but min counts release units (a double tribute counts 2) while max counts cards.
     Tribute { player: u8, cancelable: bool, min: u8, max: u8 },
-    // Picked one card at a time, each one some accepted selection includes along with the earlier picks; Finish once the
-    // picks add up (to the target exactly, or reaching it and falling short without the smallest).
+    // Picked one card at a time, each one some accepted selection includes with the earlier picks; Finish once they add up.
     Sum { player: u8 },
     // One card per answer, picking or dropping it; ending the selection is a Cancel or else a Finish.
     UnselectCard { player: u8, cancelable: bool, finishable: bool },
@@ -151,6 +150,12 @@ impl IdleCommand {
         };
         i32::from(index) << 16 | kind
     }
+
+    fn list_index(self) -> Option<(usize, u16)> {
+        let response = self.response();
+        let kind = (response & 0xffff) as usize;
+        (kind < 5).then_some((kind, (response >> 16) as u16))
+    }
 }
 
 impl BattleCommand {
@@ -179,11 +184,18 @@ fn indices(count: usize) -> impl Iterator<Item = u16> {
     (0..count).map(|index| index as u16)
 }
 
+fn has_bit(mask: u64, bit: u8) -> bool {
+    1u64.checked_shl(u32::from(bit)).is_some_and(|flag| mask & flag != 0)
+}
+
+fn bits(mask: u64) -> impl Iterator<Item = u8> {
+    (0..64).filter(move |&bit| has_bit(mask, bit))
+}
+
 // Monster zone 7 does not exist; see SelectPlace in playerop.cpp.
 const ZONES: u32 = 0xff7f_ff7f;
 const POSITIONS: [u32; 4] = [POS_FACEUP_ATTACK, POS_FACEDOWN_ATTACK, POS_FACEUP_DEFENSE, POS_FACEDOWN_DEFENSE];
 
-// The three response bytes of SelectPlace for a zone, and back.
 fn place_response(player: u8, zone: u8) -> [u8; 3] {
     let location = if zone % 16 >= 8 { LOCATION_SZONE } else { LOCATION_MZONE };
     [if zone >= 16 { 1 - player } else { player }, location, zone % 8]
@@ -197,6 +209,31 @@ impl Duel {
     // At a Prompt::UnselectCard, `Action::Card` indices below this pick a card and the rest put one back.
     pub fn selectable_count(&self) -> usize {
         self.core.select_cards.len()
+    }
+
+    pub(crate) fn idle_lists(&self) -> [&[CardId]; 5] {
+        let core = &self.core;
+        [
+            &core.summonable_cards,
+            &core.spsummonable_cards,
+            &core.repositionable_cards,
+            &core.msetable_cards,
+            &core.ssetable_cards,
+        ]
+    }
+
+    pub(crate) fn idle_card(&self, command: IdleCommand) -> Option<CardId> {
+        let (kind, index) = command.list_index()?;
+        self.idle_lists().get(kind)?.get(usize::from(index)).copied()
+    }
+
+    fn open_mask(&self, prompt: Prompt) -> u64 {
+        match prompt {
+            Prompt::Place { player, blocked, .. } => u64::from(ZONES & !blocked & !self.picked_zones(player)),
+            Prompt::AnnounceRace { available, .. } => available & !self.returns.at_u64(0),
+            Prompt::AnnounceAttribute { available, .. } => u64::from(available & !self.returns.at_u32(0)),
+            _ => 0,
+        }
     }
 
     pub fn prompt(&self) -> Option<Prompt> {
@@ -280,14 +317,7 @@ impl Duel {
         match prompt {
             Prompt::IdleCommand { player } => {
                 let core = &self.core;
-                let lists = [
-                    &core.summonable_cards,
-                    &core.spsummonable_cards,
-                    &core.repositionable_cards,
-                    &core.msetable_cards,
-                    &core.ssetable_cards,
-                ];
-                let counts = lists.map(|list| list.len()).into_iter().chain([core.select_chains.len()]);
+                let counts = self.idle_lists().map(<[CardId]>::len).into_iter().chain([core.select_chains.len()]);
                 for (count, kind) in counts.zip(0..) {
                     let commands = indices(count).filter_map(|index| IdleCommand::from_response(kind, index));
                     actions.extend(commands.map(Action::IdleCommand));
@@ -339,20 +369,14 @@ impl Duel {
                 let count = self.core.select_cards.len() + self.core.unselect_cards.len();
                 actions.extend(indices(count).map(Action::Card).chain(end));
             }
-            Prompt::Place { player, blocked, .. } => {
-                let open = ZONES & !blocked & !self.picked_zones(player);
-                actions.extend((0..32).filter(|&zone| open & (1 << zone) != 0).map(Action::Place));
-            }
+            Prompt::Place { .. } => actions.extend(bits(self.open_mask(prompt)).map(Action::Place)),
             Prompt::Position { positions, .. } => actions.extend(
                 POSITIONS
                     .into_iter()
                     .filter(|&position| u32::from(positions) & position != 0)
                     .map(|position| Action::Position(position as u8)),
             ),
-            Prompt::AnnounceRace { available, .. } => {
-                let open = available & !self.returns.at_u64(0);
-                actions.extend((0..64).filter(|bit| open & 1 << bit != 0).map(Action::Race));
-            }
+            Prompt::AnnounceRace { .. } => actions.extend(bits(self.open_mask(prompt)).map(Action::Race)),
             Prompt::Sort { count, .. } => {
                 actions.extend(
                     (0..u16::from(count))
@@ -360,10 +384,7 @@ impl Duel {
                         .map(Action::Card),
                 );
             }
-            Prompt::AnnounceAttribute { available, .. } => {
-                let open = available & !self.returns.at_u32(0);
-                actions.extend((0..32).filter(|bit| open & 1 << bit != 0).map(Action::Attribute));
-            }
+            Prompt::AnnounceAttribute { .. } => actions.extend(bits(self.open_mask(prompt)).map(Action::Attribute)),
             Prompt::Counter { counter_type, count, .. } => actions.extend(
                 indices(self.core.select_cards.len())
                     .filter(|&index| self.is_legal_counter_pick(counter_type, count, index))
@@ -386,15 +407,11 @@ impl Duel {
         let below = |index: u16, count: usize| usize::from(index) < count;
         match (prompt, action) {
             (Prompt::IdleCommand { player }, Action::IdleCommand(command)) => match command {
-                IdleCommand::Summon(index) => below(index, core.summonable_cards.len()),
-                IdleCommand::SpecialSummon(index) => below(index, core.spsummonable_cards.len()),
-                IdleCommand::Reposition(index) => below(index, core.repositionable_cards.len()),
-                IdleCommand::MonsterSet(index) => below(index, core.msetable_cards.len()),
-                IdleCommand::SpellSet(index) => below(index, core.ssetable_cards.len()),
                 IdleCommand::Activate(index) => below(index, core.select_chains.len()),
                 IdleCommand::ToBattle => self.infos.phase == PHASE_MAIN1 && core.to_bp,
                 IdleCommand::ToEnd => core.to_ep,
                 IdleCommand::Shuffle => self.infos.can_shuffle && self.player[player].list_hand.len() > 1,
+                _ => self.idle_card(command).is_some(),
             },
             (Prompt::BattleCommand { .. }, Action::BattleCommand(command)) => match command {
                 BattleCommand::Activate(index) => below(index, core.select_chains.len()),
@@ -416,27 +433,20 @@ impl Duel {
                 },
                 Action::Finish,
             ) => !cancelable && finishable,
-            (Prompt::Place { player, blocked, .. }, Action::Place(zone)) => {
-                zone < 32 && (ZONES & !blocked & !self.picked_zones(player)) & (1 << zone) != 0
-            }
+            (Prompt::Place { .. }, Action::Place(bit))
+            | (Prompt::AnnounceRace { .. }, Action::Race(bit))
+            | (Prompt::AnnounceAttribute { .. }, Action::Attribute(bit)) => has_bit(self.open_mask(prompt), bit),
             (Prompt::Position { positions, .. }, Action::Position(position)) => {
                 POSITIONS.contains(&u32::from(position)) && positions & position != 0
             }
-            (Prompt::AnnounceRace { available, .. }, Action::Race(bit)) => {
-                bit < 64 && (available & !self.returns.at_u64(0)) & (1 << bit) != 0
-            }
             (Prompt::Sort { count, .. }, Action::Card(index)) => index < u16::from(count) && !self.returns.data.contains(&(index as u8)),
-            (Prompt::AnnounceAttribute { available, .. }, Action::Attribute(bit)) => {
-                bit < 32 && (available & !self.returns.at_u32(0)) & (1 << bit) != 0
-            }
             (Prompt::Counter { counter_type, count, .. }, Action::Card(index)) => self.is_legal_counter_pick(counter_type, count, index),
             (Prompt::AnnounceCard { .. }, Action::Code(code)) => self.is_declarable(code),
             _ => false,
         }
     }
 
-    // Card and Tribute: any unpicked card while fewer than `max` are picked, Finish once enough are picked (min counts
-    // release units for tributes), and Cancel if allowed.
+    // Card and Tribute: an unpicked card below `max` picks, Finish once enough (release units for tributes), Cancel if allowed.
     fn is_legal_pick(&self, prompt: Prompt, action: Action) -> bool {
         let (Prompt::Card { cancelable, min, max, .. } | Prompt::Tribute { cancelable, min, max, .. }) = prompt else {
             return false;
@@ -536,21 +546,18 @@ impl Duel {
         if !legal {
             return Err(ActionError::Illegal(action));
         }
-        match action {
-            Action::IdleCommand(command) => self.respond(command.response()),
-            Action::BattleCommand(command) => self.respond(command.response()),
-            Action::YesNo(yes) => self.respond(i32::from(yes)),
-            Action::Option(index) => self.respond(i32::from(index)),
-            Action::Chain(index) => self.respond(index.map_or(-1, i32::from)),
-            Action::Card(index) if matches!(prompt, Prompt::UnselectCard { .. }) => {
+        match (prompt, action) {
+            (_, Action::IdleCommand(command)) => self.respond(command.response()),
+            (_, Action::BattleCommand(command)) => self.respond(command.response()),
+            (_, Action::YesNo(yes)) => self.respond(i32::from(yes)),
+            (_, Action::Option(index)) => self.respond(i32::from(index)),
+            (_, Action::Chain(index)) => self.respond(index.map_or(-1, i32::from)),
+            (Prompt::UnselectCard { .. }, Action::Card(index)) => {
                 self.respond(1);
                 self.returns.set_i32(1, i32::from(index));
             }
             // The picks are kept in order until the last one, then become each card's position.
-            Action::Card(index) if matches!(prompt, Prompt::Sort { .. }) => {
-                let Prompt::Sort { count, .. } = prompt else {
-                    return Err(ActionError::Illegal(action));
-                };
+            (Prompt::Sort { count, .. }, Action::Card(index)) => {
                 self.returns.data.push(index as u8);
                 if self.returns.data.len() < usize::from(count) {
                     return Ok(Status::Awaiting);
@@ -560,17 +567,14 @@ impl Duel {
                     self.returns.set_u8(usize::from(card), position as u8);
                 }
             }
-            Action::Card(index) if matches!(prompt, Prompt::Counter { .. }) => {
-                let Prompt::Counter { count, .. } = prompt else {
-                    return Err(ActionError::Illegal(action));
-                };
+            (Prompt::Counter { count, .. }, Action::Card(index)) => {
                 let index = usize::from(index);
                 self.returns.set_i16(index, self.returns.at_i16(index) + 1);
                 if self.removed_counters() < i32::from(count) {
                     return Ok(Status::Awaiting);
                 }
             }
-            Action::Card(index) => {
+            (_, Action::Card(index)) => {
                 let count = self.returns.at_u32(1);
                 self.returns.set_i32(0, 0);
                 self.returns.set_u32(count as usize + 2, u32::from(index));
@@ -581,43 +585,34 @@ impl Duel {
                     return Ok(Status::Awaiting);
                 }
             }
-            Action::Finish if matches!(prompt, Prompt::UnselectCard { .. }) => self.respond(-1),
-            Action::Finish => {
+            (Prompt::UnselectCard { .. }, Action::Finish) | (_, Action::Cancel) => self.respond(-1),
+            (_, Action::Finish) => {
                 self.returns.set_i32(0, 0);
                 self.returns.set_u32(1, self.returns.at_u32(1));
             }
-            Action::Cancel => self.respond(-1),
-            Action::Place(zone) => {
-                let Prompt::Place { player, count, .. } = prompt else {
-                    return Err(ActionError::Illegal(action));
-                };
+            (Prompt::Place { player, count, .. }, Action::Place(zone)) => {
                 self.returns.data.extend(place_response(player, zone));
                 if self.returns.data.len() < 3 * usize::from(count) {
                     return Ok(Status::Awaiting);
                 }
             }
-            Action::Position(position) => self.respond(i32::from(position)),
-            Action::Code(code) => self.respond(code as i32),
-            Action::Race(bit) => {
-                let Prompt::AnnounceRace { count, .. } = prompt else {
-                    return Err(ActionError::Illegal(action));
-                };
+            (_, Action::Position(position)) => self.respond(i32::from(position)),
+            (_, Action::Code(code)) => self.respond(code as i32),
+            (Prompt::AnnounceRace { count, .. }, Action::Race(bit)) => {
                 let races = self.returns.at_u64(0) | 1 << bit;
                 self.returns.set_u64(0, races);
                 if races.count_ones() < u32::from(count) {
                     return Ok(Status::Awaiting);
                 }
             }
-            Action::Attribute(bit) => {
-                let Prompt::AnnounceAttribute { count, .. } = prompt else {
-                    return Err(ActionError::Illegal(action));
-                };
+            (Prompt::AnnounceAttribute { count, .. }, Action::Attribute(bit)) => {
                 let attributes = self.returns.at_u32(0) | 1 << bit;
                 self.returns.set_u32(0, attributes);
                 if attributes.count_ones() < u32::from(count) {
                     return Ok(Status::Awaiting);
                 }
             }
+            _ => return Err(ActionError::Illegal(action)),
         }
         Ok(self.run())
     }
@@ -684,20 +679,14 @@ impl Duel {
                 .map(|&bytes| Action::Place(response_zone(player, bytes)))
                 .collect(),
             Prompt::Position { .. } => vec![Action::Position(u8::try_from(value).map_err(|_| undecodable())?)],
-            Prompt::AnnounceRace { .. } => {
-                let races = buffer.at_u64(0);
-                (0..64).filter(|bit| races & 1 << bit != 0).map(Action::Race).collect()
-            }
+            Prompt::AnnounceRace { .. } => bits(buffer.at_u64(0)).map(Action::Race).collect(),
             Prompt::Sort { count, .. } => (0..count)
                 .map(|position| {
                     let card = (0..count).find(|&card| buffer.at_u8(usize::from(card)) == position);
                     card.map(|card| Action::Card(u16::from(card))).ok_or_else(undecodable)
                 })
                 .collect::<Result<_, _>>()?,
-            Prompt::AnnounceAttribute { .. } => {
-                let attributes = buffer.at_u32(0);
-                (0..32).filter(|bit| attributes & 1 << bit != 0).map(Action::Attribute).collect()
-            }
+            Prompt::AnnounceAttribute { .. } => bits(buffer.at_u32(0).into()).map(Action::Attribute).collect(),
             Prompt::Counter { .. } => {
                 let mut actions = Vec::new();
                 for index in indices(self.core.select_cards.len()) {
@@ -711,9 +700,7 @@ impl Duel {
     }
 }
 
-// Whether the selection whose sum params are `chosen` (the must cards' first, `selected` picked), or that selection with
-// some of `rest` added, is one the prompt accepts. Values are positive, so once the smallest values pass the target
-// (exactly) or the selection without its smallest value reaches it (overflow), adding cards cannot help.
+// Whether `chosen` (must cards first, then `selected` picks), alone or with some of `rest`, is accepted; values are positive.
 fn sum_completable(arg: &SelectSum, chosen: &mut List<u32, 16>, selected: usize, rest: &[u32]) -> bool {
     if arg.accepts(chosen, selected) {
         return true;

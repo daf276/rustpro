@@ -5,7 +5,7 @@ use std::sync::LazyLock;
 use carddata::{Card, CardDatabase, Deck, TYPE_MONSTER, TYPE_NORMAL, TYPE_SPELL, TYPE_TRAP};
 use engine::constants::{
     EFFECT_CHANGE_BATTLE_STAT, EFFECT_FLAG_SINGLE_RANGE, EFFECT_TYPE_CONTINUOUS, EFFECT_TYPE_FIELD, EFFECT_TYPE_SINGLE, EVENT_DRAW,
-    LOCATION_MZONE,
+    LOCATION_MZONE, TYPE_EFFECT, TYPE_QUICKPLAY,
 };
 use engine::{
     Action, CardId, DUEL_MODE_MR5, Duel, DuelError, DuelOptions, InitialEffect, Library, PHASE_DAMAGE, PHASE_DAMAGE_CAL, PlayerOptions,
@@ -13,8 +13,6 @@ use engine::{
 };
 
 const CODES: std::ops::RangeInclusive<u32> = 1..=40;
-const TYPE_EFFECT: u32 = 0x20;
-const TYPE_QUICKPLAY: u32 = 0x1_0000;
 const TYPE_FLIP: u32 = 0x20_0000;
 
 // The cards phase 2a ports, with their type, level, attack and defense.
@@ -56,14 +54,18 @@ static CARDS: LazyLock<CardDatabase> = LazyLock::new(|| {
     CODES.map(monster).chain(EFFECT_CARDS.map(effect)).collect()
 });
 
-fn started_duel(main: &[u32], library: &'static Library) -> Result<Duel, Box<dyn Error>> {
+fn new_duel() -> Result<Duel, DuelError> {
     let player = PlayerOptions::default();
-    let mut duel = Duel::new(DuelOptions {
+    Duel::new(DuelOptions {
         seed: [1, 2, 3, 4],
         flags: DUEL_MODE_MR5,
         team1: player,
         team2: player,
-    })?;
+    })
+}
+
+fn started_duel(main: &[u32], library: &'static Library) -> Result<Duel, Box<dyn Error>> {
+    let mut duel = new_duel()?;
     duel.load_library(library);
     let deck = Deck {
         main: main.to_vec(),
@@ -151,14 +153,7 @@ fn should_finish_identically_when_cloned_at_a_prompt() {
 
 #[test]
 fn should_leave_room_for_105_tokens_beside_the_largest_decks() {
-    let player = PlayerOptions::default();
-    let mut duel = Duel::new(DuelOptions {
-        seed: [1, 2, 3, 4],
-        flags: DUEL_MODE_MR5,
-        team1: player,
-        team2: player,
-    })
-    .unwrap();
+    let mut duel = new_duel().unwrap();
     let deck = |main, extra| Deck {
         main: vec![1; main],
         extra: vec![1; extra],

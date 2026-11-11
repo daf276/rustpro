@@ -2,12 +2,15 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::time::{Duration, Instant};
 
-use bench::{BenchResult, flags};
+use bench::{Allocator, BenchResult, flags};
 use carddata::{CardDatabase, Deck, Decks, ELFNOTE_DECK, load_advanced, vendor};
 use engine::Duel;
 use oracle::{Outcome, Report, Scripts, culprit, play_random_duel};
 use rand::rngs::StdRng;
 use rayon::prelude::*;
+
+#[global_allocator]
+static GLOBAL: Allocator = Allocator;
 
 const MAX_DECISIONS: u32 = 5_000;
 const TOP_ERRORS: usize = 20;

@@ -8,7 +8,7 @@ default-run = "bench"
 [dependencies]
 carddata = { path = "../carddata" }
 engine = { path = "../engine" }
-mimalloc = { version = "0.1", default-features = false, optional = true }
+mimalloc = { version = "0.1", default-features = false }
 oracle = { path = "../oracle" }
 rand = { version = "0.9", default-features = false, features = ["alloc", "std_rng"] }
 rayon = { version = "1", default-features = false }
@@ -16,8 +16,8 @@ scripts = { path = "../scripts" }
 sim = { path = "../sim" }
 
 [features]
-# The stack bench on mimalloc instead of the system heap.
-mimalloc = ["dep:mimalloc"]
+# The benches on the system heap instead of mimalloc.
+system-allocator = []
 
 [lints]
 workspace = true

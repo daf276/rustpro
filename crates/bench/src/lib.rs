@@ -10,6 +10,11 @@ use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
 use sim::{AutoAdvance, Batch, Options, indices};
 
+#[cfg(not(feature = "system-allocator"))]
+pub use mimalloc::MiMalloc as Allocator;
+#[cfg(feature = "system-allocator")]
+pub use std::alloc::System as Allocator;
+
 pub type BenchResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
 pub const MAX_ACTIONS: u64 = 100_000;

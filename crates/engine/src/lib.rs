@@ -51,7 +51,7 @@ mod script;
 pub use action::{Action, ActionError, BattleCommand, IdleCommand, Prompt};
 pub use card::{CardId, CardSet, MAX_CARDS};
 pub use constants::{DUEL_MODE_MR5, PHASE_DAMAGE, PHASE_DAMAGE_CAL};
-pub use duel::{Duel, DuelError, DuelOptions, NewCardInfo, PlayerOptions, Status};
+pub use duel::{Duel, DuelError, DuelOptions, NewCardInfo, PlayerOptions, Status, SynchroMaterials};
 pub use effect::{
     ChainLimitFn, Condition, ConditionFn, CostFn, CostReplaceCall, CostReplaceCondition, CounterFilter, EffectId, EffectSet, Event,
     ExtraMaterialCall, FusionMaterialFn, GroupOperationFn, OpTarget, Operation, OperationFn, SpSummonTargetFn, SynchroCheckFn,

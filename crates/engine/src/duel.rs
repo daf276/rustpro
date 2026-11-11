@@ -5,7 +5,7 @@ use crate::buffer::{ProgressiveBuffer, Trace};
 use crate::card::{Card, CardId, CardSet, Cards, MAX_CARDS, StaticData};
 use crate::constants::*;
 use crate::effect::{EffectId, Effects, Event, FieldEffect};
-use crate::field::{FieldInfo, PerPlayer, PlayerInfo, Processor, Relations, ReturnCards};
+use crate::field::{FieldInfo, PerPlayer, PlayerInfo, Processor, Relations, ReturnCards, Tributes};
 use crate::list::List;
 use crate::processor::{OcgStatus, Startup};
 use crate::rng::Xoshiro256StarStar;
@@ -81,6 +81,37 @@ pub enum Status {
     End,
 }
 
+// What the checks of one idle prompt share: results found without running a function, from state only `&mut Duel` changes.
+#[derive(Debug, Default)]
+pub(crate) struct IdleMemo {
+    pub tributes: std::cell::Cell<Shared<Tributes>>,
+    pub synchro_materials: std::cell::Cell<Shared<SynchroMaterials>>,
+}
+
+// A copy of the duel is not inside the idle step that opened the memo.
+impl Clone for IdleMemo {
+    fn clone(&self) -> Self {
+        Self::default()
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) enum Shared<T> {
+    #[default]
+    Closed,
+    Open,
+    Filled(T),
+}
+
+// What proc_synchro.rs finds for the Synchro Summons of `player`: the cards it tests, those usable as material, their levels.
+#[derive(Debug, Clone, Copy)]
+pub struct SynchroMaterials {
+    pub player: u8,
+    pub candidates: CardSet,
+    pub materials: CardSet,
+    pub levels: [(Option<CardId>, u32); 16],
+}
+
 // duel and field of the core in one value; cloning it at any prompt resumes from there.
 #[derive(Debug, Clone)]
 pub struct Duel {
@@ -141,6 +172,7 @@ pub struct Duel {
     pub(crate) unported: std::cell::Cell<Option<&'static str>>,
     // The card and destination a cost check sets as sendto_param.location while it asks the redirects (cost_destination).
     pub(crate) destination_probe: std::cell::Cell<Option<(CardId, u8)>>,
+    pub(crate) idle_memo: IdleMemo,
 }
 
 impl Duel {
@@ -197,6 +229,7 @@ impl Duel {
             equip_cards: CardSet::default(),
             unported: std::cell::Cell::new(None),
             destination_probe: std::cell::Cell::new(None),
+            idle_memo: IdleMemo::default(),
         })
     }
 
@@ -359,6 +392,29 @@ impl Duel {
     // The first unported call site an effect reached ("file:line"); once set, the duel's result cannot be trusted.
     pub fn unported_site(&self) -> Option<&'static str> {
         self.unported.get()
+    }
+
+    // None outside an idle prompt's checks, for another player, and while the types read are not the cards' own.
+    pub fn shared_synchro_materials(&self, player: u8) -> Option<SynchroMaterials> {
+        match self.idle_memo.synchro_materials.get() {
+            Shared::Filled(shared) if shared.player == player && self.reads_own_types() => Some(shared),
+            _ => None,
+        }
+    }
+
+    // `materials` gives what the caller found if no function ran to find it, which holds while the idle step only reads the
+    // duel; None closes the memo, as the registry that made a function run stays the same for as long.
+    pub fn share_synchro_materials(&self, materials: impl FnOnce() -> Option<SynchroMaterials>) {
+        if matches!(self.idle_memo.synchro_materials.get(), Shared::Open) && self.reads_own_types() {
+            self.idle_memo
+                .synchro_materials
+                .set(materials().map_or(Shared::Closed, Shared::Filled));
+        }
+    }
+
+    // No property is assumed and no type is being worked out, the two cells get_type reads.
+    fn reads_own_types(&self) -> bool {
+        self.assumes.borrow().is_empty() && self.core.type_temp.borrow().is_empty()
     }
 
     pub fn reach_unported(&self, site: &'static str) {

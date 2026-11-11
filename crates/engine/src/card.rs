@@ -1736,6 +1736,9 @@ impl Duel {
 
     // `sumtype` is 0 where the core passes none.
     pub(crate) fn check_cost_condition(&self, card: CardId, code: u32, playerid: u8, sumtype: u32) -> bool {
+        if !self.field_effects.registry.has_code(code) {
+            return true;
+        }
         let effects = self
             .filter_player_effect(playerid, code, false)
             .into_iter()
@@ -2783,6 +2786,21 @@ impl Duel {
                     Value::Material(value) => value(self, effect, scard, sumtype, playerid),
                     _ => misread("a material limit"),
                 })
+    }
+
+    // False when a lookup of the code for the card runs no function and changes no effect, as it finds at most the card's own
+    // constants: no condition (is_available then writes nothing), an integer value, no range (so no immunity test).
+    pub fn lookup_may_run(&self, card: CardId, code: u32) -> bool {
+        let registry = &self.field_effects.registry;
+        let constant = |effect: EffectId| {
+            let peffect = &self.effects[effect];
+            peffect.condition.is_none() && matches!(peffect.value, Value::Int(_)) && !peffect.is_flag(EFFECT_FLAG_SINGLE_RANGE)
+        };
+        registry.has_code(code)
+            && (!registry.equal_range(Container::Single, Some(card), code).all(constant)
+                || registry.equal_range(Container::Aura, None, code).next().is_some()
+                || self.equip_effects(card, code).next().is_some()
+                || self.xmaterial_effects(card, code).next().is_some())
     }
 
     // The core tests the summon types with `&`, and they share bits (a Synchro type takes the Fusion branch).

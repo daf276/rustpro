@@ -320,8 +320,13 @@ pub mod aux {
 
     // Auxiliary.GetMMZonesPointedTo(player) with the default filter, locations and target player.
     pub fn get_mm_zones_pointed_to(duel: &Duel, player: u8) -> u32 {
+        get_mm_zones_pointed_to_full(duel, player, TRUE)
+    }
+
+    // Auxiliary.GetMMZonesPointedTo with a by_filter the Link Monsters must also satisfy.
+    pub fn get_mm_zones_pointed_to_full(duel: &Duel, player: u8, filter: impl Fn(CardId, &Duel) -> bool) -> u32 {
         let links = duel.get_matching_group(
-            |c, duel| c.is_faceup(duel) && c.is_type(duel, TYPE_LINK),
+            |c, duel| c.is_faceup(duel) && c.is_type(duel, TYPE_LINK) && filter(c, duel),
             player,
             LOCATION_MZONE,
             LOCATION_MZONE,

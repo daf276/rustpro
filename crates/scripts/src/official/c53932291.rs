@@ -1,13 +1,12 @@
 // Speedroid Taketomborg
 use crate::prelude::*;
-use crate::testing::{Check, MZONE};
+use crate::testing::{Check, DECK, MZONE};
 
 const ID: u32 = 53932291;
 
-// Speedroid Terrortop, a WIND monster, on the field for the hand Special Summon.
-pub const SUPPORT: &[(u32, u16)] = &[(81275020, MZONE), (ID, MZONE)];
-// No Speedroid Tuner is ported, so the ignition effect has no target a scenario can reach.
-pub const CHECKS: &[Check] = &[Check::SpecialSummoned, Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 0)))];
+// Speedroid Terrortop, a WIND monster, on the field for the hand Special Summon, Speedroid Darumaknocker (a Tuner) in the Deck.
+pub const SUPPORT: &[(u32, u16)] = &[(81275020, MZONE), (ID, MZONE), (85482105, DECK), (85482105, DECK)];
+pub const CHECKS: &[Check] = &[Check::SpecialSummoned, Check::ResolvesEffect(aux::stringid(ID, 0))];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.set_sp_summon_once(duel, ID);

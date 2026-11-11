@@ -1,9 +1,6 @@
 // What the Lua runtime decides that ports must reproduce.
 
-// The order `pairs` visits integer keys set in this order on a new table (`{}`), as Lua 5.4's ltable.c places them in
-// the hash part: a key takes its main position (key % (size - 1 | 1)); on a collision it takes the last free node below
-// the previous one found, and moves the occupant there instead when the occupant is not in its own main position; a full
-// table grows to the next power of two and reinserts its keys in node order. Card codes never go to the array part.
+// The order `pairs` visits keys set in this order on `{}`: Lua 5.4's ltable.c hash part, where card codes always go.
 pub fn pairs(keys: impl IntoIterator<Item = u32>) -> Vec<u32> {
     let mut table = Table::default();
     for key in keys {

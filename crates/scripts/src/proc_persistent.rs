@@ -1,12 +1,10 @@
-// Port of proc_persistent.lua: aux.AddPersistentProcedure, a Continuous Trap that targets a monster on activation and
-// keeps it as its card target once it resolves.
+// Port of proc_persistent.lua.
 use engine::{Args, CardId, CardSet, ConditionFn, CostFn, Duel, EffectId, OperationFn, Script};
 
 use crate::constant::*;
 use crate::proc_workaround::CardWorkaround;
 
-// The parameters of aux.AddPersistentProcedure (p, f, category, property, hint1, hint2, con, cost, tg, op, anypos):
-// `P` None is nil, any monster; `tg` is the Lua tg called with chk 0 (`tg_check`) or 1.
+// The parameters of aux.AddPersistentProcedure: `P` None is nil, any monster; `tg_check` is tg called with chk 0.
 pub trait PersistentProcedure {
     const P: Option<u8> = None;
     const CATEGORY: u64 = 0;

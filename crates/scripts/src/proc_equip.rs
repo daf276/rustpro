@@ -1,11 +1,10 @@
-// Port of proc_equip.lua: aux.AddEquipProcedure, an Equip Spell's activation that targets the monster to equip.
+// Port of proc_equip.lua.
 use engine::{Args, CardId, ConditionFn, CostFn, Duel, EffectId, Script, Value};
 
 use crate::constant::*;
 use crate::proc_workaround::CardWorkaround;
 
-// The parameters of aux.AddEquipProcedure (p, f, eqlimit, cost, tg, op, con, prop): `P` None is nil, any player's
-// monster; `f` left nil passes every monster, and `tg` and `op` left nil do nothing.
+// The parameters of aux.AddEquipProcedure: `P` None is nil, any player's monster.
 pub trait EquipProcedure {
     const P: Option<u8> = None;
     const EQLIMIT: Option<fn(&Duel, EffectId, CardId) -> i32> = None;

@@ -29,8 +29,7 @@ pub fn is_triggering_setcode(duel: &Duel, ch: u8, setcodes: &[u16]) -> bool {
         })
 }
 
-// Chain.IsSetcode(ch, setcodes), false where it returns nil. The resolving properties are recorded only in puzzles, so a card
-// that is no longer related to its effect or face-up falls back to the triggering properties.
+// Chain.IsSetcode, false for nil; resolving properties are recorded only in puzzles, so it falls back to triggering ones.
 pub fn is_setcode(duel: &Duel, ch: u8, setcodes: &[u16]) -> bool {
     if duel.get_current_chain() == 0 {
         return false;
@@ -48,7 +47,7 @@ pub fn is_setcode(duel: &Duel, ch: u8, setcodes: &[u16]) -> bool {
     is_triggering_setcode(duel, ch, setcodes)
 }
 
-// Chain.IsCode(ch, ...), false where it returns nil; falls back like is_setcode, to the triggering code and its alias.
+// Chain.IsCode, false for nil; falls back like is_setcode, to the triggering code and its alias.
 pub fn is_code(duel: &Duel, ch: u8, codes: &[u32]) -> bool {
     if duel.get_current_chain() == 0 {
         return false;
@@ -104,18 +103,14 @@ impl EffectChain for EffectId {
         duel.set_script_group(key, Some(group));
     }
 
-    // Effect.IsCardSetcode.
     fn is_card_setcode(self, duel: &Duel, setcode: u16) -> bool {
         properties_card(duel, self).is_some_and(|card| card.is_set_card(duel, &[setcode]))
     }
 
-    // Effect.IsCardAttribute.
     fn is_card_attribute(self, duel: &Duel, attribute: u32) -> bool {
         properties_card(duel, self).is_some_and(|card| card.is_attribute(duel, attribute))
     }
 
-    // Effect.GetCardLevel: the handler's level while it is face-up and related to the chain link being resolved, else the
-    // level recorded when it activated. An effect that is not the chain link reads its owner.
     fn get_card_level(self, duel: &Duel) -> u32 {
         unported!(duel, self.is_has_property(duel, EFFECT_FLAG_FIELD_ONLY));
         let triggering =
@@ -132,8 +127,7 @@ impl EffectChain for EffectId {
     }
 }
 
-// The card whose properties chain.lua's effect_card_prop reads for `e`, None where Lua reads nil. The handler also stands
-// for its resolving properties (recorded only in puzzles) and triggering ones (the same card data).
+// chain.lua's effect_card_prop; the handler also stands for its resolving and triggering properties (the same card data).
 fn properties_card(duel: &Duel, e: EffectId) -> Option<CardId> {
     if e.is_has_property(duel, EFFECT_FLAG_FIELD_ONLY) {
         let registering = duel.get_script_group(registering_key(e)).and_then(|card| card.get_first());
@@ -156,8 +150,7 @@ pub trait DuelChain {
 }
 
 impl DuelChain for Duel {
-    // chain.lua's override records the properties of the registering effect's card; only its archetypes, which come
-    // from the card's data, are ever read. A new effect in a reused slot starts unrecorded.
+    // chain.lua's override records the registering effect's card; a new effect in a reused slot starts unrecorded.
     fn register_effect(&mut self, e: EffectId, player: u8) {
         let recorded = match self.get_reason_effect() {
             Some(re) if e.get_owner(self) != CardId::default() => properties_card(self, re),

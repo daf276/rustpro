@@ -93,7 +93,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - `ResolvesEffect` and `Message` count by code or by any card: a `SUPPORT` copy of the card can satisfy them, and
   `Message(MSG_ATTACK)` (`use engine::constants::MSG_ATTACK`) counts every attack, the usual check of a card with only
   continuous effects. A battle-damage trigger of a high-ATK card needs few other attackers in `SUPPORT`, or the duel
-  ends first. A destroyed-by-battle trigger needs 2-3 copies and strong `MZONE | OPPONENT` monsters. Check that the counted path is the card's own. An effect a card grants
+  ends first. A destroyed-by-battle trigger needs 2-3 copies and strong `MZONE | OPPONENT` monsters; a trigger on
+  destroying a monster by battle needs weak ones (DEF below the card's ATK, c78422252). Check that the counted path is the card's own. An effect a card grants
   another (an Xyz material's effect, an equip or `EFFECT_TYPE_GRANT` effect) chains as that other card, so check it
   another way (`MaterialFrom`, `CardHint`).
   `CardHint` counts by the hinted card, so a hint on another card never counts (a BE_MATERIAL effect hinting the
@@ -136,7 +137,12 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - `Replaced` counts the card under test's own replaced move (a destruction replaced, or a `REASON_REPLACE` move such as
   a cost-replace banish): an effect that replaces another card's destruction is
   checked from that card's file (with the replacing card in its `SUPPORT`). A card replacing its own destruction without
-  moving is not counted: check its prompt with `Message(MSG_SELECT_EFFECTYN)` (c71100270).
+  moving is not counted: check its prompt with `Message(MSG_SELECT_EFFECTYN)` (c71100270). An equip in place of a
+  destruction is no `REASON_REPLACE` move: check `Message(MSG_EQUIP)` (c80549379).
+- Check a Synchro procedure's non-Tuner minimum against the `SUPPORT` levels (Road Warrior needs two non-Tuners). A
+  trigger on being Normal Summoned needs about four copies in hand. An opponent's Quick-Play Spell in hand cannot be
+  activated on your turn: an effect reacting to the opponent targeting needs a set Trap or a field Quick effect.
+  A batch card whose effect needs an unported archetype member gets one cheap member ported along with it.
 - A battle-timed effect (`EVENT_PRE_DAMAGE_CALCULATE` and the like) needs several copies and materials-proof support,
   since random play uses monsters as Link/Xyz materials and activates hand Spells early; Polymerization stays in hand
   for a reveal or discard cost. A card whose only target is an unported archetype member is `Report`.
@@ -220,7 +226,12 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - Cards use `set_operation`; `set_promptless_operation` is for library code that provably cannot prompt.
 - Effect function shapes are the variants of `Value`, `Target`, `Condition`, `Cost` and `Operation` in
   `crates/engine/src/effect.rs`; reuse one before adding a variant for an unusual signature.
-- `e:SetHintTiming(x)` with one argument sets both timings: `e.set_hint_timing(duel, x, x)`.
+- `e:SetHintTiming(x)` with one argument sets both timings: `e.set_hint_timing(duel, x, x)` (a wrong one showed only at
+  scenario 27 of 64).
+- A condition of a field or continuous effect, run by `is_available`, gets only `e`: `a.tp` is 0 there, so read the
+  player with `a.e.get_handler_player(duel)` (c77765207).
+- `set_value` takes an `i32`: a code or `TYPE_*` constant needs `as i32`. `Duel.AnnounceLevel(tp, min, max, ...)` with
+  a range or excluded levels is `announce_number` over the built list (c16725505).
 - A core function a library replaces keeps a `_core` suffix in the engine; the scripts-crate trait takes the Lua name.
 - An internal engine function whose name a new Lua mirror needs is renamed with a `field_` prefix (`field_raise_event`).
 - A new `Duel` field must also go into the `copy_from` destructure in `script.rs` (snapshot restore).
@@ -240,7 +251,7 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   later; random play rarely shows it. Skip only work that looks nothing up.
 - A Lua check that registers and resets effects inside a condition, material filter or value runs through
   `duel.check_mut(|duel| ...)` (see its uses in `proc_synchro.rs` and `proc_link.rs`), only when the Lua would mutate.
-  `AssumeProperty` exists for race only.
+  `AssumeProperty` exists for race, type and level.
 - A condition that writes state the Lua reads later (its effect's label or label object, `s.x`, a flag effect) is
   set with `e.set_condition_mut(duel, f)`, `f` taking `&mut Duel`, and writes as an operation does. This holds for
   the conditions of activated and continuous effects (`EFFECT_TYPE_ACTIONS`), which the engine reaches with

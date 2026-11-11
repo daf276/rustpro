@@ -1654,7 +1654,7 @@ impl Duel {
         }
     }
 
-    // `check_self_destroy` leaves a card destroyed by a self-destroy effect.
+    // `check_self_destroy` leaves a card destroyed by a self-destroy effect, as the core's step 1 does and step 11 does not.
     fn replace_destroyed(&mut self, effect: EffectId, target: CardId, is_destroy: bool, check_self_destroy: bool) {
         if !(check_self_destroy && self.is_self_destroy_reason(target)) {
             self.remove_replace_target(target);
@@ -1807,7 +1807,7 @@ impl Duel {
             }
             (11, Some(effect), Some(target)) => {
                 if self.returns.at_i32(0) != 0 {
-                    self.replace_destroyed(effect, target, is_destroy, true);
+                    self.replace_destroyed(effect, target, is_destroy, false);
                     if let Some(&chain) = self.core.continuous_chain.first() {
                         self.core.desrep_chain.push(chain);
                     }

@@ -1534,11 +1534,14 @@ impl Duel {
 
     // xmaterial_effect of the Xyz materials in overlay order, without those that also apply to the field.
     pub(crate) fn xmaterial_effects(&self, card: CardId, code: u32) -> impl Iterator<Item = EffectId> + '_ {
-        let mut materials: Cards8 = if self.overlay_cards.is_empty() {
-            Cards8::default()
-        } else {
-            self.xyz_materials(card).into_iter().collect()
-        };
+        (!self.overlay_cards.is_empty())
+            .then(|| self.attached_material_effects(card, code))
+            .into_iter()
+            .flatten()
+    }
+
+    fn attached_material_effects(&self, card: CardId, code: u32) -> impl Iterator<Item = EffectId> + '_ {
+        let mut materials: Cards8 = self.xyz_materials(card).into_iter().collect();
         materials.sort_by_key(|&material| self.cards[material].current.sequence);
         materials
             .into_iter()
@@ -1634,6 +1637,9 @@ impl Duel {
 
     pub(crate) fn filter_immune_effect(&self, card: CardId) -> EffectSet {
         let registry = &self.field_effects.registry;
+        if !registry.has_code(EFFECT_IMMUNE_EFFECT) {
+            return EffectSet::default();
+        }
         let mut effects: EffectSet = registry.equal_range(Container::Single, Some(card), EFFECT_IMMUNE_EFFECT).collect();
         if !self.equip_cards.is_empty() {
             effects.extend(self.equip_effects(card, EFFECT_IMMUNE_EFFECT));

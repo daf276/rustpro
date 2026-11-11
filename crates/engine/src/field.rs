@@ -2599,6 +2599,9 @@ impl Duel {
         if self.is_flag(DUEL_UNLIMITED_SUMMONS) {
             return i32::MAX - 100;
         }
+        if !self.field_effects.registry.has_code(EFFECT_SET_SUMMON_COUNT_LIMIT) {
+            return 1;
+        }
         self.filter_player_effect(playerid, EFFECT_SET_SUMMON_COUNT_LIMIT, true)
             .into_iter()
             .map(|effect| self.get_own_value(effect))
@@ -2756,6 +2759,9 @@ impl Duel {
 
     // EFFECT_CANNOT_SUMMON and EFFECT_CANNOT_FLIP_SUMMON, whose target may read the summoning player, type and target player.
     fn is_player_can_summon_target(&self, playerid: u8, code: u32, card: CardId, sumtype: u32, toplayer: u8) -> bool {
+        if !self.field_effects.registry.has_code(code) {
+            return true;
+        }
         let summon = Some((sumtype, POS_FACEUP as u8, toplayer, None));
         !self
             .filter_player_effect(playerid, code, true)

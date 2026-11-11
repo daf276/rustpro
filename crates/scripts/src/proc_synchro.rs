@@ -264,12 +264,14 @@ impl Synchro {
         let dg = mg
             .unwrap_or_else(|| duel.get_matching_group(synchmatfilter, tp, LOCATION_MZONE | LOCATION_HAND, LOCATION_MZONE, Some(c.into())));
         let (g, pg, mgchk, levels) = Synchro::usable_materials(duel, c, tp, dg, mg.is_some());
-        if shareable && Synchro::materials_run_nothing(duel, tp) {
-            duel.share_synchro_materials(SynchroMaterials {
-                player: tp,
-                candidates: dg,
-                materials: g,
-                levels: levels.0,
+        if shareable {
+            duel.share_synchro_materials(|| {
+                Synchro::materials_run_nothing(duel, tp).then_some(SynchroMaterials {
+                    player: tp,
+                    candidates: dg,
+                    materials: g,
+                    levels: levels.0,
+                })
             });
         }
         (g, pg, mgchk, levels)

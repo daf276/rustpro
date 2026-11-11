@@ -1743,6 +1743,9 @@ impl Duel {
 
     // `sumtype` is 0 where the core passes none.
     pub(crate) fn check_cost_condition(&self, card: CardId, code: u32, playerid: u8, sumtype: u32) -> bool {
+        if !self.field_effects.registry.has_code(code) {
+            return true;
+        }
         let effects = self
             .filter_player_effect(playerid, code, false)
             .into_iter()

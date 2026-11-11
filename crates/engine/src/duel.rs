@@ -402,10 +402,13 @@ impl Duel {
         }
     }
 
-    // `materials` must have been found without running a function: they then hold while the idle step only reads the duel.
-    pub fn share_synchro_materials(&self, materials: SynchroMaterials) {
+    // `materials` gives what the caller found if no function ran to find it, which holds while the idle step only reads the
+    // duel; None closes the memo, as the registry that made a function run stays the same for as long.
+    pub fn share_synchro_materials(&self, materials: impl FnOnce() -> Option<SynchroMaterials>) {
         if matches!(self.idle_memo.synchro_materials.get(), Shared::Open) && self.reads_own_types() {
-            self.idle_memo.synchro_materials.set(Shared::Filled(materials));
+            self.idle_memo
+                .synchro_materials
+                .set(materials().map_or(Shared::Closed, Shared::Filled));
         }
     }
 

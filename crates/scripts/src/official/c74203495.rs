@@ -48,11 +48,11 @@ fn condition(duel: &Duel, a: &Args) -> bool {
         && (duel.get_field_group_count(tp, LOCATION_MZONE, 0) == 0 || duel.is_player_affected_by_effect(tp, CARD_PSYFRAME_LAMBDA).is_some())
 }
 
-fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
+pub(super) fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
     c.is_code(duel, CARD_PSYFRAME_DRIVER) && c.is_can_be_special_summoned(duel, e, 0, tp, false, false)
 }
 
-fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+pub(super) fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
     let (e, tp) = (a.e, a.tp);
     let c = e.get_handler(duel);
     if chk == 0 {

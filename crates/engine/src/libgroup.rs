@@ -16,6 +16,14 @@ impl CardSet {
         *self = self.union(other);
     }
 
+    pub fn toggle(&mut self, card: CardId) {
+        if self.contains(card) {
+            self.remove(card);
+        } else {
+            self.insert(card);
+        }
+    }
+
     pub fn is_contains(&self, card: CardId) -> bool {
         self.contains(card)
     }
@@ -35,9 +43,7 @@ impl CardSet {
             .count()
             >= count
     }
-}
 
-impl CardSet {
     // Group.Split: the cards the filter holds for, and the others, the exception among them.
     pub fn split(&self, duel: &Duel, filter: impl Fn(CardId, &Duel) -> bool, exception: Option<CardSet>) -> (CardSet, CardSet) {
         let exception = exception.unwrap_or_default();
@@ -49,7 +55,6 @@ impl CardSet {
         self.filter(duel, filter, exception).len()
     }
 
-    // Lua returns nil for a canceled cancelable selection; the empty group stands for it.
     pub fn select(&self, duel: &mut Duel, player: u8, min: u8, max: u8, exception: Option<CardSet>) -> Script<CardSet> {
         self.select_full(duel, player, min, max, false, exception)
     }
@@ -142,17 +147,14 @@ impl CardSet {
                 }
             }
         }
-        let locations: Vec<_> = selected.iter().map(|card| duel.cards.get_info_location(card)).collect();
         let mut message = duel.trace.message(MSG_RANDOM_SELECTED);
         message.u8(player).u32(count as u32);
-        for location in locations {
-            message.loc(location);
+        for card in selected {
+            message.loc(duel.cards.get_info_location(card));
         }
         selected
     }
-}
 
-impl CardSet {
     pub fn includes(&self, other: CardSet) -> bool {
         other.difference(*self).is_empty()
     }
@@ -169,7 +171,7 @@ impl CardSet {
     }
 
     pub fn get_class_count(&self, duel: &Duel, value: impl Fn(CardId, &Duel) -> i64) -> usize {
-        let mut classes: crate::list::List<i64, 16> = self.iter().map(|card| value(card, duel)).collect();
+        let mut classes: List<i64, 16> = self.iter().map(|card| value(card, duel)).collect();
         classes.sort_unstable();
         classes.chunk_by(|a, b| a == b).count()
     }
@@ -222,15 +224,13 @@ impl CardSet {
         self.iter().map(|card| value(card, duel)).sum()
     }
 
-    // Group.CheckWithSumEqual: whether the cards Duel.SetSelectedCard set and `min` to `max` of the others add up to
-    // `acc`, each counting the low or the high half of its value.
+    // Group.CheckWithSumEqual: the cards Duel.SetSelectedCard set and `min` to `max` others add up to `acc`, by either half.
     pub fn check_with_sum_equal(&self, duel: &Duel, value: impl Fn(CardId, &Duel) -> u32, acc: u32, min: usize, max: usize) -> bool {
         let (values, must) = self.sum_values(duel, value);
         check_with_sum_limit_m(&values, acc as i32, 0, min, max.max(min), must)
     }
 
-    // Group.CheckWithSumGreater: whether the cards Duel.SetSelectedCard set and some of the others reach `acc`, and
-    // would fall short without their smallest value.
+    // Group.CheckWithSumGreater: the selected cards and some others reach `acc`, and fall short without the smallest value.
     pub fn check_with_sum_greater(&self, duel: &Duel, value: impl Fn(CardId, &Duel) -> u32, acc: u32) -> bool {
         let (values, must) = self.sum_values(duel, value);
         check_with_sum_greater_limit_m(&values, acc as i32, 0, 0xffff, must)
@@ -243,8 +243,7 @@ impl CardSet {
         (cards.map(|card| value(card, duel)).collect(), must.len())
     }
 
-    // Group.SelectWithSumEqual; the empty group when no selection adds up (and for a player above 1, where Lua gets
-    // nothing).
+    // The empty group when no selection adds up, and for a player above 1 (where Lua gets nothing).
     pub fn select_with_sum_equal(
         &self,
         duel: &mut Duel,
@@ -350,7 +349,6 @@ fn check_with_sum_greater_limit(values: &[u32], acc: i32, index: usize, opmin: i
     false
 }
 
-// field::check_with_sum_limit.
 fn check_with_sum_limit(values: &[u32], acc: i32, index: usize, count: usize, min: usize, max: usize) -> bool {
     if count > max {
         return false;

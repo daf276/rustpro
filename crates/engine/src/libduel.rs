@@ -14,6 +14,7 @@ use crate::effect::{
 };
 
 use crate::field::FromEx;
+use crate::libeffect::{flag_code, reset_both_turns};
 use crate::operations::{PayLpCost, TossCoin, TossDice};
 use crate::processor::{
     AnnounceAttribute, AnnounceCard, AnnounceNumber, AnnounceRace, SelectCard, SelectOption, SelectPlace, SelectPosition, SelectYesNo,
@@ -123,8 +124,7 @@ impl ReleaseOptions {
     }
 }
 
-// The card_data fields Duel.IsPlayerCanSpecialSummonMonster gives the temp card over the database's data of its code;
-// None (Lua nil) keeps the database's.
+// The card_data fields Duel.IsPlayerCanSpecialSummonMonster gives the temp card; None (Lua nil) keeps the database's.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct MonsterStats {
     pub setcode: Option<u16>,
@@ -147,6 +147,32 @@ impl MonsterStats {
             race: Some(race),
             attribute: Some(attribute),
         }
+    }
+}
+
+// What Duel.GetLocationCountFromEx's fourth parameter names: the monster to summon, or a type for the core's temp card.
+#[derive(Debug, Clone, Copy)]
+pub enum ExtraSummon {
+    Card(CardId),
+    Type(u32),
+    Nil,
+}
+
+impl From<Option<CardId>> for ExtraSummon {
+    fn from(card: Option<CardId>) -> Self {
+        card.map_or(ExtraSummon::Nil, ExtraSummon::Card)
+    }
+}
+
+impl From<CardId> for ExtraSummon {
+    fn from(card: CardId) -> Self {
+        ExtraSummon::Card(card)
+    }
+}
+
+impl From<u32> for ExtraSummon {
+    fn from(card_type: u32) -> Self {
+        ExtraSummon::Type(card_type)
     }
 }
 
@@ -300,13 +326,9 @@ impl Duel {
     }
 
     pub fn is_player_can_remove(&self, player: u8, card: Option<CardId>) -> bool {
-        self.is_player_can_remove_full(player, card, REASON_EFFECT)
-    }
-
-    pub fn is_player_can_remove_full(&self, player: u8, card: Option<CardId>, reason: u32) -> bool {
         player <= 1
             && match card {
-                Some(card) => self.field_is_player_can_remove(player, card, reason),
+                Some(card) => self.field_is_player_can_remove(player, card, REASON_EFFECT),
                 None => self.is_player_can_action(player, EFFECT_CANNOT_REMOVE),
             }
     }
@@ -327,8 +349,7 @@ impl Duel {
             faceup: up,
             is_step: step,
         });
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0) != 0)
+        self.yield_success()
     }
 
     pub fn equip_complete(&mut self) -> Script<()> {
@@ -377,8 +398,7 @@ impl Duel {
         result
     }
 
-    // Duel.SelectReleaseGroup in its long form; the empty group stands for nil, which a canceled selection returns. The
-    // Extra Deck and opponent's monsters that EFFECT_EXTRA_RELEASE* allow come with the cards that register them.
+    // Duel.SelectReleaseGroup in its long form; nil (canceled) is the empty group. EFFECT_EXTRA_RELEASE* comes with its cards.
     pub fn select_release_group_full(
         &mut self,
         player: u8,
@@ -455,11 +475,7 @@ impl Duel {
             let Some(card) = picked else {
                 return Ok(operated);
             };
-            if operated.contains(card) {
-                operated.remove(card);
-            } else {
-                operated.insert(card);
-            }
+            operated.toggle(card);
             if operated.len() == usize::from(max) {
                 return Ok(operated);
             }
@@ -549,8 +565,7 @@ impl Duel {
             reason,
             ..Default::default()
         });
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0))
+        self.yield_count()
     }
 
     pub fn get_location_count(&self, player: u8, location: u32) -> i32 {
@@ -564,7 +579,6 @@ impl Duel {
         self.get_useable_count(None, player, location as u8, uplayer, reason, zone).0
     }
 
-    // The matching cards of `filter`; Lua's extra filter arguments are captures of the closure.
     fn matching_cards(
         &self,
         filter: impl Fn(CardId, &Duel) -> bool,
@@ -729,6 +743,39 @@ impl Duel {
         }
     }
 
+    pub(crate) fn yield_count(&mut self) -> Script<i32> {
+        self.yield_script()?;
+        Ok(self.returns.at_i32(0))
+    }
+
+    pub(crate) fn yield_success(&mut self) -> Script<bool> {
+        Ok(self.yield_count()? != 0)
+    }
+
+    fn send_cards(
+        &mut self,
+        targets: CardSet,
+        reason: u32,
+        reason_player: u8,
+        player: u8,
+        location: u8,
+        sequence: u8,
+        position: u8,
+    ) -> Script<i32> {
+        self.send_to(
+            targets,
+            self.core.reason_effect.get(),
+            reason,
+            reason_player,
+            player,
+            location,
+            sequence,
+            position,
+            false,
+        );
+        self.yield_count()
+    }
+
     pub fn select_target(
         &mut self,
         select_player: u8,
@@ -801,12 +848,7 @@ impl Duel {
             self.create_relation(card, effect, chain_id);
         }
         if self.effects[effect].is_flag(EFFECT_FLAG_CARD_TARGET) {
-            let locations: Vec<_> = targets.iter().map(|card| self.cards.get_info_location(card)).collect();
-            let mut message = self.trace.message(MSG_BECOME_TARGET);
-            message.u32(locations.len() as u32);
-            for location in locations {
-                message.loc(location);
-            }
+            self.hint_selection_full(targets, false);
         }
     }
 
@@ -837,12 +879,7 @@ impl Duel {
             self.create_relation(card, effect, chain_id);
         }
         if self.effects[effect].is_flag(EFFECT_FLAG_CARD_TARGET) {
-            let locations: Vec<_> = targets.iter().map(|card| self.cards.get_info_location(card)).collect();
-            let mut message = self.trace.message(MSG_BECOME_TARGET);
-            message.u32(locations.len() as u32);
-            for location in locations {
-                message.loc(location);
-            }
+            self.hint_selection_full(targets, false);
         }
     }
 
@@ -955,8 +992,7 @@ impl Duel {
             destination as u8,
             0,
         );
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0))
+        self.yield_count()
     }
 
     pub fn send_to_grave(&mut self, targets: impl Into<CardSet>, reason: u32) -> Script<i32> {
@@ -964,64 +1000,24 @@ impl Duel {
     }
 
     pub fn send_to_grave_full(&mut self, targets: impl Into<CardSet>, reason: u32, player: u8, reason_player: u8) -> Script<i32> {
-        let reason_effect = self.core.reason_effect.get();
-        self.send_to(
-            targets.into(),
-            reason_effect,
-            reason,
-            reason_player,
-            player,
-            LOCATION_GRAVE,
-            0,
-            POS_FACEUP as u8,
-            false,
-        );
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0))
+        self.field_send_to_grave(targets.into(), self.core.reason_effect.get(), reason, reason_player, player);
+        self.yield_count()
     }
 
     pub fn send_to_extra_p(&mut self, targets: impl Into<CardSet>, player: u8, reason: u32) -> Script<i32> {
-        self.send_to_extra_p_full(targets, player, reason, self.core.reason_player.get())
-    }
-
-    pub fn send_to_extra_p_full(&mut self, targets: impl Into<CardSet>, player: u8, reason: u32, reason_player: u8) -> Script<i32> {
         if player > PLAYER_NONE {
             return Ok(0);
         }
-        let reason_effect = self.core.reason_effect.get();
-        self.send_to(
-            targets.into(),
-            reason_effect,
-            reason,
-            reason_player,
-            player,
-            LOCATION_EXTRA,
-            0,
-            POS_FACEUP as u8,
-            false,
-        );
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0))
+        let reason_player = self.core.reason_player.get();
+        self.send_cards(targets.into(), reason, reason_player, player, LOCATION_EXTRA, 0, POS_FACEUP as u8)
     }
 
     pub fn send_to_hand(&mut self, targets: impl Into<CardSet>, player: u8, reason: u32) -> Script<i32> {
         if player > PLAYER_NONE {
             return Ok(0);
         }
-        let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
-        self.send_to(
-            targets.into(),
-            reason_effect,
-            reason,
-            reason_player,
-            player,
-            LOCATION_HAND,
-            0,
-            POS_FACEUP as u8,
-            false,
-        );
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0))
+        let reason_player = self.core.reason_player.get();
+        self.send_cards(targets.into(), reason, reason_player, player, LOCATION_HAND, 0, POS_FACEUP as u8)
     }
 
     pub fn special_summon(
@@ -1061,8 +1057,7 @@ impl Duel {
             positions as u8,
             zone,
         );
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0))
+        self.yield_count()
     }
 
     pub fn draw(&mut self, player: u8, count: u32, reason: u32) -> Script<i32> {
@@ -1071,8 +1066,7 @@ impl Duel {
         }
         let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
         self.field_draw(reason_effect, reason, reason_player, player, count as u16);
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0))
+        self.yield_count()
     }
 
     pub fn damage(&mut self, player: u8, amount: u32, reason: u32) -> Script<u32> {
@@ -1120,17 +1114,7 @@ impl Duel {
         if player > 1 || targets.is_empty() {
             return Ok(());
         }
-        let locations: Vec<_> = targets
-            .iter()
-            .map(|card| (self.cards[card].data.code, self.cards[card].current))
-            .collect();
-        {
-            let mut message = self.trace.message(MSG_CONFIRM_CARDS);
-            message.u8(player).u32(locations.len() as u32);
-            for (code, current) in locations {
-                message.u32(code).u8(current.controler).u8(current.location).u32(current.sequence);
-            }
-        }
+        self.write_confirm_cards(player, targets);
         let reason = if self.core.chain_solving { REASON_EFFECT } else { REASON_COST };
         let (reason_effect, reason_player, revealing_player) = (self.core.reason_effect.get(), self.core.reason_player.get(), 1 - player);
         let during_to_hand = self.field_check_event(EVENT_TO_HAND).is_some();
@@ -1259,36 +1243,7 @@ impl Duel {
             None => state.push((key, value)),
         }
     }
-}
 
-// What Duel.GetLocationCountFromEx's fourth parameter names: the monster to summon, or a type the core gives its
-// temporary card in the Extra Deck.
-#[derive(Debug, Clone, Copy)]
-pub enum ExtraSummon {
-    Card(CardId),
-    Type(u32),
-    Nil,
-}
-
-impl From<Option<CardId>> for ExtraSummon {
-    fn from(card: Option<CardId>) -> Self {
-        card.map_or(ExtraSummon::Nil, ExtraSummon::Card)
-    }
-}
-
-impl From<CardId> for ExtraSummon {
-    fn from(card: CardId) -> Self {
-        ExtraSummon::Card(card)
-    }
-}
-
-impl From<u32> for ExtraSummon {
-    fn from(card_type: u32) -> Self {
-        ExtraSummon::Type(card_type)
-    }
-}
-
-impl Duel {
     pub fn get_turn_player(&self) -> u8 {
         self.infos.turn_player
     }
@@ -1336,8 +1291,7 @@ impl Duel {
         let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
         let flag = if no_flip_effect { NO_FLIP_EFFECT } else { 0 };
         self.field_change_positions(targets.into(), reason_effect, reason_player, positions, flag);
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0))
+        self.yield_count()
     }
 
     pub fn remove(&mut self, targets: impl Into<CardSet>, position: u32, reason: u32) -> Script<i32> {
@@ -1352,21 +1306,8 @@ impl Duel {
         player: u8,
         reason_player: Option<u8>,
     ) -> Script<i32> {
-        let reason_effect = self.core.reason_effect.get();
         let reason_player = reason_player.unwrap_or_else(|| self.core.reason_player.get());
-        self.send_to(
-            targets.into(),
-            reason_effect,
-            reason,
-            reason_player,
-            player,
-            LOCATION_REMOVED,
-            0,
-            position as u8,
-            false,
-        );
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0))
+        self.send_cards(targets.into(), reason, reason_player, player, LOCATION_REMOVED, 0, position as u8)
     }
 
     // Sequence -2 sends to no location; SEQ_DECKSHUFFLE places on top and shuffles at the next check.
@@ -1374,21 +1315,17 @@ impl Duel {
         if player > PLAYER_NONE {
             return Ok(0);
         }
-        let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
+        let reason_player = self.core.reason_player.get();
         let location = if sequence == -2 { 0 } else { LOCATION_DECK };
-        self.send_to(
+        self.send_cards(
             targets.into(),
-            reason_effect,
             reason,
             reason_player,
             player,
             location,
             sequence as u8,
             POS_FACEUP as u8,
-            false,
-        );
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0))
+        )
     }
 
     pub fn move_to_field_core(
@@ -1416,8 +1353,7 @@ impl Duel {
             false,
             LOCATION_REASON_NONE,
         );
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0) != 0)
+        self.yield_success()
     }
 
     pub fn swap_sequence_core(&mut self, card1: CardId, card2: CardId) {
@@ -1630,8 +1566,7 @@ impl Duel {
             zone,
             ..Default::default()
         });
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0))
+        self.yield_count()
     }
 
     // Duel.SwapControl for two cards: whether the swap happened.
@@ -1645,8 +1580,7 @@ impl Duel {
             reset_count,
             ..Default::default()
         });
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0) != 0)
+        self.yield_success()
     }
 
     // Duel.MajesticCopy without a reset, so the copies last until the End Phase.
@@ -1702,17 +1636,7 @@ impl Duel {
         *count += 1;
         if *count > 3 {
             let reason_player = self.core.reason_player.get();
-            self.send_to(
-                adjcard.into(),
-                None,
-                REASON_RULE,
-                reason_player,
-                PLAYER_NONE,
-                LOCATION_GRAVE,
-                0,
-                POS_FACEUP as u8,
-                false,
-            );
+            self.field_send_to_grave(adjcard.into(), None, REASON_RULE, reason_player, PLAYER_NONE);
             return self.yield_script();
         }
         self.core.re_adjust = true;
@@ -1742,10 +1666,6 @@ impl Duel {
     }
 
     pub fn skip_phase(&mut self, player: u8, phase: u32, reset: u32, count: u16) {
-        self.skip_phase_full(player, phase, reset, count, 0);
-    }
-
-    pub fn skip_phase_full(&mut self, player: u8, phase: u32, reset: u32, count: u16, value: u32) {
         let code = match phase as u16 {
             PHASE_DRAW => EFFECT_SKIP_DP,
             PHASE_STANDBY => EFFECT_SKIP_SP,
@@ -1768,7 +1688,7 @@ impl Duel {
         peffect.s_range = 1;
         peffect.o_range = 0;
         peffect.reset_count = count.max(1);
-        peffect.value = Value::Int(value as i32);
+        peffect.value = Value::Int(0);
         self.add_effect(effect, player);
     }
 
@@ -1846,19 +1766,8 @@ impl Duel {
         }
         let selected = self.return_cards.list.iter().copied().collect();
         let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
-        self.send_to(
-            selected,
-            reason_effect,
-            reason,
-            reason_player,
-            PLAYER_NONE,
-            LOCATION_GRAVE,
-            0,
-            POS_FACEUP as u8,
-            false,
-        );
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0))
+        self.field_send_to_grave(selected, reason_effect, reason, reason_player, PLAYER_NONE);
+        self.yield_count()
     }
 
     pub fn select_effect_yes_no(&mut self, player: u8, card: CardId) -> Script<bool> {
@@ -1870,8 +1779,7 @@ impl Duel {
             return Ok(false);
         }
         self.field_select_effect_yes_no(player, description, card);
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0) != 0)
+        self.yield_success()
     }
 
     pub fn select_yes_no(&mut self, player: u8, description: u64) -> Script<bool> {
@@ -1883,8 +1791,7 @@ impl Duel {
             description,
             ..SelectYesNo::default()
         });
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0) != 0)
+        self.yield_success()
     }
 
     // `count` is capped at the races available, which must be among RACE_ALL.
@@ -1933,8 +1840,7 @@ impl Duel {
             playerid: player,
             ..AnnounceNumber::default()
         });
-        self.yield_script()?;
-        Ok(usize::try_from(self.returns.at_i32(0))
+        Ok(usize::try_from(self.yield_count()?)
             .ok()
             .and_then(|index| numbers.get(index))
             .copied()
@@ -1962,8 +1868,7 @@ impl Duel {
             playerid: player,
             ..SelectOption::default()
         });
-        self.yield_script()?;
-        let selected = self.returns.at_i32(0);
+        let selected = self.yield_count()?;
         if let Some(&option) = usize::try_from(selected).ok().and_then(|index| self.core.select_options.get(index)) {
             self.trace.message(MSG_HINT).u8(HINT_OPSELECTED).u8(player).u64(option);
         }
@@ -1976,11 +1881,10 @@ impl Duel {
 
     pub fn hint_selection_full(&mut self, targets: impl Into<CardSet>, selection: bool) {
         let targets = targets.into();
-        let locations: Vec<_> = targets.iter().map(|card| self.cards.get_info_location(card)).collect();
         let mut message = self.trace.message(if selection { MSG_CARD_SELECTED } else { MSG_BECOME_TARGET });
-        message.u32(locations.len() as u32);
-        for location in locations {
-            message.loc(location);
+        message.u32(targets.len() as u32);
+        for card in targets {
+            message.loc(self.cards.get_info_location(card));
         }
     }
 
@@ -2077,21 +1981,16 @@ impl Duel {
         self.register_flag_effect_full(player, code, reset, flag, count, 0)
     }
 
-    // The sixth argument of Duel.RegisterFlagEffect: the label.
     pub fn register_flag_effect_full(&mut self, player: u8, code: u32, reset: u32, flag: u32, count: u16, label: u32) -> Option<EffectId> {
         if player > 1 {
             return None;
-        }
-        let mut reset = reset;
-        if reset & RESET_PHASE != 0 && reset & (RESET_SELF_TURN | RESET_OPPO_TURN) == 0 {
-            reset |= RESET_SELF_TURN | RESET_OPPO_TURN;
         }
         let effect = self.new_effect(CardId::default());
         let peffect = &mut self.effects[effect];
         peffect.effect_owner = player;
         peffect.effect_type = EFFECT_TYPE_FIELD;
-        peffect.code = (code & 0xfff_ffff) | 0x1000_0000;
-        peffect.reset_flag = reset;
+        peffect.code = flag_code(code);
+        peffect.reset_flag = reset_both_turns(reset);
         peffect.flag[0] = flag | EFFECT_FLAG_CANNOT_DISABLE | EFFECT_FLAG_PLAYER_TARGET | EFFECT_FLAG_FIELD_ONLY;
         peffect.s_range = 1;
         peffect.o_range = 0;
@@ -2110,15 +2009,12 @@ impl Duel {
         if player > 1 {
             return 0;
         }
-        self.filter_player_effect(player, (code & 0xfff_ffff) | 0x1000_0000, true).len()
+        self.filter_player_effect(player, flag_code(code), true).len()
     }
 
     // The label of the first flag effect of the code, as the first of the values Lua gets.
     pub fn get_flag_effect_label(&self, player: u8, code: u32) -> Option<i64> {
-        let effect = self
-            .get_player_effect(player, (code & 0xfff_ffff) | 0x1000_0000)
-            .into_iter()
-            .next()?;
+        let effect = self.get_player_effect(player, flag_code(code)).into_iter().next()?;
         Some(self.effects[effect].labels().first().copied().unwrap_or(0))
     }
 
@@ -2126,7 +2022,7 @@ impl Duel {
         if player > 1 {
             return;
         }
-        let code = (code & 0xfff_ffff) | 0x1000_0000;
+        let code = flag_code(code);
         let flagged: Vec<EffectId> = self.field_effects.registry.equal_range(Container::Aura, None, code).collect();
         for effect in flagged {
             if self.effects[effect].is_flag(EFFECT_FLAG_FIELD_ONLY) && self.get_owner_player(effect) == player {
@@ -2136,23 +2032,22 @@ impl Duel {
     }
 
     pub fn set_flag_effect_label(&mut self, player: u8, code: u32, label: i32) -> bool {
-        let Some(effect) = self.get_player_effect(player, (code & 0xfff_ffff) | 0x1000_0000).into_iter().next() else {
+        let Some(effect) = self.get_player_effect(player, flag_code(code)).into_iter().next() else {
             return false;
         };
         self.effects[effect].set_labels(&[i64::from(label)]);
         true
     }
 
-    // Not in the Lua API: false when no effect of this code is registered anywhere (true may be a false alarm), for
-    // library shortcuts that hold only without such effects.
+    // Not in the Lua API: false when no effect of this code is registered (true may be a false alarm).
     #[inline(always)]
     pub fn may_have_effect(&self, code: u32) -> bool {
         self.field_effects.registry.has_code(code)
     }
 
-    pub fn get_player_effect(&self, player: u8, code: u32) -> crate::effect::EffectSet {
+    pub fn get_player_effect(&self, player: u8, code: u32) -> EffectSet {
         if player > 1 {
-            return crate::effect::EffectSet::default();
+            return EffectSet::default();
         }
         self.filter_player_effect(player, code, true)
     }
@@ -2173,8 +2068,7 @@ impl Duel {
         self.core.summon_cancelable
     }
 
-    // A second counter with the same id is ignored.
-    // Only chain, Special Summon and attack counters are counted; the other activities come with the cards that count them.
+    // A second counter with the same id is ignored; activities but chain, Special Summon and attack come with their cards.
     pub fn add_custom_activity_counter(&mut self, id: u32, activity: u8, filter: CounterFilter) {
         if ![ACTIVITY_CHAIN, ACTIVITY_SPSUMMON, ACTIVITY_ATTACK].contains(&activity) {
             self.reach_unported(concat!(file!(), ":", line!()));
@@ -2236,7 +2130,6 @@ impl Duel {
         self.summon_full(player, card, ignore_count, procedure, 0, 0x1f)
     }
 
-    // During a chain the summon waits until the chain link has resolved.
     pub fn summon_full(
         &mut self,
         player: u8,
@@ -2251,18 +2144,9 @@ impl Duel {
         }
         self.core.summon_cancelable = false;
         self.field_summon(player, card, procedure, ignore_count, min_tribute, zone);
-        if !self.core.current_chain.is_empty() {
-            self.core.reserved = self.core.subunits.pop().map(Box::new);
-            self.core.summoning_card = Some(card);
-        }
-        self.yield_script()
+        self.yield_summon(card)
     }
 
-    pub fn mset(&mut self, player: u8, card: CardId, ignore_count: bool, procedure: Option<EffectId>) -> Script<()> {
-        self.mset_full(player, card, ignore_count, procedure, 0, 0x1f)
-    }
-
-    // During a chain the Set waits until the chain link has resolved.
     pub fn mset_full(
         &mut self,
         player: u8,
@@ -2277,6 +2161,11 @@ impl Duel {
         }
         self.core.summon_cancelable = false;
         self.field_mset(player, card, procedure, ignore_count, min_tribute, zone);
+        self.yield_summon(card)
+    }
+
+    // During a chain the summon waits until the chain link has resolved.
+    fn yield_summon(&mut self, card: CardId) -> Script<()> {
         if !self.core.current_chain.is_empty() {
             self.core.reserved = self.core.subunits.pop().map(Box::new);
             self.core.summoning_card = Some(card);
@@ -2341,35 +2230,11 @@ impl Duel {
     }
 
     pub fn synchro_summon(&mut self, player: u8, card: CardId, must: Option<CardSet>, materials: Option<CardSet>) -> Script<()> {
-        self.synchro_summon_full(player, card, must, materials, 0, 0)
-    }
-
-    pub fn synchro_summon_full(
-        &mut self,
-        player: u8,
-        card: CardId,
-        must: Option<CardSet>,
-        materials: Option<CardSet>,
-        min: u16,
-        max: u16,
-    ) -> Script<()> {
-        self.spsummon_rule(SUMMON_TYPE_SYNCHRO, player, card, must, materials, min, max)
+        self.spsummon_rule(SUMMON_TYPE_SYNCHRO, player, card, must, materials, 0, 0)
     }
 
     pub fn xyz_summon(&mut self, player: u8, card: CardId, must: Option<CardSet>, materials: Option<CardSet>) -> Script<()> {
-        self.xyz_summon_full(player, card, must, materials, 0, 0)
-    }
-
-    pub fn xyz_summon_full(
-        &mut self,
-        player: u8,
-        card: CardId,
-        must: Option<CardSet>,
-        materials: Option<CardSet>,
-        min: u16,
-        max: u16,
-    ) -> Script<()> {
-        self.spsummon_rule(SUMMON_TYPE_XYZ, player, card, must, materials, min, max)
+        self.spsummon_rule(SUMMON_TYPE_XYZ, player, card, must, materials, 0, 0)
     }
 
     pub fn link_summon(&mut self, player: u8, card: CardId, must: Option<CardSet>, materials: Option<CardSet>) -> Script<()> {
@@ -2388,7 +2253,6 @@ impl Duel {
         self.spsummon_rule(SUMMON_TYPE_LINK, player, card, must, materials, min, max)
     }
 
-    // A summon by the card's procedures of `summon_type`; during a chain it waits until the chain link has resolved.
     fn spsummon_rule(
         &mut self,
         summon_type: u32,
@@ -2403,25 +2267,12 @@ impl Duel {
             return Ok(());
         }
         self.core.summon_cancelable = false;
-        let max = if min != 0 { max } else { 0 };
-        let procedure = Procedure {
-            card,
-            must,
-            materials,
-            min,
-            max,
-            ..Procedure::default()
-        };
+        let procedure = material_procedure(card, must, materials, min, max);
         self.special_summon_rule(player, card, summon_type, Some(procedure));
-        if !self.core.current_chain.is_empty() {
-            self.core.reserved = self.core.subunits.pop().map(Box::new);
-            self.core.summoning_card = Some(card);
-        }
-        self.yield_script()
+        self.yield_summon(card)
     }
 
-    // spsummonable_rule of libcard.cpp: Card.IsSynchroSummonable and its kin, with the materials passed on to the
-    // procedure's condition rather than through core.must_use_mats.
+    // libcard.cpp's spsummonable_rule; the materials go to the procedure's condition, not core.must_use_mats.
     pub(crate) fn spsummonable_rule(
         &self,
         card: CardId,
@@ -2435,44 +2286,18 @@ impl Duel {
         if self.cards[card].data.card_type & card_type == 0 {
             return false;
         }
-        let procedure = Procedure {
-            card,
-            must,
-            materials,
-            min,
-            max: if min != 0 { max } else { 0 },
-            ..Procedure::default()
-        };
-
+        let procedure = material_procedure(card, must, materials, min, max);
         self.is_special_summonable(card, self.core.reason_player.get(), summon_type, procedure)
     }
-}
 
-impl Duel {
     pub fn get_turn_count(&self) -> i32 {
-        self.get_turn_count_full(None)
-    }
-
-    // `player` None counts the turns of both players.
-    pub fn get_turn_count_full(&self, player: Option<u8>) -> i32 {
-        match player {
-            Some(player) if player > 1 => 0,
-            Some(player) => i32::from(self.infos.turn_id_by_player[player]),
-            None => i32::from(self.infos.turn_id),
-        }
+        i32::from(self.infos.turn_id)
     }
 
     pub fn release(&mut self, targets: impl Into<CardSet>, reason: u32) -> Script<i32> {
-        self.release_full(targets, reason, None)
-    }
-
-    // `reason_player` None is the reason player.
-    pub fn release_full(&mut self, targets: impl Into<CardSet>, reason: u32, reason_player: Option<u8>) -> Script<i32> {
-        let reason_player = reason_player.unwrap_or_else(|| self.core.reason_player.get());
-        let reason_effect = self.core.reason_effect.get();
+        let (reason_player, reason_effect) = (self.core.reason_player.get(), self.core.reason_effect.get());
         self.field_release(targets.into(), reason_effect, reason, reason_player);
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0))
+        self.yield_count()
     }
 
     pub fn get_matching_group_count(
@@ -2495,27 +2320,18 @@ impl Duel {
             return Ok(false);
         }
         self.field_remove_counter(reason, None, player, self_side, oppo, counter_type, count);
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0) != 0)
+        self.yield_success()
     }
 
     pub fn assume_reset(&self) {
         self.assumes.borrow_mut().clear();
     }
-}
 
-impl Duel {
     pub fn return_to_field(&mut self, card: CardId) -> Script<bool> {
-        self.return_to_field_full(card, None, 0xff)
-    }
-
-    // `position` None is the card's previous position.
-    pub fn return_to_field_full(&mut self, card: CardId, position: Option<u32>, zone: u32) -> Script<bool> {
         let previous = self.cards[card].previous;
         if self.cards[card].current.reason & REASON_TEMPORARY == 0 {
             return Ok(false);
         }
-        let position = position.unwrap_or(previous.position);
         self.enable_field_effect(card, false);
         self.adjust_instant();
         self.refresh_location_info_instant();
@@ -2524,20 +2340,17 @@ impl Duel {
             step: 0,
             enable: true,
             pzone: false,
-            zone: zone as u8,
+            zone: 0xff,
             rule: false,
             location_reason: LOCATION_REASON_RETURN_TOFIELD,
             confirm: true,
             ret: 1,
             target: card,
         };
-        self.move_to_field_unit(player, player, location, position as u8, unit);
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0) != 0)
+        self.move_to_field_unit(player, player, location, previous.position as u8, unit);
+        self.yield_success()
     }
-}
 
-impl Duel {
     pub fn sset(&mut self, player: u8, targets: impl Into<CardSet>) -> Script<i32> {
         self.sset_full(player, targets, player, true)
     }
@@ -2553,12 +2366,9 @@ impl Duel {
         }
         let reason_effect = self.core.reason_effect.get();
         self.sset_group(player, toplayer, targets, confirm, reason_effect);
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0))
+        self.yield_count()
     }
-}
 
-impl Duel {
     // The Lua errors of attaching to a material or a card to itself stop the oracle's script; no port does either.
     pub fn overlay_core(&mut self, target: CardId, materials: impl Into<CardSet>, send_materials_to_grave: bool) -> Script<()> {
         let materials = materials.into();
@@ -2616,12 +2426,9 @@ impl Duel {
             return Ok(0);
         }
         self.field_remove_overlay_card(reason, group, player, self_side, oppo, min, max);
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0))
+        self.yield_count()
     }
-}
 
-impl Duel {
     // field::get_fusion_material.
     pub fn get_fusion_material_core(&self, player: u8) -> CardSet {
         if player > 1 {
@@ -2641,8 +2448,7 @@ impl Duel {
         material
     }
 
-    // field::get_ritual_material for the reason effect. Monsters in the GY, Deck or Extra Deck and Xyz materials become
-    // materials through EFFECT_EXTRA_RITUAL_MATERIAL, which comes with the cards that register it.
+    // field::get_ritual_material for the reason effect; EFFECT_EXTRA_RITUAL_MATERIAL comes with the cards that register it.
     pub fn get_ritual_material(&self, player: u8, check_level: bool) -> CardSet {
         if player > 1 {
             return CardSet::default();
@@ -2720,14 +2526,11 @@ impl Duel {
         self.yield_script()
     }
 
-    // Lua passes a card or a group.
     pub fn set_selected_card(&self, g: impl Into<CardSet>) {
         self.core.must_select_cards.set(g.into());
     }
 
-    // The SelectFusion unit in one: the material effects that accept the materials, then the operation of the chosen
-    // one, which sets core.fusion_materials. With none, the core leaves core.fusion_materials as it was and returns
-    // that; the choice between several material effects comes with the cards that have more than one.
+    // The SelectFusion unit in one: the chosen material effect's operation sets core.fusion_materials; none leaves it as it was.
     pub fn select_fusion_material(&mut self, player: u8, card: CardId, g: CardSet, gc: Option<CardSet>, chkf: u64) -> Script<CardSet> {
         if player > 1 {
             return Ok(CardSet::default());
@@ -2810,8 +2613,7 @@ impl Duel {
             return Ok(false);
         }
         self.field_special_summon_step(target, sumtype, sumplayer, target_player, nocheck, nolimit, positions as u8, zone);
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0) != 0)
+        self.yield_success()
     }
 
     pub fn special_summon_complete(&mut self) -> Script<i32> {
@@ -2820,8 +2622,7 @@ impl Duel {
             return Ok(0);
         }
         self.field_special_summon_complete(self.core.reason_effect.get(), self.core.reason_player.get());
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0))
+        self.yield_count()
     }
 
     pub fn get_card_setcode_from_code(&self, code: u32) -> Vec<u16> {
@@ -2939,11 +2740,6 @@ impl Duel {
     }
 
     pub fn toss_dice(&mut self, player: u8, count: u8) -> Script<Vec<u8>> {
-        self.toss_dice_full(player, count, 0)
-    }
-
-    // The player's dice, then the opponent's.
-    pub fn toss_dice_full(&mut self, player: u8, count1: u8, count2: u8) -> Script<Vec<u8>> {
         if player > 1 {
             return Ok(Vec::new());
         }
@@ -2952,40 +2748,15 @@ impl Duel {
             reason_effect,
             reason_player,
             playerid: player,
-            count1,
-            count2,
+            count1: count,
+            count2: 0,
             ..TossDice::default()
         });
         self.yield_script()?;
         Ok(self.core.dice_results.to_vec())
     }
 
-    pub fn get_coin_result(&self) -> &[u8] {
-        &self.core.coin_results
-    }
-
-    pub fn get_dice_result(&self) -> &[u8] {
-        &self.core.dice_results
-    }
-
-    pub fn set_coin_result(&mut self, results: &[u8]) {
-        if results.len() != self.core.coin_results.len() {
-            self.reach_unported(concat!(file!(), ":", line!(), " (Duel.SetCoinResult raises a Lua error)"));
-            return;
-        }
-        self.core.coin_results = results.iter().map(|&result| u8::from(result != 0)).collect();
-    }
-
-    pub fn set_dice_result(&mut self, results: &[u8]) {
-        if results.len() != self.core.dice_results.len() {
-            self.reach_unported(concat!(file!(), ":", line!(), " (Duel.SetDiceResult raises a Lua error)"));
-            return;
-        }
-        self.core.dice_results = results.iter().copied().collect();
-    }
-
-    // The declared code. The forms without a filter or with a type are the opcodes [TYPE_MONSTER | TYPE_SPELL |
-    // TYPE_TRAP, OPCODE_ISTYPE] and [type, OPCODE_ISTYPE].
+    // The declared code; no filter is [TYPE_MONSTER | TYPE_SPELL | TYPE_TRAP, OPCODE_ISTYPE], a type [type, OPCODE_ISTYPE].
     pub fn announce_card(&mut self, player: u8, opcodes: &[u64]) -> Script<u32> {
         let mut stack_size = 0;
         for &opcode in opcodes {
@@ -3016,8 +2787,7 @@ impl Duel {
             playerid: player,
             ..AnnounceCard::default()
         });
-        self.yield_script()?;
-        Ok(self.returns.at_i32(0) as u32)
+        Ok(self.yield_count()? as u32)
     }
 
     pub fn check_event(&self, code: u32) -> bool {
@@ -3133,17 +2903,13 @@ impl Duel {
     }
 
     pub fn calculate_damage(&mut self, attacker: CardId, attack_target: Option<CardId>) -> Script<()> {
-        self.calculate_damage_full(attacker, attack_target, false)
-    }
-
-    pub fn calculate_damage_full(&mut self, attacker: CardId, attack_target: Option<CardId>, new_attack: bool) -> Script<()> {
         if Some(attacker) == attack_target {
             return Ok(());
         }
         self.emplace_process(crate::processor::DamageStep {
             attacker: Some(attacker),
             attack_target,
-            new_attack,
+            new_attack: false,
             ..Default::default()
         });
         self.yield_script()
@@ -3181,5 +2947,16 @@ impl Duel {
         self.process_instant_event();
         self.yield_script()?;
         Ok(true)
+    }
+}
+
+fn material_procedure(card: CardId, must: Option<CardSet>, materials: Option<CardSet>, min: u16, max: u16) -> Procedure {
+    Procedure {
+        card,
+        must,
+        materials,
+        min,
+        max: if min != 0 { max } else { 0 },
+        ..Procedure::default()
     }
 }

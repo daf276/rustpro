@@ -1,5 +1,5 @@
 // Port of libeffect.cpp: Effect.CreateEffect and Effect.GlobalEffect are on Duel, the methods on EffectId.
-use crate::card::CardId;
+use crate::card::{CardId, CardSet};
 use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{
@@ -113,12 +113,8 @@ impl EffectId {
     }
 
     pub fn set_reset_full(self, duel: &mut Duel, reset: u32, count: u16) {
-        let mut reset = reset;
-        if reset & RESET_PHASE != 0 && reset & (RESET_SELF_TURN | RESET_OPPO_TURN) == 0 {
-            reset |= RESET_SELF_TURN | RESET_OPPO_TURN;
-        }
         let peffect = &mut duel.effects[self];
-        peffect.reset_flag = reset;
+        peffect.reset_flag = reset_both_turns(reset);
         peffect.reset_count = count.max(1);
     }
 
@@ -324,7 +320,6 @@ impl EffectId {
         }
     }
 
-    // Effect.IsActivatable(player, neglect_loc, neglect_target).
     pub fn is_activatable(self, duel: &Duel, player: u8, neglect_loc: bool, neglect_target: bool) -> bool {
         duel.check_mut(|duel| {
             let event = duel.nil_event;
@@ -340,7 +335,6 @@ impl EffectId {
         duel.effects[self].labels().first().copied().unwrap_or(0)
     }
 
-    // Label objects that are cards or groups come with the scripts that set them.
     pub fn set_label_object(self, duel: &mut Duel, object: Option<EffectId>) {
         duel.effects[self].label_object = object;
     }
@@ -350,11 +344,11 @@ impl EffectId {
     }
 
     // A group as label object, kept beside the effect.
-    pub fn set_label_object_group(self, duel: &mut Duel, group: Option<crate::card::CardSet>) {
+    pub fn set_label_object_group(self, duel: &mut Duel, group: Option<CardSet>) {
         duel.set_script_group((1 << 62) | self.index() as u64, group);
     }
 
-    pub fn get_label_object_group(self, duel: &Duel) -> Option<crate::card::CardSet> {
+    pub fn get_label_object_group(self, duel: &Duel) -> Option<CardSet> {
         duel.get_script_group((1 << 62) | self.index() as u64)
     }
 
@@ -394,12 +388,7 @@ impl EffectId {
     }
 
     pub fn is_has_property(self, duel: &Duel, property: u32) -> bool {
-        self.is_has_property_full(duel, property, 0)
-    }
-
-    pub fn is_has_property_full(self, duel: &Duel, property: u32, property2: u32) -> bool {
-        let flag = duel.effects[self].flag;
-        (property == 0 || flag[0] & property != 0) && (property2 == 0 || flag[1] & property2 != 0)
+        property == 0 || duel.effects[self].flag[0] & property != 0
     }
 
     pub fn is_has_type(self, duel: &Duel, effect_type: u32) -> bool {
@@ -421,6 +410,22 @@ impl EffectId {
     pub fn is_activated(self, duel: &Duel) -> bool {
         duel.effects[self].effect_type & 0x7f0 != 0
     }
+
+    pub fn get_operation(self, duel: &Duel) -> Option<Operation> {
+        duel.effects[self].operation
+    }
+}
+
+pub(crate) const fn reset_both_turns(reset: u32) -> u32 {
+    if reset & RESET_PHASE != 0 && reset & (RESET_SELF_TURN | RESET_OPPO_TURN) == 0 {
+        reset | RESET_SELF_TURN | RESET_OPPO_TURN
+    } else {
+        reset
+    }
+}
+
+pub(crate) const fn flag_code(code: u32) -> u32 {
+    (code & 0xfff_ffff) | 0x1000_0000
 }
 
 // Effect.SetCountLimit's code, or the table {code, index} of a hard once per turn with several effects.
@@ -448,11 +453,5 @@ impl From<i32> for Value {
 impl From<bool> for Value {
     fn from(value: bool) -> Self {
         Value::Int(i32::from(value))
-    }
-}
-
-impl EffectId {
-    pub fn get_operation(self, duel: &Duel) -> Option<Operation> {
-        duel.effects[self].operation
     }
 }

@@ -1,0 +1,17 @@
+[package]
+name = "fiber"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+# unwind: a panic inside a run reaches the caller, as the Python module needs.
+corosensei = { version = "0.3", default-features = false, features = ["default-stack", "unwind"] }
+engine = { path = "../engine" }
+
+[dev-dependencies]
+carddata = { path = "../carddata" }
+scripts = { path = "../scripts" }
+
+[lints]
+workspace = true

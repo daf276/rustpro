@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 engine = { path = "../engine" }
+fiber = { path = "../fiber" }
 rayon = { version = "1", default-features = false }
 thiserror = { version = "2", default-features = false }
 

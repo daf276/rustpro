@@ -540,6 +540,14 @@ impl Duel {
 
     // Answers the prompt and runs to the next one, except while a card selection still needs picks.
     pub fn apply(&mut self, action: Action) -> Result<Status, ActionError> {
+        Ok(match self.answer(action)? {
+            true => self.run(),
+            false => Status::Awaiting,
+        })
+    }
+
+    // Answers the prompt; false while a card selection still needs picks, else the duel runs next ([Duel::run]).
+    pub fn answer(&mut self, action: Action) -> Result<bool, ActionError> {
         let prompt = self.prompt().ok_or(ActionError::NoPrompt)?;
         let legal = self.is_legal(prompt, action);
         debug_assert_eq!(legal, self.legal_actions().contains(&action), "{prompt:?} {action:?}");
@@ -560,7 +568,7 @@ impl Duel {
             (Prompt::Sort { count, .. }, Action::Card(index)) => {
                 self.returns.data.push(index as u8);
                 if self.returns.data.len() < usize::from(count) {
-                    return Ok(Status::Awaiting);
+                    return Ok(false);
                 }
                 let order = std::mem::take(&mut self.returns.data);
                 for (position, &card) in order.iter().enumerate() {
@@ -571,7 +579,7 @@ impl Duel {
                 let index = usize::from(index);
                 self.returns.set_i16(index, self.returns.at_i16(index) + 1);
                 if self.removed_counters() < i32::from(count) {
-                    return Ok(Status::Awaiting);
+                    return Ok(false);
                 }
             }
             (_, Action::Card(index)) => {
@@ -582,7 +590,7 @@ impl Duel {
                 if matches!(prompt, Prompt::Sum { .. })
                     || matches!(prompt, Prompt::Card { max, .. } | Prompt::Tribute { max, .. } if count + 1 < u32::from(max))
                 {
-                    return Ok(Status::Awaiting);
+                    return Ok(false);
                 }
             }
             (Prompt::UnselectCard { .. }, Action::Finish) | (_, Action::Cancel) => self.respond(-1),
@@ -593,7 +601,7 @@ impl Duel {
             (Prompt::Place { player, count, .. }, Action::Place(zone)) => {
                 self.returns.data.extend(place_response(player, zone));
                 if self.returns.data.len() < 3 * usize::from(count) {
-                    return Ok(Status::Awaiting);
+                    return Ok(false);
                 }
             }
             (_, Action::Position(position)) => self.respond(i32::from(position)),
@@ -602,19 +610,19 @@ impl Duel {
                 let races = self.returns.at_u64(0) | 1 << bit;
                 self.returns.set_u64(0, races);
                 if races.count_ones() < u32::from(count) {
-                    return Ok(Status::Awaiting);
+                    return Ok(false);
                 }
             }
             (Prompt::AnnounceAttribute { count, .. }, Action::Attribute(bit)) => {
                 let attributes = self.returns.at_u32(0) | 1 << bit;
                 self.returns.set_u32(0, attributes);
                 if attributes.count_ones() < u32::from(count) {
-                    return Ok(Status::Awaiting);
+                    return Ok(false);
                 }
             }
             _ => return Err(ActionError::Illegal(action)),
         }
-        Ok(self.run())
+        Ok(true)
     }
 
     // Decodes ocgcore response bytes for the current prompt into the actions that give the same response.

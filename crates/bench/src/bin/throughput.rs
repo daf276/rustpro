@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 use bench::{Allocator, BenchResult, MAX_ACTIONS, flags, load_decks, play, run_batch, setup};
 use carddata::{CardDatabase, Decks};
 use engine::Duel;
+use fiber::Fiber;
 use rand::rngs::StdRng;
 use rayon::prelude::*;
 use sim::AutoAdvance;
@@ -36,7 +37,8 @@ fn run(threads: usize, seeds: std::ops::Range<u64>, cards: &'static CardDatabase
     let played = threads.install(|| {
         duels
             .into_par_iter()
-            .map(|(mut duel, mut rng)| {
+            .map(|(duel, mut rng)| {
+                let mut duel = Fiber::new(duel);
                 Ok((
                     play(&mut duel, &mut rng, |_, _, _| {})?,
                     duel.result(),
@@ -62,7 +64,8 @@ fn run(threads: usize, seeds: std::ops::Range<u64>, cards: &'static CardDatabase
 fn clone_time(seeds: std::ops::Range<u64>, cards: &'static CardDatabase, decks: &Decks) -> BenchResult<(Duration, u32)> {
     let (mut total, mut clones) = (Duration::ZERO, 0);
     for seed in seeds {
-        let (mut duel, mut rng) = setup(seed, cards, decks)?;
+        let (duel, mut rng) = setup(seed, cards, decks)?;
+        let mut duel = Fiber::new(duel);
         play(&mut duel, &mut rng, |duel, _, action| {
             if action % CLONE_EVERY == 0 {
                 let started = Instant::now();

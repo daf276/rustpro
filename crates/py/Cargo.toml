@@ -17,6 +17,7 @@ doctest = false
 [dependencies]
 carddata = { path = "../carddata" }
 engine = { path = "../engine" }
+fiber = { path = "../fiber" }
 mimalloc = { version = "0.1", default-features = false }
 numpy = { version = "0.30", default-features = false }
 pyo3 = { version = "0.30", default-features = false, features = ["macros", "abi3-py310"] }

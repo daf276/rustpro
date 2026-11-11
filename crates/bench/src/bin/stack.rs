@@ -8,6 +8,7 @@ use std::time::Instant;
 use bench::{Allocator as Inner, BenchResult, flags, load_decks, play, run_batch, setup};
 use carddata::{CardDatabase, Deck, Decks};
 use engine::{Duel, Prompt, Xoshiro256StarStar};
+use fiber::Fiber;
 use rayon::prelude::*;
 use sim::{AutoAdvance, Buffers};
 
@@ -111,7 +112,8 @@ type Ops = [Op; OPS.len()];
 // The calls of OPS at every SAMPLE_EVERY-th prompt of one duel, determinizing with the deck as the opponent's decklist; the
 // `_from`/`_into` calls copy into the duel the previous prompt determinized into, and one determinizer draws SAMPLES of them.
 fn sample(seed: u64, cards: &'static CardDatabase, decks: &Decks, deck: &Deck) -> BenchResult<Ops> {
-    let (mut duel, mut rng) = setup(seed, cards, decks)?;
+    let (duel, mut rng) = setup(seed, cards, decks)?;
+    let mut duel = Fiber::new(duel);
     let mut ops = Ops::default();
     let mut legal = Vec::new();
     let mut sampler = Xoshiro256StarStar::new([seed, 1, 2, 3]);
@@ -183,7 +185,8 @@ fn apply(threads: usize, seeds: std::ops::Range<u64>, cards: &'static CardDataba
     let counts = pool.install(|| {
         duels
             .into_par_iter()
-            .map(|(mut duel, mut rng)| -> BenchResult<[u64; 3]> {
+            .map(|(duel, mut rng)| -> BenchResult<[u64; 3]> {
+                let mut duel = Fiber::new(duel);
                 let ([before, _], mut decisions) = (allocated(), 0);
                 let actions = play(&mut duel, &mut rng, |_, legal, _| decisions += u64::from(legal.len() > 1))?;
                 Ok([actions, decisions, allocated()[0] - before])

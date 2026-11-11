@@ -4,6 +4,7 @@ use std::time::Instant;
 
 use carddata::{CardDatabase, Deck, Decks, ELFNOTE_DECK, load_advanced, vendor};
 use engine::{Action, DUEL_MODE_MR5, Duel, DuelError, DuelOptions, PlayerOptions, Status};
+use fiber::Fiber;
 use rand::rngs::StdRng;
 use rand::seq::IndexedRandom;
 use rand::{Rng, SeedableRng};
@@ -61,7 +62,7 @@ pub fn setup(seed: u64, cards: &'static CardDatabase, decks: &Decks) -> Result<(
 }
 
 // Plays uniformly random legal actions until the duel ends and returns how many it took; `at_prompt` sees every prompt.
-pub fn play(duel: &mut Duel, rng: &mut StdRng, mut at_prompt: impl FnMut(&Duel, &[Action], u64)) -> BenchResult<u64> {
+pub fn play(duel: &mut Fiber, rng: &mut StdRng, mut at_prompt: impl FnMut(&Duel, &[Action], u64)) -> BenchResult<u64> {
     let mut legal = Vec::new();
     let mut status = duel.process();
     let mut actions = 0;

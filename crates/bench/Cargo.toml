@@ -8,6 +8,7 @@ default-run = "bench"
 [dependencies]
 carddata = { path = "../carddata" }
 engine = { path = "../engine" }
+fiber = { path = "../fiber" }
 mimalloc = { version = "0.1", default-features = false }
 oracle = { path = "../oracle" }
 rand = { version = "0.9", default-features = false, features = ["alloc", "std_rng"] }

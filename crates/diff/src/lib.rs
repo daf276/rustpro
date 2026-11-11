@@ -4,52 +4,30 @@ use std::fmt::Write as _;
 use std::hash::{Hash, Hasher};
 use std::path::Path;
 
-use carddata::{CardDatabase, CardsError, Deck, Pool, TYPE_NORMAL, TYPE_PENDULUM, banlist_limits};
+use carddata::{CardDatabase, CardsError, Deck, Decks, ELFNOTE_DECK, load_advanced};
+use engine::constants::{
+    CHINT_DESC_ADD, CHINT_DESC_REMOVE, MSG_ATTACK, MSG_CARD_HINT, MSG_CARD_TARGET, MSG_CHAIN_DISABLED, MSG_CHAIN_END, MSG_CHAIN_SOLVED,
+    MSG_CHAINING, MSG_EQUIP, MSG_FLIPSUMMONING, MSG_MOVE, MSG_PLAYER_HINT, MSG_POS_CHANGE, MSG_SELECT_SUM, MSG_SELECT_TRIBUTE,
+    MSG_SELECT_UNSELECT_CARD, MSG_SELECT_YESNO, MSG_SET, MSG_SPSUMMONING, MSG_SUMMONING, MSG_SWAP, MSG_WIN, PHINT_DESC_REMOVE,
+    REASON_BATTLE, REASON_MATERIAL, REASON_RELEASE, REASON_REPLACE, REASON_RITUAL, REASON_SUMMON,
+};
 use engine::{DUEL_MODE_MR5, DuelRecord, PlayerOptions, Position};
-use oracle::{Message, Prompt, Scripts, Status, parse, respond};
+use oracle::{Message, Prompt, Scripts, Status, frames, parse, respond};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
 use scripts::CLASSIC_CARDS;
 use scripts::testing::Check;
 
+pub use records::{each_state, median, records, scenario_records};
 pub use scenario::Scenario;
 
 mod cache;
+mod records;
 mod scenario;
 
 const MAX_DECISIONS: u32 = 5_000;
 const CONTEXT: usize = 5;
-const MSG_WIN: u8 = 5;
-const MSG_SELECT_YESNO: u8 = 13;
-const MSG_SELECT_TRIBUTE: u8 = 20;
-const MSG_SELECT_SUM: u8 = 23;
-const MSG_SELECT_UNSELECT_CARD: u8 = 26;
-const MSG_MOVE: u8 = 50;
-const MSG_POS_CHANGE: u8 = 53;
-const MSG_SET: u8 = 54;
-const MSG_SWAP: u8 = 55;
-const MSG_SUMMONING: u8 = 60;
-const MSG_SPSUMMONING: u8 = 62;
-const MSG_FLIPSUMMONING: u8 = 64;
-const MSG_ATTACK: u8 = 110;
-const MSG_CHAINING: u8 = 70;
-const MSG_CHAIN_SOLVED: u8 = 73;
-const MSG_CHAIN_END: u8 = 74;
-const MSG_CHAIN_DISABLED: u8 = 76;
-const MSG_EQUIP: u8 = 93;
-const MSG_CARD_TARGET: u8 = 96;
-const MSG_CARD_HINT: u8 = 160;
-const CHINT_DESC_ADD: u8 = 6;
-const CHINT_DESC_REMOVE: u8 = 7;
-const MSG_PLAYER_HINT: u8 = 165;
-const PHINT_DESC_REMOVE: u8 = 7;
-const REASON_RELEASE: u32 = 0x2;
-const REASON_MATERIAL: u32 = 0x8;
-const REASON_SUMMON: u32 = 0x10;
-const REASON_REPLACE: u32 = 0x100_0000;
-const REASON_BATTLE: u32 = 0x20;
-const REASON_RITUAL: u32 = 0x10_0000;
 const HINT_REPLAY: u64 = 30;
 
 #[derive(Debug, thiserror::Error)]
@@ -84,8 +62,7 @@ pub enum DiffError {
     Probe { seed: u64, message: String },
 }
 
-// The first message the engines disagree on, at `index` in the stream: the last messages both wrote, then each
-// engine's messages from the difference on.
+// The first message the engines disagree on, at `index` in the stream, with the messages around it.
 #[derive(Debug)]
 pub struct Mismatch {
     pub seed: u64,
@@ -150,8 +127,7 @@ pub struct Report {
     pub stream: Vec<Vec<u8>>,
 }
 
-// How often a duel's messages show the actions phases 1b and 1c added, and the chain links that resolved per card
-// code and effect description.
+// How often a duel's messages show each kind of action, and the resolved chain links per card code and description.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Tally {
     pub summons: u32,
@@ -168,7 +144,6 @@ pub struct Tally {
     pub battle_destructions: u32,
     pub replays: u32,
     pub effects: BTreeMap<(u32, u64), u32>,
-    // Special Summons per card code.
     pub special_summons: BTreeMap<u32, u32>,
     // Moves of Ritual Summon materials per card code.
     pub ritual_materials: BTreeMap<u32, u32>,
@@ -192,14 +167,13 @@ pub struct Tally {
 }
 
 impl Tally {
-    // The resolved chain links of a card's effects.
     pub fn resolutions(&self, code: u32) -> u32 {
         self.effects.range((code, 0)..=(code, u64::MAX)).map(|(_, count)| count).sum()
     }
 
     fn count_chain(&mut self, message: &[u8]) {
         match message {
-            [MSG_CHAINING, a, b, c, d, .., count, _, _, _] => {
+            [MSG_CHAINING, .., count, _, _, _] => {
                 let description = message
                     .len()
                     .checked_sub(12)
@@ -207,7 +181,7 @@ impl Tally {
                     .and_then(|bytes| bytes.try_into().ok())
                     .map_or(0, u64::from_ne_bytes);
                 if let Some(link) = self.chain.get_mut(usize::from(*count).wrapping_sub(1)) {
-                    *link = (u32::from_ne_bytes([*a, *b, *c, *d]), description);
+                    *link = (read_u32(message, 1).unwrap_or(0), description);
                 }
             }
             [MSG_CHAIN_SOLVED, count] => {
@@ -236,8 +210,7 @@ impl Tally {
         }
     }
 
-    // The code of the card a message is about: the first card of MSG_EQUIP and MSG_CARD_TARGET, the hinted card, or
-    // the card a message names by code first; 0 for none or a card in an unknown place.
+    // The first card a message names, by place or by code; 0 for none or a card in an unknown place.
     fn card_of(&self, message: &[u8]) -> u32 {
         let code = match message.first() {
             Some(&(MSG_EQUIP | MSG_CARD_TARGET | MSG_CARD_HINT)) => {
@@ -262,46 +235,51 @@ impl Tally {
         if let Some(&kind) = message.first() {
             *self.messages.entry((kind, self.card_of(message))).or_default() += 1;
         }
-        if let [MSG_MOVE, a, b, c, d, .., e, f, g, h] = message
-            && u32::from_ne_bytes([*e, *f, *g, *h]) & REASON_REPLACE != 0
+        // The code, the previous location_info (controller, location, sequence, position), the current one and the reason.
+        if let [MSG_MOVE, ..] = message
+            && let Some(code) = read_u32(message, 1)
+            && let Some(reason) = read_u32(message, message.len().saturating_sub(4))
         {
-            *self.replaced.entry(u32::from_ne_bytes([*a, *b, *c, *d])).or_default() += 1;
-        }
-        match message {
-            [MSG_MOVE, .., a, b, c, d] if u32::from_ne_bytes([*a, *b, *c, *d]) & REASON_SUMMON != 0 => self.tributes_pending += 1,
-            [kind @ (MSG_SUMMONING | MSG_SET), a, b, c, d, ..] => {
-                let code = u32::from_ne_bytes([*a, *b, *c, *d]);
-                let tributes = if *kind == MSG_SET {
-                    &mut self.set_tributes
-                } else {
-                    &mut self.summon_tributes
-                };
-                *tributes.entry((code, self.tributes_pending)).or_default() += 1;
-                self.tributes_pending = 0;
+            if reason & REASON_REPLACE != 0 {
+                *self.replaced.entry(code).or_default() += 1;
             }
-            _ => {}
+            if reason & REASON_RITUAL != 0 {
+                *self.ritual_materials.entry(code).or_default() += 1;
+            }
+            if message.len() == 29
+                && reason & REASON_MATERIAL != 0
+                && let Some(&location) = message.get(6)
+            {
+                *self.materials.entry((code, location)).or_default() += 1;
+            }
+            self.tributes_pending += u32::from(reason & REASON_SUMMON != 0);
+            if reason & REASON_RELEASE != 0 {
+                self.tributes += 1;
+            } else if reason & REASON_BATTLE != 0 {
+                self.battle_destructions += 1;
+            }
         }
-        if let [MSG_SPSUMMONING, a, b, c, d, ..] = message {
-            *self.special_summons.entry(u32::from_ne_bytes([*a, *b, *c, *d])).or_default() += 1;
-        }
-        let reason = |bytes: [&u8; 4]| u32::from_ne_bytes(bytes.map(|byte| *byte));
-        if let [MSG_MOVE, a, b, c, d, .., r0, r1, r2, r3] = message
-            && reason([r0, r1, r2, r3]) & REASON_RITUAL != 0
+        if let [kind @ (MSG_SUMMONING | MSG_SET), ..] = message
+            && let Some(code) = read_u32(message, 1)
         {
-            *self.ritual_materials.entry(u32::from_ne_bytes([*a, *b, *c, *d])).or_default() += 1;
+            let tributes = if *kind == MSG_SET {
+                &mut self.set_tributes
+            } else {
+                &mut self.summon_tributes
+            };
+            *tributes.entry((code, self.tributes_pending)).or_default() += 1;
+            self.tributes_pending = 0;
+        }
+        if let [MSG_SPSUMMONING, ..] = message
+            && let Some(code) = read_u32(message, 1)
+        {
+            *self.special_summons.entry(code).or_default() += 1;
         }
         if let [MSG_CARD_HINT, _, _, _, _, _, _, _, _, _, _, CHINT_DESC_ADD, description @ ..] = message
             && let Ok(description) = <[u8; 8]>::try_from(description)
         {
             let card = self.card_of(message);
             *self.card_hints.entry((u64::from_ne_bytes(description), card)).or_default() += 1;
-        }
-        // The code, the previous location_info (controller, location, sequence, position), the current one and the reason.
-        if let [MSG_MOVE, a, b, c, d, _, location, .., e, f, g, h] = message
-            && message.len() == 29
-            && reason([e, f, g, h]) & REASON_MATERIAL != 0
-        {
-            *self.materials.entry((u32::from_ne_bytes([*a, *b, *c, *d]), *location)).or_default() += 1;
         }
         if message.first() == Some(&MSG_ATTACK) {
             self.attacks += 1;
@@ -316,8 +294,6 @@ impl Tally {
             [MSG_POS_CHANGE, ..] => &mut self.position_changes,
             [MSG_SELECT_TRIBUTE, ..] => &mut self.tribute_prompts,
             [MSG_SELECT_UNSELECT_CARD, ..] => &mut self.unselect_prompts,
-            [MSG_MOVE, .., a, b, c, d] if reason([a, b, c, d]) & REASON_RELEASE != 0 => &mut self.tributes,
-            [MSG_MOVE, .., a, b, c, d] if reason([a, b, c, d]) & REASON_BATTLE != 0 => &mut self.battle_destructions,
             _ => return,
         };
         *counter += 1;
@@ -380,13 +356,9 @@ fn merge_counts<K: Ord>(counts: BTreeMap<K, u32>, other: BTreeMap<K, u32>) -> BT
 pub struct Vendor {
     pub cards: CardDatabase,
     pub scripts: Scripts,
-    pub pool: Pool,
-    pub effect_cards: Vec<u32>,
-    // A fixed deck both players play, shuffled per duel, in place of random pool decks.
-    pub deck: Option<Deck>,
+    pub decks: Decks,
     // The cards a scenario places at random besides the card under test and its support.
     pub scenario_others: Vec<u32>,
-    // Messages shown before and from a divergence.
     pub context: usize,
     pub keep_stream: bool,
 }
@@ -394,28 +366,20 @@ pub struct Vendor {
 impl Vendor {
     // One of the constructors below on the vendored data, leaked for the 'static lifetime the engine takes.
     pub fn leak(kind: fn(&Path) -> Result<Self, DiffError>) -> Result<&'static Self, DiffError> {
-        let vendor = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../vendor");
-        Ok(Box::leak(Box::new(kind(&vendor)?)))
+        Ok(Box::leak(Box::new(kind(&carddata::vendor())?)))
     }
 
-    // The Advanced pool reduced to Normal Monsters, which have no scripts; Normal Pendulums do.
     pub fn normal_monsters(vendor: &Path) -> Result<Self, DiffError> {
-        let cards = CardDatabase::load(&vendor.join("BabelCDB"))?;
-        let mut pool = Pool::advanced(
-            &cards,
-            banlist_limits(&std::fs::read_to_string(vendor.join("LFLists/0TCG.lflist.conf"))?),
-        );
-        pool.retain(|code| {
-            cards
-                .get(code)
-                .is_some_and(|card| card.card_type & (TYPE_NORMAL | TYPE_PENDULUM) == TYPE_NORMAL)
-        });
+        let (cards, mut pool) = load_advanced(vendor)?;
+        pool.retain_normal_monsters(&cards);
         Ok(Self {
             scripts: Scripts::load(&vendor.join("CardScripts"))?,
             cards,
-            pool,
-            effect_cards: Vec::new(),
-            deck: None,
+            decks: Decks {
+                pool,
+                effect_cards: Vec::new(),
+                deck: None,
+            },
             scenario_others: Vec::new(),
             context: CONTEXT,
             keep_stream: false,
@@ -424,41 +388,31 @@ impl Vendor {
 
     // Normal Monsters and zero to two copies of each card of phase 2a.
     pub fn classic_effects(vendor: &Path) -> Result<Self, DiffError> {
-        Ok(Self {
-            effect_cards: CLASSIC_CARDS.to_vec(),
-            ..Self::normal_monsters(vendor)?
-        })
+        let mut base = Self::normal_monsters(vendor)?;
+        base.decks.effect_cards = CLASSIC_CARDS.to_vec();
+        Ok(base)
     }
 
-    // Mirror matches of Elfnote, 1st place YCS Montreal 2026: the main and Extra Deck, without the side deck.
+    // Elfnote mirror matches, shuffled per duel.
     pub fn elfnote(vendor: &Path) -> Result<Self, DiffError> {
-        let base = Self::normal_monsters(vendor)?;
-        let deck = Deck::parse(include_str!("../elfnote-ycs-montreal-2026.deck"), &base.cards);
-        Ok(Self { deck: Some(deck), ..base })
+        let mut base = Self::normal_monsters(vendor)?;
+        base.decks.deck = Some(Deck::parse(ELFNOTE_DECK, &base.cards));
+        Ok(base)
     }
 
-    // Elfnote mirror matches starting from a scenario. The other cards placed come from the Elfnote deck and the classic
-    // cards, which never change, so that new ports leave every scenario as it was.
+    // Elfnote mirror matches from a scenario, placing only Elfnote and classic cards so new ports change no scenario.
     pub fn scenarios(vendor: &Path) -> Result<Self, DiffError> {
         let base = Self::elfnote(vendor)?;
-        let deck = base.deck.iter().flat_map(|deck| deck.main.iter().chain(&deck.extra));
+        let deck = base.decks.deck.iter().flat_map(|deck| deck.main.iter().chain(&deck.extra));
         let others: BTreeSet<u32> = deck.chain(&CLASSIC_CARDS).copied().collect();
         Ok(Self {
             scenario_others: others.into_iter().collect(),
             ..base
         })
     }
-
-    fn deck(&self, rng: &mut StdRng) -> Deck {
-        match &self.deck {
-            Some(deck) => deck.shuffled(rng),
-            None => self.pool.random_deck_with(&self.effect_cards, rng),
-        }
-    }
 }
 
-// Plays one seeded duel in the oracle and the engine with the same decks and random responses and compares every
-// message up to MSG_WIN.
+// Plays one seeded duel in both engines with the same decks and random responses, comparing every message to MSG_WIN.
 pub fn diff_duel(vendor: &'static Vendor, seed: u64) -> Result<Report, DiffError> {
     play_cached(vendor, seed, None, None)
 }
@@ -500,8 +454,7 @@ pub fn diff_position(vendor: &'static Vendor, seed: u64, position: &Position) ->
     play_cached(vendor, seed, None, Some(position))
 }
 
-// With the hash of the oracle's stream cached, the engine plays alone: equal streams get equal responses, so an equal
-// hash is a clean lockstep run. Anything else plays in lockstep, which reports the divergence.
+// With the oracle's stream hash cached the engine plays alone, as equal streams get equal responses; else lockstep.
 fn play_cached(vendor: &'static Vendor, seed: u64, card: Option<u32>, position: Option<&Position>) -> Result<Report, DiffError> {
     let lockstep = || play(vendor, seed, card, position, Some(&mut |_, _| Ok(())));
     let entry = (!vendor.keep_stream).then(|| {
@@ -536,7 +489,7 @@ fn setup(vendor: &Vendor, seed: u64, card: Option<u32>, position: Option<&Positi
             });
             let mut position = Position::new(DUEL_MODE_MR5, players);
             for team in 0..2 {
-                position.add_deck(team, &vendor.deck(&mut rng));
+                position.add_deck(team, &vendor.decks.deal(&mut rng));
             }
             position
                 .cards
@@ -547,8 +500,7 @@ fn setup(vendor: &Vendor, seed: u64, card: Option<u32>, position: Option<&Positi
     (rng, duel_seed, scenario, position)
 }
 
-// Both engines start from the position of `setup` and the oracle's stream, as compared, is hashed. Without a probe the
-// engine plays alone, answering its own prompts.
+// Both engines from the position of `setup`, hashing the compared stream; without a probe the engine plays alone.
 fn play(
     vendor: &'static Vendor,
     seed: u64,
@@ -585,7 +537,7 @@ fn play(
             return Err(DiffError::Unported { seed, site });
         }
         let trace = engine.take_trace();
-        let mut actual = frames(&trace);
+        let mut actual: Vec<&[u8]> = frames(&trace).collect();
         sort_hint_removals(&mut actual);
         let (expected, status) = batch.unwrap_or_else(|| (actual.iter().map(|message| message.to_vec()).collect(), Status::Awaiting));
         let mismatch = |compared: &[Vec<u8>], from: usize| {
@@ -661,10 +613,7 @@ fn oracle_batch(oracle: &mut oracle::Duel) -> Result<(Vec<Vec<u8>>, Status), Dif
     Ok((messages, status))
 }
 
-// The core removes hint effects iterating unordered sets of effect pointers (field::effects.cheff and pheff), and
-// re-adds the hints of a shuffled hand iterating each card's unordered indexer, so the order of consecutive
-// MSG_CARD_HINT and MSG_PLAYER_HINT removals, and of consecutive MSG_CARD_HINT additions, varies between runs of the
-// oracle; they compare as a set.
+// The core removes and re-adds hints iterating unordered sets (cheff, pheff, a card's indexer), so such runs compare as sets.
 fn sort_hint_removals<T: AsRef<[u8]> + Ord>(messages: &mut [T]) {
     let unordered = |message: &T| match message.as_ref() {
         [MSG_CARD_HINT, _, _, _, _, _, _, _, _, _, _, CHINT_DESC_REMOVE, ..] | [MSG_PLAYER_HINT, _, PHINT_DESC_REMOVE, ..] => {
@@ -678,22 +627,10 @@ fn sort_hint_removals<T: AsRef<[u8]> + Ord>(messages: &mut [T]) {
     }
 }
 
-// Splits a trace in the framing of OCG_DuelGetMessage.
-fn frames(mut buffer: &[u8]) -> Vec<&[u8]> {
-    std::iter::from_fn(|| {
-        let (size, rest) = buffer.split_first_chunk::<4>()?;
-        let (message, rest) = rest.split_at_checked(u32::from_ne_bytes(*size) as usize)?;
-        buffer = rest;
-        Some(message)
-    })
-    .collect()
-}
-
 // Cards the per-card suites run besides the new ones.
 pub const SAMPLE_CARDS: usize = 200;
 
-// The cards the default per-card suites run: all with DIFF_ALL_CARDS set, otherwise the codes in DIFF_NEW_CARDS (the
-// ports since the last full run) and about SAMPLE_CARDS more, which DIFF_SAMPLE_SEED rotates so every card takes its turn.
+// All cards with DIFF_ALL_CARDS, else DIFF_NEW_CARDS and about SAMPLE_CARDS more, rotated by DIFF_SAMPLE_SEED.
 pub fn sampled_cards() -> Vec<u32> {
     let codes = scripts::CARD_SCRIPTS.iter().map(|card| card.code);
     if std::env::var_os("DIFF_ALL_CARDS").is_some() {
@@ -753,8 +690,7 @@ pub fn check_count(check: Check, card: u32, tally: &Tally) -> u32 {
     }
 }
 
-// A card's scenarios written out for the card command and the scenario tests, and whether every one diffs clean and
-// every check passes, both over the first SCENARIOS (the default test) and over all of them.
+// A card's scenarios written out, and whether all diff clean and every check passes in the first SCENARIOS and in all.
 pub fn summarize(card: u32, results: &[Result<Report, DiffError>]) -> (bool, String) {
     let tally = |count: usize| {
         let reports = results.iter().take(count).flatten();

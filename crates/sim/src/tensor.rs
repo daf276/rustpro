@@ -1,5 +1,4 @@
-// Fixed-size integer tensors of an observation, column names in order. Players are relative to the observer (0 itself,
-// 1 its opponent, 2 neither, as the winner of a draw), -1 is none, and codes are the raw u32 bits.
+// Players are relative to the observer (0 itself, 1 its opponent, 2 neither), -1 is none, codes are the raw u32 bits.
 use engine::{Action, Choice, Duel, Observation, ObservationSink, Prompt, SeenCard, SeenLink};
 use rayon::prelude::*;
 
@@ -39,8 +38,7 @@ pub const CHAIN_FEATURES: [&str; 8] = [
     "description_index",
     "targets",
 ];
-// A row per action index: the section, the card table row of the card picked, that card's code as the player picking
-// sees it or the code announced, and the description; -1 for section and row if not legal.
+// A row per action index, the code as the picking player sees it or as announced; -1 for section and row if not legal.
 pub const ACTION_FEATURES: [&str; 5] = ["section", "row", "code", "description_code", "description_index"];
 pub const PROMPTS: [&str; 17] = [
     "IdleCommand",
@@ -72,8 +70,28 @@ type ActionRow = [i32; ACTION_FEATURES.len()];
 
 const NO_ACTION: ActionRow = [-1, -1, 0, 0, 0];
 
-// Buffers for a number of observations, each in the shapes [GLOBAL_FEATURES], [MAX_OBS_CARDS, CARD_FEATURES],
-// [MAX_CHAIN, CHAIN_FEATURES] and [ACTIONS, ACTION_FEATURES].
+pub const SHAPES: [&[usize]; 4] = [
+    &[GLOBAL_FEATURES.len()],
+    &[MAX_OBS_CARDS, CARD_FEATURES.len()],
+    &[MAX_CHAIN, CHAIN_FEATURES.len()],
+    &[ACTIONS, ACTION_FEATURES.len()],
+];
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Buffers(pub [Vec<i32>; 4]);
+
+impl Buffers {
+    pub fn new(rows: usize) -> Self {
+        Self(SHAPES.map(|shape| vec![0; rows * shape.iter().product::<usize>()]))
+    }
+
+    pub fn tensors(&mut self) -> Result<Tensors<'_>, EncodingError> {
+        let [global, cards, chain, actions] = &mut self.0;
+        Tensors::new(global, cards, chain, actions)
+    }
+}
+
+// Buffers for a number of observations, each in the shapes of [SHAPES].
 pub struct Tensors<'a> {
     global: &'a mut [GlobalRow],
     cards: &'a mut [[CardRow; MAX_OBS_CARDS]],
@@ -127,8 +145,7 @@ impl<'a> Tensors<'a> {
         self.row(index).ok_or(EncodingError::Row { index, rows })?.write(observation)
     }
 
-    // What `player` sees of `duel`, as `write(index, Some(&duel.observe(player)))` writes it, without building the
-    // observation.
+    // As `write(index, Some(&duel.observe(player)))`, without building the observation.
     pub fn write_duel(&mut self, index: usize, duel: &Duel, player: u8) -> Result<(), EncodingError> {
         let rows = self.len();
         self.row(index).ok_or(EncodingError::Row { index, rows })?.write_duel(duel, player)

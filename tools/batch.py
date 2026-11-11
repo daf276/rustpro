@@ -9,25 +9,26 @@ Lua names still come from the whole pool).
 """
 import csv
 import re
-import sqlite3
 import sys
 from collections import defaultdict
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from common import ROOT, cdb, lua_script, ported_codes
+
 top = next((int(arg[6:]) for arg in sys.argv[1:] if arg.startswith("--top=")), None)
 args = [arg for arg in sys.argv[1:] if not arg.startswith("--top=")]
 batches, size = (int(arg) for arg in (args[:2] + ["4", "16"][len(args[:2]) :]))
 skip = {int(code) for code in args[2:]}
-ported = {int(path.stem[1:]) for path in (ROOT / "crates/scripts/src/official").glob("c*.rs")} | skip
+ported = ported_codes() | skip
 rows = list(csv.DictReader(open(ROOT / "porting/queue.tsv", encoding="utf-8"), delimiter="\t"))
 pool = {int(row["code"]): row for row in rows if row["ported"] != "no script"}
 todo = [int(row["code"]) for row in rows[:top] if row["ported"] == "no" and int(row["code"]) not in ported]
-setcodes = dict(sqlite3.connect((ROOT / "vendor/BabelCDB/cards.cdb").as_uri() + "?mode=ro", uri=True).execute("select id, setcode from datas"))
+setcodes = dict(cdb("select id, setcode from datas"))
 
 
 def named(code):
-    script = ROOT / f"vendor/CardScripts/official/c{code}.lua"
+    script = lua_script(code)
     text = script.read_text(encoding="utf-8", errors="replace") if script.exists() else ""
     codes = {int(found) for found in re.findall(r"\b(\d{4,9})\b", text)} - {code}
     return [other for other in codes if other in pool and other not in ported]

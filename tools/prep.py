@@ -8,8 +8,9 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-OFFICIAL = ROOT / "crates/scripts/src/official"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from common import OFFICIAL, ROOT, lua_script
+
 NAMESPACES = "Duel|Card|Effect|Group|aux|Auxiliary|Cost|Fusion|Synchro|Xyz|Link|Ritual|Pendulum|Gemini|Spirit|Equip|Union"
 CALL = re.compile(rf"\b(?:{NAMESPACES})\.([A-Z]\w*)|:([A-Z]\w*)\s*\(")
 RARE = 3
@@ -68,7 +69,7 @@ for stem, text in cards.items():
         users[name].append(stem)
 
 for code in sys.argv[1:]:
-    script = ROOT / f"vendor/CardScripts/official/c{code}.lua"
+    script = lua_script(code)
     if not script.exists():
         print(f"c{code}: no script")
         continue

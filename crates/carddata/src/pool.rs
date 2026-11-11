@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use rand::Rng;
 use rand::seq::{IndexedRandom, SliceRandom};
 
-use crate::cards::{Card, CardDatabase, TYPE_EXTRA, TYPE_TOKEN};
+use crate::cards::{Card, CardDatabase, TYPE_EXTRA, TYPE_NORMAL, TYPE_PENDULUM, TYPE_TOKEN};
 
 const OT_TCG: u32 = 0x2;
 const MAIN_SIZE: usize = 40;
@@ -31,8 +31,7 @@ pub struct Deck {
 }
 
 impl Deck {
-    // Lines `main`, `extra` and `side` followed by comma-separated codes; alternate arts become their original, as the
-    // pool has no alternate arts. The side deck is left out.
+    // Lines `main`, `extra` and `side` of comma-separated codes, alternate arts mapped to their original; no side deck.
     pub fn parse(text: &str, cards: &CardDatabase) -> Self {
         let section = |name: &str| {
             let codes = text.lines().find_map(|line| line.strip_prefix(name)?.strip_prefix(' '));
@@ -95,9 +94,15 @@ impl Pool {
         }
     }
 
-    pub fn retain(&mut self, mut keep: impl FnMut(u32) -> bool) {
-        self.main.retain(|&code| keep(code));
-        self.extra.retain(|&code| keep(code));
+    // Normal Monsters have no scripts; Normal Pendulums do.
+    pub fn retain_normal_monsters(&mut self, cards: &CardDatabase) {
+        let normal = |&code: &u32| {
+            cards
+                .get(code)
+                .is_some_and(|card| card.card_type & (TYPE_NORMAL | TYPE_PENDULUM) == TYPE_NORMAL)
+        };
+        self.main.retain(normal);
+        self.extra.retain(normal);
     }
 
     pub fn limit(&self, code: u32) -> u8 {
@@ -142,6 +147,30 @@ impl Pool {
         }
         cards
     }
+}
+
+// Random decks from the pool with zero to two copies of each of `effect_cards`, or `deck` shuffled if given.
+pub struct Decks {
+    pub pool: Pool,
+    pub effect_cards: Vec<u32>,
+    pub deck: Option<Deck>,
+}
+
+impl Decks {
+    pub fn deal(&self, rng: &mut impl Rng) -> Deck {
+        match &self.deck {
+            Some(deck) => deck.shuffled(rng),
+            None => self.pool.random_deck_with(&self.effect_cards, rng),
+        }
+    }
+}
+
+#[cfg(feature = "cdb")]
+pub fn load_advanced(vendor: &std::path::Path) -> Result<(CardDatabase, Pool), crate::CardsError> {
+    let cards = CardDatabase::load(&vendor.join("BabelCDB"))?;
+    let banlist = std::fs::read_to_string(vendor.join("LFLists/0TCG.lflist.conf")).map_err(crate::CardsError::Banlist)?;
+    let pool = Pool::advanced(&cards, banlist_limits(&banlist));
+    Ok((cards, pool))
 }
 
 #[cfg(test)]

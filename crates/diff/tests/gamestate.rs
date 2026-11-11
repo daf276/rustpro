@@ -1,10 +1,9 @@
 use std::collections::HashSet;
 use std::error::Error;
 use std::io::Write;
-use std::ops::Range;
 use std::time::{Duration, Instant};
 
-use diff::{DiffError, Vendor, diff_duel, diff_position, diff_scenario, sampled_cards};
+use diff::{Vendor, diff_duel, diff_position, median, records, scenario_records};
 use engine::constants::{LOCATION_MZONE, PHASE_DRAW};
 use engine::{Duel, DuelRecord, NewCardInfo, Position};
 use rayon::prelude::*;
@@ -15,21 +14,6 @@ type Result<T = ()> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 // Records are replayed from every STEP-th prefix.
 const STEP: usize = 25;
 
-fn records(vendor: &'static Vendor, seeds: Range<u64>) -> Result<Vec<DuelRecord>> {
-    Ok(seeds
-        .into_par_iter()
-        .map(|seed| Ok(diff_duel(vendor, seed)?.record))
-        .collect::<std::result::Result<_, DiffError>>()?)
-}
-
-// One scenario of each card of [sampled_cards].
-fn scenario_records(vendor: &'static Vendor) -> Result<Vec<DuelRecord>> {
-    let records = sampled_cards()
-        .into_par_iter()
-        .map(|code| Ok(diff_scenario(vendor, code, 0)?.record));
-    Ok(records.collect::<std::result::Result<_, DiffError>>()?)
-}
-
 fn prefix(record: &DuelRecord, actions: usize) -> DuelRecord {
     DuelRecord {
         actions: record.actions.iter().take(actions).copied().collect(),
@@ -37,8 +21,7 @@ fn prefix(record: &DuelRecord, actions: usize) -> DuelRecord {
     }
 }
 
-// The duel replayed from every STEP-th prefix plays on to the same messages and result as the whole record, and shows
-// the same position, which itself rebuilds into a duel showing it.
+// The duel replayed from every STEP-th prefix shows the record's position, rebuilds from it and plays on identically.
 fn assert_replays(vendor: &'static Vendor, record: &DuelRecord) -> Result {
     let mut full = Duel::from_position(&record.position, &vendor.cards, &LIBRARY, record.seed)?;
     full.set_trace(true);
@@ -91,8 +74,7 @@ fn should_continue_identically_from_a_replayed_record_prefix() {
     records.par_iter().try_for_each(|record| assert_replays(vendor, record)).unwrap();
 }
 
-// Whether a monster is on the field under its non-owner's control. Without the effect that took it, which a position
-// does not carry, it returns to its owner: a control change the engine has not ported.
+// Whether a monster is under its non-owner's control, which a position cannot carry without the effect that took it.
 fn is_taken(position: &Position) -> bool {
     let mut zones = HashSet::new();
     let mut monster = |info: &NewCardInfo| info.loc == u32::from(LOCATION_MZONE) && zones.insert((info.con, info.seq));
@@ -163,11 +145,6 @@ fn should_reject_damaged_bytes_without_panicking() {
             drop(record.replay(&vendor.cards, &LIBRARY));
         }
     });
-}
-
-fn median(mut values: Vec<f64>) -> f64 {
-    values.sort_by(f64::total_cmp);
-    values.get(values.len() / 2).copied().unwrap_or(0.0)
 }
 
 fn time<T>(run: impl Fn() -> T) -> (T, Duration) {

@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use carddata::{CardDatabase, Deck as Decklist};
 use engine::{DUEL_MODE_MR5, DuelRecord, PlayerOptions, Position, PositionError, Prompt, Xoshiro256StarStar};
-use numpy::{PyArray1, PyArray2, PyArray3, PyArrayMethods, PyReadonlyArray1};
+use numpy::{PyArray1, PyArray2, PyArrayDyn, PyArrayMethods, PyReadonlyArray1};
 use pyo3::create_exception;
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
@@ -15,7 +15,7 @@ use rand::{Rng, SeedableRng};
 use scripts::LIBRARY;
 use sim::{
     ACTION_FEATURES, ACTIONS, AutoAdvance, CARD_FEATURES, CHAIN_FEATURES, GLOBAL_FEATURES, MAX_CHAIN, MAX_OBS_CARDS, Options, PROMPTS,
-    Section, find, indices,
+    SHAPES, Section, find, indices,
 };
 
 create_exception!(ygo_sim, Error, PyException);
@@ -39,7 +39,7 @@ fn same_length(values: usize, slots: usize) -> PyResult<()> {
     }
 }
 
-// Leaked, as duels hold the database for good: load one per process.
+/// The card database, leaked as duels hold it for good: load one per process.
 #[pyclass(frozen)]
 struct Database(&'static CardDatabase);
 
@@ -48,11 +48,11 @@ impl Database {
     #[new]
     #[pyo3(signature = (path = None))]
     fn new(path: Option<PathBuf>) -> PyResult<Self> {
-        let path = path.unwrap_or_else(|| PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../vendor/BabelCDB")));
+        let path = path.unwrap_or_else(|| carddata::vendor().join("BabelCDB"));
         Ok(Self(Box::leak(Box::new(CardDatabase::load(&path).map_err(fail)?))))
     }
 
-    // A .ydk, or else the repository's format of `main` and `extra` lines.
+    /// A .ydk, or else the repository's format of `main` and `extra` lines.
     fn load_deck(&self, path: PathBuf) -> PyResult<Deck> {
         let text = std::fs::read_to_string(&path).map_err(fail)?;
         Ok(Deck(match path.extension().is_some_and(|extension| extension == "ydk") {
@@ -99,29 +99,29 @@ fn setup(decks: &[Decklist; 2], number: u64) -> DuelRecord {
     }
 }
 
-// Observation tensors of `size` rows, in the layout of the *_FEATURES names: global_ [size, GLOBAL], cards [size,
-// MAX_OBS_CARDS, CARD], chain [size, MAX_CHAIN, CHAIN] and actions [size, ACTIONS, ACTION], all int32.
+/// Int32 tensors of `size` rows: global_ [GLOBAL], cards [MAX_OBS_CARDS, CARD], chain [MAX_CHAIN, CHAIN], actions [ACTIONS, ACTION].
 #[pyclass(frozen)]
 struct Tensors {
     #[pyo3(get, name = "global_")]
-    global: Py<PyArray2<i32>>,
+    global: Py<PyArrayDyn<i32>>,
     #[pyo3(get)]
-    cards: Py<PyArray3<i32>>,
+    cards: Py<PyArrayDyn<i32>>,
     #[pyo3(get)]
-    chain: Py<PyArray3<i32>>,
+    chain: Py<PyArrayDyn<i32>>,
     #[pyo3(get)]
-    actions: Py<PyArray3<i32>>,
+    actions: Py<PyArrayDyn<i32>>,
 }
 
 #[pymethods]
 impl Tensors {
     #[new]
     fn new(py: Python<'_>, size: usize) -> Self {
+        let [global, cards, chain, actions] = SHAPES.map(|shape| PyArrayDyn::zeros(py, [&[size], shape].concat(), false).unbind());
         Self {
-            global: PyArray2::zeros(py, [size, GLOBAL_FEATURES.len()], false).unbind(),
-            cards: PyArray3::zeros(py, [size, MAX_OBS_CARDS, CARD_FEATURES.len()], false).unbind(),
-            chain: PyArray3::zeros(py, [size, MAX_CHAIN, CHAIN_FEATURES.len()], false).unbind(),
-            actions: PyArray3::zeros(py, [size, ACTIONS, ACTION_FEATURES.len()], false).unbind(),
+            global,
+            cards,
+            chain,
+            actions,
         }
     }
 }
@@ -142,7 +142,7 @@ impl Tensors {
     }
 }
 
-// One duel, for search: `record` holds how it came about unless it was taken from a batch or determinized.
+/// One duel, for search: `record` holds how it came about unless it was taken from a batch or determinized.
 #[pyclass]
 struct Duel {
     duel: Mutex<engine::Duel>,
@@ -189,13 +189,13 @@ impl Duel {
         }
     }
 
-    // The player the prompt waits for, None once the duel ended.
+    /// The player the prompt waits for, None once the duel ended.
     #[getter]
     fn acting(&mut self) -> Option<u8> {
         self.duel().prompt().map(Prompt::player)
     }
 
-    // The winner (2 for a draw) and the reason.
+    /// The winner (2 for a draw) and the reason.
     #[getter]
     fn result(&mut self) -> Option<(u8, u8)> {
         self.duel().result()
@@ -215,7 +215,7 @@ impl Duel {
         Ok(())
     }
 
-    // Writes what `player` sees into row `row` of `out`, a new Tensors of one row if None.
+    /// Writes what `player` sees into row `row` of `out`, a new Tensors of one row if None.
     #[pyo3(signature = (player, out = None, row = 0))]
     fn observe(&mut self, py: Python<'_>, player: u8, out: Option<Py<Tensors>>, row: usize) -> PyResult<Py<Tensors>> {
         let out = out.map_or_else(|| Py::new(py, Tensors::new(py, 1)), Ok)?;
@@ -224,7 +224,7 @@ impl Duel {
         Ok(out)
     }
 
-    // A duel agreeing with what `player` sees, the hidden cards drawn from `pool` (the opponent's deck, as known or assumed).
+    /// A duel agreeing with what `player` sees, the hidden cards drawn from `pool` (the opponent's deck, as known or assumed).
     fn determinize(&mut self, player: u8, seed: u64, pool: Deck) -> PyResult<Self> {
         let mut rng = Xoshiro256StarStar::new(StdRng::seed_from_u64(seed).random());
         Ok(Self {
@@ -248,7 +248,7 @@ impl Duel {
 struct Outcome {
     slot: usize,
     episode: u64,
-    // The winner (2 for a draw) and the reason, None for a duel cut off at max_steps.
+    /// The winner (2 for a draw) and the reason, None for a duel cut off at max_steps.
     result: Option<(u8, u8)>,
     steps: u64,
     skipped: u64,
@@ -283,8 +283,7 @@ impl Settings {
     }
 }
 
-// Duels stepped in lockstep on rayon's pool (RAYON_NUM_THREADS), a slot starting its next duel as one ends; with
-// `duels`, slots retire once that many have started, and their masks stay all false.
+/// Duels stepped in lockstep on rayon's pool (RAYON_NUM_THREADS); with `duels`, slots retire once that many have started.
 #[pyclass]
 struct Batch {
     batch: Mutex<sim::Batch<Generator>>,
@@ -294,7 +293,7 @@ struct Batch {
 
 #[pymethods]
 impl Batch {
-    // `decks` holds one deck pair for every slot or one per slot; `auto_advance` is "off", "own" or "both".
+    /// `decks` holds one deck pair for every slot or one per slot; `auto_advance` is "off", "own" or "both".
     #[new]
     #[pyo3(signature = (database, decks, size, seed = 0, auto_advance = "off", max_steps = None, duels = None))]
     fn new(
@@ -333,7 +332,7 @@ impl Batch {
         })
     }
 
-    // Starts over from the first duels.
+    /// Starts over from the first duels.
     fn reset(&mut self) -> PyResult<()> {
         *exclusive(&mut self.batch) = self.settings.start()?;
         Ok(())
@@ -343,7 +342,7 @@ impl Batch {
         self.settings.size
     }
 
-    // An action index per slot (retired slots' are ignored); returns the outcomes of the duels that ended.
+    /// An action index per slot (retired slots' are ignored); returns the outcomes of the duels that ended.
     fn step(&mut self, py: Python<'_>, actions: PyReadonlyArray1<i64>) -> PyResult<Vec<Outcome>> {
         let given = actions.as_slice().map_err(fail)?;
         same_length(given.len(), self.actions.len())?;
@@ -356,7 +355,7 @@ impl Batch {
         Ok(ended.map_err(fail)?.into_iter().map(Outcome::from).collect())
     }
 
-    // The legal actions of each slot as a bool [size, ACTIONS], written into `out` if given.
+    /// The legal actions of each slot as a bool [size, ACTIONS], written into `out` if given.
     #[pyo3(signature = (out = None))]
     fn masks<'py>(&mut self, py: Python<'py>, out: Option<Bound<'py, PyArray2<bool>>>) -> PyResult<Bound<'py, PyArray2<bool>>> {
         let out = out.unwrap_or_else(|| PyArray2::zeros(py, [self.settings.size, ACTIONS], false));
@@ -369,7 +368,7 @@ impl Batch {
         Ok(out)
     }
 
-    // The player each slot's prompt waits for as an int32 [size], -1 for a retired slot.
+    /// The player each slot's prompt waits for as an int32 [size], -1 for a retired slot.
     #[pyo3(signature = (out = None))]
     fn acting<'py>(&mut self, py: Python<'py>, out: Option<Bound<'py, PyArray1<i32>>>) -> PyResult<Bound<'py, PyArray1<i32>>> {
         let out = out.unwrap_or_else(|| PyArray1::zeros(py, self.settings.size, false));
@@ -387,7 +386,7 @@ impl Batch {
         Ok(out)
     }
 
-    // What each slot's acting player sees, written into `out` if given.
+    /// What each slot's acting player sees, written into `out` if given.
     #[pyo3(signature = (out = None))]
     fn observe(&mut self, py: Python<'_>, out: Option<Py<Tensors>>) -> PyResult<Py<Tensors>> {
         let out = out.map_or_else(|| Py::new(py, Tensors::new(py, self.settings.size)), Ok)?;
@@ -396,7 +395,7 @@ impl Batch {
         Ok(out)
     }
 
-    // A copy of the slot's duel, None for a retired slot.
+    /// A copy of the slot's duel, None for a retired slot.
     fn duel(&mut self, slot: usize) -> Option<Duel> {
         let duel = exclusive(&mut self.batch).duel(slot)?.clone();
         Some(Duel {

@@ -11,8 +11,7 @@ const CANCEL: i32 = -1;
 // Monster zone sequence 7 does not exist; see SelectPlace in playerop.cpp.
 const ZONES: u32 = 0xff7f_ff7f;
 
-// A uniformly random valid response for single choices; for multi-selects a random valid one. Responses are encoded as
-// playerop.cpp parses them. `None` when the prompt admits no valid response.
+// A random valid response as playerop.cpp parses it (uniform for single choices), None if the prompt admits none.
 pub fn respond(prompt: &Prompt, cards: &CardDatabase, rng: &mut impl Rng) -> Option<Vec<u8>> {
     Some(match prompt {
         Prompt::BattleCommand {

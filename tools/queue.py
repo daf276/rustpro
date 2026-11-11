@@ -7,17 +7,15 @@ cardinfo.json is https://db.ygoprodeck.com/api/v7/cardinfo.php?misc=yes (not com
 get their name from the cdb files the pool reads, no type and 0 views.
 """
 import json
-import sqlite3
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from common import ROOT, cdb
+
 pool_path, cards_path = sys.argv[1:3]
 cards = {card["id"]: card for card in json.loads(Path(cards_path).read_text(encoding="utf-8"))["data"]}
-names = {}
-for cdb in sorted((ROOT / "vendor/BabelCDB").glob("*.cdb")):
-    if cdb.name == "cards.cdb" or cdb.name.startswith("release-"):
-        names.update(sqlite3.connect(cdb.as_uri() + "?mode=ro", uri=True).execute("select id, name from texts"))
+names = dict(cdb("select id, name from texts"))
 rows = []
 for line in Path(pool_path).read_text(encoding="utf-8").splitlines():
     code, ported = line.split("\t")

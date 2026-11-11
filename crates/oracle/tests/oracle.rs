@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 use std::error::Error;
-use std::path::PathBuf;
 use std::sync::LazyLock;
 
-use carddata::{CardDatabase, Pool, banlist_limits};
+use carddata::{CardDatabase, Pool, load_advanced, vendor};
 use oracle::{Duel, Message, Outcome, Scripts, Status, parse, play_random_duel};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -20,12 +19,9 @@ struct Vendor {
 static VENDOR: LazyLock<Result<Vendor, String>> = LazyLock::new(|| load().map_err(|error| error.to_string()));
 
 fn load() -> Result<Vendor, Box<dyn Error>> {
-    let vendor = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../vendor");
-    let cards = CardDatabase::load(&vendor.join("BabelCDB"))?;
-    let limits = banlist_limits(&std::fs::read_to_string(vendor.join("LFLists/0TCG.lflist.conf"))?);
-    let pool = Pool::advanced(&cards, limits);
+    let (cards, pool) = load_advanced(&vendor())?;
     Ok(Vendor {
-        scripts: Scripts::load(&vendor.join("CardScripts"))?,
+        scripts: Scripts::load(&vendor().join("CardScripts"))?,
         cards,
         pool,
     })

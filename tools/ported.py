@@ -5,11 +5,12 @@ part of the name.
 
   python tools/ported.py [tuner] [synchro] [trap continuous] [level=3] [attribute=WIND] [race=DRAGON] [name=Kuriboh]
 """
-import sqlite3
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from common import cdb, lua_script, ported_codes
+
 KINDS = {"spell": 0x2, "trap": 0x4, "quickplay": 0x10000, "continuous": 0x20000, "equip": 0x40000, "field": 0x80000,
          "counter": 0x100000, "normal": 0x10, "effect": 0x20, "fusion": 0x40, "ritual": 0x80, "tuner": 0x1000, "synchro": 0x2000,
          "token": 0x4000, "xyz": 0x800000, "pendulum": 0x1000000, "link": 0x4000000}
@@ -26,11 +27,9 @@ def names(value, table):
 sys.stdout.reconfigure(encoding="utf-8")
 filters = dict(arg.split("=", 1) for arg in sys.argv[1:] if "=" in arg)
 kinds = [KINDS[arg] for arg in sys.argv[1:] if "=" not in arg]
-# A batch's stub files (an empty initial_effect) are not ported yet.
-ported = {int(path.stem[1:]) for path in (ROOT / "crates/scripts/src/official").glob("c*.rs") if "CardId) {}" not in path.read_text(encoding="utf-8")}
-database = sqlite3.connect((ROOT / "vendor/BabelCDB/cards.cdb").as_uri() + "?mode=ro", uri=True)
-rows = database.execute("select d.id, t.name, d.type, d.level, d.attribute, d.race from datas d join texts t on t.id = d.id")
-scripted = lambda code: (ROOT / f"vendor/CardScripts/official/c{code}.lua").exists()
+ported = ported_codes()
+rows = cdb("select d.id, t.name, d.type, d.level, d.attribute, d.race from datas d join texts t on t.id = d.id")
+scripted = lambda code: lua_script(code).exists()
 for code, name, kind, level, attribute, race in sorted(rows, key=lambda row: (row[3] & 0xff, row[0])):
     usable = code in ported or kind & KINDS["normal"] and not scripted(code)
     monster_wanted = not any(bit & (KINDS["spell"] | KINDS["trap"]) for bit in kinds)

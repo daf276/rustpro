@@ -8,8 +8,7 @@ use scripts::testing::{DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT, REMOVED, SZONE
 const OTHER_CARDS_MAX: usize = 3;
 const XYZ_MATERIALS_MAX: usize = 3;
 
-// What a scenario places on top of the decks, as a puzzle does: the LP of both players and the cards Debug.AddCard
-// places before the duel starts.
+// Both players' LP and the cards a scenario places on top of the decks, as a puzzle's Debug.AddCard calls do.
 #[derive(Debug, Clone)]
 pub struct Scenario {
     pub lp: [u32; 2],
@@ -17,9 +16,7 @@ pub struct Scenario {
 }
 
 impl Scenario {
-    // The card under test and its support cards for one player, and up to OTHER_CARDS_MAX of `others` for either, each
-    // in a random zone its card type can legally occupy (in the location SUPPORT gives, if any); an Xyz Monster in a
-    // Monster Zone gets up to XYZ_MATERIALS_MAX of `others` as materials, owned by either player.
+    // The card and its support for one player and some of `others` for either, each in a random legal zone.
     pub fn generate(card: u32, others: &[u32], database: &CardDatabase, rng: &mut impl Rng) -> Self {
         let player = rng.random_range(0..=1);
         let support = scripts::card(card).map_or(&[][..], |script| script.support);
@@ -63,8 +60,7 @@ impl Scenario {
         Self { lp, cards }
     }
 
-    // Where each card is as messages give it (controller, location, sequence), with its code; the Pendulum and Field
-    // Zones are Spell & Trap Zones there.
+    // Where each card is as messages give it, with its code; Pendulum and Field Zones are Spell & Trap Zones there.
     pub fn places(&self) -> impl Iterator<Item = ((u8, u8, u32), u32)> {
         self.cards.iter().map(|PlacedCard { info, .. }| {
             let (location, sequence) = match info.loc as u16 {
@@ -77,8 +73,7 @@ impl Scenario {
     }
 }
 
-// The Debug calls that set up a position in the oracle, which has none for the turn: the position must start the duel
-// (Position::new).
+// The Debug calls that set up a position in the oracle, which has none for the turn, so it must start the duel.
 pub fn lua(position: &Position) -> String {
     let players = position.players.iter().enumerate().map(|(player, options)| {
         let (lp, start, draw) = (options.starting_lp, options.starting_draw_count, options.draw_count_per_turn);
@@ -107,15 +102,13 @@ pub fn lua(position: &Position) -> String {
     players.chain(cards).collect()
 }
 
-// A monster on the field, in the GY, banished or face-up in the Extra Deck got there with its summon procedure complete
-// (OCG_DuelNewCard sets it for the Monster Zone alike); only hand and Deck cards lose it.
+// Only cards in the hand, Deck or face-down Extra Deck lack a complete summon procedure, as with OCG_DuelNewCard.
 fn proc_complete(info: &NewCardInfo) -> bool {
     let location = info.loc as u8;
     location & (LOCATION_HAND | LOCATION_DECK) == 0 && (location != LOCATION_EXTRA || info.pos & POS_FACEUP != 0)
 }
 
-// A random legal zone and position for the card, in `location` unless that is 0, None when the chosen kind of zone is
-// full. `used` holds the occupied zones as the core's used_location bits, player 1's from bit 32.
+// A random legal zone in `location` unless 0, None if full; `used` holds used_location bits, player 1's from bit 32.
 fn place(card: &Card, player: u8, location: u16, used: &mut u64, rng: &mut impl Rng) -> Option<NewCardInfo> {
     let card_type = card.card_type;
     let extra = card_type & TYPE_EXTRA != 0;

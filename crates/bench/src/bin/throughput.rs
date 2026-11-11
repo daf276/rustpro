@@ -2,8 +2,8 @@ use std::hint::black_box;
 use std::io::Write;
 use std::time::{Duration, Instant};
 
-use bench::{BenchResult, Decks, MAX_ACTIONS, play, run_batch, setup};
-use carddata::CardDatabase;
+use bench::{BenchResult, MAX_ACTIONS, flags, load_decks, play, run_batch, setup};
+use carddata::{CardDatabase, Decks};
 use engine::Duel;
 use rand::rngs::StdRng;
 use rayon::prelude::*;
@@ -74,29 +74,12 @@ fn clone_time(seeds: std::ops::Range<u64>, cards: &'static CardDatabase, decks: 
     Ok((total / clones.max(1), clones))
 }
 
-// Engine throughput under uniformly random legal actions in random Normal Monster duels, setup excluded: one thread,
-// then `--threads` (0 = all cores). `--effects 1` mixes the cards of phase 2a into the decks; `--elfnote 1` plays
-// Elfnote mirror matches (main and Extra Deck) instead; `--batch N` also plays them through the batch runner with N slots.
-// "Unported" counts the duels whose result cannot be trusted, since an effect reached an unported call site.
+// Engine throughput, setup excluded; `--effects 1` adds the phase 2a cards, `--elfnote 1` plays Elfnote, `--batch N` batches.
 fn main() -> BenchResult<()> {
-    let (mut duels, mut threads, mut seed, mut effects, mut elfnote, mut batch) = (5000, 0, 0, 0, 0, 0);
-    let mut args = std::env::args().skip(1);
-    while let Some(flag) = args.next() {
-        let value: u64 = args.next().ok_or("missing value")?.parse()?;
-        match flag.as_str() {
-            "--duels" => duels = value,
-            "--threads" => threads = usize::try_from(value)?,
-            "--seed" => seed = value,
-            "--effects" => effects = value,
-            "--elfnote" => elfnote = value,
-            "--batch" => batch = usize::try_from(value)?,
-            _ => {
-                let expected = "--duels, --threads (0 = all cores), --seed, --effects, --elfnote or --batch";
-                return Err(format!("unknown argument {flag}, expected {expected}").into());
-            }
-        }
-    }
-    let (cards, decks) = Decks::load(effects != 0, elfnote != 0)?;
+    let names = ["--duels", "--threads", "--seed", "--effects", "--elfnote", "--batch"];
+    let [duels, threads, seed, effects, elfnote, batch] = flags(names, [5000, 0, 0, 0, 0, 0])?;
+    let (threads, batch) = (usize::try_from(threads)?, usize::try_from(batch)?);
+    let (cards, decks) = load_decks(effects != 0, elfnote != 0)?;
     let seeds = seed..seed + duels;
 
     let out = &mut std::io::stdout().lock();

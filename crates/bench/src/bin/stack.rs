@@ -1,17 +1,15 @@
-// The full simulation stack on Elfnote mirror matches under uniformly random legal actions, setup excluded, on one
-// thread and on `--threads`: play, the calls a search or RL loop makes at a prompt, and the batch runner, beside the
-// phase 0 target and earlier measurements from PLAN.md. Build with `--features mimalloc` to compare allocators.
+// The simulation stack on Elfnote mirror matches beside PLAN.md's targets; `--features mimalloc` compares allocators.
 use std::alloc::{GlobalAlloc, Layout};
 use std::cell::Cell;
 use std::hint::black_box;
 use std::io::Write;
 use std::time::Instant;
 
-use bench::{BenchResult, Decks, play, run_batch, setup};
-use carddata::{CardDatabase, Deck};
+use bench::{BenchResult, flags, load_decks, play, run_batch, setup};
+use carddata::{CardDatabase, Deck, Decks};
 use engine::{Duel, Prompt, Xoshiro256StarStar};
 use rayon::prelude::*;
-use sim::{ACTION_FEATURES, ACTIONS, AutoAdvance, CARD_FEATURES, CHAIN_FEATURES, GLOBAL_FEATURES, MAX_CHAIN, MAX_OBS_CARDS, Tensors};
+use sim::{AutoAdvance, Buffers};
 
 #[cfg(feature = "mimalloc")]
 use mimalloc::MiMalloc as Inner;
@@ -21,7 +19,6 @@ use std::alloc::System as Inner;
 struct Counting;
 
 thread_local! {
-    // Allocations and bytes this thread asked for.
     static ALLOCATED: Cell<[u64; 2]> = const { Cell::new([0; 2]) };
 }
 
@@ -112,21 +109,14 @@ impl Op {
 
 type Ops = [Op; OPS.len()];
 
-// The calls at every SAMPLE_EVERY-th prompt of one duel: the legal actions, a clone, both players' observations and
-// their tensors, both written straight from the duel, and a determinization for the player prompted, with the deck as
-// the opponent's decklist.
+// The calls of OPS at every SAMPLE_EVERY-th prompt of one duel, determinizing with the deck as the opponent's decklist.
 fn sample(seed: u64, cards: &'static CardDatabase, decks: &Decks, deck: &Deck) -> BenchResult<Ops> {
     let (mut duel, mut rng) = setup(seed, cards, decks)?;
     let mut ops = Ops::default();
     let mut legal = Vec::new();
     let mut sampler = Xoshiro256StarStar::new([seed, 1, 2, 3]);
-    let (mut global, mut seen, mut chain) = (
-        vec![0; GLOBAL_FEATURES.len()],
-        vec![0; MAX_OBS_CARDS * CARD_FEATURES.len()],
-        vec![0; MAX_CHAIN * CHAIN_FEATURES.len()],
-    );
-    let mut actions = vec![0; ACTIONS * ACTION_FEATURES.len()];
-    let mut tensors = Tensors::new(&mut global, &mut seen, &mut chain, &mut actions)?;
+    let mut buffers = Buffers::new(1);
+    let mut tensors = buffers.tensors()?;
     play(&mut duel, &mut rng, |duel, _, action| {
         let [legal_op, clone, observe, encode, straight, determinize] = &mut ops;
         if action % SAMPLE_EVERY != 0 {
@@ -192,8 +182,7 @@ fn apply(threads: usize, seeds: std::ops::Range<u64>, cards: &'static CardDataba
     Ok((counts, started.elapsed().as_secs_f64()))
 }
 
-// Rounds per second of a loop that touches no memory, with four independent chains so that a busy sibling hyperthread
-// slows it: how far the machine scales at the moment of the run.
+// Rounds per second of a memory-free loop that a busy sibling hyperthread slows: how far the machine scales right now.
 fn spin(threads: usize) -> BenchResult<f64> {
     let pool = rayon::ThreadPoolBuilder::new().num_threads(threads).build()?;
     let rounds = 4 * threads as u64;
@@ -231,20 +220,10 @@ fn row(out: &mut impl Write, name: &str, one: String, many: String, scaling: Str
 }
 
 fn main() -> BenchResult<()> {
-    let (mut duels, mut threads, mut seed, mut batch, mut sampled) = (2000, 7, 3, 64, 500);
-    let mut args = std::env::args().skip(1);
-    while let Some(flag) = args.next() {
-        let value: u64 = args.next().ok_or("missing value")?.parse()?;
-        match flag.as_str() {
-            "--duels" => duels = value,
-            "--threads" => threads = usize::try_from(value)?,
-            "--seed" => seed = value,
-            "--batch" => batch = usize::try_from(value)?,
-            "--sampled" => sampled = value,
-            _ => return Err(format!("unknown argument {flag}, expected --duels, --threads, --seed, --batch or --sampled").into()),
-        }
-    }
-    let (cards, decks) = Decks::load(false, true)?;
+    let names = ["--duels", "--threads", "--seed", "--batch", "--sampled"];
+    let [duels, threads, seed, batch, sampled] = flags(names, [2000, 7, 3, 64, 500])?;
+    let (threads, batch) = (usize::try_from(threads)?, usize::try_from(batch)?);
+    let (cards, decks) = load_decks(false, true)?;
     let seeds = seed..seed + duels;
     let out = &mut std::io::stdout().lock();
     let allocator = if cfg!(feature = "mimalloc") { "mimalloc" } else { "system" };

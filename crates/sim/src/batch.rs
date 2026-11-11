@@ -13,8 +13,7 @@ pub enum AutoAdvance {
     Both,
 }
 
-// Applies the only legal action while there is exactly one, returning how many; `legal` is left holding the legal
-// actions of the prompt it stops at.
+// Applies the only legal action while there is one, returning how many; `legal` is left with the last prompt's actions.
 pub fn auto_advance(duel: &mut Duel, mode: AutoAdvance, player: u8, legal: &mut Vec<Action>) -> Result<u64, ActionError> {
     let mut applied = 0;
     loop {
@@ -83,8 +82,7 @@ struct Slot {
     skipped: u64,
 }
 
-// Duels stepped in lockstep on rayon's pool. `generator(slot, episode)` gives each slot's duels set up but not yet
-// processed (Duel::from_position, or Duel::new and start), or None to retire the slot, whose mask then stays all false.
+// Duels stepped in lockstep on rayon's pool; `generator(slot, episode)` gives unprocessed duels, or None to retire the slot.
 pub struct Batch<G> {
     slots: Vec<Slot>,
     masks: Vec<bool>,

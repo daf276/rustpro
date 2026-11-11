@@ -1,5 +1,4 @@
-// One section per kind of action, a slot per entry of the prompt's list it indexes (what entry i is comes from the
-// observation's choices) or per zone, position, race or attribute bit; prompts indexing the same list share a section.
+// A section per kind of action, a slot per entry of the list it indexes or per bit; prompts on one list share a section.
 use engine::{Action, BattleCommand, Duel, IdleCommand};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -43,8 +42,7 @@ impl Section {
         Self::Attribute,
     ];
 
-    // List-indexed sections hold about twice the longest list measured (PLAN.md, 5c findings); Reposition and Attack
-    // all seven Monster Zones.
+    // About twice the longest list measured (PLAN.md, 5c findings); Reposition and Attack all seven Monster Zones.
     pub const fn slots(self) -> usize {
         match self {
             Self::Command => 9,

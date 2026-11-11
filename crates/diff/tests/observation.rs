@@ -4,7 +4,9 @@ use std::io::Write;
 use std::time::Instant;
 
 use carddata::{Deck, TYPE_EXTRA, TYPE_MONSTER};
-use diff::{DiffError, Vendor, diff_duel, diff_duel_probed, diff_scenario, diff_scenario_probed, sampled_cards};
+use diff::{
+    DiffError, Vendor, diff_duel, diff_duel_probed, diff_scenario_probed, each_state, median, records, sampled_cards, scenario_records,
+};
 use engine::constants::*;
 use engine::{Action, DeterminizeError, Duel, DuelRecord, PlacedCard, Position, Prompt, SeenCard, Status, Xoshiro256StarStar};
 use rand::rngs::StdRng;
@@ -18,20 +20,6 @@ type Result<T = ()> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 // States are checked at every STEP-th action of a record.
 const STEP: usize = 25;
 const MAX_ACTIONS: usize = 20_000;
-
-fn records(vendor: &'static Vendor) -> Result<Vec<DuelRecord>> {
-    let duels = (0..40).into_par_iter().map(|seed| diff_duel(vendor, seed));
-    Ok(duels
-        .map(|report| Ok(report?.record))
-        .collect::<std::result::Result<_, DiffError>>()?)
-}
-
-fn scenario_records(vendor: &'static Vendor) -> Result<Vec<DuelRecord>> {
-    let scenarios = sampled_cards().into_par_iter().map(|code| diff_scenario(vendor, code, 0));
-    Ok(scenarios
-        .map(|report| Ok(report?.record))
-        .collect::<std::result::Result<_, DiffError>>()?)
-}
 
 // What `team` owns in the position: its decklist, as the player facing it may know it.
 fn pool(vendor: &Vendor, position: &Position, team: u8) -> Deck {
@@ -56,8 +44,7 @@ fn play_out(mut duel: Duel, rng: &mut StdRng) -> Result<bool> {
             break;
         }
         let legal = duel.legal_actions();
-        // Uniform toggles walk an exact-count aux.SelectUnselectGroup for thousands of steps, each searching subsets, so
-        // the play-out finishes a selection when it can and otherwise mostly adds cards.
+        // Uniform toggles walk an exact-count aux.SelectUnselectGroup for thousands of steps, so finish or mostly add cards.
         let selectable = duel.selectable_count();
         let picks: Vec<Action> = legal
             .iter()
@@ -74,34 +61,28 @@ fn play_out(mut duel: Duel, rng: &mut StdRng) -> Result<bool> {
     Ok(duel.unported_site().is_some())
 }
 
-// At every STEP-th prompt, for either player, a duel determinized with the opponent's decklist shows that player what
-// the original shows, and plays on under random actions without errors. Counts the samples, those that reached an
-// unported call site, and the states where no sample reran a waiting function to the same view.
+// At every STEP-th prompt, a duel determinized for either player shows that player the same and plays on without errors.
 fn check_determinized(vendor: &'static Vendor, record: &DuelRecord) -> Result<[usize; 3]> {
     let seed = record.seed;
-    let mut duel = Duel::from_position(&record.position, &vendor.cards, &LIBRARY, seed)?;
-    duel.process();
     let (mut rng, mut sampler) = (StdRng::seed_from_u64(seed[0]), Xoshiro256StarStar::new(seed));
     let mut counts = [0; 3];
-    for (index, &action) in record.actions.iter().enumerate() {
-        if index % STEP == 0 {
-            for player in 0..2 {
-                let sample = match duel.determinize(player, &mut sampler, &pool(vendor, &record.position, 1 - player)) {
-                    Err(DeterminizeError::Rerun) => {
-                        counts[2] += 1;
-                        continue;
-                    }
-                    sample => sample?,
-                };
-                if sample.observe(player) != duel.observe(player) {
-                    return Err(format!("seed {seed:?} at {index}: player {player} sees a difference").into());
+    each_state(vendor, record, |duel, index| {
+        for player in (0..2).filter(|_| index % STEP == 0) {
+            let sample = match duel.determinize(player, &mut sampler, &pool(vendor, &record.position, 1 - player)) {
+                Err(DeterminizeError::Rerun) => {
+                    counts[2] += 1;
+                    continue;
                 }
-                counts[1] += usize::from(play_out(sample, &mut rng)?);
-                counts[0] += 1;
+                sample => sample?,
+            };
+            if sample.observe(player) != duel.observe(player) {
+                return Err(format!("seed {seed:?} at {index}: player {player} sees a difference").into());
             }
+            counts[1] += usize::from(play_out(sample, &mut rng)?);
+            counts[0] += 1;
         }
-        duel.apply(action)?;
-    }
+        Ok(())
+    })?;
     Ok(counts)
 }
 
@@ -110,7 +91,7 @@ fn should_determinize_into_duels_that_show_the_same_and_play_on() {
     let elfnote = Vendor::leak(Vendor::elfnote).unwrap();
     let scenarios = Vendor::leak(Vendor::scenarios).unwrap();
     let suites = [
-        (elfnote, records(elfnote).unwrap()),
+        (elfnote, records(elfnote, 0..40).unwrap()),
         (scenarios, scenario_records(scenarios).unwrap()),
     ];
     for (vendor, records) in suites {
@@ -154,7 +135,7 @@ fn should_play_the_same_whether_observed_or_not() {
     let elfnote = Vendor::leak(Vendor::elfnote).unwrap();
     let scenarios = Vendor::leak(Vendor::scenarios).unwrap();
     for (vendor, records) in [
-        (elfnote, records(elfnote).unwrap()),
+        (elfnote, records(elfnote, 0..40).unwrap()),
         (scenarios, scenario_records(scenarios).unwrap()),
     ] {
         records.par_iter().enumerate().for_each(|(index, record)| {
@@ -176,9 +157,7 @@ fn first_prompt_of_player_0(vendor: &'static Vendor, position: &Position, seed: 
     Ok(duel)
 }
 
-// Duels that differ only in the order of player 1's Deck, and so in its starting hand, look the same to player 0 once
-// it is player 0's turn to act (player 1 passing until then). Whether player 1 had a prompt before is no secret: EDOPro
-// shows player 0 that it waits.
+// Duels differing only in player 1's Deck order look the same to player 0 at its first prompt, player 1 passing until then.
 #[test]
 fn should_show_nothing_of_the_opponents_hidden_cards() {
     let vendor = Vendor::leak(Vendor::elfnote).unwrap();
@@ -207,8 +186,7 @@ fn codes_in(position: &Position, team: u8, location: u8) -> impl Iterator<Item =
         .map(|card| card.info.code)
 }
 
-// From player 0's first prompt, the opponent's hand is drawn evenly from its decklist, its Extra Deck keeps its cards,
-// and player 0's own Deck is reshuffled.
+// The opponent's hand is drawn evenly from its decklist, its Extra Deck kept and player 0's own Deck reshuffled.
 #[test]
 fn should_sample_the_hidden_pool_evenly() {
     const SAMPLES: usize = 4000;
@@ -253,8 +231,7 @@ fn should_sample_the_hidden_pool_evenly() {
     }
 }
 
-// Every card the core's query lists shows in each player's observation where the core has it, with its code if the core
-// marks it public (QUERY_IS_PUBLIC) or the player controls it outside the Deck, as EDOPro's server sends it.
+// Each queried card shows where the core has it, its code if QUERY_IS_PUBLIC or controlled outside the Deck, as EDOPro sends it.
 fn probe_observations(oracle: &mut oracle::Duel<'_>, engine: &Duel) -> std::result::Result<(), String> {
     let observations = [engine.observe(0), engine.observe(1)];
     let locations = [
@@ -320,11 +297,6 @@ fn should_show_what_the_core_marks_public() {
     scenarios.collect::<std::result::Result<(), DiffError>>().unwrap();
 }
 
-fn median(mut values: Vec<f64>) -> f64 {
-    values.sort_by(f64::total_cmp);
-    values.get(values.len() / 2).copied().unwrap_or(0.0)
-}
-
 // Median times per state of Elfnote mirror matches at every STEP-th action (single thread).
 #[test]
 #[ignore = "report, run with --release -- --ignored --nocapture --test-threads 1"]
@@ -333,28 +305,27 @@ fn report_observe_and_determinize_times() {
     let mut rows: [Vec<f64>; 3] = Default::default();
     let mut sampler = Xoshiro256StarStar::new([1, 2, 3, 4]);
     let mut rng = StdRng::seed_from_u64(0);
-    for record in records(vendor).unwrap().iter().take(20) {
-        let mut duel = Duel::from_position(&record.position, &vendor.cards, &LIBRARY, record.seed).unwrap();
-        duel.process();
+    for record in records(vendor, 0..20).unwrap() {
         let pools = [1, 0].map(|team| pool(vendor, &record.position, team));
-        for (index, &action) in record.actions.iter().enumerate() {
+        each_state(vendor, &record, |duel, index| {
             if index % STEP == 0 {
                 let player = rng.random_range(0..2);
-                let pool = pools.get(usize::from(player)).unwrap();
+                let pool = pools.get(usize::from(player)).ok_or("no pool")?;
                 let started = Instant::now();
                 std::hint::black_box(duel.clone());
                 let clone = started.elapsed();
                 let observation = std::hint::black_box(duel.observe(player));
                 let observe = started.elapsed() - clone;
-                std::hint::black_box(duel.determinize(player, &mut sampler, pool).unwrap());
+                std::hint::black_box(duel.determinize(player, &mut sampler, pool)?);
                 let determinize = started.elapsed() - clone - observe;
                 drop(observation);
                 for (row, time) in rows.iter_mut().zip([clone, observe, determinize]) {
                     row.push(time.as_secs_f64() * 1e6);
                 }
             }
-            duel.apply(action).unwrap();
-        }
+            Ok(())
+        })
+        .unwrap();
     }
     let states = rows.first().map_or(0, Vec::len);
     let [clone, observe, determinize] = rows.map(median);

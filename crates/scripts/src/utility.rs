@@ -834,12 +834,31 @@ pub mod aux {
         hint: u64,
         reset_count: u16,
     ) -> Option<EffectId> {
+        delayed_operation_desc::<O>(duel, g, phase, reset, flag, e, tp, hint, reset_count, 0)
+    }
+
+    // `effect_desc` is the Lua's effect_desc, the delayed effect's own description (0 is nil).
+    pub fn delayed_operation_desc<O: DelayedOperation>(
+        duel: &mut Duel,
+        g: CardSet,
+        phase: u32,
+        reset: u32,
+        flag: u32,
+        e: EffectId,
+        tp: u8,
+        hint: u64,
+        reset_count: u16,
+        effect_desc: u64,
+    ) -> Option<EffectId> {
         if g.is_empty() {
             return None;
         }
         let fid = duel.get_script_state(DELAYED_OPERATION_ID) + 1;
         duel.set_script_state(DELAYED_OPERATION_ID, fid);
         let e1 = duel.create_effect(e.get_handler(duel));
+        if effect_desc != 0 {
+            e1.set_description(duel, effect_desc);
+        }
         e1.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
         e1.set_property(duel, EFFECT_FLAG_IGNORE_IMMUNE);
         e1.set_code(duel, EVENT_PHASE | phase);
@@ -872,6 +891,21 @@ pub mod aux {
         e: EffectId,
         tp: u8,
     ) -> Script<Option<EffectId>> {
+        remove_until_desc::<O>(duel, g, position, reason, phase, flag, e, tp, 0)
+    }
+
+    // `effect_desc` is the Lua's effect_desc (0 is nil).
+    pub fn remove_until_desc<O: DelayedOperation>(
+        duel: &mut Duel,
+        g: impl Into<CardSet>,
+        position: u32,
+        reason: u32,
+        phase: u32,
+        flag: u32,
+        e: EffectId,
+        tp: u8,
+        effect_desc: u64,
+    ) -> Script<Option<EffectId>> {
         let g = g.into();
         if g.is_empty() || duel.remove(g, position, reason | REASON_TEMPORARY)? == 0 {
             return Ok(None);
@@ -880,7 +914,7 @@ pub mod aux {
         Ok(if g.is_empty() {
             None
         } else {
-            delayed_operation::<O>(duel, g, phase, flag, e, tp)
+            delayed_operation_desc::<O>(duel, g, phase, RESET_PHASE | phase, flag, e, tp, 0, 1, effect_desc)
         })
     }
 

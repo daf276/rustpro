@@ -33,6 +33,11 @@ fn exclusive<T>(mutex: &mut Mutex<T>) -> &mut T {
     mutex.get_mut().unwrap_or_else(PoisonError::into_inner)
 }
 
+fn copy_into(duel: &engine::Duel, target: &mut engine::Duel) -> PyResult<()> {
+    target.clone_from(duel);
+    Ok(())
+}
+
 fn same_length(values: usize, slots: usize) -> PyResult<()> {
     match values == slots {
         true => Ok(()),
@@ -161,6 +166,31 @@ impl Duel {
     fn duel(&mut self) -> &mut Fiber {
         exclusive(&mut self.duel)
     }
+
+    // A copy written into `out`, reusing its buffers, if given; else a new duel `make` builds.
+    fn copy(
+        py: Python<'_>,
+        out: Option<Py<Self>>,
+        record: Option<&DuelRecord>,
+        write: impl FnOnce(&mut engine::Duel) -> PyResult<()>,
+        make: impl FnOnce() -> PyResult<engine::Duel>,
+    ) -> PyResult<Py<Self>> {
+        let Some(out) = out else {
+            let duel = Mutex::new(Fiber::new(make()?));
+            return Py::new(
+                py,
+                Self {
+                    duel,
+                    record: record.cloned(),
+                },
+            );
+        };
+        let mut target = out.try_borrow_mut(py)?;
+        write(target.duel().duel_mut())?;
+        target.record = record.cloned();
+        drop(target);
+        Ok(out)
+    }
 }
 
 #[pymethods]
@@ -183,11 +213,11 @@ impl Duel {
         Self::replay(database, DuelRecord { seed, position, actions })
     }
 
-    fn clone(&mut self) -> Self {
-        Self {
-            duel: Mutex::new(self.duel().clone()),
-            record: self.record.clone(),
-        }
+    /// A copy, written into `out` (another Duel, whose buffers it reuses) if given.
+    #[pyo3(signature = (out = None))]
+    fn clone(&mut self, py: Python<'_>, out: Option<Py<Self>>) -> PyResult<Py<Self>> {
+        let duel = &**exclusive(&mut self.duel);
+        Self::copy(py, out, self.record.as_ref(), |target| copy_into(duel, target), || Ok(duel.clone()))
     }
 
     /// The player the prompt waits for, None once the duel ended.
@@ -225,13 +255,14 @@ impl Duel {
         Ok(out)
     }
 
-    /// A duel agreeing with what `player` sees, the hidden cards drawn from `pool` (the opponent's deck, as known or assumed).
-    fn determinize(&mut self, player: u8, seed: u64, pool: Deck) -> PyResult<Self> {
-        let mut rng = Xoshiro256StarStar::new(StdRng::seed_from_u64(seed).random());
-        Ok(Self {
-            duel: Mutex::new(Fiber::new(self.duel().determinize(player, &mut rng, &pool.0).map_err(fail)?)),
-            record: None,
-        })
+    /// A duel agreeing with what `player` sees, the hidden cards drawn from `pool` (the opponent's deck, as known or assumed),
+    /// written into `out` if given.
+    #[pyo3(signature = (player, seed, pool, out = None))]
+    fn determinize(&mut self, py: Python<'_>, player: u8, seed: u64, pool: Deck, out: Option<Py<Self>>) -> PyResult<Py<Self>> {
+        let rng = || Xoshiro256StarStar::new(StdRng::seed_from_u64(seed).random());
+        let duel = &**self.duel();
+        let write = |target: &mut engine::Duel| duel.determinize_into(player, &mut rng(), &pool.0, target).map_err(fail);
+        Self::copy(py, out, None, write, || duel.determinize(player, &mut rng(), &pool.0).map_err(fail))
     }
 
     fn position<'py>(&mut self, py: Python<'py>) -> PyResult<Bound<'py, PyBytes>> {
@@ -396,13 +427,13 @@ impl Batch {
         Ok(out)
     }
 
-    /// A copy of the slot's duel, None for a retired slot.
-    fn duel(&mut self, slot: usize) -> Option<Duel> {
-        let duel = exclusive(&mut self.batch).duel(slot)?.clone();
-        Some(Duel {
-            duel: Mutex::new(Fiber::new(duel)),
-            record: None,
-        })
+    /// A copy of the slot's duel, written into `out` if given; None for a retired slot.
+    #[pyo3(signature = (slot, out = None))]
+    fn duel(&mut self, py: Python<'_>, slot: usize, out: Option<Py<Duel>>) -> PyResult<Option<Py<Duel>>> {
+        let Some(duel) = exclusive(&mut self.batch).duel(slot) else {
+            return Ok(None);
+        };
+        Duel::copy(py, out, None, |target| copy_into(duel, target), || Ok(duel.clone())).map(Some)
     }
 }
 

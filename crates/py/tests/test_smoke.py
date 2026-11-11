@@ -79,6 +79,7 @@ def test_every_duel_ends_alike_from_the_same_seed(database, deck):
 
 def test_determinize_shows_no_more_than_the_observation(database, deck):
     duel = ygo_sim.Duel(database, (deck, deck), 21)
+    pooled = duel.clone()
     rng = np.random.default_rng(21)
     resampled, hidden = 0, 0
     for step in range(600):
@@ -96,10 +97,13 @@ def test_determinize_shows_no_more_than_the_observation(database, deck):
                 assert (getattr(shown, name) == getattr(seen, name)).all(), name
             truth = duel.observe(1 - player)
             resampled += (determinized.observe(1 - player).cards != truth.cards).any()
+            assert duel.determinize(player, step, deck, out=pooled) is pooled
+            assert (pooled.observe(1 - player).cards == determinized.observe(1 - player).cards).all()
         duel.apply(int(rng.choice(duel.legal_actions())))
     assert hidden > 0 and resampled > 0
     replayed = ygo_sim.Duel.from_record(database, duel.record())
     assert (replayed.observe(0).cards == duel.observe(0).cards).all()
+    assert duel.clone(out=pooled) is pooled and pooled.record() == duel.record()
     assert ygo_sim.Duel.from_position(database, duel.position(), 1).acting is not None
 
 

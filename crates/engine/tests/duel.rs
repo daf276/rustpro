@@ -135,11 +135,14 @@ fn should_finish_identically_when_cloned_at_a_prompt() {
         let mut full = started_duel(&main, &scripts::LIBRARY).unwrap();
         let situations = play(&mut full, 0..DECISIONS).unwrap();
         assert!(full.result().is_some());
+        // Cloned into after the first prompt: a duel played to the end, with its spare snapshot.
+        let mut pooled = full.clone();
         for prompt in [0, 1, 17, 100, 333].into_iter().chain(required(situations).map(Option::unwrap)) {
             let mut duel = started_duel(&main, &scripts::LIBRARY).unwrap();
             play(&mut duel, 0..prompt).unwrap();
             let mut clone = duel.clone();
-            for duel in [&mut duel, &mut clone] {
+            pooled.clone_from(&duel);
+            for duel in [&mut duel, &mut clone, &mut pooled] {
                 play(duel, prompt..DECISIONS).unwrap();
                 assert_eq!(
                     (duel.take_trace(), duel.result()),

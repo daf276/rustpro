@@ -41,12 +41,15 @@ cargo run --profile card -p diff --bin card -- <code>... --threads 8
 # All tests (the per-card suites run a sample of the ported cards; DIFF_ALL_CARDS=1 runs every card)
 cargo test --profile card --workspace
 
-# Python module
-maturin develop --release -m crates/py/Cargo.toml
+# Python module (unwinds on panic, so a panic reaches Python as an exception)
+maturin develop --profile python -m crates/py/Cargo.toml
 python -m pytest crates/py/tests
 
 # Throughput benchmark of the full stack
 cargo run --profile sim -p bench --bin stack
+
+# The same with PGO (binaries in target/pgo-use/sim/); the Python module: python tools/pgo.py maturin develop -m crates/py/Cargo.toml
+python tools/pgo.py -p bench --bin stack --bin throughput
 ```
 
 The `card` profile is a release build with incremental compilation, so a card edit rebuilds in seconds. The card command and the diff suites cache a hash of the oracle's output per scenario, so a scenario whose setup is unchanged only replays the engine (`ORACLE_CACHE=off` disables it).
@@ -82,7 +85,7 @@ Elfnote mirror matches (a YCS-winning deck with Synchro, Xyz and Link play) unde
 | Encode the legal actions, median | 0.4 µs | 0.6 µs |
 | Determinize (resample hidden cards), median | 19.3 µs | 26.8 µs |
 
-PGO (`tools/pgo.py`) added about a fifth in the optimization pass. For comparison, ocgcore with Lua runs about 10.8k decisions per second per thread on random Advanced decks.
+The table is from before the performance pass of 2026-11-11 and is re-measured when it ends. Measured against it side by side (both binaries at once on two cores, median of six rounds, 1 thread), master runs 1.24x on the Elfnote mirror (about 276k actions/s) and 1.58x on Normal Monster duels (about 1.11M); built with PGO, 1.56x (about 347k) and 2.22x (about 1.57M). The `sim` profile aborts on panic and the benches use mimalloc (`--features system-allocator` for the system heap); `-C target-cpu=x86-64-v3` adds about 2% on AVX2 machines. For comparison, ocgcore with Lua runs about 10.8k decisions per second per thread on random Advanced decks.
 
 ## License
 

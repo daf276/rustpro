@@ -14,8 +14,8 @@ macro_rules! unported {
 
 // Clone whose clone_from goes field by field, so that copying into an existing value keeps its buffers.
 macro_rules! clone_by_field {
-    ($type:ty { $($field:ident),* $(,)? }) => {
-        impl Clone for $type {
+    ([$($generics:tt)*] $type:ty { $($field:ident),* $(,)? }) => {
+        impl<$($generics)*> Clone for $type {
             fn clone(&self) -> Self {
                 Self { $($field: self.$field.clone()),* }
             }
@@ -24,6 +24,9 @@ macro_rules! clone_by_field {
                 $(self.$field.clone_from(&source.$field);)*
             }
         }
+    };
+    ($type:ty { $($field:ident),* $(,)? }) => {
+        clone_by_field!([] $type { $($field),* });
     };
 }
 
@@ -60,6 +63,6 @@ pub use effect::{
 pub use gamestate::{DuelRecord, FormatError, PlacedCard, Position, PositionError, ReplayError};
 pub use libduel::{ChainInfo, ExtraSummon, FromChainInfo, MonsterStats, ReleaseOptions};
 pub use libeffect::CountCode;
-pub use observation::{Choice, DeterminizeError, MAX_DECLARED_CODES, Observation, ObservationSink, SeenCard, SeenLink};
+pub use observation::{Choice, DeterminizeError, Determinizer, MAX_DECLARED_CODES, Observation, ObservationSink, SeenCard, SeenLink};
 pub use rng::Xoshiro256StarStar;
 pub use script::{Args, FusionCheck, InitialEffect, Interrupt, Library, Resumed, SUSPEND, Script, SynchroCheck};

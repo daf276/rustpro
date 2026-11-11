@@ -220,12 +220,14 @@ impl<T: Copy + Default, const N: usize> IntoIterator for List<T, N> {
 }
 
 // A Vec in copy-on-write chunks of N items (a multiple of 8), marking the runs of 8 that changed so sync_from copies only those.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Shared<T, const N: usize> {
     chunks: Vec<Arc<[T; N]>>,
     len: usize,
     changed: Cell<u64>,
 }
+
+clone_by_field!([T, const N: usize] Shared<T, N> { chunks, len, changed });
 
 const RUN: usize = 8;
 

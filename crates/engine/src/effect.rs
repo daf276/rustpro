@@ -536,13 +536,25 @@ mod tests {
                 entries.map(|&(_, effect)| effect).collect::<Vec<_>>()
             };
             let from = container_key(container, card, 0);
-            assert!(registry.equal_range(container, card, code).eq(listed(key..key + 1)));
-            assert!(registry.all(container, card).map(|(_, effect)| effect).eq(listed(from..from + (1 << 32))));
+            assert!(registry.equal_range(container, card, code).eq(listed(key..key + NEXT_KEY)));
+            assert!(
+                registry
+                    .all(container, card)
+                    .map(|(_, effect)| effect)
+                    .eq(listed(from..from + NEXT_CARD))
+            );
             if let Some(card) = card {
-                let of_card = |&(other, _): &(u64, EffectId)| (other >> 32) as u16 == (key >> 32) as u16;
-                assert!(registry.of_card(card).eq(model.iter().copied().filter(of_card).map(|(_, effect)| effect)));
+                let of_card = |&(other, _): &(u64, EffectId)| (other >> 48) % 512 == (key >> 48) % 512;
+                assert!(
+                    registry
+                        .of_card(card)
+                        .eq(model.iter().copied().filter(of_card).map(|(_, effect)| effect))
+                );
             }
-            assert_eq!(registry.has_code(code), model.iter().any(|&(other, _)| other as u32 == code));
+            assert_eq!(
+                registry.has_code(code),
+                model.iter().any(|&(other, _)| (other >> 16) as u32 == code)
+            );
         }
     }
 }
@@ -581,18 +593,21 @@ pub enum Container {
     Continuous,
 }
 
+// The key of an equal range, never 0: the container, the card plus one and the code, above 16 bits left for an effect.
 pub fn container_key(container: Container, card: Option<CardId>, code: u32) -> u64 {
     let card = card.map_or(0, |card| card.index() as u64 + 1);
-    ((container as u64) << 48) | (card << 32) | u64::from(code)
+    ((container as u64) << 57) | (card << 48) | (u64::from(code) << 16)
 }
+
+const NEXT_KEY: u64 = 1 << 16;
+const NEXT_CARD: u64 = 1 << 48;
 
 // Every effect_container in one list of multimap equal ranges, grouped into a bucket per card and per container of the
 // field; counts of the codes and keys answer most misses.
 #[derive(Debug)]
 pub struct Registry {
-    // Sorted within a bucket, an equal range in insertion order.
-    keys: Vec<u64>,
-    effects: Vec<EffectId>,
+    // A key with its effect in the low bits; sorted by key within a bucket, an equal range in insertion order.
+    entries: Vec<u64>,
     // Bucket b holds the entries starts[b]..starts[b + 1].
     starts: [u16; BUCKETS + 1],
     codes: Counts,
@@ -601,8 +616,7 @@ pub struct Registry {
 }
 
 clone_by_field!(Registry {
-    keys,
-    effects,
+    entries,
     starts,
     codes,
     hashes,
@@ -612,8 +626,7 @@ clone_by_field!(Registry {
 impl Default for Registry {
     fn default() -> Self {
         Self {
-            keys: Vec::new(),
-            effects: Vec::new(),
+            entries: Vec::new(),
             starts: [0; BUCKETS + 1],
             codes: Counts([0; 128]),
             hashes: Counts([0; 128]),
@@ -625,9 +638,9 @@ impl Default for Registry {
 const BUCKETS: usize = MAX_CARDS + Container::Continuous as usize + 1;
 
 fn bucket(key: u64) -> usize {
-    match (key >> 32) as u16 {
-        0 => MAX_CARDS + (key >> 48) as usize,
-        card => usize::from(card) - 1,
+    match (key >> 48) as usize % 512 {
+        0 => MAX_CARDS + (key >> 57) as usize,
+        card => card - 1,
     }
 }
 
@@ -663,16 +676,15 @@ impl Counts {
 
 impl Registry {
     pub fn insert(&mut self, key: u64, effect: EffectId) {
-        let at = self.range(key, key + 1).end;
-        self.keys.insert(at, key);
-        self.effects.insert(at, effect);
+        let at = self.range(key, key + NEXT_KEY).end;
+        self.entries.insert(at, key | u64::from(effect.0.get()));
         self.adjust(key, true);
     }
 
     pub fn remove(&mut self, key: u64, effect: EffectId) {
-        if let Some(at) = self.range(key, key + 1).find(|&at| self.effects.get(at) == Some(&effect)) {
-            self.keys.remove(at);
-            self.effects.remove(at);
+        let entry = key | u64::from(effect.0.get());
+        if let Some(at) = self.range(key, key + NEXT_KEY).find(|&at| self.entries.get(at) == Some(&entry)) {
+            self.entries.remove(at);
             self.adjust(key, false);
         }
     }
@@ -681,7 +693,7 @@ impl Registry {
         for start in self.starts.iter_mut().skip(bucket(key) + 1) {
             *start = if added { *start + 1 } else { *start - 1 };
         }
-        self.codes.count(code_slot(key as u32), added);
+        self.codes.count(code_slot((key >> 16) as u32), added);
         self.hashes.count(key_slot(key), added);
         self.changed.set(true);
     }
@@ -705,41 +717,41 @@ impl Registry {
         let Some(&[start, end]) = self.starts.get(bucket..bucket + 2) else {
             return 0..0;
         };
-        let start = usize::from(start);
-        let keys = self.keys.get(start..usize::from(end)).unwrap_or_default();
-        let first = start + keys.partition_point(|&key| key < from);
-        let len = self
-            .keys
-            .get(first..usize::from(end))
-            .map_or(0, |rest| rest.iter().take_while(|&&key| key < to).count());
+        let entries = self.entries.get(start.into()..end.into()).unwrap_or_default();
+        let first = entries.partition_point(|&entry| entry < from);
+        let len = entries
+            .get(first..)
+            .map_or(0, |rest| rest.iter().take_while(|&&entry| entry < to).count());
+        let first = usize::from(start) + first;
         first..first + len
+    }
+
+    fn listed(&self, range: std::ops::Range<usize>) -> impl Iterator<Item = (u32, EffectId)> + Clone + '_ {
+        let entries = self.entries.get(range).unwrap_or_default();
+        let effect = |entry: u64| NonZeroU16::new(entry as u16).map_or_else(EffectId::default, EffectId);
+        entries.iter().map(move |&entry| ((entry >> 16) as u32, effect(entry)))
     }
 
     pub fn equal_range(&self, container: Container, card: Option<CardId>, code: u32) -> impl Iterator<Item = EffectId> + Clone + '_ {
         let key = container_key(container, card, code);
         let range = if self.hashes.any(key_slot(key)) {
-            self.range(key, key + 1)
+            self.range(key, key + NEXT_KEY)
         } else {
             0..0
         };
-        self.of(range)
+        self.listed(range).map(|(_, effect)| effect)
     }
 
     // A whole container in multimap order: the code, then insertion.
     pub fn all(&self, container: Container, card: Option<CardId>) -> impl Iterator<Item = (u32, EffectId)> + Clone + '_ {
         let from = container_key(container, card, 0);
-        let range = self.range(from, from + (1 << 32));
-        let keys = self.keys.get(range.clone()).unwrap_or_default();
-        keys.iter().map(|&key| key as u32).zip(self.of(range))
+        self.listed(self.range(from, from + NEXT_CARD))
     }
 
     // Every container of a card, in the order of [Container].
     pub fn of_card(&self, card: CardId) -> impl Iterator<Item = EffectId> + Clone + '_ {
-        self.of(self.range(container_key(Container::Single, Some(card), 0), u64::MAX))
-    }
-
-    fn of(&self, range: std::ops::Range<usize>) -> impl Iterator<Item = EffectId> + Clone + '_ {
-        self.effects.get(range).unwrap_or_default().iter().copied()
+        let range = self.range(container_key(Container::Single, Some(card), 0), u64::MAX);
+        self.listed(range).map(|(_, effect)| effect)
     }
 }
 

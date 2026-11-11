@@ -15,6 +15,8 @@ use engine::{Action, ActionError, Duel, Resumed, Status};
 
 // Reserved per stack; Windows commits its pages as they are touched.
 const STACK_SIZE: usize = 2 << 20;
+// Per thread: runs often finish on another thread than they started on, so pools drift.
+const POOLED_STACKS: usize = 8;
 
 type Run = Coroutine<Resumed, Waiting, Status, DefaultStack>;
 type Resumer = NonNull<Yielder<Resumed, Waiting>>;
@@ -38,8 +40,14 @@ pub struct Fiber {
     waiting: Option<(Run, Resumer)>,
 }
 
-// SAFETY: a waiting run's stack holds the engine's frames over this fiber's duel (`Send`), and nothing tied to a thread.
+// SAFETY: a waiting run's stack holds the engine's frames over this fiber's duel (`Send`), and nothing tied to a thread
+// (the engine and the scripts keep no thread-local state across a prompt).
 unsafe impl Send for Fiber {}
+
+const _: fn() = || {
+    fn send<T: Send>() {}
+    send::<Duel>();
+};
 
 impl Fiber {
     pub fn new(duel: Duel) -> Self {
@@ -115,7 +123,12 @@ impl Fiber {
                 Status::Awaiting
             }
             CoroutineResult::Return(status) => {
-                let _ = STACKS.try_with(|stacks| stacks.borrow_mut().push(run.into_stack()));
+                let _ = STACKS.try_with(|stacks| {
+                    let mut stacks = stacks.borrow_mut();
+                    if stacks.len() < POOLED_STACKS {
+                        stacks.push(run.into_stack());
+                    }
+                });
                 status
             }
         }

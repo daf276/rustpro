@@ -42,7 +42,11 @@ fn finish(fiber: &mut Fiber, mut decision: usize, mut waiting: impl FnMut(&mut F
         if fiber.is_waiting() {
             waiting(fiber, decision)?;
         }
-        status = fiber.apply(pick(fiber, decision)?)?;
+        let action = pick(fiber, decision)?;
+        status = match decision % 7 {
+            0 => std::thread::scope(|scope| scope.spawn(|| fiber.apply(action)).join()).map_err(|_| "apply panicked")??,
+            _ => fiber.apply(action)?,
+        };
         decision += 1;
     }
     Ok((fiber.take_trace(), fiber.result()))

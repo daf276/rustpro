@@ -244,10 +244,7 @@ impl Duel {
                 debug_assert_eq!(self.trace.mute.get(), 0, "a rerun wrote fewer messages than its previous attempt");
                 self.replay.log.clear();
                 self.replay.messages = 0;
-                self.replay.spare = Spare {
-                    snapshot,
-                    synced: true,
-                };
+                self.replay.spare = Spare { snapshot, synced: true };
                 Some(value)
             }
             Err(Interrupt) => {

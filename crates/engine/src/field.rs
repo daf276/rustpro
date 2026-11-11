@@ -10,7 +10,7 @@ use crate::effect::{
 };
 use crate::libduel::ReleaseOptions;
 use crate::list::List;
-use crate::operations::{SelfDestroy, SelfDestroyUnique};
+use crate::operations::{SelfDestroy, SelfDestroyUnique, SendToArgs};
 use crate::processor::{Adjust, Unit};
 
 pub(crate) type ReleaseFilter<'a> = &'a dyn Fn(CardId, &Duel) -> bool;
@@ -266,6 +266,8 @@ pub struct Processor {
     pub quick_f_chain: Vec<(EffectId, Chain)>,
     pub chain_limit: Vec<ChainLimit>,
     pub chain_limit_p: Vec<ChainLimit>,
+    // What the SendTo units between their steps 4 and 9 keep, innermost last.
+    pub send_to_args: Vec<SendToArgs>,
     pub leave_confirmed: CardSet,
     pub special_summoning: CardSet,
     pub equiping_cards: CardSet,
@@ -421,6 +423,7 @@ clone_by_field!(Processor {
     quick_f_chain,
     chain_limit,
     chain_limit_p,
+    send_to_args,
     leave_confirmed,
     special_summoning,
     equiping_cards,

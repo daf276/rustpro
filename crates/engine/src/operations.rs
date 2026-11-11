@@ -96,7 +96,6 @@ pub struct SendTo {
     pub reason: u32,
     pub targets: CardSet,
     pub reason_effect: Option<EffectId>,
-    pub extra_args: Option<Box<SendToArgs>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -1524,7 +1523,6 @@ impl Duel {
                     reason_effect,
                     reason,
                     reason_player,
-                    extra_args: None,
                 });
                 false
             }
@@ -1978,14 +1976,14 @@ impl Duel {
                 if self.core.global_flag & GLOBALFLAG_DECK_REVERSE_CHECK != 0 {
                     self.check_deck_top_before_send(&cv);
                 }
-                arg.extra_args = Some(Box::new(SendToArgs {
+                self.core.send_to_args.push(SendToArgs {
                     cv,
                     ..SendToArgs::default()
-                }));
+                });
                 false
             }
             5 => {
-                let Some(param) = &arg.extra_args else { return true };
+                let Some(param) = self.core.send_to_args.last() else { return true };
                 let Some(&card) = param.cv.get(param.cvit) else {
                     arg.step = 8;
                     return false;
@@ -2010,7 +2008,7 @@ impl Duel {
                     self.reset(card, RESET_LEAVE, RESET_EVENT);
                     self.clear_relate_effect(card);
                     self.remove_card(card);
-                    if let Some(param) = &mut arg.extra_args {
+                    if let Some(param) = self.core.send_to_args.last_mut() {
                         param.leave_field.insert(card);
                         param.cvit += 1;
                     }
@@ -2025,7 +2023,9 @@ impl Duel {
                 if self.returns.at_i32(0) != 0 {
                     return false;
                 }
-                let Some(param) = &mut arg.extra_args else { return true };
+                let Some(mut param) = self.core.send_to_args.pop() else {
+                    return true;
+                };
                 let Some(&card) = param.cv.get(param.cvit) else { return true };
                 let target = &self.cards[card];
                 let oloc = target.current.location;
@@ -2077,11 +2077,12 @@ impl Duel {
                     self.cards[card].previous.controler = control_player;
                 }
                 param.cvit += 1;
+                self.core.send_to_args.push(param);
                 arg.step = 4;
                 false
             }
             9 => {
-                let Some(param) = arg.extra_args.take() else { return true };
+                let Some(param) = self.core.send_to_args.pop() else { return true };
                 if self.core.global_flag & GLOBALFLAG_DECK_REVERSE_CHECK != 0 {
                     for p in 0..2 {
                         if !param.check_decktop_visibility[p] {
@@ -3816,7 +3817,6 @@ impl Duel {
                     reason_effect,
                     reason,
                     reason_player,
-                    extra_args: None,
                 });
                 false
             }

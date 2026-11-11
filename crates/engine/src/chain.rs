@@ -515,9 +515,6 @@ impl Duel {
         }
         // A prompt waits: the unit runs again once it is answered.
         arg.step = RESTART;
-        if self.core.replay.stack.is_empty() {
-            self.core.presented = self.core.replay.prompt.take();
-        }
         false
     }
 

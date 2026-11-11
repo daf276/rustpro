@@ -388,8 +388,10 @@ impl Duel {
             return OcgStatus::Continue;
         }
         // A script function's prompt, shown on top of the unit that ran the function.
-        if let Some(prompt) = self.core.presented.take() {
-            units.push(*prompt);
+        if self.replay.stack.is_empty()
+            && let Some(prompt) = self.replay.prompt.take()
+        {
+            units.push(prompt);
             return OcgStatus::Awaiting;
         }
         if needs_answer { OcgStatus::Awaiting } else { OcgStatus::Continue }
@@ -403,13 +405,15 @@ impl Duel {
                 break (true, needs_answer);
             }
             *arg.step() = arg.step().wrapping_add(1);
-            if needs_answer || !self.core.subunits.is_empty() || self.result.is_some() || self.core.presented.is_some() {
+            if needs_answer || self.steps_end() {
                 break (false, needs_answer);
             }
-            if self.core.replay.interrupted {
-                break (false, false);
-            }
         }
+    }
+
+    // After a step: a unit to run first, the end of the duel, or a script function left at a prompt.
+    fn steps_end(&self) -> bool {
+        !self.core.subunits.is_empty() || self.result.is_some() || self.replay.prompt.is_some() || self.replay.interrupted
     }
 
     // Flip effects of the damage step wait until damage calculation, then trigger before the others.

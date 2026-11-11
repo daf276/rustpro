@@ -11,7 +11,6 @@ use crate::libduel::ReleaseOptions;
 use crate::list::List;
 use crate::operations::{SelfDestroy, SelfDestroyUnique};
 use crate::processor::{Adjust, Unit};
-use crate::script::Replay;
 
 pub(crate) type ReleaseFilter<'a> = &'a dyn Fn(CardId, &Duel) -> bool;
 
@@ -202,9 +201,6 @@ impl ReturnCards {
 pub struct Processor {
     pub units: Vec<Unit>,
     pub subunits: Vec<Unit>,
-    // A prompt to show in place of the unit that ran a script function, which waits for the answer.
-    pub presented: Option<Box<Unit>>,
-    pub replay: Replay,
     pub just_sent_cards: CardSet,
     pub select_cards: Cards16,
     pub unselect_cards: Cards16,
@@ -370,8 +366,6 @@ pub struct Processor {
 clone_by_field!(Processor {
     units,
     subunits,
-    presented,
-    replay,
     just_sent_cards,
     select_cards,
     unselect_cards,

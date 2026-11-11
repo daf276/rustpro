@@ -382,7 +382,7 @@ impl Duel {
         let Some(database) = self.database.filter(|_| self.result.is_none()) else {
             return Ok(duel);
         };
-        if self.core.replay.snapshot.is_none() {
+        if self.replay.snapshot.is_none() {
             let changes = self.unchanged(|| self.sample(player, rng, pool, database, None))?;
             let trace = std::mem::take(&mut duel.trace);
             duel.change(&changes);
@@ -393,13 +393,13 @@ impl Duel {
         let (observation, prompt) = (self.observe(player), self.prompt());
         for _ in 0..RERUN_ATTEMPTS {
             let changes = {
-                let running = self.core.replay.snapshot.as_ref().map(lock);
+                let running = self.replay.snapshot.as_ref().map(lock);
                 self.unchanged(|| match running.as_deref() {
                     Some(running) => running.unchanged(|| self.sample(player, rng, pool, database, Some(running))),
                     None => self.sample(player, rng, pool, database, None),
                 })
             }?;
-            if let Some(snapshot) = &mut duel.core.replay.snapshot {
+            if let Some(snapshot) = &mut duel.replay.snapshot {
                 let mut resampled = lock(snapshot).clone();
                 resampled.change(&changes);
                 *snapshot = Arc::new(Mutex::new(resampled));
@@ -417,8 +417,8 @@ impl Duel {
     fn rerun_to_prompt(&mut self) {
         self.core.units.pop();
         let picks = std::mem::take(&mut self.returns);
-        self.returns.data = self.core.replay.log.pop().unwrap_or_default();
-        self.core.replay.messages = self.trace.count.get();
+        self.returns.data = self.replay.log.pop().unwrap_or_default();
+        self.replay.messages = self.trace.count.get();
         let buffer = self.trace.buffer.take();
         self.run();
         *self.trace.buffer.get_mut() = buffer;

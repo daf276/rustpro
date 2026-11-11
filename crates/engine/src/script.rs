@@ -123,8 +123,8 @@ pub struct Replay {
     // The duel before the pending function's first attempt; set while one of its prompts waits. Clones share it.
     pub snapshot: Option<Snapshot>,
     pub spare: Spare,
-    // The prompt a nested loop met with no answer logged, carried out to the function's unit.
-    pub prompt: Option<Box<Unit>>,
+    // The prompt a nested loop met with no answer logged, shown on top of the function's unit once the function is left.
+    pub prompt: Option<Unit>,
     // The unit stack of a yield's nested run, kept for its capacity.
     pub units: Vec<Unit>,
     pub interrupted: bool,
@@ -163,54 +163,54 @@ impl Duel {
         promptless: bool,
         call: impl Fn(&mut Self) -> Script<T>,
     ) -> Option<T> {
-        let nested = !self.core.replay.stack.is_empty();
+        let nested = !self.replay.stack.is_empty();
         if nested || promptless {
-            self.core.replay.stack.push((effect, player));
+            self.replay.stack.push((effect, player));
             let result = call(self);
-            self.core.replay.stack.pop();
+            self.replay.stack.pop();
             if !nested {
                 self.assumes.get_mut().clear();
             }
             if result.is_err() && nested {
-                self.core.replay.interrupted = true;
+                self.replay.interrupted = true;
             } else if result.is_err() && self.result.is_none() {
                 self.reach_unported(concat!(file!(), ":", line!(), " (a promptless function prompted)"));
             }
             return result.ok();
         }
-        let (snapshot, mute) = match self.core.replay.snapshot.take() {
+        let (snapshot, mute) = match self.replay.snapshot.take() {
             Some(snapshot) => {
                 // No answer is empty; an empty one reruns to the prompt that waits (Duel::rerun_to_prompt).
                 if !self.returns.data.is_empty() {
                     let answer = self.returns.data.clone();
-                    self.core.replay.log.push(answer);
+                    self.replay.log.push(answer);
                 }
-                self.copy_from(&mut lock(&snapshot));
-                (snapshot, self.trace.count.get() - self.core.replay.messages)
+                self.copy_from(&lock(&snapshot));
+                (snapshot, self.trace.count.get() - self.replay.messages)
             }
             None => (self.snapshot(), 0),
         };
-        self.core.replay.cursor = 0;
+        self.replay.cursor = 0;
         self.trace.mute.set(mute);
         let start = self.trace.count.get();
-        self.core.replay.stack.push((effect, player));
+        self.replay.stack.push((effect, player));
         let result = call(self);
-        self.core.replay.stack.pop();
-        self.core.replay.interrupted = false;
+        self.replay.stack.pop();
+        self.replay.interrupted = false;
         match result {
             Ok(value) => {
                 // duel::restore_assumes, which the core runs once the outermost Lua call returns.
                 self.assumes.get_mut().clear();
                 debug_assert_eq!(self.trace.mute.get(), 0, "a rerun wrote fewer messages than its previous attempt");
-                self.core.replay.log.clear();
-                self.core.replay.messages = 0;
-                self.core.replay.spare = Spare(Some(snapshot));
+                self.replay.log.clear();
+                self.replay.messages = 0;
+                self.replay.spare = Spare(Some(snapshot));
                 Some(value)
             }
             Err(Interrupt) => {
                 if self.result.is_none() {
-                    self.core.replay.messages = start;
-                    self.core.replay.snapshot = Some(snapshot);
+                    self.replay.messages = start;
+                    self.replay.snapshot = Some(snapshot);
                 }
                 None
             }
@@ -256,22 +256,22 @@ impl Duel {
 
     // A copy without the trace and the replay state, which live on across attempts.
     fn snapshot(&mut self) -> Snapshot {
-        if let Some(mut spare) = self.core.replay.spare.0.take()
+        if let Some(mut spare) = self.replay.spare.0.take()
             && let Some(spare_duel) = Arc::get_mut(&mut spare)
         {
             spare_duel.get_mut().unwrap_or_else(PoisonError::into_inner).copy_from(self);
             return spare;
         }
         let trace = std::mem::take(&mut self.trace);
-        let replay = std::mem::take(&mut self.core.replay);
+        let replay = std::mem::take(&mut self.replay);
         let snapshot = Arc::new(Mutex::new(self.clone()));
         self.trace = trace;
-        self.core.replay = replay;
+        self.replay = replay;
         snapshot
     }
 
     // Equals `source` but for the trace and replay state; one must be a snapshot of the other, as sync_from copies only changes.
-    fn copy_from(&mut self, source: &mut Duel) {
+    fn copy_from(&mut self, source: &Duel) {
         // Destructures every field, so that a new one fails to compile until it is listed.
         macro_rules! copy_fields {
             ($target:ident <- $source:ident; sync: $($sync:ident),*; clone: $($clone:ident),*; rest: $($rest:tt)*) => {
@@ -285,22 +285,19 @@ impl Duel {
             clone: player, infos, relations, returns, return_cards, nil_event, random, result, library, database, script_state,
                 script_groups, values_reset, fusion_check_additional, synchro_check_additional, ritual_summoning_level, assumes,
                 pending_resets, material_cards, overlay_cards, counters, card_targets, card_relations, announced_cards,
-                indestructable_effects, battled_cards, immune_effects, equip_cards, unported;
-            rest: core, trace: _, destination_probe: _);
-        let (replay, own) = (std::mem::take(&mut core.replay), std::mem::take(&mut self.core.replay));
-        self.core.clone_from(core);
-        (core.replay, self.core.replay) = (replay, own);
+                indestructable_effects, battled_cards, immune_effects, equip_cards, unported, core;
+            rest: trace: _, replay: _, destination_probe: _);
     }
 
     // Between a coroutine's yield and resume: the emplaced units run, a prompt among them answered from the log or interrupting.
     pub(crate) fn yield_script(&mut self) -> Script<()> {
         self.returns.set_i32(0, 0);
-        let mut units = std::mem::take(&mut self.core.replay.units);
+        let mut units = std::mem::take(&mut self.replay.units);
         let result = self.run_yield(&mut units);
         units.clear();
-        self.core.replay.units = units;
+        self.replay.units = units;
         result?;
-        if let Some(&(effect, player)) = self.core.replay.stack.last() {
+        if let Some(&(effect, player)) = self.replay.stack.last() {
             self.core.reason_effect.set(Some(effect));
             self.core.reason_player.set(player);
         }
@@ -316,20 +313,20 @@ impl Duel {
                 OcgStatus::End => return Ok(()),
                 OcgStatus::Continue => {}
                 OcgStatus::Awaiting => {
-                    let replay = &mut self.core.replay;
+                    let replay = &mut self.replay;
                     match replay.log.get(replay.cursor) {
                         Some(answer) => {
                             self.returns = ProgressiveBuffer { data: answer.clone() };
-                            self.core.replay.cursor += 1;
+                            self.replay.cursor += 1;
                         }
                         None => {
-                            self.core.replay.prompt = units.pop().map(Box::new);
-                            self.core.replay.interrupted = true;
+                            self.replay.prompt = units.pop();
+                            self.replay.interrupted = true;
                         }
                     }
                 }
             }
-            if self.core.replay.interrupted {
+            if self.replay.interrupted {
                 return Err(Interrupt);
             }
         }

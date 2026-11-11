@@ -1,12 +1,4 @@
-// What Lua does for the core: the card scripts' entry points, their parameters, and coroutines.
-//
-// The core runs cost, target and operation functions as coroutines: a Duel action emplaces its processor unit and
-// yields, the processor runs that unit and everything it emplaced, then resumes the function. Here a function runs
-// to completion in one call and an action runs its units in a nested processor loop at the call site, which gives the
-// same order of state changes and messages. A prompt inside that loop cannot wait for an answer mid-function, so the
-// function bails, the prompt is presented on the state the function reached, and once answered the function reruns
-// from a snapshot taken before it started, reading the answers so far from a choice log; the messages its earlier
-// attempts already wrote are muted.
+// Script entry points and coroutines: a prompting function bails, then reruns from a snapshot with the logged answers, muted.
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use crate::buffer::ProgressiveBuffer;
@@ -22,13 +14,7 @@ pub struct Interrupt;
 
 pub type Script<T> = Result<T, Interrupt>;
 
-// The parameters (e, tp, eg, ep, ev, re, r, rp) the core passes to condition, cost, target and operation functions;
-// `c` is the card a summon procedure's functions receive besides (the condition of EFFECT_SPSUMMON_PROC_G receives
-// only e and c), followed by the materials it must use, the only ones it may, and a forced minimum and maximum (0 for
-// nil, as the core leaves them out then). The condition (e, g, gc, chkf) and operation (e, tp, eg, ..., gc, chkf) of
-// EFFECT_FUSION_MATERIAL get g as `materials` and gc as `must`; the summoning effect passed after them is left out, as
-// only cards that are not ported read it. A Normal Summon procedure (e, c, minc, zone, relzone, exeff) gets minc as
-// `min`, then `zone` and `releasable`; exeff, an EFFECT_EXTRA_SUMMON_COUNT effect, comes with the cards that grant one.
+// The parameters (e, tp, eg, ep, ev, re, r, rp) the core passes script functions, then a summon procedure's; 0 is nil.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Args {
     pub e: EffectId,
@@ -40,8 +26,11 @@ pub struct Args {
     pub r: u32,
     pub rp: u8,
     pub c: Option<CardId>,
+    // gc of EFFECT_FUSION_MATERIAL, else the materials a procedure must use.
     pub must: Option<CardSet>,
+    // g of EFFECT_FUSION_MATERIAL, else the only materials a procedure may use.
     pub materials: Option<CardSet>,
+    // minc of a Normal Summon procedure (its exeff is not ported).
     pub min: u16,
     pub max: u16,
     pub chkf: u64,
@@ -66,6 +55,30 @@ impl Args {
             r: event.reason,
             rp: event.reason_player,
             ..Self::default()
+        }
+    }
+
+    pub(crate) fn with_procedure(self, procedure: Procedure) -> Self {
+        let Procedure {
+            card,
+            must,
+            materials,
+            min,
+            max,
+            chkf,
+            zone,
+            releasable,
+        } = procedure;
+        Self {
+            c: Some(card),
+            must,
+            materials,
+            min,
+            max,
+            chkf,
+            zone,
+            releasable,
+            ..self
         }
     }
 }
@@ -105,8 +118,7 @@ pub type Response = List<u8, 32>;
 pub struct Replay {
     pub log: Vec<Response>,
     pub cursor: usize,
-    // The trace count when the last attempt started: the next one mutes what was written since, which includes what the
-    // answered prompt wrote (MSG_HINT with the announced race), as its rerun writes that again.
+    // The trace count when the last attempt started; the next attempt mutes what was written since, as it writes that again.
     pub messages: u64,
     // The duel before the pending function's first attempt; set while one of its prompts waits. Clones share it.
     pub snapshot: Option<Snapshot>,
@@ -116,8 +128,7 @@ pub struct Replay {
     // The unit stack of a yield's nested run, kept for its capacity.
     pub units: Vec<Unit>,
     pub interrupted: bool,
-    // The effects and players of the running functions, innermost last, which an action restores as the reason after
-    // its units ran (the core sets them again on every resume).
+    // The running functions' effects and players, innermost last, restored as the reason after an action's units ran.
     pub stack: List<(EffectId, u8), 4>,
 }
 
@@ -128,8 +139,7 @@ pub(crate) fn lock(snapshot: &Snapshot) -> MutexGuard<'_, Duel> {
     snapshot.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-// The last finished function's snapshot, whose buffers and arenas the next snapshot reuses unless a clone still shares
-// it; a clone of the duel starts without one.
+// The last finished function's snapshot, which the next one reuses unless a clone shares it; a clone starts without one.
 #[derive(Debug, Default)]
 pub struct Spare(Option<Snapshot>);
 
@@ -145,9 +155,7 @@ impl Duel {
         call(self).unwrap_or(false)
     }
 
-    // Runs a cost, target or operation function for `effect` as `player`, the body of the Execute units: a nested
-    // call runs in its parent's attempt, an outermost one snapshots the duel first unless it is `promptless`. Returns
-    // None if a prompt is now presented or the duel ended.
+    // The body of the Execute units; an outermost call snapshots first unless `promptless`. None if a prompt waits or the duel ended.
     pub(crate) fn run_script<T>(
         &mut self,
         effect: EffectId,
@@ -209,11 +217,7 @@ impl Duel {
         }
     }
 
-    // A check whose Lua registers and resets effects (a summon procedure's condition) runs on a copy, since checks only
-    // read the duel. What it registers it resets again before it returns, so what later lookups can tell apart is
-    // brought back: the ids it took, the ids and statuses is_available changed, and the effects of this duel it reset,
-    // which are reset here at the next processor step (and on the copies of later checks before they start), the
-    // messages it wrote, which those resets do not write again, and the script state it wrote.
+    // A check whose Lua registers and resets effects, run on a copy; brings back what later lookups tell apart (ids, resets, messages).
     pub fn check_mut<T>(&self, check: impl FnOnce(&mut Duel) -> T) -> T {
         let mut copy = self.clone();
         copy.reset_pending();
@@ -266,86 +270,29 @@ impl Duel {
         snapshot
     }
 
-    // Makes this duel equal to `source` apart from the trace and the replay state, reusing its buffers. One must be a
-    // snapshot of the other, since the cards, the registry and the effect arena copy only what changed since either
-    // synced.
+    // Equals `source` but for the trace and replay state; one must be a snapshot of the other, as sync_from copies only changes.
     fn copy_from(&mut self, source: &mut Duel) {
-        let Duel {
-            cards,
-            player,
-            infos,
-            effects,
-            field_effects,
-            relations,
-            core,
-            returns,
-            return_cards,
-            nil_event,
-            random,
-            trace: _,
-            result,
-            library,
-            database,
-            script_state,
-            script_groups,
-            values_reset,
-            fusion_check_additional,
-            synchro_check_additional,
-            ritual_summoning_level,
-            assumes,
-            pending_resets,
-            material_cards,
-            overlay_cards,
-            counters,
-            card_targets,
-            card_relations,
-            announced_cards,
-            indestructable_effects,
-            battled_cards,
-            immune_effects,
-            equip_cards,
-            unported,
-            destination_probe: _,
-        } = source;
-        self.cards.sync_from(cards);
-        self.player.clone_from(player);
-        self.infos.clone_from(infos);
-        self.effects.sync_from(effects);
-        self.field_effects.sync_from(field_effects);
-        self.relations.clone_from(relations);
+        // Destructures every field, so that a new one fails to compile until it is listed.
+        macro_rules! copy_fields {
+            ($target:ident <- $source:ident; sync: $($sync:ident),*; clone: $($clone:ident),*; rest: $($rest:tt)*) => {
+                let Duel { $($sync,)* $($clone,)* $($rest)* } = $source;
+                $($target.$sync.sync_from($sync);)*
+                $($target.$clone.clone_from($clone);)*
+            };
+        }
+        copy_fields!(self <- source;
+            sync: cards, effects, field_effects;
+            clone: player, infos, relations, returns, return_cards, nil_event, random, result, library, database, script_state,
+                script_groups, values_reset, fusion_check_additional, synchro_check_additional, ritual_summoning_level, assumes,
+                pending_resets, material_cards, overlay_cards, counters, card_targets, card_relations, announced_cards,
+                indestructable_effects, battled_cards, immune_effects, equip_cards, unported;
+            rest: core, trace: _, destination_probe: _);
         let (replay, own) = (std::mem::take(&mut core.replay), std::mem::take(&mut self.core.replay));
         self.core.clone_from(core);
         (core.replay, self.core.replay) = (replay, own);
-        self.returns.clone_from(returns);
-        self.return_cards.clone_from(return_cards);
-        self.nil_event.clone_from(nil_event);
-        self.random.clone_from(random);
-        self.result.clone_from(result);
-        self.library.clone_from(library);
-        self.database.clone_from(database);
-        self.script_state.clone_from(script_state);
-        self.script_groups.clone_from(script_groups);
-        self.values_reset.clone_from(values_reset);
-        self.fusion_check_additional = *fusion_check_additional;
-        self.synchro_check_additional = *synchro_check_additional;
-        self.ritual_summoning_level.clone_from(ritual_summoning_level);
-        self.assumes.clone_from(assumes);
-        self.pending_resets.clone_from(pending_resets);
-        self.material_cards.clone_from(material_cards);
-        self.overlay_cards.clone_from(overlay_cards);
-        self.counters.clone_from(counters);
-        self.card_targets.clone_from(card_targets);
-        self.card_relations.clone_from(card_relations);
-        self.announced_cards.clone_from(announced_cards);
-        self.indestructable_effects.clone_from(indestructable_effects);
-        self.battled_cards.clone_from(battled_cards);
-        self.immune_effects.clone_from(immune_effects);
-        self.equip_cards.clone_from(equip_cards);
-        self.unported.clone_from(unported);
     }
 
-    // The resume of a yield: what the processor does between a coroutine's yield and its resume. The units the
-    // function emplaced run to completion; a prompt among them takes its answer from the log or interrupts.
+    // Between a coroutine's yield and resume: the emplaced units run, a prompt among them answered from the log or interrupting.
     pub(crate) fn yield_script(&mut self) -> Script<()> {
         self.returns.set_i32(0, 0);
         let mut units = std::mem::take(&mut self.core.replay.units);

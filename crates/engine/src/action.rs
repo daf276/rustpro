@@ -200,67 +200,67 @@ impl Duel {
     }
 
     pub fn prompt(&self) -> Option<Prompt> {
-        match self.core.units.last()? {
-            Unit::SelectIdleCmd(arg) if arg.step > 0 => Some(Prompt::IdleCommand { player: arg.playerid }),
-            Unit::SelectBattleCmd(arg) if arg.step > 0 => Some(Prompt::BattleCommand { player: arg.playerid }),
-            Unit::SelectYesNo(arg) if arg.step > 0 => Some(Prompt::YesNo { player: arg.playerid }),
-            Unit::SelectOption(SelectOption { step, playerid }) | Unit::AnnounceNumber(AnnounceNumber { step, playerid }) if *step > 0 => {
-                Some(Prompt::Option { player: *playerid })
+        Some(match self.core.units.last().filter(|unit| unit.step() > 0)? {
+            Unit::SelectIdleCmd(arg) => Prompt::IdleCommand { player: arg.playerid },
+            Unit::SelectBattleCmd(arg) => Prompt::BattleCommand { player: arg.playerid },
+            Unit::SelectYesNo(arg) => Prompt::YesNo { player: arg.playerid },
+            Unit::SelectOption(SelectOption { playerid, .. }) | Unit::AnnounceNumber(AnnounceNumber { playerid, .. }) => {
+                Prompt::Option { player: *playerid }
             }
-            Unit::SelectEffectYesNo(arg) if arg.step > 0 => Some(Prompt::EffectYesNo { player: arg.playerid }),
-            Unit::SelectChain(arg) if arg.step > 0 => Some(Prompt::Chain {
+            Unit::SelectEffectYesNo(arg) => Prompt::EffectYesNo { player: arg.playerid },
+            Unit::SelectChain(arg) => Prompt::Chain {
                 player: arg.playerid,
                 forced: arg.forced,
-            }),
-            Unit::SelectCard(arg) if arg.step > 0 => Some(Prompt::Card {
+            },
+            Unit::SelectCard(arg) => Prompt::Card {
                 player: arg.playerid,
                 cancelable: arg.cancelable || arg.min == 0,
                 min: arg.min,
                 max: arg.max,
-            }),
-            Unit::SelectTributeP(arg) if arg.step > 0 => Some(Prompt::Tribute {
+            },
+            Unit::SelectTributeP(arg) => Prompt::Tribute {
                 player: arg.playerid,
                 cancelable: arg.cancelable || arg.min == 0,
                 min: arg.min,
                 max: arg.max,
-            }),
-            Unit::SelectSum(arg) if arg.step > 0 => Some(Prompt::Sum { player: arg.playerid }),
-            Unit::SelectUnselectCard(arg) if arg.step > 0 => Some(Prompt::UnselectCard {
+            },
+            Unit::SelectSum(arg) => Prompt::Sum { player: arg.playerid },
+            Unit::SelectUnselectCard(arg) => Prompt::UnselectCard {
                 player: arg.playerid,
                 cancelable: arg.cancelable,
                 finishable: arg.finishable,
-            }),
-            Unit::SelectPlace(arg) if arg.step > 0 => Some(Prompt::Place {
+            },
+            Unit::SelectPlace(arg) => Prompt::Place {
                 player: arg.playerid,
                 count: arg.count,
                 blocked: arg.flag,
-            }),
-            Unit::SelectPosition(arg) if arg.step > 0 => Some(Prompt::Position {
+            },
+            Unit::SelectPosition(arg) => Prompt::Position {
                 player: arg.playerid,
                 positions: arg.positions,
-            }),
-            Unit::AnnounceRace(arg) if arg.step > 0 => Some(Prompt::AnnounceRace {
+            },
+            Unit::AnnounceRace(arg) => Prompt::AnnounceRace {
                 player: arg.playerid,
                 count: arg.count,
                 available: arg.available,
-            }),
-            Unit::AnnounceAttribute(arg) if arg.step > 0 => Some(Prompt::AnnounceAttribute {
+            },
+            Unit::AnnounceAttribute(arg) => Prompt::AnnounceAttribute {
                 player: arg.playerid,
                 count: arg.count,
                 available: arg.available,
-            }),
-            Unit::SortCard(arg) if arg.step > 0 => Some(Prompt::Sort {
+            },
+            Unit::SortCard(arg) => Prompt::Sort {
                 player: arg.playerid,
                 count: self.core.select_cards.len() as u8,
-            }),
-            Unit::SelectCounter(arg) if arg.step > 0 => Some(Prompt::Counter {
+            },
+            Unit::SelectCounter(arg) => Prompt::Counter {
                 player: arg.playerid,
                 counter_type: arg.counter_type,
                 count: arg.capped,
-            }),
-            Unit::AnnounceCard(arg) if arg.step > 0 => Some(Prompt::AnnounceCard { player: arg.playerid }),
-            _ => None,
-        }
+            },
+            Unit::AnnounceCard(arg) => Prompt::AnnounceCard { player: arg.playerid },
+            _ => return None,
+        })
     }
 
     pub fn legal_actions(&self) -> Vec<Action> {

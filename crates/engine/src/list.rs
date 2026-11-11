@@ -132,9 +132,15 @@ impl<T: Copy + Default, const N: usize> List<T, N> {
         self.len = kept as u16;
     }
 
-    // Moves every item of `other` to the end of this list.
     pub fn append<const M: usize>(&mut self, other: &mut List<T, M>) {
         self.extend(other.iter().copied());
+        other.clear();
+    }
+
+    pub fn prepend<const M: usize>(&mut self, other: &mut List<T, M>) {
+        for (index, &item) in other.iter().enumerate() {
+            self.insert(index, item);
+        }
         other.clear();
     }
 }
@@ -193,19 +199,13 @@ impl<'a, T: Copy + Default, const N: usize> IntoIterator for &'a List<T, N> {
 pub struct IntoIter<T: Copy + Default, const N: usize> {
     list: List<T, N>,
     next: usize,
-    end: usize,
 }
 
 impl<T: Copy + Default, const N: usize> Iterator for IntoIter<T, N> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
-        let items: &[T] = if self.list.spilled.is_empty() {
-            &self.list.inline
-        } else {
-            &self.list.spilled
-        };
-        let item = items.get(self.next).copied().filter(|_| self.next < self.end);
+        let item = self.list.get(self.next).copied();
         self.next += 1;
         item
     }
@@ -216,11 +216,7 @@ impl<T: Copy + Default, const N: usize> IntoIterator for List<T, N> {
     type IntoIter = IntoIter<T, N>;
 
     fn into_iter(self) -> Self::IntoIter {
-        IntoIter {
-            end: self.len(),
-            list: self,
-            next: 0,
-        }
+        IntoIter { list: self, next: 0 }
     }
 }
 

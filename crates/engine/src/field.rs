@@ -2,6 +2,7 @@ use std::num::NonZeroU64;
 use std::ops::{Index, IndexMut};
 
 use crate::card::{CardId, CardSet, LocInfo, Relation};
+use crate::chain::Continuous;
 use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{
@@ -243,13 +244,13 @@ pub struct Processor {
     pub desrep_chain: Vec<Chain>,
     // The group a Destroy shares with its DestroyReplace and OperationReplace units, innermost last.
     pub replace_targets: Vec<CardSet>,
-    pub solving_continuous: Vec<Chain>,
-    pub sub_solving_continuous: Vec<Chain>,
-    pub delayed_continuous_tp: Vec<Chain>,
-    pub delayed_continuous_ntp: Vec<Chain>,
+    pub solving_continuous: Vec<Continuous>,
+    pub sub_solving_continuous: Vec<Continuous>,
+    pub delayed_continuous_tp: Vec<Continuous>,
+    pub delayed_continuous_ntp: Vec<Continuous>,
     // The continuous effects an event triggers for the turn player and the other, kept for their capacity.
-    pub continuous_tp: Vec<Chain>,
-    pub continuous_ntp: Vec<Chain>,
+    pub continuous_tp: Vec<Continuous>,
+    pub continuous_ntp: Vec<Continuous>,
     pub new_fchain: Vec<Chain>,
     pub new_fchain_s: Vec<Chain>,
     pub new_ochain: Vec<Chain>,

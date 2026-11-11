@@ -616,12 +616,6 @@ impl Duel {
             &mut core.current_chain,
             &mut core.ignition_priority_chains,
             &mut core.continuous_chain,
-            &mut core.solving_continuous,
-            &mut core.sub_solving_continuous,
-            &mut core.delayed_continuous_tp,
-            &mut core.delayed_continuous_ntp,
-            &mut core.continuous_tp,
-            &mut core.continuous_ntp,
             &mut core.new_fchain,
             &mut core.new_fchain_s,
             &mut core.new_ochain,
@@ -635,6 +629,15 @@ impl Duel {
         chains
             .chain(core.quick_f_chain.iter_mut().map(|(_, chain)| chain))
             .for_each(|chain| remap(&mut chain.evt));
+        let continuous = [
+            &mut core.solving_continuous,
+            &mut core.sub_solving_continuous,
+            &mut core.delayed_continuous_tp,
+            &mut core.delayed_continuous_ntp,
+            &mut core.continuous_tp,
+            &mut core.continuous_ntp,
+        ];
+        continuous.into_iter().flatten().for_each(|continuous| remap(&mut continuous.event));
     }
 
     // card::replace_effect for Card.Recreate, without its messages.
@@ -660,10 +663,6 @@ impl Duel {
             &core.current_chain,
             &core.ignition_priority_chains,
             &core.continuous_chain,
-            &core.solving_continuous,
-            &core.sub_solving_continuous,
-            &core.delayed_continuous_tp,
-            &core.delayed_continuous_ntp,
             &core.new_fchain,
             &core.new_fchain_s,
             &core.new_ochain,
@@ -676,7 +675,14 @@ impl Duel {
         let offered_chains = offered.then_some(&core.select_chains);
         let chains = chains.into_iter().chain(offered_chains).flatten();
         let chains = chains.chain(core.quick_f_chain.iter().map(|(_, chain)| chain));
-        let mut cards = chains.fold(CardSet::default(), |cards, chain| {
+        let waiting = [
+            &core.solving_continuous,
+            &core.sub_solving_continuous,
+            &core.delayed_continuous_tp,
+            &core.delayed_continuous_ntp,
+        ];
+        let waiting = waiting.into_iter().flatten().map(|continuous| self.get_handler(continuous.effect));
+        let mut cards = chains.fold(waiting.collect(), |cards: CardSet, chain| {
             let handler = CardSet::from(self.get_handler(chain.triggering_effect));
             cards.union(handler).union(chain.target_cards.unwrap_or_default())
         });

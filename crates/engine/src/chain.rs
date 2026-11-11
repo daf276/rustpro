@@ -45,6 +45,14 @@ pub struct SolveContinuous {
     pub reason_effect: Option<EffectId>,
 }
 
+// A continuous effect waiting to solve; its chain link is only built in SolveContinuous.
+#[derive(Debug, Clone, Copy)]
+pub struct Continuous {
+    pub effect: EffectId,
+    pub player: u8,
+    pub event: Event,
+}
+
 impl Duel {
     pub(crate) fn field_raise_event(
         &mut self,
@@ -322,11 +330,12 @@ impl Duel {
         (self.effects[effect].is_flag(EFFECT_FLAG_EVENT_PLAYER) && event.event_player < 2).then_some(event.event_player)
     }
 
-    fn collect_continuous(&mut self, effect: EffectId, event: &Event, tp: &mut Vec<Chain>, ntp: &mut Vec<Chain>) {
-        let owner_player = self.event_player(effect, event).unwrap_or_else(|| self.get_handler_player(effect));
-        if self.can_activate(effect, owner_player, event) {
-            let chain = Chain::continuous(effect, owner_player, *event);
-            self.continuous_chain_list(effect, owner_player, tp, ntp).push(chain);
+    fn collect_continuous(&mut self, effect: EffectId, event: &Event, tp: &mut Vec<Continuous>, ntp: &mut Vec<Continuous>) {
+        let player = self.event_player(effect, event).unwrap_or_else(|| self.get_handler_player(effect));
+        if self.can_activate(effect, player, event) {
+            let event = *event;
+            self.continuous_chain_list(effect, player, tp, ntp)
+                .push(Continuous { effect, player, event });
         }
     }
 
@@ -335,9 +344,9 @@ impl Duel {
         &'a mut self,
         effect: EffectId,
         owner_player: u8,
-        tp: &'a mut Vec<Chain>,
-        ntp: &'a mut Vec<Chain>,
-    ) -> &'a mut Vec<Chain> {
+        tp: &'a mut Vec<Continuous>,
+        ntp: &'a mut Vec<Continuous>,
+    ) -> &'a mut Vec<Continuous> {
         let turn_player = owner_player == self.infos.turn_player;
         if self.effects[effect].is_flag(EFFECT_FLAG_DELAY) && (self.core.chain_solving || self.core.conti_solving) {
             if turn_player {
@@ -352,15 +361,15 @@ impl Duel {
         }
     }
 
-    fn push_continuous(&mut self, mut tp: Vec<Chain>, mut ntp: Vec<Chain>) {
-        for chain in tp.drain(..).chain(ntp.drain(..)) {
-            self.queue_continuous(chain);
+    fn push_continuous(&mut self, mut tp: Vec<Continuous>, mut ntp: Vec<Continuous>) {
+        for continuous in tp.drain(..).chain(ntp.drain(..)) {
+            self.queue_continuous(continuous);
         }
         (self.core.continuous_tp, self.core.continuous_ntp) = (tp, ntp);
     }
 
-    fn queue_continuous(&mut self, chain: Chain) {
-        self.core.sub_solving_continuous.push(chain);
+    fn queue_continuous(&mut self, continuous: Continuous) {
+        self.core.sub_solving_continuous.push(continuous);
         self.emplace_process(SolveContinuous::default());
     }
 
@@ -391,7 +400,7 @@ impl Duel {
         self.core.single_event.clear();
     }
 
-    fn process_single_event_effect(&mut self, effect: EffectId, event: &Event, tp: &mut Vec<Chain>, ntp: &mut Vec<Chain>) {
+    fn process_single_event_effect(&mut self, effect: EffectId, event: &Event, tp: &mut Vec<Continuous>, ntp: &mut Vec<Continuous>) {
         let effect_type = self.effects[effect].effect_type;
         if effect_type & EFFECT_TYPE_ACTIONS == 0
             || (effect_type & EFFECT_TYPE_FLIP != 0 && event.event_value & (NO_FLIP_EFFECT >> 16) != 0)
@@ -434,8 +443,8 @@ impl Duel {
         list.push(chain);
     }
 
-    pub(crate) fn solve_continuous(&mut self, playerid: u8, effect: EffectId, event: Event) {
-        self.queue_continuous(Chain::continuous(effect, playerid, event));
+    pub(crate) fn solve_continuous(&mut self, player: u8, effect: EffectId, event: Event) {
+        self.queue_continuous(Continuous { effect, player, event });
     }
 
     // ExecuteCost, ExecuteTarget and ExecuteOperation: the function runs whole, the unit waiting at step 0 under its prompt.
@@ -945,47 +954,45 @@ impl Duel {
             0 => {
                 let core = &mut self.core;
                 core.solving_continuous.splice(0..0, core.sub_solving_continuous.drain(..));
-                let Some(&chain) = self.core.solving_continuous.first() else {
+                let Some(&Continuous { effect, player, event }) = self.core.solving_continuous.first() else {
                     return true;
                 };
-                let (effect, player) = (chain.triggering_effect, chain.triggering_player);
                 if !self.check_count_limit(effect, player) {
                     self.core.solving_continuous.remove(0);
                     return true;
                 }
-                self.core.continuous_chain.push(chain);
+                self.core.continuous_chain.push(Chain::continuous(effect, player, event));
                 if self.delays_continuous(effect) {
                     self.core.conti_solving = true;
                 }
                 arg.reason_effect = self.core.reason_effect.get();
                 arg.reason_player = self.core.reason_player.get();
                 if matches!(self.effects[effect].target, Target::Action(_)) {
-                    self.execute(ExecuteKind::Target, effect, player, chain.evt);
+                    self.execute(ExecuteKind::Target, effect, player, event);
                 }
                 false
             }
             1 => false,
             2 => {
-                let Some(&chain) = self.core.solving_continuous.first() else {
+                let Some(&Continuous { effect, player, event }) = self.core.solving_continuous.first() else {
                     return true;
                 };
-                let (effect, player) = (chain.triggering_effect, chain.triggering_player);
                 if self.effects[effect].operation.is_none() {
                     return false;
                 }
                 self.dec_count(effect, player);
-                self.execute(ExecuteKind::Operation, effect, player, chain.evt);
+                self.execute(ExecuteKind::Operation, effect, player, event);
                 false
             }
             3 => {
-                let Some(&chain) = self.core.solving_continuous.first() else {
+                if self.core.solving_continuous.is_empty() {
                     return true;
-                };
+                }
+                let effect = self.core.solving_continuous.remove(0).effect;
                 self.core.reason_effect.set(arg.reason_effect);
                 self.core.reason_player.set(arg.reason_player);
                 self.core.continuous_chain.pop();
-                self.core.solving_continuous.remove(0);
-                if self.delays_continuous(chain.triggering_effect) {
+                if self.delays_continuous(effect) {
                     self.core.conti_solving = false;
                     self.adjust_all();
                     return false;

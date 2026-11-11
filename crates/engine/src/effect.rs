@@ -158,6 +158,7 @@ pub enum Target {
 }
 
 pub type SpSummonTargetFn = fn(&Duel, EffectId, CardId, u8, u32, u8, u8, Option<EffectId>) -> bool;
+pub type ReflectDamageFn = fn(&Duel, EffectId, Option<EffectId>, u32, u32, u8, Option<CardId>) -> bool;
 pub type ChangeDamageFn = fn(&mut Duel, EffectId, Option<EffectId>, u32, u32, u8, Option<CardId>) -> u32;
 
 pub type SynchroCheckFn = fn(&Duel, EffectId, Option<CardId>, CardSet, CardSet, CardSet, CardSet, CardSet) -> (bool, CardSet, CardSet);
@@ -233,6 +234,8 @@ pub enum Value {
     BattleDamage(fn(&Duel, EffectId, u8, CardId) -> i64),
     // value(e, re, val, r, rp, rc), which may reset the effect or add hints: EFFECT_CHANGE_DAMAGE.
     ChangeDamage(ChangeDamageFn),
+    // value(e, re, val, r, rp, rc): EFFECT_REFLECT_DAMAGE.
+    ReflectDamage(ReflectDamageFn),
     // value(e, c, sc), which may register effects on c: EFFECT_HAND_SYNCHRO.
     HandSynchro(fn(&mut Duel, EffectId, CardId, CardId) -> bool),
     // value(chk, summon_type, e, ...) of EFFECT_EXTRA_MATERIAL, which registers and resets effects.
@@ -1470,6 +1473,7 @@ impl Duel {
             | Value::Chain(_)
             | Value::BattleDamage(_)
             | Value::ChangeDamage(_)
+            | Value::ReflectDamage(_)
             | Value::Activation(_)
             | Value::MaterialCheck(_)
             | Value::Material(_)
@@ -1537,6 +1541,23 @@ impl Duel {
             Value::Int(value) => value as u32,
             Value::ChangeDamage(value) => value(self, effect, reason_effect, amount, reason, reason_player, reason_card),
             _ => misread("a damage value"),
+        }
+    }
+
+    // check_value_condition(5) of EFFECT_REFLECT_DAMAGE with the effect, amount, reason, player and card of the damage.
+    pub(crate) fn check_value_reflect_damage(
+        &self,
+        effect: EffectId,
+        reason_effect: Option<EffectId>,
+        amount: u32,
+        reason: u32,
+        reason_player: u8,
+        reason_card: Option<CardId>,
+    ) -> bool {
+        match self.effects[effect].value {
+            Value::Int(value) => value != 0,
+            Value::ReflectDamage(value) => value(self, effect, reason_effect, amount, reason, reason_player, reason_card),
+            _ => misread("a damage reflection"),
         }
     }
 

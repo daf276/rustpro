@@ -45,7 +45,7 @@ fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
     stock::special_summon(duel, a, |c, duel| filter(c, duel, a.e, a.tp), LOCATION_HAND, POS_FACEUP)
 }
 
-fn hdcon(duel: &Duel, a: &Args) -> bool {
+pub fn hdcon(duel: &Duel, a: &Args) -> bool {
     a.ep != a.tp && duel.get_attack_target().is_none()
 }
 

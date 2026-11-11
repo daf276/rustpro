@@ -100,6 +100,15 @@ Hand-port the `proc_*` summon procedures, each verified through a few carrier ca
 ### 6. Maintenance
 - [ ] Run the pipeline on each new set and banlist change (Forbidden cards can return)
 
+### 7. Refactoring pass
+The survey and the item numbers are in `REFACTOR.md`. Behaviour, messages, random draws and lookup order stay the same; each step ends with the full all-cards validation.
+- [ ] R1. Engine, no judgement needed (E1 - E14), by file owner: `operations.rs`/`playerop.rs`, `processor.rs`/`chain.rs`/state files, `card.rs`/`field.rs`/`effect.rs`
+- [ ] R2. Engine sequences the C++ repeats (E15 - E27), with R1 in the same files
+- [ ] R3. Stock targets, operations and costs for the card files (`crates/scripts/src/stock.rs`, the 23 shapes with 20+ members), migrated by script; PORTING.md lists the shapes
+- [ ] R4. Lua-facing API and `utility.rs` (E4, E6, E13, E26, S6, S7), procedures and `build.rs` (S1 - S5), harness, tests and tools (H1 - H9)
+- [ ] R5. Comment pass over the non-card code
+- [ ] R6. Benchmark against 550ce80; the fidelity notes of REFACTOR.md section 6 that stay open move to the fidelity gaps here
+
 ## Findings
 
 - Sizes: ocgcore ~30k lines of C++; shared Lua library (`CardScripts/*.lua`) ~14k lines; `CardScripts/official` holds ~13.5k card scripts.

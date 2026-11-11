@@ -2792,11 +2792,16 @@ impl Duel {
                 })
     }
 
-    // False when a lookup of the code for the card finds no effect to test, so that it runs nothing (true may be a false alarm).
-    pub fn may_be_affected_by(&self, card: CardId, code: u32) -> bool {
+    // False when a lookup of the code for the card runs no function and changes no effect, as it finds at most the card's own
+    // constants: no condition (is_available then writes nothing), an integer value, no range (so no immunity test).
+    pub fn lookup_may_run(&self, card: CardId, code: u32) -> bool {
         let registry = &self.field_effects.registry;
+        let constant = |effect: EffectId| {
+            let peffect = &self.effects[effect];
+            peffect.condition.is_none() && matches!(peffect.value, Value::Int(_)) && !peffect.is_flag(EFFECT_FLAG_SINGLE_RANGE)
+        };
         registry.has_code(code)
-            && (registry.equal_range(Container::Single, Some(card), code).next().is_some()
+            && (!registry.equal_range(Container::Single, Some(card), code).all(constant)
                 || registry.equal_range(Container::Aura, None, code).next().is_some()
                 || self.equip_effects(card, code).next().is_some()
                 || self.xmaterial_effects(card, code).next().is_some())

@@ -264,7 +264,7 @@ impl Synchro {
         let dg = mg
             .unwrap_or_else(|| duel.get_matching_group(synchmatfilter, tp, LOCATION_MZONE | LOCATION_HAND, LOCATION_MZONE, Some(c.into())));
         let (g, pg, mgchk, levels) = Synchro::usable_materials(duel, c, tp, dg, mg.is_some());
-        if shareable && Synchro::materials_reach_no_effect(duel, tp) {
+        if shareable && Synchro::materials_run_nothing(duel, tp) {
             duel.share_synchro_materials(SynchroMaterials {
                 player: tp,
                 candidates: dg,
@@ -275,13 +275,16 @@ impl Synchro {
         (g, pg, mgchk, levels)
     }
 
-    // Whether [Synchro::materials] ran no effect: it tests the cards in the Monster Zones, and the hand for MATERIAL_FROM_HAND.
-    fn materials_reach_no_effect(duel: &Duel, tp: u8) -> bool {
-        let tested = duel.get_field_group(tp, LOCATION_MZONE, LOCATION_MZONE);
-        !duel.may_have_effect(EFFECT_SYNCHRO_MAT_FROM_HAND)
-            && MATERIAL_CODES
-                .iter()
-                .all(|&code| !duel.may_have_effect(code) || !tested.iter().any(|mc| duel.may_be_affected_by(mc, code)))
+    // Whether [Synchro::materials] ran no function and changed no effect: it looks the codes up for the monsters on the field.
+    fn materials_run_nothing(duel: &Duel, tp: u8) -> bool {
+        let runs = |code: u32| {
+            duel.may_have_effect(code)
+                && duel
+                    .get_field_group(tp, LOCATION_MZONE, LOCATION_MZONE)
+                    .iter()
+                    .any(|mc| duel.lookup_may_run(mc, code))
+        };
+        !duel.may_have_effect(EFFECT_SYNCHRO_MAT_FROM_HAND) && !MATERIAL_CODES.iter().any(|&code| runs(code))
     }
 
     // The materials of Synchro.MajesticCondition and Synchro.MajesticTarget, as [Synchro::materials] has them.

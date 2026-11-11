@@ -81,7 +81,7 @@ pub enum Status {
     End,
 }
 
-// What the checks of one idle prompt share: results no effect enters, read from state that only `&mut Duel` changes.
+// What the checks of one idle prompt share: results found without running a function, from state only `&mut Duel` changes.
 #[derive(Debug, Default)]
 pub(crate) struct IdleMemo {
     pub tributes: std::cell::Cell<Shared<Tributes>>,
@@ -394,19 +394,24 @@ impl Duel {
         self.unported.get()
     }
 
-    // None outside an idle prompt's checks, for another player, and while a property is assumed, which changes the types read.
+    // None outside an idle prompt's checks, for another player, and while the types read are not the cards' own.
     pub fn shared_synchro_materials(&self, player: u8) -> Option<SynchroMaterials> {
         match self.idle_memo.synchro_materials.get() {
-            Shared::Filled(shared) if shared.player == player && self.assumes.borrow().is_empty() => Some(shared),
+            Shared::Filled(shared) if shared.player == player && self.reads_own_types() => Some(shared),
             _ => None,
         }
     }
 
-    // `materials` must have been found without reaching an effect: they then hold while the idle step only reads the duel.
+    // `materials` must have been found without running a function: they then hold while the idle step only reads the duel.
     pub fn share_synchro_materials(&self, materials: SynchroMaterials) {
-        if matches!(self.idle_memo.synchro_materials.get(), Shared::Open) && self.assumes.borrow().is_empty() {
+        if matches!(self.idle_memo.synchro_materials.get(), Shared::Open) && self.reads_own_types() {
             self.idle_memo.synchro_materials.set(Shared::Filled(materials));
         }
+    }
+
+    // No property is assumed and no type is being worked out, the two cells get_type reads.
+    fn reads_own_types(&self) -> bool {
+        self.assumes.borrow().is_empty() && self.core.type_temp.borrow().is_empty()
     }
 
     pub fn reach_unported(&self, site: &'static str) {

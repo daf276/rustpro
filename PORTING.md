@@ -112,7 +112,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   Extra Deck copies. A Flip effect needs 3-5 face-down copies in `MZONE`, an attacker such as Elfnote Lucina (13597785)
   in `MZONE | OPPONENT`, and no Dark Hole in hand (put it in `DECK`). An optional trigger on being discarded needs
   extra copies in hand.
-- `python tools/ported.py tuner level=3`, `... synchro attribute=wind`, `... normal race=rock`, `... trap continuous` list the cards
+- `python tools/ported.py tuner level=3`, `... synchro attribute=wind`, `... normal race=rock`, `... trap continuous`,
+  `... setcode=0xaf` (an archetype, with its sub-archetypes) list the cards
   `SUPPORT` can use (ported cards and script-less Normal Monsters) with their level, attribute and race.
 - Random play picks uniformly among the legal actions, so an effect needing an exact board (say exactly 2 monsters) is
   rare; `Raigeki | OPPONENT` and fewer hand cards in `SUPPORT` help. A card reusing another card's `Procedure` struct
@@ -120,7 +121,10 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - `e:SetLabel(a, b, c)` is `e.set_labels(duel, &[a, b, c])`, read back with `let &[a, b, c] = e.get_labels(duel) else { .. }`;
   an effect keeps at most three labels and drops the rest silently.
 - `Duel.GetControl` returns a count: a bare `if Duel.GetControl(...) then` is always true in Lua (0 is truthy), so the
-  port ignores the result there and compares only where the Lua writes `~=0`.
+  port ignores the result there and compares only where the Lua writes `~=0`. `Duel.SpecialSummonStep(...)~=0` compares a
+  boolean with 0, so it is always true as well.
+- Pendulum Monsters used as Synchro or Xyz materials land face-up in the Extra Deck, which `SUPPORT` cannot place: that
+  is how a trigger needing face-up Pendulums there is reached (c29325276).
 - `duel.select_effect` returns the 1-based index of the chosen option (`Some(1)` is the first), like the Lua; an
   off-by-one shows as a `MSG_SELECT_OPTION` diff. `Message(MSG_SELECT_EFFECTYN)` and `Message(MSG_DAMAGE)` count every
   card's prompt or damage, so they are weak checks.

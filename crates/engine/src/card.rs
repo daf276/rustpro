@@ -646,6 +646,9 @@ impl Duel {
         {
             return 0;
         }
+        if let Some(level) = self.get_assumed_property(card, ASSUME_LEVEL) {
+            return level as u32;
+        }
         unported!(
             self,
             [EFFECT_RANK_LEVEL_S, EFFECT_LEVEL_RANK_S]

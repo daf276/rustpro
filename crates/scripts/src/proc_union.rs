@@ -1,12 +1,10 @@
-// Port of proc_union.lua: aux.AddUnionProcedure, a Union monster's equip and unequip effects, its destruction in place
-// of the equipped monster, and the union state.
+// Port of proc_union.lua.
 use engine::{Args, CardId, Duel, EffectId, Script, Value};
 
 use crate::constant::*;
 use crate::proc_workaround::CardWorkaround;
 
-// The parameters of aux.AddUnionProcedure (f, oldequip, oldprotect): `f` left nil passes every monster, `OLD_PROTECT`
-// None takes OLD_EQUIP. OLD_EQUIP also stands for the metatable's old_union.
+// The parameters of aux.AddUnionProcedure: `OLD_PROTECT` None takes OLD_EQUIP, which also stands for mt.old_union.
 pub trait UnionProcedure {
     const OLD_EQUIP: bool = false;
     const OLD_PROTECT: Option<bool> = None;

@@ -1,15 +1,12 @@
-// Port of proc_pendulum.lua: Pendulum.AddProcedure, the activation in the Pendulum Zone and the Pendulum Summon, and
-// the effects CreateAdditionalPendulumSummonEffect and CreateHarmonicOscillationEffect return (no card passes a
-// pendulum_location, a reset or a pendulum_flag), with Pendulum.GrantAdditionalPendulumSummon left to its cards.
-use engine::{Args, CardId, CardSet, Duel, EffectId, Script};
+// Port of proc_pendulum.lua; no card passes a pendulum_location, a reset or a pendulum_flag.
+use engine::{Args, CardId, CardSet, ConditionFn, Duel, EffectId, GroupOperationFn, Script};
 
 use crate::constant::*;
 use crate::utility::{CardUtility, DuelUtility, aux};
 
 pub struct Pendulum;
 
-// What a card passes to CreateAdditionalPendulumSummonEffect and CreateHarmonicOscillationEffect: the effect
-// description, the code of the card and its pendulum_filter.
+// What a card passes to CreateAdditionalPendulumSummonEffect and CreateHarmonicOscillationEffect.
 pub trait ExtraPendulum {
     const DESC: u64;
     const OWNER: u32;
@@ -24,15 +21,8 @@ impl Pendulum {
 
     // `reg` registers the activation; `desc` None takes 1163.
     pub fn add_procedure_full(duel: &mut Duel, c: CardId, reg: bool, desc: Option<u64>) {
-        let e1 = duel.create_effect(c);
-        e1.set_type(duel, EFFECT_TYPE_FIELD);
-        e1.set_description(duel, desc.unwrap_or(1163));
-        e1.set_code(duel, EFFECT_SPSUMMON_PROC_G);
-        e1.set_property(duel, EFFECT_FLAG_UNCOPYABLE + EFFECT_FLAG_CANNOT_DISABLE);
-        e1.set_range(duel, LOCATION_PZONE);
-        e1.set_condition(duel, Pendulum::condition);
-        e1.set_group_operation(duel, Pendulum::operation);
-        e1.set_value(duel, SUMMON_TYPE_PENDULUM as i32);
+        let property = EFFECT_FLAG_UNCOPYABLE + EFFECT_FLAG_CANNOT_DISABLE;
+        let e1 = Pendulum::summon_effect(duel, c, desc.unwrap_or(1163), property, Pendulum::condition, Pendulum::operation);
         c.register_effect(duel, e1);
         if reg {
             let e2 = duel.create_effect(c);
@@ -46,33 +36,63 @@ impl Pendulum {
 
     // Pendulum.CreateAdditionalPendulumSummonEffect with the hand and the Extra Deck, left unregistered.
     pub fn create_additional_pendulum_summon_effect<P: ExtraPendulum>(duel: &mut Duel, handler: CardId) -> EffectId {
-        let e1 = duel.create_effect(handler);
-        e1.set_description(duel, P::DESC);
-        e1.set_type(duel, EFFECT_TYPE_FIELD);
-        e1.set_property(duel, EFFECT_FLAG_UNCOPYABLE + EFFECT_FLAG_CANNOT_DISABLE);
-        e1.set_code(duel, EFFECT_SPSUMMON_PROC_G);
-        e1.set_range(duel, LOCATION_PZONE);
-        e1.set_condition(duel, Pendulum::additional_condition::<P>);
-        e1.set_group_operation(duel, Pendulum::additional_operation::<P>);
-        e1.set_value(duel, SUMMON_TYPE_PENDULUM as i32);
+        let property = EFFECT_FLAG_UNCOPYABLE + EFFECT_FLAG_CANNOT_DISABLE;
+        let (condition, operation) = (Pendulum::additional_condition::<P>, Pendulum::additional_operation::<P>);
+        let e1 = Pendulum::summon_effect(duel, handler, P::DESC, property, condition, operation);
         e1.set_reset_full(duel, RESET_PHASE | PHASE_END, 1);
         e1
     }
 
-    // The first effect of Pendulum.CreateHarmonicOscillationEffect with CARD_ZEFRAATH as the pendulum_flag, left
-    // unregistered; the second, which only resets the first, is never registered by a caller.
+    // The first effect of Pendulum.CreateHarmonicOscillationEffect, flag CARD_ZEFRAATH; no caller registers the second.
     pub fn create_harmonic_oscillation_effect<P: ExtraPendulum>(duel: &mut Duel, handler: CardId) -> EffectId {
-        let e1 = duel.create_effect(handler);
-        e1.set_description(duel, P::DESC);
-        e1.set_type(duel, EFFECT_TYPE_FIELD);
-        e1.set_property(duel, EFFECT_FLAG_UNCOPYABLE + EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_BOTH_SIDE);
-        e1.set_code(duel, EFFECT_SPSUMMON_PROC_G);
-        e1.set_range(duel, LOCATION_PZONE);
-        e1.set_condition(duel, Pendulum::harmonic_condition::<P>);
-        e1.set_group_operation(duel, Pendulum::harmonic_operation::<P>);
-        e1.set_value(duel, SUMMON_TYPE_PENDULUM as i32);
+        let property = EFFECT_FLAG_UNCOPYABLE + EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_BOTH_SIDE;
+        let (condition, operation) = (Pendulum::harmonic_condition::<P>, Pendulum::harmonic_operation::<P>);
+        let e1 = Pendulum::summon_effect(duel, handler, P::DESC, property, condition, operation);
         e1.set_reset(duel, RESETS_STANDARD_PHASE_END);
         e1
+    }
+
+    fn summon_effect(
+        duel: &mut Duel,
+        c: CardId,
+        desc: u64,
+        property: u32,
+        condition: ConditionFn,
+        operation: GroupOperationFn,
+    ) -> EffectId {
+        let e1 = duel.create_effect(c);
+        e1.set_type(duel, EFFECT_TYPE_FIELD);
+        e1.set_description(duel, desc);
+        e1.set_code(duel, EFFECT_SPSUMMON_PROC_G);
+        e1.set_property(duel, property);
+        e1.set_range(duel, LOCATION_PZONE);
+        e1.set_condition(duel, condition);
+        e1.set_group_operation(duel, operation);
+        e1.set_value(duel, SUMMON_TYPE_PENDULUM as i32);
+        e1
+    }
+
+    fn select(duel: &mut Duel, tp: u8, g: CardSet, sg: &mut CardSet, counts: [&mut i32; 3]) -> Script<bool> {
+        let [hand, extra, usable] = counts;
+        duel.hint(HINT_SELECTMSG, tp, HINTMSG_SPSUMMON);
+        let cancelable = duel.is_summon_cancelable();
+        let Some(tc) = g.select_unselect(duel, Some(*sg), tp, !sg.is_empty(), cancelable, 1, 1)? else {
+            return Ok(false);
+        };
+        let step = if sg.is_contains(tc) {
+            sg.remove(tc);
+            1
+        } else {
+            sg.insert(tc);
+            -1
+        };
+        if tc.is_location(duel, LOCATION_HAND) {
+            *hand += step;
+        } else {
+            *extra += step;
+        }
+        *usable += step;
+        Ok(true)
     }
 
     // The idle command asks with only e and c, so `inchain` is nil. Pendulum::filter orders the scales.
@@ -116,27 +136,10 @@ impl Pendulum {
         while usable_mzone_count != 0 {
             let location = (if mmz_count > 0 { LOCATION_HAND } else { 0 }) + if emz_count > 0 { LOCATION_EXTRA } else { 0 };
             let remaining = available.filter(duel, |pc, duel| pc.is_location(duel, location), Some(*sg));
-            if remaining.is_empty() {
+            let counts = [&mut mmz_count, &mut emz_count, &mut usable_mzone_count];
+            if remaining.is_empty() || !Pendulum::select(duel, tp, remaining, sg, counts)? {
                 break;
             }
-            duel.hint(HINT_SELECTMSG, tp, HINTMSG_SPSUMMON);
-            let cancelable = duel.is_summon_cancelable();
-            let Some(sc) = remaining.select_unselect(duel, Some(*sg), tp, !sg.is_empty(), cancelable, 1, 1)? else {
-                break;
-            };
-            let step = if sg.is_contains(sc) {
-                sg.remove(sc);
-                1
-            } else {
-                sg.insert(sc);
-                -1
-            };
-            if sc.is_location(duel, LOCATION_HAND) {
-                mmz_count += step;
-            } else {
-                emz_count += step;
-            }
-            usable_mzone_count += step;
         }
         if !sg.is_empty() {
             duel.register_flag_effect(tp, CARD_ZEFRAATH, RESET_PHASE | PHASE_END, 0, 1);
@@ -247,9 +250,7 @@ impl Pendulum {
         let mut ft1 = duel.get_location_count(tp, LOCATION_MZONE);
         let mut ft2 = duel.get_location_count_from_ex(tp, tp, None, TYPE_PENDULUM);
         let mut ft = duel.get_usable_mzone_count(tp);
-        if duel.is_player_affected_by_effect(tp, CARD_BLUEEYES_SPIRIT).is_some() {
-            duel.reach_unported(concat!(file!(), ":", line!()));
-        }
+        unported!(duel, duel.is_player_affected_by_effect(tp, CARD_BLUEEYES_SPIRIT).is_some());
         let location = |ft1: i32, ft2: i32| (if ft1 > 0 { LOCATION_HAND } else { 0 }) + if ft2 > 0 { LOCATION_EXTRA } else { 0 };
         let lvchk = Pendulum::lvchk(duel, c, rpz);
         let tg = duel.get_matching_group(
@@ -266,27 +267,9 @@ impl Pendulum {
         loop {
             let loc = location(ft1, ft2);
             let g = tg.filter(duel, |pc, duel| pc.is_location(duel, loc), Some(*sg));
-            if g.is_empty() || ft == 0 {
+            if g.is_empty() || ft == 0 || !Pendulum::select(duel, tp, g, sg, [&mut ft1, &mut ft2, &mut ft])? {
                 break;
             }
-            duel.hint(HINT_SELECTMSG, tp, HINTMSG_SPSUMMON);
-            let cancelable = duel.is_summon_cancelable();
-            let Some(tc) = g.select_unselect(duel, Some(*sg), tp, !sg.is_empty(), cancelable, 1, 1)? else {
-                break;
-            };
-            let step = if sg.is_contains(tc) {
-                sg.remove(tc);
-                1
-            } else {
-                sg.insert(tc);
-                -1
-            };
-            if tc.is_location(duel, LOCATION_HAND) {
-                ft1 += step;
-            } else {
-                ft2 += step;
-            }
-            ft += step;
         }
         if !sg.is_empty() {
             duel.register_flag_effect(tp, 10000000, RESET_PHASE + PHASE_END + RESET_SELF_TURN, 0, 1);

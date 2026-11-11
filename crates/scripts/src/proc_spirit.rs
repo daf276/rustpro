@@ -1,5 +1,4 @@
-// Port of proc_spirit.lua: Spirit.AddProcedure, a Spirit monster's return to the hand in the End Phase after the events
-// that set its flag.
+// Port of proc_spirit.lua.
 use engine::{Args, CardId, Duel, Script};
 
 use crate::constant::*;

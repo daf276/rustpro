@@ -1,5 +1,4 @@
-// What the diff harness reads from a card file: SUPPORT places cards with the card under test, CHECKS says what its
-// scenarios must show besides diffing clean. Neither is part of the Lua.
+// What the diff harness reads from a card file besides its script; neither is part of the Lua.
 
 // SUPPORT locations: one of these, or 0 for a random zone, with OPPONENT to place the card for the other player.
 pub const HAND: u16 = 0x2;
@@ -12,16 +11,14 @@ pub const EXTRA: u16 = 0x40;
 pub const PZONE: u16 = 0x200;
 pub const OPPONENT: u16 = 0x8000;
 
-// Each check passes when its count over the card's own scenarios is above 0. A card without CHECKS has
-// [Check::Resolves].
+// Each check passes when its count over the card's own scenarios is above 0; a card without CHECKS has Resolves.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Check {
     // Some effect of the card resolves as a chain link.
     Resolves,
     // The effect with this description (aux::stringid) resolves.
     ResolvesEffect(u64),
-    // The effect with this description resolves on any card: an effect the card grants (equip, EFFECT_TYPE_GRANT, Xyz
-    // material) is activated by the monster that receives it.
+    // The effect with this description resolves on any card, as one the card grants is activated by its receiver.
     ResolvesGranted(u64),
     SpecialSummoned,
     // A card with this code, such as a token the card creates, is Special Summoned.
@@ -32,8 +29,7 @@ pub enum Check {
     MaterialFrom(u16),
     // A hint with this description is added to the card (MSG_CARD_HINT).
     CardHint(u64),
-    // A message of this type about the card: the first card of MSG_EQUIP and MSG_CARD_TARGET, the card a message
-    // names by code; a message about no card counts for the card under test.
+    // A message of this type about the card (the first of MSG_EQUIP and MSG_CARD_TARGET); one about no card counts.
     Message(u8),
     // Normal Summoned, or Set, with this many tributes.
     TributeSummoned(u32),

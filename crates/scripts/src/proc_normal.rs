@@ -1,13 +1,10 @@
-// Port of proc_normal.lua: aux.AddNormalSummonProcedure and aux.AddNormalSetProcedure, a Normal Summon or Set by other
-// tributes than the level asks for, or the only way to Normal Summon or Set the card. The metatable's
-// min_tribute_req/max_tribute_req have no reader yet.
+// Port of proc_normal.lua; the metatable's min_tribute_req/max_tribute_req have no reader yet.
 use engine::{Args, CardId, CardSet, ConditionFn, Duel, EffectId, Script};
 
 use crate::constant::*;
 use crate::utility::aux;
 
-// The parameters of aux.AddNormalSummonProcedure and aux.AddNormalSetProcedure (ns, opt, min, max, val, desc, f, sumop):
-// `f` and `sumop` left nil pass every card and do nothing.
+// The parameters of aux.AddNormalSummonProcedure and aux.AddNormalSetProcedure.
 pub trait NormalProcedure {
     const NS: bool;
     const OPT: bool;

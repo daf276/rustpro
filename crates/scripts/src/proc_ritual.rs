@@ -1,11 +1,4 @@
-// Port of proc_ritual.lua: Ritual.AddProc and the procedures built on it (AddProcGreater, AddProcEqual, their Code
-// forms, CreateProc), the Ritual Summon's target and operation (Ritual.Target and Operation, which monsters also use
-// for their own effects) and Ritual.AddWholeLevelTribute. The named parameters customoperation, specificmatfilter,
-// requirementfunc and self, which one or two cards of the TCG pool pass each, have no caller among the ported cards.
-// The forced selections and count limits of EFFECT_EXTRA_RITUAL_MATERIAL effects and the opponent's monsters
-// EFFECT_EXTRA_RELEASE forces are `unported!` checks; the metatable fields read from Ritual Monsters
-// (ritual_custom_condition, ritual_custom_check, ritual_custom_operation, mat_filter) and ritual_matching_function
-// (Ritual.GetMatchingFilterFunction) belong to cards that are not ported.
+// Port of proc_ritual.lua; customoperation, specificmatfilter, requirementfunc and self have no ported caller.
 use std::marker::PhantomData;
 
 use engine::{Args, CardId, CardSet, Duel, EffectId, Script, Value};
@@ -15,7 +8,7 @@ use crate::utility::aux;
 
 pub struct Ritual;
 
-// forcedselection(e, tp, sg, sc): whether sg may be the materials, and whether no larger group may either.
+// Whether sg may be the materials, and whether no larger group may either.
 pub type ForcedSelection = fn(&Duel, EffectId, u8, CardSet, CardId) -> (bool, bool);
 
 // The named parameters of Ritual.CreateProc, Target and Operation besides lvtype; nil ones keep the defaults below.
@@ -34,22 +27,18 @@ pub trait RitualParams {
         c.get_level(duel)
     }
 
-    // extrafil(e, tp, eg, ep, ev, re, r, rp, chk).
     fn extrafil(_duel: &Duel, _e: EffectId, _tp: u8) -> Option<CardSet> {
         None
     }
 
-    // extraop(mat, e, tp, eg, ep, ev, re, r, rp, tc); nil releases the materials.
     fn extraop(duel: &mut Duel, mat: CardSet, _e: EffectId, _tp: u8, _tc: CardId) -> Script<()> {
         duel.release_ritual_material(mat)
     }
 
-    // matfilter(c, e, tp).
     fn matfilter(_c: CardId, _duel: &Duel, _e: EffectId, _tp: u8) -> bool {
         true
     }
 
-    // stage2(mat, e, tp, eg, ep, ev, re, r, rp, tc).
     fn stage2(_duel: &mut Duel, _mat: CardSet, _e: EffectId, _tp: u8, _tc: CardId) -> Script<()> {
         Ok(())
     }
@@ -204,7 +193,7 @@ impl Ritual {
         sg.check_with_sum_greater(duel, level, lv)
     }
 
-    // Ritual.Check(sc, lv, forcedselection, _type), as the rescon of aux.SelectUnselectGroup.
+    // Ritual.Check, as the rescon of aux.SelectUnselectGroup.
     fn check(
         sc: CardId,
         lv: u32,
@@ -237,7 +226,6 @@ impl Ritual {
         }
     }
 
-    // Ritual.Finishcon(sc, lv, forcedselection, _type).
     fn finishcon(
         sc: CardId,
         lv: u32,

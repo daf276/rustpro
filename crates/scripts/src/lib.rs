@@ -9,6 +9,9 @@ macro_rules! unported {
             $duel.reach_unported(concat!(file!(), ":", line!()));
         }
     };
+    ($duel:expr) => {
+        $duel.reach_unported(concat!(file!(), ":", line!()))
+    };
 }
 
 pub mod chain;
@@ -67,8 +70,7 @@ pub mod prelude {
     };
 }
 
-// What loading utility.lua registers. proc_skill.lua and proc_maximum.lua also register global effects on load; they act
-// only on skills and Maximum monsters, neither of which is ported.
+// What loading utility.lua registers; proc_skill.lua and proc_maximum.lua's global effects act only on skills and Maximum monsters, which are not ported.
 fn load(duel: &mut Duel) {
     proc_fusion::load(duel);
     proc_workaround::load(duel);

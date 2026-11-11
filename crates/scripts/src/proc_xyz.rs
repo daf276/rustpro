@@ -1,10 +1,4 @@
-// Port of proc_xyz.lua: Xyz.AddProcedure with the condition, target and operation of the Xyz Summon and of the
-// alternative material (alterf). The materials effects make possible (EFFECT_XYZ_MATERIAL on the opponent's monsters,
-// EFFECT_XYZ_MAT_FROM_GRAVE, EFFECT_SPELL_XYZ_MAT, EFFECT_ORICHALCUM_CHAIN, EFFECT_DOUBLE_XYZ_MATERIAL, equips with
-// EFFECT_EQUIP_SPELL_XYZ_MAT) and the restrictions of EFFECT_XYZ_MAT_RESTRICTION, EFFECT_STAR_SERAPH_SOVEREIGNTY and
-// EFFECT_SATELLARKNIGHT_CAPELLA come with the cards that register them; until then the material counts equal the
-// selected cards. The metatable fields the procedure sets (xyz_filter, xyz_parameters, minxyzct, maxxyzct) are read
-// only by cards that are not ported.
+// Port of proc_xyz.lua; material effects come with their cards, and only unported cards read the metatable fields.
 use engine::{Args, CardId, CardSet, Duel, EffectId, Script};
 
 use crate::constant::*;
@@ -17,8 +11,7 @@ pub struct Xyz;
 pub type XyzFilter = fn(CardId, &Duel, CardId, u64, u8) -> bool;
 pub type AlterFilter = fn(CardId, &Duel, u8, CardId) -> bool;
 
-// The parameters of Xyz.AddProcedure (f, lv, ct, alterf, desc, maxct, op, mustbemat, exchk): a nil filter, level or
-// alternative material is None, a nil maxct is ct, and op and exchk left nil pass.
+// The parameters of Xyz.AddProcedure: a nil maxct is ct, and op and exchk left nil pass.
 pub trait XyzProcedure {
     const F: Option<XyzFilter> = None;
     const LV: Option<u32>;
@@ -28,12 +21,10 @@ pub trait XyzProcedure {
     const DESC: u64 = 0;
     const MUSTBEMAT: bool = false;
 
-    // op(e, tp, 0, mc).
     fn op_check(_duel: &Duel, _e: EffectId, _tp: u8, _mc: CardId) -> bool {
         true
     }
 
-    // op(e, tp, 1, mc).
     fn op(_duel: &mut Duel, _e: EffectId, _tp: u8, _mc: CardId) -> Script<bool> {
         Ok(true)
     }
@@ -45,14 +36,25 @@ pub trait XyzProcedure {
 
 const XYZ_MATERIAL: u64 = SUMMON_TYPE_XYZ as u64 | MATERIAL_XYZ;
 
-// What the recursive checks share: the Xyz Monster and its controller, the materials it must use, and the forced
-// minimum and maximum (0 for nil).
+// What the recursive checks share; a forced minimum or maximum of 0 is nil.
 struct Search {
     xyz: CardId,
     tp: u8,
     mustg: CardSet,
     min: usize,
     max: usize,
+}
+
+impl Search {
+    fn new(a: &Args, xyz: CardId, tp: u8, mustg: CardSet) -> Self {
+        let (min, max) = (usize::from(a.min), usize::from(a.max));
+        Self { xyz, tp, mustg, min, max }
+    }
+}
+
+pub(crate) fn must_group(duel: &Duel, tp: u8, g: Option<CardSet>, c: CardId, mg: CardSet, reason: u32, must: Option<CardSet>) -> CardSet {
+    let mustg = aux::get_must_be_material_group(duel, tp, g, tp, Some(c), Some(mg), reason);
+    mustg.union(must.unwrap_or_default())
 }
 
 // Xyz.ProcCancellable as script state, set by the target of the alternative procedure; keys 1-6 are taken.
@@ -157,8 +159,7 @@ impl Xyz {
         false
     }
 
-    // The materials the condition and the target start from: (g, mg). Equips are not ported, so no material brings
-    // EFFECT_EQUIP_SPELL_XYZ_MAT equips along.
+    // The materials the condition and the target start from: (g, mg), without EFFECT_EQUIP_SPELL_XYZ_MAT equips.
     fn materials<P: XyzProcedure>(duel: &Duel, c: CardId, tp: u8, og: Option<CardSet>) -> (CardSet, CardSet) {
         if let Some(og) = og {
             let mat_filter = |mc: CardId, duel: &Duel| {
@@ -235,23 +236,14 @@ impl Xyz {
         }
         let tp = c.get_controler(duel);
         let (g, mut mg) = Xyz::materials::<P>(duel, c, tp, a.materials);
-        let mut mustg = aux::get_must_be_material_group(duel, tp, Some(g), tp, Some(c), Some(mg), REASON_XYZ);
-        if let Some(must) = a.must {
-            mustg.merge(must);
-        }
+        let mustg = must_group(duel, tp, Some(g), c, mg, REASON_XYZ, a.must);
         if !mg.includes(mustg) {
             return false;
         }
         if !P::MUSTBEMAT {
             mg.merge(Xyz::orichalcum_group(duel, tp));
         }
-        let s = Search {
-            xyz: c,
-            tp,
-            mustg,
-            min: usize::from(a.min),
-            max: usize::from(a.max),
-        };
+        let s = Search::new(a, c, tp, mustg);
         let none = CardSet::default();
         mg.is_exists(duel, |mc, duel| Xyz::recursion_chk::<P>(duel, mc, mg, &s, none, none, 0), 1, None)
     }
@@ -260,10 +252,7 @@ impl Xyz {
         let (e, tp, must, og) = (a.e, a.tp, a.must, a.materials);
         let Some(c) = a.c else { return Ok(false) };
         let (g, mut mg) = Xyz::materials::<P>(duel, c, tp, og);
-        let mut mustg = aux::get_must_be_material_group(duel, tp, Some(g), tp, Some(c), Some(mg), REASON_XYZ);
-        if let Some(must) = must {
-            mustg.merge(must);
-        }
+        let mustg = must_group(duel, tp, Some(g), c, mg, REASON_XYZ, must);
         let orichalcum = (!P::MUSTBEMAT).then(|| Xyz::orichalcum_group(duel, tp));
         mg.merge(orichalcum.unwrap_or_default());
         let (min, max) = (usize::from(a.min), usize::from(a.max));
@@ -271,13 +260,7 @@ impl Xyz {
             e.set_label_object_group(duel, Some(mustg));
             return Ok(true);
         }
-        let s = Search {
-            xyz: c,
-            tp,
-            mustg,
-            min,
-            max,
-        };
+        let s = Search::new(a, c, tp, mustg);
         let (mut matg, mut sg) = (CardSet::default(), CardSet::default());
         let mut finishable = false;
         while (max == 0 || matg.len() < max) && (P::MAXCT == Xyz::INFINITE_MATS || matg.len() < P::MAXCT) {
@@ -327,10 +310,7 @@ impl Xyz {
         }
         let tp = c.get_controler(duel);
         let mg = og.unwrap_or_else(|| duel.get_field_group(tp, LOCATION_MZONE, LOCATION_MZONE));
-        let mut mustg = aux::get_must_be_material_group(duel, tp, og, tp, Some(c), Some(mg), REASON_XYZ);
-        if let Some(must) = a.must {
-            mustg.merge(must);
-        }
+        let mustg = must_group(duel, tp, og, c, mg, REASON_XYZ, a.must);
         if mustg.len() > 1 || a.min > 1 || !mg.includes(mustg) {
             return false;
         }
@@ -349,10 +329,7 @@ impl Xyz {
         let cancelable = og.is_none() && duel.is_summon_cancelable();
         duel.set_script_state(PROC_CANCELLABLE, i64::from(cancelable));
         let mg = og.unwrap_or_else(|| duel.get_field_group(tp, LOCATION_MZONE, LOCATION_MZONE));
-        let mut mustg = aux::get_must_be_material_group(duel, tp, og, tp, Some(c), Some(mg), REASON_XYZ);
-        if let Some(must) = must {
-            mustg.merge(must);
-        }
+        let mustg = must_group(duel, tp, og, c, mg, REASON_XYZ, must);
         let (min, max) = (usize::from(a.min), usize::from(a.max));
         let oc = if must.is_some_and(|must| min != 0 && must.len() == min && must.len() == max) {
             mustg.get_first()

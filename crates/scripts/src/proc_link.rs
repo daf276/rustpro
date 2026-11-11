@@ -1,17 +1,16 @@
-// Port of proc_link.lua: Link.AddProcedure with its condition, target and operation. EFFECT_FORMUD_SKIPPER comes with
-// the card that grants it.
+// Port of proc_link.lua; EFFECT_FORMUD_SKIPPER comes with the card that grants it.
 use std::cell::RefCell;
 
 use engine::{Args, CardId, CardSet, Duel, EffectId, ExtraMaterialCall, Script, Value};
 
 use crate::constant::*;
+use crate::proc_xyz::must_group;
 use crate::utility::aux::ExtraMaterials;
 use crate::utility::{CardUtility, aux};
 
 pub struct Link;
 
-// The parameters of Link.AddProcedure (f, min, max, specialchk, spcon): `MAX` None is the monster's Link Rating, a nil
-// filter passes every card and a nil specialchk or spcon everything.
+// The parameters of Link.AddProcedure: `MAX` None is the Link Rating, a nil filter, specialchk or spcon passes.
 pub trait LinkProcedure {
     const MIN: usize;
     const MAX: Option<usize> = None;
@@ -31,8 +30,7 @@ pub trait LinkProcedure {
 
 const LINK_MATERIAL: u64 = SUMMON_TYPE_LINK as u64 | MATERIAL_LINK;
 
-// What the recursive checks share: the player, all materials (mg+tg) and those that are not extra materials (og), the
-// Link Monster, the material counts and the extra materials.
+// What the recursive checks share: mg is all materials (mg+tg), og those that are not extra materials.
 struct Search<'a> {
     tp: u8,
     mg: CardSet,
@@ -43,8 +41,21 @@ struct Search<'a> {
     emt: &'a ExtraMaterials,
 }
 
-// The filt table of the recursive checks: the indices into emt of the extra materials the selection uses. The Lua passes
-// one copy to all the calls of an IsExists or Filter, which add to it in turn.
+impl<'a> Search<'a> {
+    fn new(tp: u8, mg: CardSet, og: CardSet, lc: CardId, minc: usize, maxc: usize, emt: &'a ExtraMaterials) -> Self {
+        Self {
+            tp,
+            mg,
+            og,
+            lc,
+            minc,
+            maxc,
+            emt,
+        }
+    }
+}
+
+// The filt table: indices into emt, one copy shared by all the calls of an IsExists or Filter, as the Lua passes it.
 type Filters = RefCell<Vec<usize>>;
 
 impl Link {
@@ -87,8 +98,7 @@ impl Link {
         }
     }
 
-    // c joins sg if the filters of the extra materials already used take it and, unless it is in og, an extra material
-    // entry does (added to filt).
+    // c joins sg if the used extra materials' filters take it and, unless it is in og, an extra material does (into filt).
     fn joins(duel: &Duel, c: CardId, sg: CardSet, s: &Search, filt: &Filters) -> bool {
         let passes = |&index: &usize| {
             s.emt
@@ -117,8 +127,7 @@ impl Link {
         mg.is_exists(duel, |tc, duel| Link::check_recursive::<P>(duel, tc, sg, s, &filt), 1, Some(sg))
     }
 
-    // Link.CheckRecursive2 with secondg as mg: walks the cards of sg2 into sg, collecting the extra materials they use
-    // in filt.
+    // Link.CheckRecursive2 with secondg as mg: walks sg2 into sg, collecting the extra materials it uses in filt.
     fn check_recursive2<P: LinkProcedure>(duel: &Duel, c: CardId, sg: CardSet, sg2: CardSet, s: &Search, filt: &Filters) -> bool {
         if sg.len() > s.maxc {
             return false;
@@ -153,18 +162,14 @@ impl Link {
             && duel.get_location_count_from_ex(s.tp, s.tp, Some(sg), s.lc) > 0
     }
 
-    // The materials both the condition and the target start from: (mg, mustg, min, max), None if the forced counts
-    // are out of range.
+    // The materials the condition and the target start from, None if the forced counts are out of range.
     fn materials<P: LinkProcedure>(duel: &Duel, a: &Args, c: CardId, tp: u8) -> Option<(CardSet, CardSet, usize, usize)> {
         let (minc, maxc) = (P::MIN, Link::max::<P>(duel, c));
         let g = a
             .materials
             .unwrap_or_else(|| duel.get_matching_group(|c, duel| c.is_faceup(duel), tp, LOCATION_MZONE, 0, None));
         let mg = g.filter(duel, |mc, duel| Link::condition_filter::<P>(mc, duel, c, tp), None);
-        let mut mustg = aux::get_must_be_material_group(duel, tp, Some(g), tp, Some(c), Some(mg), REASON_LINK);
-        if let Some(must) = a.must {
-            mustg.merge(must);
-        }
+        let mustg = must_group(duel, tp, Some(g), c, mg, REASON_LINK, a.must);
         let (min, max) = (usize::from(a.min), usize::from(a.max));
         if (min != 0 && min < minc) || (max != 0 && max > maxc) {
             return None;
@@ -195,15 +200,7 @@ impl Link {
             if !(mg_tg.includes(mustg) && mustg.len() <= max) {
                 return false;
             }
-            let s = Search {
-                tp,
-                mg: mg_tg,
-                og: mg,
-                lc: c,
-                minc: min,
-                maxc: max,
-                emt,
-            };
+            let s = Search::new(tp, mg_tg, mg, c, min, max, emt);
             let recursive = |sg: CardSet| move |tc, duel: &Duel| Link::check_recursive::<P>(duel, tc, sg, &s, &Filters::default());
             if mustg.len() == max {
                 mustg.is_exists(duel, recursive(CardSet::default()), 1, None)
@@ -236,15 +233,7 @@ impl Link {
         let tg = tg.filter(duel, |mc, duel| Link::condition_filter::<P>(mc, duel, c, tp), None);
         let mut sg = mustg;
         let mg_tg = mg.union(tg);
-        let s = Search {
-            tp,
-            mg: mg_tg,
-            og: mg,
-            lc: c,
-            minc: min,
-            maxc: max,
-            emt: &emt,
-        };
+        let s = Search::new(tp, mg_tg, mg, c, min, max, &emt);
         let filters = |duel: &Duel, sg: CardSet| {
             let filters = Filters::default();
             if let Some(first) = sg.first() {

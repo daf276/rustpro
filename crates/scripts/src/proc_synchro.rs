@@ -1,5 +1,4 @@
-// Port of proc_synchro.lua: Synchro.AddProcedure and Synchro.AddMajesticProcedure with their conditions, targets and
-// operation, and Synchro.AddHandMaterialEffect. The Dark Synchro procedure and Synchro.Send come with the cards that use them.
+// Port of proc_synchro.lua; the Dark Synchro procedure and Synchro.Send come with the cards that use them.
 use engine::{Args, CardId, CardSet, ConditionFn, Duel, EffectId, Operation, Script, Target, TargetFn, Value};
 
 use crate::constant::*;
@@ -7,8 +6,7 @@ use crate::utility::aux;
 
 pub struct Synchro;
 
-// The parameters of Synchro.AddProcedure (f1, min1, max1, f2, min2, max2, sub1, sub2, req1, req2, reqm): a filter left
-// nil passes every card, a nil substitute none.
+// The parameters of Synchro.AddProcedure: a filter left nil passes every card, a nil substitute none.
 pub trait SynchroProcedure {
     const MIN1: usize = 1;
     const MAX1: usize = 1;
@@ -33,8 +31,7 @@ pub trait SynchroProcedure {
     }
 }
 
-// The parameters of Synchro.AddMajesticProcedure (f1, cbt1, f2, cbt2, f3, cbt3, reqm...): the filter of each of the three
-// materials in the order chosen, and whether it can be the Tuner.
+// The parameters of Synchro.AddMajesticProcedure: each material's filter in the order chosen, and if it can be the Tuner.
 pub trait MajesticProcedure {
     const CBT1: bool;
     const CBT2: bool;
@@ -48,8 +45,7 @@ pub trait MajesticProcedure {
     fn f3(c: CardId, duel: &Duel, sc: CardId, sumtype: u64, tp: u8) -> bool;
 }
 
-// The parameters of Synchro.AddHandMaterialEffect (id, material_filter, synchro_filter); no official script passes
-// banish_mats or rc.
+// The parameters of Synchro.AddHandMaterialEffect; no official script passes banish_mats or rc.
 pub trait HandMaterial {
     const ID: u32;
 
@@ -72,8 +68,7 @@ fn req(requirement: Option<Requirement>, duel: &Duel, g: CardSet, sc: CardId, tp
 const SYNCHRO_MATERIAL: u64 = SUMMON_TYPE_SYNCHRO as u64 | MATERIAL_SYNCHRO;
 const HAND_CHECK: u32 = EFFECT_HAND_SYNCHRO + EFFECT_SYNCHRO_CHECK;
 
-// What the recursive checks share: the Synchro Monster's level, the monster and its controller, the materials it must
-// use, whether only given materials may be used, and the forced minimum and maximum (0 for nil).
+// What the recursive checks share; a forced minimum or maximum of 0 is nil.
 struct Search {
     lv: u32,
     sc: CardId,
@@ -86,9 +81,23 @@ struct Search {
     plain: bool,
 }
 
-// The Synchro levels of up to 16 materials, read once per condition or target call instead of at every CheckP43: neither
-// changes a level before its last read, and a repeated read looks up the same effects in the same state. Other cards are
-// read when asked.
+impl Search {
+    fn new(a: &Args, lv: u32, sc: CardId, tp: u8, pg: CardSet, mgchk: bool, levels: Levels, plain: bool) -> Self {
+        Self {
+            lv,
+            sc,
+            tp,
+            pg,
+            mgchk,
+            min: usize::from(a.min),
+            max: usize::from(a.max),
+            levels,
+            plain,
+        }
+    }
+}
+
+// The Synchro levels of up to 16 materials, read once per call instead of at every CheckP43, as no level changes between.
 struct Levels([(Option<CardId>, u32); 16]);
 
 impl Levels {
@@ -138,8 +147,7 @@ impl Synchro {
         e1
     }
 
-    // Synchro.AddHandMaterialEffect: while c is on the field and a Synchro material, a hand card that passes the filters
-    // can be another.
+    // Synchro.AddHandMaterialEffect.
     pub fn add_hand_material_effect<H: HandMaterial>(duel: &mut Duel, c: CardId) -> EffectId {
         let e1 = duel.create_effect(c);
         e1.set_type(duel, EFFECT_TYPE_SINGLE);
@@ -270,8 +278,26 @@ impl Synchro {
         thg
     }
 
-    // Whether an effect may have EFFECT_HAND_SYNCHRO, or EFFECT_HAND_SYNCHRO+EFFECT_SYNCHRO_CHECK (which a cancelled
-    // Synchro.Target leaves on hand cards); without them a check registers and resets nothing.
+    fn with_hand_materials(duel: &Duel, c: CardId, tp: u8, g: CardSet, mgchk: bool, search: impl Fn(&Duel, CardSet) -> bool) -> bool {
+        let res = if Synchro::hand_synchro_possible(duel) {
+            duel.check_mut(|duel| {
+                let g = if mgchk {
+                    g
+                } else {
+                    g.union(Synchro::hand_materials(duel, c, tp, g))
+                };
+                let res = search(duel, g);
+                Synchro::reset_hand_synchro(duel, tp);
+                res
+            })
+        } else {
+            search(duel, g)
+        };
+        duel.assume_reset();
+        res
+    }
+
+    // Without EFFECT_HAND_SYNCHRO or the HAND_CHECK a cancelled Synchro.Target leaves, a check registers nothing.
     fn hand_synchro_possible(duel: &Duel) -> bool {
         duel.may_have_effect(EFFECT_HAND_SYNCHRO) || duel.may_have_effect(HAND_CHECK)
     }
@@ -281,8 +307,7 @@ impl Synchro {
         duel.get_matching_group(can_be_material, tp, LOCATION_HAND + LOCATION_GRAVE, 0, Some(c.into()))
     }
 
-    // The cards of hg that pass `filter` and value(te, mc, sc) of te, an EFFECT_HAND_SYNCHRO effect, which registers
-    // EFFECT_HAND_SYNCHRO+EFFECT_SYNCHRO_CHECK on each hand material.
+    // The cards of hg that pass `filter` and value(te, mc, sc), which registers HAND_CHECK on each hand material.
     fn hand_synchro(duel: &mut Duel, te: EffectId, hg: CardSet, sc: CardId, filter: impl Fn(CardId, &Duel) -> bool) -> CardSet {
         let Value::HandSynchro(val) = te.get_value(duel) else {
             return CardSet::default();
@@ -328,8 +353,7 @@ impl Synchro {
         (tg, ntg)
     }
 
-    // aux.ResetEffects over the hand and GY cards with EFFECT_HAND_SYNCHRO+EFFECT_SYNCHRO_CHECK. Not in the Lua: the cards
-    // are not searched while no effect has the code.
+    // aux.ResetEffects over the hand and GY cards with HAND_CHECK; not in the Lua: skipped while no effect has the code.
     fn reset_hand_synchro(duel: &mut Duel, tp: u8) {
         if !duel.may_have_effect(HAND_CHECK) {
             return;
@@ -342,8 +366,7 @@ impl Synchro {
         }
     }
 
-    // Synchro.CheckFilterChk: a material with EFFECT_SYNCHRO_CHECK that passes some filter once the effect's value, which
-    // may assume properties, ran.
+    // Synchro.CheckFilterChk: passes some filter once its EFFECT_SYNCHRO_CHECK value, which may assume properties, ran.
     fn check_filter_chk<P: SynchroProcedure>(c: CardId, duel: &Duel, sc: CardId, tp: u8) -> bool {
         let Some(&te) = c.get_card_effect(duel, EFFECT_SYNCHRO_CHECK).first() else {
             return false;
@@ -369,8 +392,7 @@ impl Synchro {
         matches!(te.get_value(duel), Value::Card(val) if val(duel, te, c) != 0)
     }
 
-    // The end of CheckP31, CheckP32 and the target's deselection: the assumptions stay while a chosen material has
-    // EFFECT_SYNCHRO_CHECK.
+    // The end of CheckP31, CheckP32 and the target's deselection.
     fn assume_reset_unless_checked(duel: &Duel, sg: CardSet) {
         if !sg.is_exists(duel, |c, duel| c.is_has_effect(duel, EFFECT_SYNCHRO_CHECK).is_some(), 1, None) {
             duel.assume_reset();
@@ -388,19 +410,8 @@ impl Synchro {
         let Some((g, pg)) = Synchro::must_materials(duel, c, g, pg, smat) else {
             return false;
         };
-        let mut s = Search {
-            lv: c.get_level(duel),
-            sc: c,
-            tp,
-            pg,
-            mgchk,
-            min: usize::from(a.min),
-            max: usize::from(a.max),
-            levels,
-            plain: false,
-        };
+        let mut s = Search::new(a, c.get_level(duel), c, tp, pg, mgchk, levels, false);
         let none = CardSet::default();
-        let hand_synchro = Synchro::hand_synchro_possible(duel);
         if Synchro::any_synchro_check::<P>(duel, g, c, tp) {
             let search = |duel: &Duel, g2: CardSet| {
                 g2.is_exists(
@@ -410,22 +421,7 @@ impl Synchro {
                     None,
                 )
             };
-            let res = if hand_synchro {
-                duel.check_mut(|duel| {
-                    let g2 = if mgchk {
-                        g
-                    } else {
-                        g.union(Synchro::hand_materials(duel, c, tp, g))
-                    };
-                    let res = search(duel, g2);
-                    Synchro::reset_hand_synchro(duel, tp);
-                    res
-                })
-            } else {
-                search(duel, g)
-            };
-            duel.assume_reset();
-            return res;
+            return Synchro::with_hand_materials(duel, c, tp, g, mgchk, search);
         }
         let tg = g.filter(duel, |mc, duel| Synchro::tuner_filter::<P>(mc, duel, c, tp), None);
         let ntg = g.filter(duel, |mc, duel| Synchro::non_tuner_filter::<P>(mc, duel, c, tp), None);
@@ -456,10 +452,7 @@ impl Synchro {
         })
     }
 
-    // Not in the Lua: CheckP43 needs all of a selection to add up to the level and more materials only raise the sum, so
-    // nothing is found from materials that cannot reach the level or from a selection already past it. The search is cut
-    // short only when what it skips looks up no effect, since is_available numbers an effect that becomes available: no
-    // requirements, and no effect of the codes CheckP41 to CheckP43 look up.
+    // Not in the Lua: the level-sum pruning is safe only when what it skips looks up no effect.
     fn is_plain<P: SynchroProcedure>(duel: &Duel) -> bool {
         let codes = [EFFECT_SYNCHRO_MAT_RESTRICTION, HAND_CHECK, EFFECT_SYNCHRO_MATERIAL_CUSTOM];
         P::REQ1.is_none()
@@ -481,10 +474,7 @@ impl Synchro {
         s.plain && sg.iter().map(|c| least(s.levels.get(duel, c, s.sc))).sum::<u32>() > s.lv
     }
 
-    // The restrictions on adding c to sg, false if one rules it out, else the cards they rule out (trg, ntrg): those of
-    // rtg and rntg that the EFFECT_SYNCHRO_MAT_RESTRICTION effects of c reject, and those the first passing
-    // EFFECT_HAND_SYNCHRO+EFFECT_SYNCHRO_CHECK check of c returns for ctg and ntg. Not in the Lua: the lookups are
-    // skipped while no effect has the code, as they would find nothing.
+    // The cards adding c to sg rules out (trg, ntrg), None if c is ruled out; lookups skipped while no effect has the code.
     fn restrictions(
         duel: &Duel,
         c: CardId,
@@ -750,17 +740,7 @@ impl Synchro {
             let thg = Synchro::hand_synchro_cards(duel, tg, ntg);
             Synchro::add_hand_materials::<P>(duel, c, tp, thg, tg, ntg)
         };
-        let s = Search {
-            lv: c.get_level(duel),
-            sc: c,
-            tp,
-            pg,
-            mgchk,
-            min: usize::from(a.min),
-            max: usize::from(a.max),
-            levels,
-            plain: Synchro::is_plain::<P>(duel),
-        };
+        let s = Search::new(a, c.get_level(duel), c, tp, pg, mgchk, levels, Synchro::is_plain::<P>(duel));
         let mut tsg = CardSet::default();
         let mut selectedastuner = CardSet::default();
         let mut ntsg = CardSet::default();
@@ -1013,20 +993,6 @@ impl Synchro {
         cards
     }
 
-    fn majestic_search(a: &Args, lv: u32, sc: CardId, tp: u8, pg: CardSet, mgchk: bool, levels: Levels) -> Search {
-        Search {
-            lv,
-            sc,
-            tp,
-            pg,
-            mgchk,
-            min: usize::from(a.min),
-            max: usize::from(a.max),
-            levels,
-            plain: false,
-        }
-    }
-
     fn majestic_condition<P: MajesticProcedure>(duel: &Duel, a: &Args) -> bool {
         let Some(c) = a.c else { return true };
         if a.min > 3 || (a.max != 0 && a.max < 3) {
@@ -1037,7 +1003,7 @@ impl Synchro {
         let Some((g, pg)) = Synchro::must_materials(duel, c, g, pg, a.must) else {
             return false;
         };
-        let s = Synchro::majestic_search(a, lv, c, tp, pg, mgchk, levels);
+        let s = Search::new(a, lv, c, tp, pg, mgchk, levels, false);
         let none = CardSet::default();
         let search = |duel: &Duel, g: CardSet| {
             g.is_exists(
@@ -1047,22 +1013,7 @@ impl Synchro {
                 None,
             )
         };
-        let res = if Synchro::hand_synchro_possible(duel) {
-            duel.check_mut(|duel| {
-                let g = if mgchk {
-                    g
-                } else {
-                    g.union(Synchro::hand_materials(duel, c, tp, g))
-                };
-                let res = search(duel, g);
-                Synchro::reset_hand_synchro(duel, tp);
-                res
-            })
-        } else {
-            search(duel, g)
-        };
-        duel.assume_reset();
-        res
+        Synchro::with_hand_materials(duel, c, tp, g, mgchk, search)
     }
 
     fn majestic_target<P: MajesticProcedure>(duel: &mut Duel, a: &Args, _: i32, _: Option<CardId>) -> Script<bool> {
@@ -1081,7 +1032,7 @@ impl Synchro {
         if !mgchk {
             g.merge(Synchro::hand_materials(duel, c, tp, g));
         }
-        let s = Synchro::majestic_search(a, c.get_level(duel), c, tp, pg, mgchk, levels);
+        let s = Search::new(a, c.get_level(duel), c, tp, pg, mgchk, levels, false);
         let mut sg = CardSet::default();
         let mut cards = [None; 3];
         let cancel = !mgchk && duel.is_summon_cancelable();

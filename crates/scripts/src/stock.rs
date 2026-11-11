@@ -1,5 +1,4 @@
-// Bodies that many card scripts write out identically. A card uses one only where its Lua function is exactly that
-// sequence of calls; PORTING.md lists them.
+// Bodies many card scripts write out identically; a card uses one only where its Lua is exactly that sequence of calls.
 use crate::prelude::*;
 
 pub fn exists_target(

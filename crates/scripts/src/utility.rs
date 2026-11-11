@@ -1315,7 +1315,7 @@ impl Cost {
         };
         duel.hint(HINT_CARD, 0, eff.get_handler(duel).get_original_code(duel).into());
         if let Some(Operation::Event(operation)) = eff.get_operation(duel) {
-            operation(duel, &Args { e: eff, ..Args::default() })?;
+            operation(duel, &Args { e: eff, ..*args })?;
         }
         eff.use_count_limit(duel, args.tp);
         Ok(false)

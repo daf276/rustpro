@@ -346,11 +346,12 @@ impl Default for StaticData {
 
 impl StaticData {
     // Data no database holds (the stats Duel.IsPlayerCanSpecialSummonMonster gives the temp card), leaked once per value.
+    // Not thread-local: a duel waiting in a fiber may resume on another thread.
     pub fn interned(data: CardData) -> Self {
-        thread_local! {
-            static INTERNED: std::cell::RefCell<HashMap<CardData, &'static CardData>> = std::cell::RefCell::default();
-        }
-        Self(INTERNED.with_borrow_mut(|interned| *interned.entry(data).or_insert_with(|| Box::leak(Box::new(data)))))
+        static INTERNED: std::sync::LazyLock<std::sync::Mutex<HashMap<CardData, &'static CardData>>> =
+            std::sync::LazyLock::new(Default::default);
+        let mut interned = INTERNED.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        Self(interned.entry(data).or_insert_with(|| Box::leak(Box::new(data))))
     }
 }
 

@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use carddata::{CardDatabase, Deck as Decklist};
 use engine::{DUEL_MODE_MR5, DuelRecord, PlayerOptions, Position, PositionError, Prompt, Xoshiro256StarStar};
+use fiber::Fiber;
 use numpy::{PyArray1, PyArray2, PyArrayDyn, PyArrayMethods, PyReadonlyArray1};
 use pyo3::create_exception;
 use pyo3::exceptions::PyException;
@@ -150,19 +151,19 @@ impl Tensors {
 /// One duel, for search: `record` holds how it came about unless it was taken from a batch or determinized.
 #[pyclass]
 struct Duel {
-    duel: Mutex<engine::Duel>,
+    duel: Mutex<Fiber>,
     record: Option<DuelRecord>,
 }
 
 impl Duel {
     fn replay(database: &Database, record: DuelRecord) -> PyResult<Self> {
         Ok(Self {
-            duel: Mutex::new(record.replay(database.0, &LIBRARY).map_err(fail)?),
+            duel: Mutex::new(Fiber::new(record.replay(database.0, &LIBRARY).map_err(fail)?)),
             record: Some(record),
         })
     }
 
-    fn duel(&mut self) -> &mut engine::Duel {
+    fn duel(&mut self) -> &mut Fiber {
         exclusive(&mut self.duel)
     }
 
@@ -175,7 +176,7 @@ impl Duel {
         make: impl FnOnce() -> PyResult<engine::Duel>,
     ) -> PyResult<Py<Self>> {
         let Some(out) = out else {
-            let duel = Mutex::new(make()?);
+            let duel = Mutex::new(Fiber::new(make()?));
             return Py::new(
                 py,
                 Self {
@@ -185,7 +186,7 @@ impl Duel {
             );
         };
         let mut target = out.try_borrow_mut(py)?;
-        write(target.duel())?;
+        write(target.duel().duel_mut())?;
         target.record = record.cloned();
         drop(target);
         Ok(out)
@@ -215,7 +216,7 @@ impl Duel {
     /// A copy, written into `out` (another Duel, whose buffers it reuses) if given.
     #[pyo3(signature = (out = None))]
     fn clone(&mut self, py: Python<'_>, out: Option<Py<Self>>) -> PyResult<Py<Self>> {
-        let duel = &*exclusive(&mut self.duel);
+        let duel = &**exclusive(&mut self.duel);
         Self::copy(py, out, self.record.as_ref(), |target| copy_into(duel, target), || Ok(duel.clone()))
     }
 
@@ -259,7 +260,7 @@ impl Duel {
     #[pyo3(signature = (player, seed, pool, out = None))]
     fn determinize(&mut self, py: Python<'_>, player: u8, seed: u64, pool: Deck, out: Option<Py<Self>>) -> PyResult<Py<Self>> {
         let rng = || Xoshiro256StarStar::new(StdRng::seed_from_u64(seed).random());
-        let duel = &*self.duel();
+        let duel = &**self.duel();
         let write = |target: &mut engine::Duel| duel.determinize_into(player, &mut rng(), &pool.0, target).map_err(fail);
         Self::copy(py, out, None, write, || duel.determinize(player, &mut rng(), &pool.0).map_err(fail))
     }

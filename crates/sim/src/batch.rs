@@ -1,4 +1,5 @@
 use engine::{Action, ActionError, Duel, PositionError, Prompt};
+use fiber::Fiber;
 use rayon::prelude::*;
 
 use crate::encoding::{ACTIONS, EncodingError, find, write_mask};
@@ -14,7 +15,7 @@ pub enum AutoAdvance {
 }
 
 // Applies the only legal action while there is one, returning how many; `legal` is left with the last prompt's actions.
-pub fn auto_advance(duel: &mut Duel, mode: AutoAdvance, player: u8, legal: &mut Vec<Action>) -> Result<u64, ActionError> {
+pub fn auto_advance(duel: &mut Fiber, mode: AutoAdvance, player: u8, legal: &mut Vec<Action>) -> Result<u64, ActionError> {
     let mut applied = 0;
     loop {
         duel.policy_actions_into(legal);
@@ -75,7 +76,7 @@ pub enum BatchError {
 
 // No duel once the generator has retired the slot.
 struct Slot {
-    duel: Option<Duel>,
+    duel: Option<Fiber>,
     legal: Vec<Action>,
     episode: u64,
     steps: u64,
@@ -177,7 +178,7 @@ impl<G> Batch<G> {
     }
 
     pub fn duel(&self, slot: usize) -> Option<&Duel> {
-        self.slots.get(slot)?.duel.as_ref()
+        self.slots.get(slot)?.duel.as_deref()
     }
 
     pub fn legal(&self, slot: usize) -> &[Action] {
@@ -208,7 +209,9 @@ impl Slot {
     ) -> Result<(), BatchError> {
         loop {
             self.legal.clear();
-            self.duel = generator(index, self.episode).map_err(|error| BatchError::Setup { slot: index, error })?;
+            self.duel = generator(index, self.episode)
+                .map_err(|error| BatchError::Setup { slot: index, error })?
+                .map(Fiber::new);
             let Some(duel) = &mut self.duel else { break };
             duel.process();
             let player = duel.prompt().map_or(0, Prompt::player);

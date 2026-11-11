@@ -370,13 +370,15 @@ impl Duel {
         self.core.subunits.push(unit.into());
     }
 
-    // field::process; `units` is core.units, taken out by `run` so the front unit runs in place, or a script's nested stack.
+    // field::process; `units` is core.units, taken out by `run` so the front unit runs in place, an Execute unit's own stack
+    // (Duel::process_apart), or a script's nested stack.
     pub(crate) fn process_unit(&mut self, units: &mut Vec<Unit>) -> OcgStatus {
-        self.reset_pending();
-        if !self.core.subunits.is_empty() {
-            self.core.subunits.reverse();
-            units.append(&mut self.core.subunits);
-        }
+        self.next_unit(units);
+        self.process_last(units)
+    }
+
+    // [Duel::process_unit] once the emplaced units are on `units` ([Duel::next_unit]).
+    pub(crate) fn process_last(&mut self, units: &mut Vec<Unit>) -> OcgStatus {
         let Some(unit) = units.last_mut() else {
             return OcgStatus::End;
         };
@@ -393,6 +395,15 @@ impl Duel {
             return OcgStatus::Awaiting;
         }
         if needs_answer { OcgStatus::Awaiting } else { OcgStatus::Continue }
+    }
+
+    // Brings the emplaced units on top of `units`, the next to run last.
+    pub(crate) fn next_unit(&mut self, units: &mut Vec<Unit>) {
+        self.reset_pending();
+        if !self.core.subunits.is_empty() {
+            self.core.subunits.reverse();
+            units.append(&mut self.core.subunits);
+        }
     }
 
     // The core's one step per call, looped until the unit ends, prompts or emplaces one; not inlined, one function per unit.

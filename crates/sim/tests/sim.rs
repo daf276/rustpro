@@ -4,6 +4,7 @@ use std::sync::OnceLock;
 
 use diff::{Vendor, diff_scenario, each_state, records, scenario_records};
 use engine::{Action, Duel, DuelRecord, Observation, Prompt, SeenCard};
+use fiber::Fiber;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
@@ -183,7 +184,7 @@ fn check_auto_advance(duel: &Duel) -> Result {
         return Ok(());
     };
     for mode in [AutoAdvance::Own, AutoAdvance::Both] {
-        let (mut advanced, mut walked) = (duel.clone(), duel.clone());
+        let (mut advanced, mut walked) = (Fiber::new(duel.clone()), duel.clone());
         let mut legal = Vec::new();
         let skipped = auto_advance(&mut advanced, mode, player, &mut legal)?;
         let skippable = |duel: &Duel| {
@@ -238,7 +239,8 @@ fn alone(generator: impl Fn(usize, u64) -> Generated, mode: AutoAdvance) -> Resu
     for slot in 0..SLOTS {
         let mut rng = StdRng::seed_from_u64(slot as u64);
         for episode in 0.. {
-            let Some(mut duel) = generator(slot, episode)? else { break };
+            let Some(duel) = generator(slot, episode)? else { break };
+            let mut duel = Fiber::new(duel);
             duel.process();
             let mut legal = Vec::new();
             let first = duel.prompt().map_or(0, Prompt::player);

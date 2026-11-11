@@ -437,6 +437,15 @@ fn scenario_seed(card: u32, index: u32) -> u64 {
     u64::from(card) << 32 | u64::from(index)
 }
 
+// The engine's duel of scenario `index` of `card`, unprocessed, and the RNG left for its responses.
+pub fn scenario_duel(vendor: &'static Vendor, card: u32, index: u32) -> Result<(engine::Duel, StdRng), DiffError> {
+    let (rng, duel_seed, _, position) = setup(vendor, scenario_seed(card, index), Some(card), None);
+    Ok((
+        engine::Duel::from_position(&position, &vendor.cards, &scripts::LIBRARY, duel_seed)?,
+        rng,
+    ))
+}
+
 // What scenario `index` of `card` places.
 pub fn scenario(vendor: &Vendor, card: u32, index: u32) -> Option<Scenario> {
     seeded(vendor, scenario_seed(card, index), Some(card)).2

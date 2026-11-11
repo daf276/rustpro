@@ -34,7 +34,7 @@ pub struct Observation {
 }
 
 // A card where it is, as the core's loc_info places it, and its code (0 if hidden from the player).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SeenCard {
     pub controller: u8,
     pub location: u8,
@@ -59,7 +59,7 @@ pub struct SeenLink {
 }
 
 // A legal action with the card it picks (its own Deck shown to the player picking) and the effect or option description.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Choice {
     pub action: Action,
     pub card: Option<SeenCard>,
@@ -85,6 +85,31 @@ pub const MAX_DECLARED_CODES: usize = 64;
 thread_local! {
     // [Duel::unchanged]'s saved effect ids and statuses, kept so that observing allocates nothing.
     static SAVED: Cell<Vec<CellChunk>> = const { Cell::new(Vec::new()) };
+}
+
+// The public state of a duel two engine builds compare after each action: LP, turn, phase and every located card.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DuelState {
+    pub lp: [i32; 2],
+    pub turn: i16,
+    pub turn_player: u8,
+    pub phase: u16,
+    pub chain: usize,
+    pub cards: Vec<CardDigest>,
+}
+
+// A card in [Duel::located_cards] order; ATK, DEF and level only in a Monster Zone.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CardDigest {
+    pub card: CardId,
+    pub code: u32,
+    pub controller: u8,
+    pub location: u8,
+    pub sequence: u32,
+    pub position: u32,
+    pub overlay_target: Option<CardId>,
+    pub stats: [i32; 3],
+    pub counters: Vec<(u16, [u16; 2])>,
 }
 
 // What a hidden card may be resampled to: a card of the Extra Deck or not, of the kind its zone holds.
@@ -189,6 +214,39 @@ impl Duel {
     // [Duel::observe] with the same lookups, its lists fed to `sink` instead; returns the rest, the lists left empty.
     pub fn observe_into(&self, player: u8, sink: &mut impl ObservationSink) -> Observation {
         self.unchanged(|| self.observe_now(player, sink))
+    }
+
+    pub fn state(&self) -> DuelState {
+        let digest = |card: CardId| {
+            let target = &self.cards[card];
+            let current = target.current;
+            let stats = match current.location {
+                LOCATION_MZONE => [self.get_attack(card), self.get_defense(card), self.get_level(card) as i32],
+                _ => [0; 3],
+            };
+            CardDigest {
+                card,
+                code: target.data.code,
+                controller: current.controler,
+                location: current.location,
+                sequence: current.sequence,
+                position: current.position,
+                overlay_target: target.overlay_target,
+                stats,
+                counters: (self.counters.iter())
+                    .filter(|&&(other, ..)| other == card)
+                    .map(|&(_, counter_type, counts)| (counter_type, counts))
+                    .collect(),
+            }
+        };
+        self.unchanged(|| DuelState {
+            lp: [self.player[0].lp, self.player[1].lp],
+            turn: self.infos.turn_id,
+            turn_player: self.infos.turn_player,
+            phase: self.infos.phase,
+            chain: self.core.current_chain.len(),
+            cards: self.located_cards().into_iter().map(digest).collect(),
+        })
     }
 
     // Runs `read`, then puts back the effect ids, statuses, field id counter and script state its lookups changed.

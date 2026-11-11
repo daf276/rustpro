@@ -5,6 +5,7 @@ use std::ops::{Deref, Index, IndexMut};
 
 use carddata::Card as CardData;
 
+use crate::FAST;
 use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{Container, EffectId, EffectSet, Operation, Target, Value, container_key, misread};
@@ -1506,10 +1507,18 @@ impl Duel {
         );
         effects.extend(registry.equal_range(Container::Aura, None, code).filter(|&effect| {
             !self.effects[effect].is_flag(EFFECT_FLAG_PLAYER_TARGET)
-                && self.is_available(effect)
-                && self.effect_is_target(effect, card)
+                && self.is_available_for(effect, card)
                 && self.is_affect_by_effect(card, Some(effect))
         }));
+    }
+
+    // A field effect available and targeting the card; fast mode tests the range first, sparing the condition out of it.
+    fn is_available_for(&self, effect: EffectId, card: CardId) -> bool {
+        if FAST {
+            self.is_in_target_range(effect, card) && self.is_available(effect) && self.is_fit_target_function(effect, card)
+        } else {
+            self.is_available(effect) && self.effect_is_target(effect, card)
+        }
     }
 
     // equip_effect of the equiping_cards by card id; hot lookups test `equip_cards` first, as most duels equip nothing.
@@ -1713,8 +1722,7 @@ impl Duel {
             .or_else(|| {
                 registry.equal_range(Container::Aura, None, code).find(|&effect| {
                     !self.effects[effect].is_flag(EFFECT_FLAG_PLAYER_TARGET)
-                        && self.is_available(effect)
-                        && self.effect_is_target(effect, card)
+                        && self.is_available_for(effect, card)
                         && self.is_affect_by_effect(card, Some(effect))
                         && self.get_value(effect, target) != 0
                 })

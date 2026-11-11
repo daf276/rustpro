@@ -1,5 +1,5 @@
 // Port of proc_synchro.lua; the Dark Synchro procedure and Synchro.Send come with the cards that use them.
-use engine::{Args, CardId, CardSet, ConditionFn, Duel, EffectId, Operation, Script, SynchroMaterials, Target, TargetFn, Value};
+use engine::{Args, CardId, CardSet, ConditionFn, Duel, EffectId, FAST, Operation, Script, SynchroMaterials, Target, TargetFn, Value};
 
 use crate::constant::*;
 use crate::utility::aux;
@@ -459,7 +459,11 @@ impl Synchro {
         let Some((g, pg)) = Synchro::must_materials(duel, c, g, pg, smat) else {
             return false;
         };
-        let mut s = Search::new(a, c.get_level(duel), c, tp, pg, mgchk, levels, false);
+        let lv = c.get_level(duel);
+        if FAST && Synchro::short_of_materials::<P>(duel, g, &levels, c, lv) {
+            return false;
+        }
+        let mut s = Search::new(a, lv, c, tp, pg, mgchk, levels, false);
         let none = CardSet::default();
         if Synchro::any_synchro_check::<P>(duel, g, c, tp) {
             let search = |duel: &Duel, g2: CardSet| {
@@ -499,6 +503,15 @@ impl Synchro {
             Synchro::reset_hand_synchro(duel, tp);
             res
         })
+    }
+
+    // Fast mode: too few materials in g, or too little level among them, which spares the Tuner and non-Tuner filters.
+    fn short_of_materials<P: SynchroProcedure>(duel: &Duel, g: CardSet, levels: &Levels, sc: CardId, lv: u32) -> bool {
+        let most = |level: u32| (level & 0xffff).max(level >> 16);
+        (g.len() < P::MIN1 + P::MIN2 || g.iter().map(|mc| most(levels.get(duel, mc, sc))).sum::<u32>() < lv)
+            && Synchro::is_plain::<P>(duel)
+            && !Synchro::hand_synchro_possible(duel)
+            && !duel.may_have_effect(EFFECT_SYNCHRO_CHECK)
     }
 
     // Not in the Lua: the level-sum pruning is safe only when what it skips looks up no effect.

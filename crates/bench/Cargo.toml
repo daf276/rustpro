@@ -7,6 +7,7 @@ default-run = "bench"
 
 [dependencies]
 carddata = { path = "../carddata" }
+diff = { path = "../diff" }
 engine = { path = "../engine" }
 mimalloc = { version = "0.1", default-features = false, optional = true }
 oracle = { path = "../oracle" }
@@ -18,6 +19,8 @@ sim = { path = "../sim" }
 [features]
 # The stack bench on mimalloc instead of the system heap.
 mimalloc = ["dep:mimalloc"]
+# The engine's fast mode (crates/engine/Cargo.toml), for the divergence binary and the benches.
+fast = ["engine/fast"]
 
 [lints]
 workspace = true

@@ -1917,11 +1917,20 @@ impl Duel {
     }
 
     fn filter_field_effect_lookup<S: FromIterator<EffectId> + DerefMut<Target = [EffectId]>>(&self, code: u32) -> S {
+        self.filter_field_effect_where(code, |_| true)
+    }
+
+    // filter_field_effect of the effects passing `wanted` first, which spares the others' conditions.
+    pub(crate) fn filter_field_effect_where<S: FromIterator<EffectId> + DerefMut<Target = [EffectId]>>(
+        &self,
+        code: u32,
+        wanted: impl Fn(EffectId) -> bool,
+    ) -> S {
         let mut effects: S = self
             .field_effects
             .registry
             .equal_range(Container::Aura, None, code)
-            .filter(|&effect| self.is_available(effect))
+            .filter(|&effect| wanted(effect) && self.is_available(effect))
             .collect();
         effects.sort_by_key(|&effect| self.effects.id(effect));
         effects

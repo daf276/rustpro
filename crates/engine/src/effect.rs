@@ -1382,16 +1382,22 @@ impl Duel {
 
     // effect::is_target: whether a field effect applies to the card.
     pub(crate) fn effect_is_target(&self, effect: EffectId, card: CardId) -> bool {
-        let peffect = &self.effects[effect];
-        let effect_type = peffect.effect_type;
+        let effect_type = self.effects[effect].effect_type;
         if effect_type & EFFECT_TYPE_ACTIONS != 0 {
             return false;
         }
         if effect_type & (EFFECT_TYPE_SINGLE | EFFECT_TYPE_EQUIP | EFFECT_TYPE_XMATERIAL) != 0 && effect_type & EFFECT_TYPE_FIELD == 0 {
             return true;
         }
+        self.is_in_target_range(effect, card) && self.is_fit_target_function(effect, card)
+    }
+
+    // The part of [Duel::effect_is_target] before the target function, for a field or target effect.
+    pub(crate) fn is_in_target_range(&self, effect: EffectId, card: CardId) -> bool {
+        let peffect = &self.effects[effect];
+        let effect_type = peffect.effect_type;
         if effect_type & EFFECT_TYPE_TARGET != 0 && effect_type & EFFECT_TYPE_FIELD == 0 {
-            return self.is_fit_target_function(effect, card);
+            return true;
         }
         let target = &self.cards[card];
         if !peffect.is_flag(EFFECT_FLAG_SET_AVAILABLE) && target.current.location & LOCATION_ONFIELD != 0 && !target.is_position(POS_FACEUP)
@@ -1409,11 +1415,9 @@ impl Duel {
             } else {
                 target.current.controler == self.get_handler_player(effect)
             };
-            if !target.current.is_location(if own { peffect.s_range } else { peffect.o_range }) {
-                return false;
-            }
+            return target.current.is_location(if own { peffect.s_range } else { peffect.o_range });
         }
-        self.is_fit_target_function(effect, card)
+        true
     }
 
     pub(crate) fn is_fit_target_function(&self, effect: EffectId, card: CardId) -> bool {

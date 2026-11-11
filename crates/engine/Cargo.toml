@@ -14,5 +14,10 @@ thiserror = { version = "2", default-features = false }
 [dev-dependencies]
 scripts = { path = "../scripts" }
 
+[features]
+# The same rules with the cheap tests first and the conditions they decide skipped, so effect timestamps no longer
+# follow EDOPro's; the bench's divergence binary measures how often a duel then plays out differently.
+fast = []
+
 [lints]
 workspace = true

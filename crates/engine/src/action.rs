@@ -42,7 +42,7 @@ pub enum Prompt {
 }
 
 // Kinds in the order of their response codes (playerop.cpp); indices point into the prompt's lists.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum IdleCommand {
     Summon(u16),
     SpecialSummon(u16),
@@ -55,7 +55,7 @@ pub enum IdleCommand {
     Shuffle,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BattleCommand {
     Activate(u16),
     Attack(u16),
@@ -63,7 +63,7 @@ pub enum BattleCommand {
     ToEnd,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Action {
     IdleCommand(IdleCommand),
     BattleCommand(BattleCommand),

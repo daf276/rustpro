@@ -27,6 +27,9 @@ macro_rules! clone_by_field {
     };
 }
 
+// Feature `fast`: plain tests run before the lookups and conditions they decide, so effects are renumbered unlike EDOPro.
+pub const FAST: bool = cfg!(feature = "fast");
+
 mod action;
 mod buffer;
 mod card;
@@ -60,6 +63,8 @@ pub use effect::{
 pub use gamestate::{DuelRecord, FormatError, PlacedCard, Position, PositionError, ReplayError};
 pub use libduel::{ChainInfo, ExtraSummon, FromChainInfo, MonsterStats, ReleaseOptions};
 pub use libeffect::CountCode;
-pub use observation::{Choice, DeterminizeError, MAX_DECLARED_CODES, Observation, ObservationSink, SeenCard, SeenLink};
+pub use observation::{
+    CardDigest, Choice, DeterminizeError, DuelState, MAX_DECLARED_CODES, Observation, ObservationSink, SeenCard, SeenLink,
+};
 pub use rng::Xoshiro256StarStar;
 pub use script::{Args, FusionCheck, InitialEffect, Interrupt, Library, Script, SynchroCheck};

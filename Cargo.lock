@@ -13,6 +13,7 @@ name = "bench"
 version = "0.1.0"
 dependencies = [
  "carddata",
+ "diff",
  "engine",
  "mimalloc",
  "oracle",

@@ -1,4 +1,5 @@
 // Ports of processor_unit.h, processor_visit.cpp and processor.cpp with the core's step numbers; chain units are in chain.rs.
+use crate::FAST;
 use crate::card::{Card, CardId, CardSet, LocInfo, SendtoParam};
 use crate::chain::{AddChain, Execute, ExecuteKind, SolveChain, SolveContinuous};
 use crate::constants::*;
@@ -1333,7 +1334,14 @@ impl Duel {
                     }
                 }
                 self.core.spsummonable_cards.clear();
-                for effect in self.filter_field_effect_list::<64>(EFFECT_SPSUMMON_PROC) {
+                let procedures: crate::list::List<EffectId, 64> = if FAST {
+                    self.filter_field_effect_where(EFFECT_SPSUMMON_PROC, |effect| {
+                        self.cards[self.get_handler(effect)].current.controler == turn_player && self.check_count_limit(effect, turn_player)
+                    })
+                } else {
+                    self.filter_field_effect_list::<64>(EFFECT_SPSUMMON_PROC)
+                };
+                for effect in procedures {
                     let card = self.get_handler(effect);
                     let controler = self.cards[card].current.controler;
                     if self.check_count_limit(effect, controler)

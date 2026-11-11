@@ -27,40 +27,37 @@ pub fn card_script(code: u32) -> Option<InitialEffect> {
     card(code).map(|card| card.initial_effect)
 }
 
+fn lookup<T: Copy>(table: &'static [(u32, T)], code: u32) -> Option<T> {
+    let index = table.binary_search_by_key(&code, |&(code, _)| code).ok()?;
+    table.get(index).map(|&(_, value)| value)
+}
+
 // s.listed_names, or else mt.fit_monster, which Ritual.AddProcCode sets and Card.ListsCode reads in its place.
 pub fn listed_names(code: u32) -> &'static [u32] {
-    let index = LISTED_NAMES.binary_search_by_key(&code, |&(code, _)| code).ok();
-    index.and_then(|index| LISTED_NAMES.get(index)).map_or(&[], |&(_, names)| names)
+    lookup(&LISTED_NAMES, code).unwrap_or(&[])
 }
 
 // s.material_setcode, which Card.ListsArchetypeAsMaterial reads.
 pub fn material_setcode(code: u32) -> &'static [u16] {
-    let index = MATERIAL_SETCODE.binary_search_by_key(&code, |&(code, _)| code).ok();
-    index
-        .and_then(|index| MATERIAL_SETCODE.get(index))
-        .map_or(&[], |&(_, setcodes)| setcodes)
+    lookup(&MATERIAL_SETCODE, code).unwrap_or(&[])
 }
 
-// s.material of a Synchro, Xyz or Link Monster: the codes its script names. Fusion Monsters record theirs in the duel.
+// s.material of a Synchro, Xyz or Link Monster; Fusion Monsters record theirs in the duel.
 pub fn material(code: u32) -> &'static [u32] {
-    let index = MATERIAL.binary_search_by_key(&code, |&(code, _)| code).ok();
-    index.and_then(|index| MATERIAL.get(index)).map_or(&[], |&(_, codes)| codes)
+    lookup(&MATERIAL, code).unwrap_or(&[])
 }
 
-// s.dark_calling = true, which the Evil HERO cards read on the cards they check.
+// s.dark_calling, which the Evil HERO cards read on the cards they check.
 pub fn dark_calling(code: u32) -> bool {
-    let index = DARK_CALLING.binary_search_by_key(&code, |&(code, _)| code).ok();
-    index.and_then(|index| DARK_CALLING.get(index)).is_some_and(|&(_, flag)| flag)
+    lookup(&DARK_CALLING, code).unwrap_or(false)
 }
 
-// s.xyz_number, which the Number monsters declare and Card.xyz_number reads.
+// s.xyz_number, which Card.xyz_number reads.
 pub fn xyz_number(code: u32) -> Option<u32> {
-    let index = XYZ_NUMBER.binary_search_by_key(&code, |&(code, _)| code).ok();
-    index.and_then(|index| XYZ_NUMBER.get(index)).map(|&(_, number)| number)
+    lookup(&XYZ_NUMBER, code)
 }
 
 // s.assault_mode, the code of the Synchro Monster an Assault Mode monster is the Special Summon for.
 pub fn assault_mode(code: u32) -> Option<u32> {
-    let index = ASSAULT_MODE.binary_search_by_key(&code, |&(code, _)| code).ok();
-    index.and_then(|index| ASSAULT_MODE.get(index)).map(|&(_, synchro)| synchro)
+    lookup(&ASSAULT_MODE, code)
 }

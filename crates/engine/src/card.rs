@@ -2979,11 +2979,8 @@ impl Duel {
         let effects = self.filter_effects(card, &[EFFECT_ADD_CODE, EFFECT_REMOVE_CODE, EFFECT_CHANGE_CODE]);
         let mut codes = Vec::new();
         if !self.apply_summon_codes(card, effects, scard, sumtype, playerid, &mut codes) {
-            codes.extend(
-                [self.get_code(card), self.get_another_code(card)]
-                    .into_iter()
-                    .filter(|&code| code != 0),
-            );
+            codes.push(self.get_code(card));
+            codes.extend(Some(self.get_another_code(card)).filter(|&code| code != 0));
         }
         codes.sort_unstable();
         codes.dedup();

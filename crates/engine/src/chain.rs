@@ -2,7 +2,7 @@
 use crate::card::{CardId, CardSet};
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{Chain, Container, CounterFilter, EffectId, EffectSet, Event, Operation, Target, TriggeringState, Value};
+use crate::effect::{Chain, Container, CounterFilter, EffectId, EffectSet, Event, Operation, Target, TriggeringState, Value, misread};
 use crate::processor::{PointEvent, RESTART, SelectEffectYesNo, SelectOption};
 use crate::script::{Args, Procedure};
 
@@ -504,16 +504,7 @@ impl Duel {
             duel.core.reason_player.set(PLAYER_NONE);
             duel.core.check_level -= 1;
             if duel.core.check_level == 0 {
-                for p in 0..2 {
-                    if duel.core.shuffle_hand_check[p] {
-                        duel.shuffle(p, LOCATION_HAND);
-                    }
-                }
-                for p in 0..2 {
-                    if duel.core.shuffle_deck_check[p] {
-                        duel.shuffle(p, LOCATION_DECK);
-                    }
-                }
+                duel.shuffle_checked();
             }
             duel.core.shuffle_check_disabled = shuffle_check_was_disabled;
             duel.core.solving_event.remove(0);
@@ -942,7 +933,7 @@ impl Duel {
                     self.dec_count(effect, self.cards[handler].current.controler);
                     match self.effects[effect].value {
                         Value::Activation(value) => value(self, effect, chain.triggering_effect),
-                        _ => debug_assert!(false, "an activation condition read with the wrong parameters"),
+                        _ => misread("an activation condition"),
                     }
                 }
                 arg.step = 0;
@@ -1208,17 +1199,7 @@ impl Duel {
                 }
                 self.core.leave_confirmed = leave;
                 if !leave.is_empty() {
-                    self.send_to(
-                        leave,
-                        None,
-                        REASON_RULE,
-                        PLAYER_NONE,
-                        PLAYER_NONE,
-                        LOCATION_GRAVE,
-                        0,
-                        POS_FACEUP as u8,
-                        false,
-                    );
+                    self.field_send_to_grave(leave, None, REASON_RULE, PLAYER_NONE, PLAYER_NONE);
                 }
                 false
             }

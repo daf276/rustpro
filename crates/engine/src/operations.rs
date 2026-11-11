@@ -3,7 +3,7 @@ use crate::card::{CardId, CardSet, LocInfo, SendtoParam};
 use crate::chain::ExecuteKind;
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{Chain, Container, EffectId, EffectSet, Event, Target, Value};
+use crate::effect::{Chain, Container, EffectId, EffectSet, Event, Target, Value, misread};
 use crate::field::{Cards16, PerPlayer};
 use crate::processor::{
     PointEvent, RESTART, SelectCard, SelectCounter, SelectOption, SelectPlace, SelectPosition, SelectTributeP, SelectUnselectCard,
@@ -1272,7 +1272,7 @@ impl Duel {
             .into_iter()
             .filter(|&effect| {
                 let player = self.get_handler_player(effect);
-                self.is_activateable(effect, player, &event, false, false, false, false, false)
+                self.can_activate(effect, player, &event)
             })
             .collect()
     }
@@ -1711,9 +1711,7 @@ impl Duel {
                     reason_player: current.reason_player,
                     ..Event::default()
                 };
-                if !self.is_activateable(effect, player, &event, false, false, false, false, false)
-                    || matches!(self.effects[effect].value, Value::Int(0))
-                {
+                if !self.can_activate(effect, player, &event) || matches!(self.effects[effect].value, Value::Int(0)) {
                     return true;
                 }
                 self.core.continuous_chain.push(Chain {
@@ -1764,7 +1762,7 @@ impl Duel {
                     reason_player: current.reason_player,
                     ..Event::default()
                 };
-                if !self.is_activateable(effect, player, &event, false, false, false, false, false) {
+                if !self.can_activate(effect, player, &event) {
                     return true;
                 }
                 self.core.continuous_chain.push(Chain {
@@ -2274,10 +2272,7 @@ impl Duel {
         match self.effects[effect].value {
             Value::Int(value) => value,
             Value::Reason(value) => i32::from(value(self, effect, current.reason_effect, current.reason, current.reason_player)),
-            _ => {
-                debug_assert!(false, "a value read with the wrong parameters");
-                0
-            }
+            _ => misread("a value"),
         }
     }
 
@@ -2332,12 +2327,7 @@ impl Duel {
 
     pub(crate) fn save_location(&mut self, card: CardId) {
         let target = &mut self.cards[card];
-        let current = target.current;
-        target.previous.controler = current.controler;
-        target.previous.location = current.location;
-        target.previous.sequence = current.sequence;
-        target.previous.position = current.position;
-        target.previous.pzone = current.pzone;
+        target.previous.set_place(target.current);
     }
 
     fn raise_single_event_by_reason(&mut self, card: CardId, event: u32) {
@@ -4814,7 +4804,7 @@ impl Duel {
         }
     }
 
-    fn shuffle_checked(&mut self) {
+    pub(crate) fn shuffle_checked(&mut self) {
         for (location, checks) in [
             (LOCATION_HAND, self.core.shuffle_hand_check),
             (LOCATION_DECK, self.core.shuffle_deck_check),

@@ -1488,10 +1488,7 @@ impl Duel {
             if self.core.global_flag & GLOBALFLAG_DECK_REVERSE_CHECK != 0
                 && let Some(&top) = self.player[playerid].list_main.last()
             {
-                let (code, position) = (self.cards[top].data.code, self.cards[top].current.position);
-                if self.core.deck_reversed || position == POS_FACEUP_DEFENSE {
-                    self.trace.message(MSG_DECK_TOP).u8(playerid).u32(0).u32(code).u32(position);
-                }
+                self.hint_deck_top(playerid, 0, top);
             }
             return;
         }

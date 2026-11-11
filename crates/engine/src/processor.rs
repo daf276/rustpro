@@ -646,17 +646,7 @@ impl Duel {
                 if !self.return_cards.list.is_empty() {
                     let cards = self.return_cards.list.iter().copied().collect();
                     let reason = REASON_RULE + REASON_DISCARD + REASON_ADJUST;
-                    self.send_to(
-                        cards,
-                        None,
-                        reason,
-                        turn_player,
-                        PLAYER_NONE,
-                        LOCATION_GRAVE,
-                        0,
-                        POS_FACEUP as u8,
-                        false,
-                    );
+                    self.field_send_to_grave(cards, None, reason, turn_player, PLAYER_NONE);
                 }
                 false
             }
@@ -2055,7 +2045,7 @@ impl Duel {
                     match self.is_affected_by_effect_target(card, EFFECT_INDESTRUCTABLE_BATTLE, other) {
                         Some(effect) => {
                             let code = self.cards[self.effects[effect].owner].data.code;
-                            self.trace.message(MSG_HINT).u8(HINT_CARD).u8(0).u64(u64::from(code));
+                            self.hint(HINT_CARD, 0, u64::from(code));
                             *destroyed = false;
                         }
                         None => self.cards[card].set_status(STATUS_BATTLE_RESULT, true),
@@ -3045,10 +3035,7 @@ impl Duel {
                 if self.core.global_flag & GLOBALFLAG_DECK_REVERSE_CHECK != 0
                     && let Some(&top) = self.player[target_player].list_main.last()
                 {
-                    let (code, position) = (self.cards[top].data.code, self.cards[top].current.position);
-                    if self.core.deck_reversed || position == POS_FACEUP_DEFENSE {
-                        self.trace.message(MSG_DECK_TOP).u8(target_player).u32(0).u32(code).u32(position);
-                    }
+                    self.hint_deck_top(target_player, 0, top);
                 }
                 true
             }
@@ -3194,16 +3181,7 @@ impl Duel {
                     arg.step = RESTART;
                     return false;
                 }
-                for p in 0..2 {
-                    if self.core.shuffle_hand_check[p] {
-                        self.shuffle(p, LOCATION_HAND);
-                    }
-                }
-                for p in 0..2 {
-                    if self.core.shuffle_deck_check[p] {
-                        self.shuffle(p, LOCATION_DECK);
-                    }
-                }
+                self.shuffle_checked();
                 true
             }
             14 => {

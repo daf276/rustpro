@@ -135,7 +135,7 @@ pub struct OperationReplace {
     pub is_destroy: bool,
 }
 
-// `is_step` and `is_reflected` come with EFFECT_REFLECT_DAMAGE and the effects that damage in steps.
+// `is_step` comes with the effects that damage in steps.
 #[derive(Debug, Clone)]
 pub struct Damage {
     pub step: u16,
@@ -145,6 +145,7 @@ pub struct Damage {
     pub reason: u32,
     pub reason_card: Option<CardId>,
     pub reason_effect: Option<EffectId>,
+    pub is_reflected: bool,
 }
 
 // `is_step` comes with the effects that recover in steps.
@@ -452,6 +453,7 @@ impl Duel {
             reason,
             reason_card,
             reason_effect,
+            is_reflected: false,
         });
     }
 
@@ -1167,7 +1169,14 @@ impl Duel {
                 if reason & REASON_RDAMAGE == 0 {
                     unported!(self, self.filter_player_effect(playerid, EFFECT_REVERSE_DAMAGE, true));
                 }
-                unported!(self, self.filter_player_effect(playerid, EFFECT_REFLECT_DAMAGE, true));
+                let mut playerid = playerid;
+                for effect in self.filter_player_effect(playerid, EFFECT_REFLECT_DAMAGE, true) {
+                    if self.check_value_reflect_damage(effect, arg.reason_effect, amount, reason, reason_player, reason_card) {
+                        playerid = 1 - playerid;
+                        arg.is_reflected = true;
+                        break;
+                    }
+                }
                 let mut val = amount;
                 for effect in self.filter_player_effect(playerid, EFFECT_CHANGE_DAMAGE, true) {
                     val = self.get_change_damage_value(effect, arg.reason_effect, val, reason, reason_player, reason_card);
@@ -1180,6 +1189,10 @@ impl Duel {
                 false
             }
             1 => {
+                let playerid = if arg.is_reflected { 1 - playerid } else { playerid };
+                if arg.is_reflected {
+                    arg.step = 2;
+                }
                 self.core.hint_timing[playerid] |= TIMING_DAMAGE;
                 self.player[playerid].lp -= amount as i32;
                 self.trace.message(MSG_DAMAGE).u8(playerid).u32(amount);
@@ -1208,6 +1221,10 @@ impl Duel {
             }
             2 => {
                 self.returns.set_u32(0, amount);
+                true
+            }
+            3 => {
+                self.returns.set_u32(0, 0);
                 true
             }
             _ => true,

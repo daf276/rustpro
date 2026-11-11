@@ -2,10 +2,10 @@
 weekly views first, each batch with the unported cards its Lua names (listed names, materials, searches) that are in
 the pool. Cards outside any archetype are batched by views. One batch per line: code<TAB>name;code<TAB>name;...
 
-  python tools/batch.py [--top=N] [batches] [size] [skip codes...]
+  python tools/batch.py [--top=N] [--type=REGEX] [batches] [size] [skip codes...]
 
-`skip` takes codes already assigned to running batches; `--top` picks only among the N most viewed cards (the cards their
-Lua names still come from the whole pool).
+`skip` takes codes already assigned to running batches; `--top` picks only among the N most viewed cards and `--type` only
+among cards whose queue type matches (the cards their Lua names still come from the whole pool).
 """
 import csv
 import re
@@ -17,13 +17,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import ROOT, cdb, lua_script, ported_codes
 
 top = next((int(arg[6:]) for arg in sys.argv[1:] if arg.startswith("--top=")), None)
-args = [arg for arg in sys.argv[1:] if not arg.startswith("--top=")]
+kind = next((arg[7:] for arg in sys.argv[1:] if arg.startswith("--type=")), "")
+args = [arg for arg in sys.argv[1:] if not arg.startswith("--")]
 batches, size = (int(arg) for arg in (args[:2] + ["4", "16"][len(args[:2]) :]))
 skip = {int(code) for code in args[2:]}
 ported = ported_codes() | skip
 rows = list(csv.DictReader(open(ROOT / "porting/queue.tsv", encoding="utf-8"), delimiter="\t"))
 pool = {int(row["code"]): row for row in rows if row["ported"] != "no script"}
-todo = [int(row["code"]) for row in rows[:top] if row["ported"] == "no" and int(row["code"]) not in ported]
+todo = [int(row["code"]) for row in rows[:top] if row["ported"] == "no" and int(row["code"]) not in ported and re.search(kind, row["type"])]
 setcodes = dict(cdb("select id, setcode from datas"))
 
 
@@ -54,5 +55,7 @@ for group in order:
                 break
     if len(out) == batches:
         break
+if batch and len(out) < batches:
+    out.append(batch)
 for batch in out:
     print(";".join(f"{code}\t{pool[code]['name']}" for code in batch))

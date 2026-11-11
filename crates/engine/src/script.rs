@@ -244,7 +244,14 @@ impl Duel {
         result
     }
 
+    #[inline]
     pub(crate) fn reset_pending(&mut self) {
+        if !self.pending_resets.get_mut().is_empty() {
+            self.reset_pending_effects();
+        }
+    }
+
+    fn reset_pending_effects(&mut self) {
         let trace = std::mem::take(&mut self.trace);
         for effect in std::mem::take(self.pending_resets.get_mut()) {
             if let Some(handler) = self.effects[effect].handler {

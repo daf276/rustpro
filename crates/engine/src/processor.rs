@@ -372,9 +372,7 @@ impl Duel {
 
     // field::process; `units` is core.units, taken out by `run` so the front unit runs in place, or a script's nested stack.
     pub(crate) fn process_unit(&mut self, units: &mut Vec<Unit>) -> OcgStatus {
-        if !self.pending_resets.get_mut().is_empty() {
-            self.reset_pending();
-        }
+        self.reset_pending();
         if !self.core.subunits.is_empty() {
             self.core.subunits.reverse();
             units.append(&mut self.core.subunits);
@@ -409,6 +407,19 @@ impl Duel {
                 break (false, needs_answer);
             }
         }
+    }
+
+    // For a unit a step emplaces last: runs it at once when no unit waits before it, as process_unit would next.
+    fn run_or_emplace<U: Steps + Into<Unit>>(&mut self, mut unit: U, process: impl Fn(&mut Self, &mut U) -> bool) {
+        if self.core.subunits.is_empty() {
+            self.reset_pending();
+            let (done, _) = self.run_steps(&mut unit, process, false);
+            self.reset_pending();
+            if done {
+                return;
+            }
+        }
+        self.emplace_process(unit);
     }
 
     // After a step: a unit to run first, the end of the duel, or a script function left at a prompt.
@@ -3088,7 +3099,7 @@ impl Duel {
                         }
                     }
                     self.adjust_disable_check_list();
-                    self.emplace_process(RefreshLoc::default());
+                    self.run_or_emplace(RefreshLoc::default(), Self::process_refresh_loc);
                 }
                 3 => {
                     self.core.trap_monster_adjust_set = PerPlayer::default();
@@ -3316,6 +3327,10 @@ impl Duel {
                 }
                 for code in [EFFECT_USE_EXTRA_MZONE, EFFECT_USE_EXTRA_SZONE] {
                     unported!(self, self.filter_field_effect(code));
+                }
+                // Steps 1, 3 and 5 only pass on without an effect to run.
+                if arg.disfield_effects.is_empty() {
+                    arg.step = 6;
                 }
                 false
             }

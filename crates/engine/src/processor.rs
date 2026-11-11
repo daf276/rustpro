@@ -480,7 +480,9 @@ impl Duel {
                 }
                 // Effects taking control non-permanently last until the End Phase, not until the end of the turn.
                 for index in 0..self.field_effects.pheff.len() {
-                    let Some(&effect) = self.field_effects.pheff.get(index) else { break };
+                    let Some(&effect) = self.field_effects.pheff.get(index) else {
+                        break;
+                    };
                     let (code, reset_flag, reset_count) = {
                         let peffect = &self.effects[effect];
                         (peffect.code, peffect.reset_flag, peffect.reset_count)

@@ -1,0 +1,42 @@
+// Twilight Rose Knight
+use crate::prelude::*;
+use crate::testing::{Check, HAND};
+
+const ID: u32 = 2986553;
+
+// Two in hand to be Normal Summoned, with Mushroom Man (Level 2 Plant Normal Monster) in hand to Special Summon.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (14181608, HAND)];
+pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];
+
+pub fn initial_effect(duel: &mut Duel, c: CardId) {
+    let e1 = duel.create_effect(c);
+    e1.set_type(duel, EFFECT_TYPE_FIELD);
+    e1.set_range(duel, LOCATION_MZONE);
+    e1.set_target_range(duel, 0, LOCATION_MZONE);
+    e1.set_code(duel, EFFECT_CANNOT_SELECT_BATTLE_TARGET);
+    e1.set_value(
+        duel,
+        Value::Card(|duel, _, c| i32::from(c.is_faceup(duel) && c.is_race(duel, RACE_PLANT))),
+    );
+    c.register_effect(duel, e1);
+    let e2 = duel.create_effect(c);
+    e2.set_description(duel, aux::stringid(ID, 0));
+    e2.set_category(duel, CATEGORY_SPECIAL_SUMMON);
+    e2.set_type(duel, EFFECT_TYPE_SINGLE + EFFECT_TYPE_TRIGGER_O);
+    e2.set_code(duel, EVENT_SUMMON_SUCCESS);
+    e2.set_target(duel, sumtg);
+    e2.set_operation(duel, sumop);
+    c.register_effect(duel, e2);
+}
+
+fn filter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
+    c.is_level_below(duel, 4) && c.is_race(duel, RACE_PLANT) && c.is_can_be_special_summoned(duel, e, 0, tp, false, false)
+}
+
+fn sumtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+    stock::special_summon_target(duel, a, chk, |c, duel| filter(c, duel, a.e, a.tp), LOCATION_HAND)
+}
+
+fn sumop(duel: &mut Duel, a: &Args) -> Script<()> {
+    stock::special_summon(duel, a, |c, duel| filter(c, duel, a.e, a.tp), LOCATION_HAND, POS_FACEUP)
+}

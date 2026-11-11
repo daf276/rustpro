@@ -509,6 +509,9 @@ impl Duel {
 
     // card::get_code: the alias for alternate arts and the last EFFECT_CHANGE_CODE.
     pub(crate) fn get_code(&self, card: CardId) -> u32 {
+        if let Some(code) = self.get_assumed_property(card, ASSUME_CODE) {
+            return code as u32;
+        }
         let data = &self.cards[card].data;
         if !self.may_change_codes() {
             return if data.alias != 0 { data.alias } else { data.code };
@@ -730,6 +733,9 @@ impl Duel {
     }
 
     pub(crate) fn get_attribute(&self, card: CardId) -> u32 {
+        if let Some(attribute) = self.get_assumed_property(card, ASSUME_ATTRIBUTE) {
+            return attribute as u32;
+        }
         if !self.is_monster_now(card) {
             return 0;
         }
@@ -850,6 +856,9 @@ impl Duel {
     }
 
     pub(crate) fn get_attack(&self, card: CardId) -> i32 {
+        if let Some(attack) = self.get_assumed_property(card, ASSUME_ATTACK) {
+            return attack as i32;
+        }
         self.get_stat_value(card, &ATTACK)
     }
 
@@ -915,6 +924,9 @@ impl Duel {
     pub(crate) fn get_defense(&self, card: CardId) -> i32 {
         if self.cards[card].data.card_type & TYPE_LINK != 0 {
             return 0;
+        }
+        if let Some(defense) = self.get_assumed_property(card, ASSUME_DEFENSE) {
+            return defense as i32;
         }
         self.get_stat_value(card, &DEFENSE)
     }

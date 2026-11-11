@@ -375,7 +375,7 @@ impl Effect {
 }
 
 // effect::id and effect::status change while effects are only read, so they are Cells beside the Copy effects' shared chunks.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct Effects {
     list: Shared<Effect, CHUNK>,
     cells: Vec<Cell<CellChunk>>,
@@ -384,6 +384,14 @@ pub struct Effects {
     free: List<EffectId, 32>,
     scratch: Effect,
 }
+
+clone_by_field!(Effects {
+    list,
+    cells,
+    cells_changed,
+    free,
+    scratch
+});
 
 const CHUNK: usize = 32;
 

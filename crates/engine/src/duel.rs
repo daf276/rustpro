@@ -113,7 +113,7 @@ pub struct SynchroMaterials {
 }
 
 // duel and field of the core in one value; cloning it at any prompt resumes from there.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Duel {
     pub(crate) cards: Cards,
     pub(crate) player: PerPlayer<PlayerInfo>,
@@ -175,6 +175,46 @@ pub struct Duel {
     pub(crate) destination_probe: std::cell::Cell<Option<(CardId, u8)>>,
     pub(crate) idle_memo: IdleMemo,
 }
+
+clone_by_field!(Duel {
+    cards,
+    player,
+    infos,
+    effects,
+    field_effects,
+    relations,
+    core,
+    replay,
+    returns,
+    return_cards,
+    nil_event,
+    random,
+    trace,
+    result,
+    library,
+    database,
+    script_state,
+    script_groups,
+    values_reset,
+    fusion_check_additional,
+    synchro_check_additional,
+    ritual_summoning_level,
+    assumes,
+    pending_resets,
+    material_cards,
+    overlay_cards,
+    counters,
+    card_targets,
+    card_relations,
+    announced_cards,
+    indestructable_effects,
+    battled_cards,
+    equip_cards,
+    immune_effects,
+    unported,
+    destination_probe,
+    idle_memo,
+});
 
 impl Duel {
     pub fn new(options: DuelOptions) -> Result<Self, DuelError> {

@@ -37,7 +37,7 @@ fn pool(vendor: &Vendor, position: &Position, team: u8) -> Deck {
 }
 
 // Random legal actions to the end; returns whether an effect reached an unported call site.
-fn play_out(mut duel: Duel, rng: &mut StdRng) -> Result<bool> {
+fn play_out(duel: &mut Duel, rng: &mut StdRng) -> Result<bool> {
     let mut status = duel.process();
     for _ in 0..MAX_ACTIONS {
         if status == Status::End {
@@ -61,19 +61,22 @@ fn play_out(mut duel: Duel, rng: &mut StdRng) -> Result<bool> {
     Ok(duel.unported_site().is_some())
 }
 
-// At every STEP-th prompt, a duel determinized for either player shows that player the same and plays on without errors.
+// At every STEP-th prompt, a duel determinized for either player (into the last one played out) shows that player the same and
+// plays on without errors.
 fn check_determinized(vendor: &'static Vendor, record: &DuelRecord) -> Result<[usize; 3]> {
     let seed = record.seed;
     let (mut rng, mut sampler) = (StdRng::seed_from_u64(seed[0]), Xoshiro256StarStar::new(seed));
     let mut counts = [0; 3];
+    let mut pooled: Option<Duel> = None;
     each_state(vendor, record, |duel, index| {
         for player in (0..2).filter(|_| index % STEP == 0) {
-            let sample = match duel.determinize(player, &mut sampler, &pool(vendor, &record.position, 1 - player)) {
+            let sample = pooled.get_or_insert_with(|| duel.clone());
+            match duel.determinize_into(player, &mut sampler, &pool(vendor, &record.position, 1 - player), sample) {
                 Err(DeterminizeError::Rerun) => {
                     counts[2] += 1;
                     continue;
                 }
-                sample => sample?,
+                result => result?,
             };
             if sample.observe(player) != duel.observe(player) {
                 return Err(format!("seed {seed:?} at {index}: player {player} sees a difference").into());

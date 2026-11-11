@@ -1,5 +1,8 @@
 # Refactoring survey
 
+Status: done on 2026-11-11 except E28, see PLAN.md phase 7 for what each step changed. Sections 1.2 and 1.3 (effects
+registered inside operations, repeated condition closures) were not done: 1.2 needs each block compared by hand.
+
 Survey of 2026-11-11 at 550ce80: what can be extracted or merged, measured against the global guidelines (as little
 code as possible, no copy-paste, existing utilities first, comments rare). Nothing was changed. Line counts are
 estimates; locations were read or grepped, and the items marked "checked" I verified myself after the reviewers.

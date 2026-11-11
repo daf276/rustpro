@@ -102,12 +102,12 @@ Hand-port the `proc_*` summon procedures, each verified through a few carrier ca
 
 ### 7. Refactoring pass
 The survey and the item numbers are in `REFACTOR.md`. Behaviour, messages, random draws and lookup order stay the same; each step ends with the full all-cards validation.
-- [ ] R1. Engine, no judgement needed (E1 - E14), by file owner: `operations.rs`/`playerop.rs`, `processor.rs`/`chain.rs`/state files, `card.rs`/`field.rs`/`effect.rs`
-- [ ] R2. Engine sequences the C++ repeats (E15 - E27), with R1 in the same files
-- [ ] R3. Stock targets, operations and costs for the card files (`crates/scripts/src/stock.rs`, the 23 shapes with 20+ members), migrated by script; PORTING.md lists the shapes
-- [ ] R4. Lua-facing API and `utility.rs` (E4, E6, E13, E26, S6, S7), procedures and `build.rs` (S1 - S5), harness, tests and tools (H1 - H9)
-- [ ] R5. Comment pass over the non-card code
-- [ ] R6. Benchmark against 550ce80; the fidelity notes of REFACTOR.md section 6 that stay open move to the fidelity gaps here
+- [x] R1 + R2. Engine (E1 - E27 but E28), by file owner in three worktrees and a sweep of the call sites across files: 1,720 lines fewer in `crates/engine` (30,200 to 28,300). `units!` generates the unit enum, its dispatch and the prompt flag; `Processor` and `Effect` derive `Default`; helpers for the repeated sequences (`field_send_to_grave`, `can_activate`, `activate_chain`, `queue_continuous`, `undo_destroy`, `open_summon_window`, `offer_procedures`, `finish_operated`, `hint_deck_top`, `updated_value`, `limit_targets`, `FieldEffect::track`, `yield_count`, `send_cards`, ...); the playerop retry and skip helpers; `misread` and a bare `unported!(duel)`
+- [x] R3. Stock targets, operations and costs: `crates/scripts/src/stock.rs` holds 19 bodies, `tools/stock.py --write` folds a card function that is exactly one of them (1,363 functions in 790 files, 9,700 lines fewer); ports stay written line by line and the tool runs as PORTING.md's step 6
+- [x] R4. Lua-facing API and `utility.rs` (8 dead functions and 17 `_full` variants only their twin called are gone, `Cost::two_phase`, `update_stat`, `single_uncopyable`, `global_continuous`), procedures and `build.rs` (one table loop, one `lookup`, `Search::new`, `must_group`, `with_hand_materials`), harness (pool loading and `Decks` in `carddata`, test helpers in `diff::records`, `bench::flags`, `sim::Buffers`, `tools/common.py`, unused FFI items removed)
+- [x] R5. Comment pass with each file: 3.4% to 2.5% of lines in the engine, 4.5% to 3.3% in the script libraries; what is left is mostly the C++ and Lua names and signatures, which stay
+- [x] Fixed on the way: OperationReplace step 11 undoes the destruction unconditionally as `operations.cpp` case 11 does; `filter_field_card` and `filter_matching_card` narrow the zones under `DUEL_3_COLUMNS_FIELD`; `is_summon_code` and `get_summon_codes` keep a code of 0; registering an `EFFECT_TYPE_TARGET` effect is `unported!` (its lookups are not walked); `PerPlayer` and `PlayerInfo` reuse their buffers in `clone_from`; `xmaterial_effects` and `set_target_card` no longer allocate; the tools read `release-*.cdb` like the pool does
+- [ ] R6. Benchmark against 550ce80. Left open: E28 (one iterator over a card's effect sources, the hottest lookup, only with a benchmark); BattleCommand step 16 (EFFECT_MUST_ATTACK_MONSTER with several targets) has no arm and no `unported!`; `Pendulum::operation` has no counterpart to the Lua's 511007000 branch (an unofficial effect code)
 
 ## Findings
 

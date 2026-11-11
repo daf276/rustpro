@@ -5,11 +5,17 @@ use crate::testing::{Check, DECK, GRAVE, MZONE};
 const ID: u32 = 83443619;
 const CRYSTRON_INCLUSION: u32 = 31552317;
 
-// A copy on the field and in the Graveyard, with a Crystron Spell (Inclusion) in the Deck.
-pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, GRAVE), (CRYSTRON_INCLUSION, DECK), (CRYSTRON_INCLUSION, DECK)];
-// The first effect needs a Crystron Tuner in the Deck, and none is ported.
+// A copy on the field and in the Graveyard, with a Crystron Spell (Inclusion) and Crystron Quan (a Tuner) in the Deck.
+pub const SUPPORT: &[(u32, u16)] = &[
+    (ID, MZONE),
+    (ID, GRAVE),
+    (CRYSTRON_INCLUSION, DECK),
+    (CRYSTRON_INCLUSION, DECK),
+    (93665266, DECK),
+    (93665266, DECK),
+];
 pub const CHECKS: &[Check] = &[
-    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 0))),
+    Check::ResolvesEffect(aux::stringid(ID, 0)),
     Check::ResolvesEffect(aux::stringid(ID, 1)),
 ];
 

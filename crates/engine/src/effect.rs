@@ -203,6 +203,8 @@ pub enum Value {
     Card(fn(&Duel, EffectId, CardId) -> i32),
     // value(e), read without a card: EFFECT_DRAW_COUNT.
     Own(fn(&Duel, EffectId) -> i32),
+    // value(e, re, c): EFFECT_CANNOT_SELECT_EFFECT_TARGET.
+    EffectCard(fn(&Duel, EffectId, EffectId, CardId) -> bool),
     // value(e, te): EFFECT_IMMUNE_EFFECT.
     Effect(fn(&Duel, EffectId, EffectId) -> bool),
     // value(e, ct): EFFECT_CANNOT_INACTIVATE.
@@ -1463,6 +1465,7 @@ impl Duel {
             Value::Card(value) => value(self, effect, card),
             Value::EffectPlayer(_)
             | Value::EffectPlayerCard(_)
+            | Value::EffectCard(_)
             | Value::Effect(_)
             | Value::Chain(_)
             | Value::BattleDamage(_)

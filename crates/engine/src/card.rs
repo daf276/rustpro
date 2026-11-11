@@ -2341,11 +2341,14 @@ impl Duel {
                 return false;
             }
         }
-        unported!(
-            self,
-            self.filter_effect(self.get_handler(effect), EFFECT_CANNOT_SELECT_EFFECT_TARGET, true)
-        );
-        true
+        !self
+            .filter_effect(self.get_handler(effect), EFFECT_CANNOT_SELECT_EFFECT_TARGET, true)
+            .into_iter()
+            .any(|limit| match self.effects[limit].value {
+                Value::Int(value) => value != 0,
+                Value::EffectCard(value) => value(self, limit, effect, card),
+                _ => misread("a target selection limit"),
+            })
     }
 
     pub(crate) fn is_destructable(&self, card: CardId) -> bool {

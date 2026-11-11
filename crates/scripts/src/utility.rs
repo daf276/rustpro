@@ -1769,14 +1769,7 @@ impl CardUtility for CardId {
     }
 
     fn announce_another_race(self, duel: &mut Duel, tp: u8) -> Script<u64> {
-        let race = self.get_race(duel);
-        duel.hint(HINT_SELECTMSG, tp, HINTMSG_RACE);
-        let available = if race & race.wrapping_sub(1) == 0 {
-            !race & RACE_ALL
-        } else {
-            RACE_ALL
-        };
-        duel.announce_race(tp, 1, available)
+        announce_another_race(duel, self.get_race(duel), tp)
     }
 
     // The scard, sumtype and playerid arguments of Card.IsRaceExcept only reach race effects that apply as material.
@@ -2238,7 +2231,19 @@ fn announce_another_attribute(duel: &mut Duel, attribute: u32, tp: u8) -> Script
     duel.announce_attribute(tp, 1, available)
 }
 
+// Card.AnnounceAnotherRace and Duel.AnnounceAnotherRace: any race but `race`, if it is single.
+fn announce_another_race(duel: &mut Duel, race: u64, tp: u8) -> Script<u64> {
+    duel.hint(HINT_SELECTMSG, tp, HINTMSG_RACE);
+    let available = if race & race.wrapping_sub(1) == 0 {
+        !race & RACE_ALL
+    } else {
+        RACE_ALL
+    };
+    duel.announce_race(tp, 1, available)
+}
+
 pub trait DuelUtility {
+    fn announce_another_race(&mut self, g: CardSet, tp: u8) -> Script<u64>;
     fn select_effect(&mut self, tp: u8, effects: &[(bool, u64)]) -> Script<Option<usize>>;
     fn has_flag_effect(&self, tp: u8, id: u32) -> bool;
     fn has_flag_effect_full(&self, tp: u8, id: u32, ct: usize) -> bool;
@@ -2389,6 +2394,11 @@ impl DuelUtility for Duel {
     fn announce_another_attribute(&mut self, g: CardSet, tp: u8) -> Script<u32> {
         let attribute = g.get_bitwise_or(self, |c, duel| u64::from(c.get_attribute(duel))) as u32;
         announce_another_attribute(self, attribute, tp)
+    }
+
+    fn announce_another_race(&mut self, g: CardSet, tp: u8) -> Script<u64> {
+        let race = g.get_bitwise_or(self, |c, duel| c.get_race(duel));
+        announce_another_race(self, race, tp)
     }
 }
 

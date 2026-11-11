@@ -1645,19 +1645,40 @@ impl Duel {
 
     // Duel.IsEnvironment(code) for both players, in the Field Zone and on the field.
     pub fn is_environment(&self, code: u32) -> bool {
+        self.is_environment_full(code, PLAYER_ALL, u32::from(LOCATION_FZONE | u16::from(LOCATION_ONFIELD)))
+    }
+
+    // Duel.IsEnvironment(code, player, location).
+    pub fn is_environment_full(&self, code: u32, player: u8, location: u32) -> bool {
+        if player > 1 && player != PLAYER_ALL {
+            return false;
+        }
         let enabled = |card: CardId| self.cards[card].is_position(POS_FACEUP) && self.cards[card].get_status(STATUS_EFFECT_ENABLED);
         let environment = |card: Option<CardId>| card.is_some_and(|card| enabled(card) && card.get_code(self) == code);
-        let fields = [0, 1].map(|player| self.player[player].list_szone[5]);
-        let on_field = [0, 1]
+        let (szone, fzone, mzone) = (u32::from(LOCATION_SZONE), u32::from(LOCATION_FZONE), u32::from(LOCATION_MZONE));
+        let players = [0u8, 1]
             .into_iter()
-            .flat_map(|player| self.player[player].list_szone.into_iter().chain(self.player[player].list_mzone));
-        if on_field.into_iter().any(environment) {
+            .filter(|&field_player| player == field_player || player == PLAYER_ALL);
+        if location & fzone != 0
+            && players
+                .clone()
+                .any(|field_player| environment(self.player[field_player].list_szone[5]))
+            || location & szone != 0
+                && players
+                    .clone()
+                    .any(|field_player| self.player[field_player].list_szone.into_iter().any(environment))
+            || location & mzone != 0
+                && players
+                    .clone()
+                    .any(|field_player| self.player[field_player].list_mzone.into_iter().any(environment))
+        {
             return true;
         }
-        let no_field_spell = !fields.into_iter().any(|card| card.is_some_and(enabled));
+        let field_spell = |field_player: u8| self.player[field_player].list_szone[5].is_some_and(enabled);
+        let no_field_spell = !(field_spell(0) || field_spell(1));
         unported!(
             self,
-            no_field_spell
+            (location & (fzone | szone) != 0 && no_field_spell)
                 .then(|| self.filter_field_effect(EFFECT_CHANGE_ENVIRONMENT))
                 .into_iter()
                 .flatten()

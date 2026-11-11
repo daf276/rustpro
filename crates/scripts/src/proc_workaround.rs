@@ -3,7 +3,7 @@ use engine::{Args, CardId, CardSet, Duel, EffectId, Script};
 
 use crate::chain::DuelChain;
 use crate::constant::*;
-use crate::utility::CardUtility;
+use crate::utility::{CardUtility, global_continuous};
 
 pub trait CardWorkaround: Copy {
     fn is_relate_to_effect(self, duel: &Duel, e: EffectId) -> bool;
@@ -12,7 +12,6 @@ pub trait CardWorkaround: Copy {
     fn is_able_to_extra(self, duel: &Duel) -> bool;
     fn is_able_to_grave(self, duel: &Duel) -> bool;
     fn is_able_to_remove(self, duel: &Duel) -> bool;
-    // Card.IsAbleToRemove(c, p, pos, reason); p None is the reason player.
     fn is_able_to_remove_full(self, duel: &Duel, player: Option<u8>, position: u32, reason: u32) -> bool;
 }
 
@@ -72,12 +71,10 @@ pub trait DuelWorkaround {
         location2: u32,
         exception: Option<CardSet>,
     ) -> CardSet;
-    // Duel.IsMainPhase(player), Duel.IsDrawPhase(player), Duel.IsStandbyPhase(player) and Duel.IsBattlePhase(player): the phase, and
-    // that it is the player's turn.
+    // Duel.IsMainPhase(player), Duel.IsDrawPhase(player) and Duel.IsStandbyPhase(player): also the player's turn.
     fn is_main_phase_full(&self, player: Option<u8>) -> bool;
     fn is_draw_phase_full(&self, player: Option<u8>) -> bool;
     fn is_standby_phase_full(&self, player: Option<u8>) -> bool;
-    fn is_battle_phase_full(&self, player: Option<u8>) -> bool;
     fn get_release_group(&self, player: u8) -> CardSet;
     fn get_release_group_full(&self, player: u8, use_hand: bool, use_oppo: bool, reason: u32) -> CardSet;
     fn check_release_group_cost(
@@ -176,10 +173,6 @@ impl DuelWorkaround for Duel {
         self.get_current_phase() == PHASE_STANDBY && player.is_none_or(|player| self.is_turn_player(player))
     }
 
-    fn is_battle_phase_full(&self, player: Option<u8>) -> bool {
-        self.is_battle_phase() && player.is_none_or(|player| self.is_turn_player(player))
-    }
-
     fn get_release_group(&self, player: u8) -> CardSet {
         self.get_release_group_full(player, false, false, REASON_COST)
     }
@@ -198,7 +191,7 @@ impl DuelWorkaround for Duel {
         g
     }
 
-    // Duel.CheckReleaseGroupCost with `maxc` given; a nil `check` is None and a nil `ex` None.
+    // Duel.CheckReleaseGroupCost with `maxc` given.
     fn check_release_group_cost(
         &self,
         tp: u8,
@@ -237,11 +230,7 @@ impl DuelWorkaround for Duel {
                 break;
             };
             if search.mustg.is_empty() || !search.mustg.contains(tc) {
-                if sg.contains(tc) {
-                    sg.remove(tc);
-                } else {
-                    sg.insert(tc);
-                }
+                sg.toggle(tc);
             }
         }
         unported!(self, !sg.intersection(search.exg).is_empty());
@@ -252,8 +241,7 @@ impl DuelWorkaround for Duel {
 // The check (sg, tp, exg) -> (res, stop) of Duel.CheckReleaseGroupCost and Duel.SelectReleaseGroupCost.
 pub type ReleaseCheck<'a> = &'a dyn Fn(&Duel, CardSet, u8, CardSet) -> (bool, bool);
 
-// What the recursive search of Duel.CheckReleaseGroupCost and Duel.SelectReleaseGroupCost shares: the releasable cards
-// and those that are extra releases (exg) or must be released (mustg).
+// What the search of Duel.Check/SelectReleaseGroupCost shares: the releasable cards, extra releases and must releases.
 struct ReleaseSearch<'a> {
     tp: u8,
     mg: CardSet,
@@ -321,7 +309,6 @@ impl ReleaseSearch<'_> {
     }
 }
 
-// aux.ReleaseCostFilter.
 fn release_cost_filter(c: CardId, duel: &Duel, tp: u8) -> bool {
     let eff = c.is_has_effect(duel, EFFECT_EXTRA_RELEASE_NONSUM);
     !(c.is_controler(duel, 1 - tp) && eff.is_some_and(|eff| eff.check_count_limit(duel, tp)))
@@ -332,17 +319,13 @@ fn release_cost_filter(c: CardId, duel: &Duel, tp: u8) -> bool {
 const HAND_SHUFFLED: u64 = 1;
 
 pub fn load(duel: &mut Duel) {
-    let hand_adjust_eff = duel.global_effect();
-    hand_adjust_eff.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
-    hand_adjust_eff.set_code(duel, EVENT_DISCARD);
+    let hand_adjust_eff = global_continuous(duel, EVENT_DISCARD);
     hand_adjust_eff.set_count_limit(duel, 1, 0);
     hand_adjust_eff.set_condition(duel, |_, a| a.r & REASON_ADJUST > 0);
     hand_adjust_eff.set_promptless_operation(duel, track_chain_solving);
     duel.register_effect(hand_adjust_eff, 0);
 
-    let sum_status_eff = duel.global_effect();
-    sum_status_eff.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
-    sum_status_eff.set_code(duel, EVENT_CHANGE_POS);
+    let sum_status_eff = global_continuous(duel, EVENT_CHANGE_POS);
     sum_status_eff.set_promptless_operation(duel, |duel, a| {
         for c in a.eg.unwrap_or_default().filter(duel, summon_status_filter, None) {
             c.set_status(duel, STATUS_SUMMON_TURN, false);
@@ -354,9 +337,7 @@ pub fn load(duel: &mut Duel) {
     });
     duel.register_effect(sum_status_eff, 0);
 
-    let set_turn_status_split = duel.global_effect();
-    set_turn_status_split.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
-    set_turn_status_split.set_code(duel, EVENT_MSET);
+    let set_turn_status_split = global_continuous(duel, EVENT_MSET);
     set_turn_status_split.set_promptless_operation(duel, |duel, a| {
         for c in a.eg.unwrap_or_default() {
             c.set_status(duel, STATUS_SUMMON_TURN, false);
@@ -366,24 +347,18 @@ pub fn load(duel: &mut Duel) {
     });
     duel.register_effect(set_turn_status_split, 0);
 
-    let shuffle_eff = duel.global_effect();
-    shuffle_eff.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
-    shuffle_eff.set_code(duel, EVENT_CHAIN_SOLVING);
+    let shuffle_eff = global_continuous(duel, EVENT_CHAIN_SOLVING);
     shuffle_eff.set_promptless_operation(duel, shuffle_on_resolution);
     duel.register_effect(shuffle_eff, 0);
 
-    let tracking_eff = duel.global_effect();
-    tracking_eff.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
-    tracking_eff.set_code(duel, EVENT_CHAIN_END);
+    let tracking_eff = global_continuous(duel, EVENT_CHAIN_END);
     tracking_eff.set_promptless_operation(duel, |duel, _| {
         (0..2).for_each(|player| duel.set_script_state(HAND_SHUFFLED + player, 0));
         Ok(())
     });
     duel.register_effect(tracking_eff, 0);
 
-    let ns_eff = duel.global_effect();
-    ns_eff.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
-    ns_eff.set_code(duel, EVENT_SUMMON_SUCCESS);
+    let ns_eff = global_continuous(duel, EVENT_SUMMON_SUCCESS);
     ns_eff.set_promptless_operation(duel, |duel, a| {
         for sc in a.eg.unwrap_or_default() {
             let phase = duel.get_current_phase();
@@ -398,9 +373,7 @@ pub fn load(duel: &mut Duel) {
 }
 
 fn track_chain_solving(duel: &mut Duel, _: &Args) -> Script<()> {
-    let chain_solving_eff = duel.global_effect();
-    chain_solving_eff.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
-    chain_solving_eff.set_code(duel, EVENT_CHAIN_SOLVING);
+    let chain_solving_eff = global_continuous(duel, EVENT_CHAIN_SOLVING);
     chain_solving_eff.set_count_limit(duel, 1, 0);
     chain_solving_eff.set_promptless_operation(duel, |duel, a| {
         a.e.reset(duel);

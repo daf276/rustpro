@@ -1,5 +1,4 @@
-// Port of utility.lua and cards_specific_functions.lua: the Auxiliary and Cost helpers and the Card, Effect and Duel
-// methods they add.
+// Port of utility.lua and cards_specific_functions.lua.
 use engine::{Args, CardId, CardSet, CostFn, CostReplaceCall, CostReplaceCondition, Duel, EffectId, Operation, Script, Value};
 
 use crate::chain::{DuelChain, EffectChain};
@@ -16,13 +15,20 @@ const COST_CHOICE: u8 = u8::MAX - 3;
 // Cost.Choice's {cost, description, additional_check}.
 pub type CostChoice = (CostFn, u64, fn(&Duel, &Args) -> bool);
 
+pub(crate) fn global_continuous(duel: &mut Duel, code: u32) -> EffectId {
+    let effect = duel.global_effect();
+    effect.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
+    effect.set_code(duel, code);
+    effect
+}
+
 pub mod aux {
     use engine::{Args, CardId, CardSet, Duel, EffectId, ExtraMaterialCall, Operation, Script, Value};
 
     use crate::chain::DuelChain;
     use crate::constant::*;
     use crate::proc_workaround::CardWorkaround;
-    use crate::utility::CardUtility;
+    use crate::utility::{CardUtility, Cost, global_continuous};
 
     pub const TRUE: fn(CardId, &Duel) -> bool = |_, _| true;
 
@@ -48,9 +54,7 @@ pub mod aux {
     // aux.AddValuesReset: the first call creates the turn end effect that runs every function registered.
     pub fn add_values_reset(duel: &mut Duel, resetfunc: fn(&mut Duel)) {
         if duel.add_values_reset(resetfunc) {
-            let ge = duel.global_effect();
-            ge.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
-            ge.set_code(duel, EVENT_TURN_END);
+            let ge = global_continuous(duel, EVENT_TURN_END);
             ge.set_count_limit(duel, 1, 0);
             ge.set_condition_mut(duel, values_reset);
             duel.register_effect(ge, 0);
@@ -217,7 +221,6 @@ pub mod aux {
         const REQUIRED: usize = 1;
     }
 
-    // Auxiliary.AddKaijuProcedure.
     pub fn add_kaiju_procedure(duel: &mut Duel, c: CardId) -> (EffectId, EffectId) {
         c.set_unique_on_field(duel, 1, 0, |c, duel| c.is_set_card(duel, &[SET_KAIJU]), LOCATION_MZONE);
         let e1 = add_lava_procedure::<Kaiju>(duel, c, POS_FACEUP_ATTACK, 0, None);
@@ -246,11 +249,10 @@ pub mod aux {
 
     // The cost most Kaiju monsters share: Duel.RemoveCounter of `COUNT` Kaiju Counters from either field.
     pub fn kaiju_counter_cost<const COUNT: u16>(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
-        if chk == 0 {
-            return Ok(duel.is_can_remove_counter(a.tp, 1, 1, COUNTER_KAIJU, COUNT, REASON_COST));
-        }
-        duel.remove_counter(a.tp, 1, 1, COUNTER_KAIJU, COUNT, REASON_COST)?;
-        Ok(false)
+        let check = |duel: &Duel| duel.is_can_remove_counter(a.tp, 1, 1, COUNTER_KAIJU, COUNT, REASON_COST);
+        Cost::two_phase(duel, chk, check, |duel| {
+            duel.remove_counter(a.tp, 1, 1, COUNTER_KAIJU, COUNT, REASON_COST)
+        })
     }
 
     // The extracat, extrainfo and extraop parameters of Auxiliary.EnableNeosReturn; returneff has no caller.
@@ -477,8 +479,7 @@ pub mod aux {
         Ok(())
     }
 
-    // Auxiliary.sumreg: the flag effect (code = the effect's label) for a summoned card of that original code, kept until the
-    // end of the turn.
+    // Auxiliary.sumreg: flags each summoned card whose original code is the effect's label until the end of the turn.
     pub fn sumreg(duel: &mut Duel, a: &Args) -> Script<()> {
         let code = a.e.get_label(duel) as u32;
         for tc in a.eg.unwrap_or_default() {
@@ -501,8 +502,7 @@ pub mod aux {
         to_hand_or_else_result(duel, card, player, check, |duel| oper(duel).map(|()| true), str).map(drop)
     }
 
-    // Auxiliary.ToHandOrElse for a caller that reads its result: the to-hand option is a Lua number, always truthy, and
-    // the other option is what `oper` returns.
+    // Auxiliary.ToHandOrElse whose result is read: true for the to-hand option (a Lua number), else what `oper` returns.
     pub fn to_hand_or_else_result(
         duel: &mut Duel,
         card: CardId,
@@ -675,11 +675,7 @@ pub mod aux {
             let Some(tc) = mg.select_unselect(duel, Some(sg), seltp, finishable, cancel, minc as u8, maxc as u8)? else {
                 break;
             };
-            if sg.is_contains(tc) {
-                sg.remove(tc);
-            } else {
-                sg.insert(tc);
-            }
+            sg.toggle(tc);
         }
         Ok(sg)
     }
@@ -705,41 +701,21 @@ pub mod aux {
         c.register_effect(duel, eff);
     }
 
-    pub fn add_er_equip_limit(duel: &mut Duel, c: CardId, con: Option<engine::ConditionFn>, linkedeff: EffectId) {
-        add_er_equip_limit_full(duel, c, con, linkedeff, None, None, None);
-    }
-
     // The equipval and equipop of aux.AddEREquipLimit are left out: only c78063197, which is not ported, reads them.
-    pub fn add_er_equip_limit_full(
-        duel: &mut Duel,
-        c: CardId,
-        con: Option<engine::ConditionFn>,
-        linkedeff: EffectId,
-        prop: Option<u32>,
-        resetflag: Option<u32>,
-        resetcount: Option<u16>,
-    ) {
-        let finalprop = EFFECT_FLAG_CANNOT_DISABLE | prop.unwrap_or(0);
-        let reset = |duel: &mut Duel, effect: EffectId| match (resetflag, resetcount) {
-            (Some(resetflag), Some(resetcount)) => effect.set_reset_full(duel, resetflag, resetcount),
-            (Some(resetflag), None) => effect.set_reset(duel, resetflag),
-            _ => {}
-        };
+    pub fn add_er_equip_limit(duel: &mut Duel, c: CardId, con: Option<engine::ConditionFn>, linkedeff: EffectId) {
         let e1 = duel.create_effect(c);
         if let Some(con) = con {
             e1.set_condition(duel, con);
         }
         e1.set_type(duel, EFFECT_TYPE_SINGLE);
-        e1.set_property_full(duel, finalprop, EFFECT_FLAG2_MAJESTIC_MUST_COPY);
+        e1.set_property_full(duel, EFFECT_FLAG_CANNOT_DISABLE, EFFECT_FLAG2_MAJESTIC_MUST_COPY);
         e1.set_code(duel, 89785779);
         e1.set_label_object(duel, Some(linkedeff));
-        reset(duel, e1);
         c.register_effect(duel, e1);
         let e2 = duel.create_effect(c);
         e2.set_type(duel, EFFECT_TYPE_SINGLE);
-        e2.set_property_full(duel, finalprop & !EFFECT_FLAG_CANNOT_DISABLE, EFFECT_FLAG2_MAJESTIC_MUST_COPY);
+        e2.set_property_full(duel, 0, EFFECT_FLAG2_MAJESTIC_MUST_COPY);
         e2.set_code(duel, 89785779 + EFFECT_EQUIP_LIMIT);
-        reset(duel, e2);
         c.register_effect(duel, e2);
         linkedeff.set_label_object(duel, Some(e2));
     }
@@ -922,8 +898,7 @@ pub mod aux {
         None
     }
 
-    // Auxiliary.GetMustBeMaterialGroup: the monsters EFFECT_MUST_BE_MATERIAL effects of the player force on a summon;
-    // those effects come with the cards that register them.
+    // EFFECT_MUST_BE_MATERIAL comes with the cards that register it.
     pub fn get_must_be_material_group(
         duel: &Duel,
         tp: u8,
@@ -940,8 +915,7 @@ pub mod aux {
         CardSet::default()
     }
 
-    // Auxiliary.GetExtraMaterials: per EFFECT_EXTRA_MATERIAL effect whose count limit allows a use, the materials its
-    // value offers (chk 0, which may register effects), and all of them together.
+    // Per usable EFFECT_EXTRA_MATERIAL effect the materials its value offers (chk 0, which may register effects), and all.
     pub fn get_extra_materials(duel: &mut Duel, tp: u8, mustg: CardSet, sc: CardId, summon_type: u32) -> (ExtraMaterials, CardSet) {
         let (mut t, mut tg) = (ExtraMaterials::new(), CardSet::default());
         for te in duel.get_player_effect(tp, EFFECT_EXTRA_MATERIAL) {
@@ -1006,8 +980,7 @@ pub mod aux {
 
     const KEPT_EXTRA_MATERIALS: u64 = 1 << 60;
 
-    // Link.Target keeps {sg, filters, emt} as the label object of e for Link.Operation: the filters (indices into emt,
-    // at most 15) packed into the script state, each entry's group in the script groups.
+    // Link.Target's label object {sg, filters, emt}: up to 15 emt indices packed in script state, the groups in script groups.
     pub fn keep_extra_materials(duel: &mut Duel, e: EffectId, emt: &ExtraMaterials, filt: &[usize]) {
         let key = KEPT_EXTRA_MATERIALS | (e.index() as u64) << 16;
         for (index, &(eg, _)) in emt.iter().enumerate() {
@@ -1125,7 +1098,6 @@ pub mod aux {
         Ok(false)
     }
 
-    // Auxiliary.RemainFieldDisabled
     fn remain_field_disabled(duel: &mut Duel, a: &Args) -> Script<()> {
         let cid: i64 = duel.get_chain_info(a.ev as u8, CHAININFO_CHAIN_ID);
         if cid != a.e.get_label(duel) {
@@ -1138,7 +1110,6 @@ pub mod aux {
         Ok(())
     }
 
-    // Auxiliary.CheckStealEquip(c, e, tp).
     pub fn check_steal_equip(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
         if c.is_facedown(duel) || !c.is_controler_can_be_changed(duel) || !c.is_controler(duel, 1 - tp) {
             return false;
@@ -1219,14 +1190,12 @@ pub mod aux {
         duel.register_effect(ge1, 0);
     }
 
-    // Auxiliary.ReincarnationRitualFilter.
     fn reincarnation_ritual_filter(c: CardId, duel: &Duel, rc: CardId, id: u32, tp: u8) -> bool {
         c.is_summon_code(duel, Some(rc), SUMMON_TYPE_RITUAL.into(), tp, &[id])
             && c.is_controler(duel, tp)
             && c.is_location(duel, LOCATION_MZONE)
     }
 
-    // Auxiliary.ReincarnationCheckValue.
     fn reincarnation_check_value(duel: &mut Duel, _: EffectId, c: CardId) {
         let g = c.get_material(duel);
         let id = c.get_code(duel);
@@ -1272,80 +1241,67 @@ impl Cost {
         Ok(false)
     }
 
+    fn two_phase<T>(
+        duel: &mut Duel,
+        chk: i32,
+        check: impl FnOnce(&Duel) -> bool,
+        pay: impl FnOnce(&mut Duel) -> Script<T>,
+    ) -> Script<bool> {
+        if chk == 0 {
+            return Ok(check(duel));
+        }
+        pay(duel)?;
+        Ok(false)
+    }
+
     pub fn self_reveal(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         let c = args.e.get_handler(duel);
-        if chk == 0 {
-            return Ok(!c.is_public(duel));
-        }
-        duel.confirm_cards(1 - args.tp, c)?;
-        Ok(false)
+        Cost::two_phase(duel, chk, |duel| !c.is_public(duel), |duel| duel.confirm_cards(1 - args.tp, c))
     }
 
     pub fn self_discard(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         let c = args.e.get_handler(duel);
-        if chk == 0 {
-            return Ok(c.is_discardable(duel));
-        }
-        duel.send_to_grave(c, REASON_DISCARD | REASON_COST)?;
-        Ok(false)
+        let check = |duel: &Duel| c.is_discardable(duel);
+        Cost::two_phase(duel, chk, check, |duel| duel.send_to_grave(c, REASON_DISCARD | REASON_COST))
     }
 
     pub fn self_discard_to_grave(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         let c = args.e.get_handler(duel);
-        if chk == 0 {
-            return Ok(c.is_discardable(duel) && c.is_able_to_grave_as_cost(duel));
-        }
-        duel.send_to_grave(c, REASON_DISCARD | REASON_COST)?;
-        Ok(false)
+        let check = |duel: &Duel| c.is_discardable(duel) && c.is_able_to_grave_as_cost(duel);
+        Cost::two_phase(duel, chk, check, |duel| duel.send_to_grave(c, REASON_DISCARD | REASON_COST))
     }
 
     pub fn self_to_grave(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         let c = args.e.get_handler(duel);
-        if chk == 0 {
-            return Ok(c.is_able_to_grave_as_cost(duel));
-        }
-        duel.send_to_grave(c, REASON_COST)?;
-        Ok(false)
+        let check = |duel: &Duel| c.is_able_to_grave_as_cost(duel);
+        Cost::two_phase(duel, chk, check, |duel| duel.send_to_grave(c, REASON_COST))
     }
 
     pub fn self_banish(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         let c = args.e.get_handler(duel);
-        if chk == 0 {
-            return Ok(c.is_able_to_remove_as_cost(duel));
-        }
-        duel.remove(c, POS_FACEUP, REASON_COST)?;
-        Ok(false)
+        let check = |duel: &Duel| c.is_able_to_remove_as_cost(duel);
+        Cost::two_phase(duel, chk, check, |duel| duel.remove(c, POS_FACEUP, REASON_COST))
     }
 
     pub fn self_to_hand(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         let c = args.e.get_handler(duel);
-        if chk == 0 {
-            return Ok(c.is_able_to_hand_as_cost(duel));
-        }
-        duel.send_to_hand(c, PLAYER_NONE, REASON_COST)?;
-        Ok(false)
+        let check = |duel: &Duel| c.is_able_to_hand_as_cost(duel);
+        Cost::two_phase(duel, chk, check, |duel| duel.send_to_hand(c, PLAYER_NONE, REASON_COST))
     }
 
     pub fn self_to_deck(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         let c = args.e.get_handler(duel);
-        if chk == 0 {
-            return Ok(c.is_able_to_deck_as_cost(duel));
-        }
-        duel.send_to_deck(c, PLAYER_NONE, SEQ_DECKSHUFFLE, REASON_COST)?;
-        Ok(false)
+        let pay = |duel: &mut Duel| duel.send_to_deck(c, PLAYER_NONE, SEQ_DECKSHUFFLE, REASON_COST);
+        Cost::two_phase(duel, chk, |duel| c.is_able_to_deck_as_cost(duel), pay)
     }
 
     pub fn self_to_extra(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         let c = args.e.get_handler(duel);
-        if chk == 0 {
-            return Ok(c.is_able_to_extra_as_cost(duel));
-        }
-        duel.send_to_deck(c, PLAYER_NONE, SEQ_DECKSHUFFLE, REASON_COST)?;
-        Ok(false)
+        let pay = |duel: &mut Duel| duel.send_to_deck(c, PLAYER_NONE, SEQ_DECKSHUFFLE, REASON_COST);
+        Cost::two_phase(duel, chk, |duel| c.is_able_to_extra_as_cost(duel), pay)
     }
 
-    // Cost.Replaceable(base) applied: the base cost, unless one of the player's EFFECT_COST_REPLACE effects stands
-    // in for it.
+    // Cost.Replaceable(base) applied: the base cost, unless one of the player's EFFECT_COST_REPLACE effects stands in.
     pub fn replaceable(duel: &mut Duel, args: &Args, chk: i32, base: CostFn) -> Script<bool> {
         Cost::replaceable_full(duel, args, chk, base, |_, _, _| true)
     }
@@ -1418,15 +1374,10 @@ impl Cost {
 
     pub fn self_tribute(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         let c = args.e.get_handler(duel);
-        if chk == 0 {
-            return Ok(c.is_releasable(duel));
-        }
-        duel.release(c, REASON_COST)?;
-        Ok(false)
+        Cost::two_phase(duel, chk, |duel| c.is_releasable(duel), |duel| duel.release(c, REASON_COST))
     }
 
-    // Cost.Discard() applied: one card from the hand; the discarded cards are kept as the chain data's
-    // cost_discarded_cards.
+    // Cost.Discard() applied: one card from the hand, kept as the chain data's cost_discarded_cards.
     pub fn discard(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         Cost::discard_full(duel, args, chk, aux::TRUE, false, (1, 1))
     }
@@ -1454,8 +1405,7 @@ impl Cost {
         Ok(false)
     }
 
-    // Cost.DetachFromSelf(min, max) applied; the detached materials are kept as the chain data's
-    // cost_detached_materials.
+    // Cost.DetachFromSelf(min, max) applied; the detached materials are the chain data's cost_detached_materials.
     pub fn detach_from_self<const MIN: u16, const MAX: u16>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         Cost::detach_from_self_op::<MIN, MAX>(duel, args, chk, |_, _, _| {})
     }
@@ -1492,8 +1442,7 @@ impl Cost {
         Ok(false)
     }
 
-    // Cost.DetachChoiceFromSelf(choices) applied, for choices that are a function in the Lua, already called: one of the
-    // amounts the card can detach is announced and detached, as the chain data's cost_detached_materials.
+    // Cost.DetachChoiceFromSelf(choices) for choices that are a function in the Lua, already called.
     pub fn detach_choice_from_self(duel: &mut Duel, args: &Args, chk: i32, choices: &[i64]) -> Script<bool> {
         let (e, tp) = (args.e, args.tp);
         let c = e.get_handler(duel);
@@ -1550,20 +1499,14 @@ impl Cost {
 
     // Cost.HardOncePerChain(flag) applied: the player is flagged until the chain ends.
     pub fn hard_once_per_chain<const FLAG: u32>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
-        if chk == 0 {
-            return Ok(!duel.has_flag_effect(args.tp, FLAG));
-        }
-        duel.register_flag_effect(args.tp, FLAG, RESET_CHAIN, 0, 1);
-        Ok(false)
+        let pay = |duel: &mut Duel| Ok(duel.register_flag_effect(args.tp, FLAG, RESET_CHAIN, 0, 1));
+        Cost::two_phase(duel, chk, |duel| !duel.has_flag_effect(args.tp, FLAG), pay)
     }
 
     fn soft_once<const FLAG: u32, const RESET: u32>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         let c = args.e.get_handler(duel);
-        if chk == 0 {
-            return Ok(!c.has_flag_effect(duel, FLAG));
-        }
-        c.register_flag_effect(duel, FLAG, RESET_EVENT | RESETS_STANDARD | RESET, 0, 1);
-        Ok(false)
+        let pay = |duel: &mut Duel| Ok(c.register_flag_effect(duel, FLAG, RESET_EVENT | RESETS_STANDARD | RESET, 0, 1));
+        Cost::two_phase(duel, chk, |duel| !c.has_flag_effect(duel, FLAG), pay)
     }
 
     // Cost.AND(...) applied. A cost that returns false when executed, which stops the others, has no caller.
@@ -1576,8 +1519,7 @@ impl Cost {
         Ok(chk == 0)
     }
 
-    // Cost.Choice(...) applied to {cost, description, additional_check}; the chosen index (from 1) is kept as the chain
-    // data's cost_choice.
+    // Cost.Choice(...) applied; the chosen index (from 1) is kept as the chain data's cost_choice.
     pub fn choice(duel: &mut Duel, args: &Args, chk: i32, choices: &[CostChoice]) -> Script<bool> {
         let mut ops = Vec::with_capacity(choices.len());
         for &(cost, description, additional_check) in choices {
@@ -1639,20 +1581,18 @@ impl Cost {
     // Cost.RemoveCounterFromSelf(counter_type, count) applied.
     pub fn remove_counter_from_self<const COUNTER_TYPE: u16, const COUNT: u16>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         let c = args.e.get_handler(duel);
-        if chk == 0 {
-            return Ok(c.is_can_remove_counter(duel, args.tp, COUNTER_TYPE, COUNT, REASON_COST));
-        }
-        c.remove_counter(duel, args.tp, COUNTER_TYPE, COUNT, REASON_COST)?;
-        Ok(false)
+        let check = |duel: &Duel| c.is_can_remove_counter(duel, args.tp, COUNTER_TYPE, COUNT, REASON_COST);
+        Cost::two_phase(duel, chk, check, |duel| {
+            c.remove_counter(duel, args.tp, COUNTER_TYPE, COUNT, REASON_COST)
+        })
     }
 
     // Cost.RemoveCounterFromField(counter_type, count) applied.
     pub fn remove_counter_from_field<const COUNTER_TYPE: u16, const COUNT: u16>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
-        if chk == 0 {
-            return Ok(duel.is_can_remove_counter(args.tp, 1, 0, COUNTER_TYPE, COUNT, REASON_COST));
-        }
-        duel.remove_counter(args.tp, 1, 0, COUNTER_TYPE, COUNT, REASON_COST)?;
-        Ok(false)
+        let check = |duel: &Duel| duel.is_can_remove_counter(args.tp, 1, 0, COUNTER_TYPE, COUNT, REASON_COST);
+        Cost::two_phase(duel, chk, check, |duel| {
+            duel.remove_counter(args.tp, 1, 0, COUNTER_TYPE, COUNT, REASON_COST)
+        })
     }
 }
 
@@ -1805,7 +1745,6 @@ impl CardUtility for CardId {
         self.is_summon_type(duel, &[SUMMON_TYPE_SPECIAL])
     }
 
-    // Card.IsReincarnationSummoned.
     fn is_reincarnation_summoned(self, duel: &Duel) -> bool {
         let label = self
             .get_flag_effect_labels(duel, CARD_SALAMANGREAT_SANCTUARY)
@@ -1841,62 +1780,33 @@ impl CardUtility for CardId {
         duel.announce_race(tp, 1, available)
     }
 
-    // Card.IsRaceExcept(c, race, scard, sumtype, playerid): the scard arguments only reach race effects that apply as
-    // material.
+    // The scard, sumtype and playerid arguments of Card.IsRaceExcept only reach race effects that apply as material.
     fn is_race_except(self, duel: &Duel, race: u64) -> bool {
         let own = self.get_race(duel);
         own & race != own
     }
 
-    // Card.UpdateLevel(c, amt, reset, rc): `reset` None is RESET_EVENT with the standard resets (and RESET_DISABLE
-    // when `rc` is the card itself, its default).
+    // `reset` None is RESET_EVENT with the standard resets, and RESET_DISABLE when `rc` is the card itself (its default).
     fn update_level(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>) -> i32 {
-        let c = self;
-        let rc = rc.unwrap_or(c);
-        let r = if c == rc { RESETS_STANDARD_DISABLE } else { RESETS_STANDARD };
-        let reset = reset.unwrap_or(RESET_EVENT + r);
-        let lv = c.get_level(duel) as i32;
-        if !c.is_level_below(duel, 2_147_483_647) {
+        let lv = self.get_level(duel) as i32;
+        if !self.is_level_below(duel, 2_147_483_647) {
             return 0;
         }
         let amt = if lv + amt <= 0 { -(lv - 1) } else { amt };
-        let e1 = duel.create_effect(rc);
-        e1.set_type(duel, EFFECT_TYPE_SINGLE);
-        e1.set_code(duel, EFFECT_UPDATE_LEVEL);
-        e1.set_value(duel, amt);
-        e1.set_reset(duel, reset);
-        c.register_effect(duel, e1);
-        c.get_level(duel) as i32 - lv
+        update_stat(self, duel, EFFECT_UPDATE_LEVEL, amt, reset, rc, None);
+        self.get_level(duel) as i32 - lv
     }
 
     fn update_attack(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>, reset_count: Option<u16>) -> i32 {
-        let c = self;
-        let rc = rc.unwrap_or(c);
-        let r = if c == rc { RESETS_STANDARD_DISABLE } else { RESETS_STANDARD };
-        let reset = reset.unwrap_or(RESET_EVENT + r);
-        let atk = c.get_attack(duel);
-        let e1 = duel.create_effect(rc);
-        e1.set_type(duel, EFFECT_TYPE_SINGLE);
-        e1.set_code(duel, EFFECT_UPDATE_ATTACK);
-        e1.set_value(duel, amt);
-        e1.set_reset_full(duel, reset, reset_count.unwrap_or(1));
-        c.register_effect(duel, e1);
-        c.get_attack(duel) - atk
+        let atk = self.get_attack(duel);
+        update_stat(self, duel, EFFECT_UPDATE_ATTACK, amt, reset, rc, reset_count);
+        self.get_attack(duel) - atk
     }
 
     fn update_defense(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>, reset_count: Option<u16>) -> i32 {
-        let c = self;
-        let rc = rc.unwrap_or(c);
-        let r = if c == rc { RESETS_STANDARD_DISABLE } else { RESETS_STANDARD };
-        let reset = reset.unwrap_or(RESET_EVENT + r);
-        let def = c.get_defense(duel);
-        let e1 = duel.create_effect(rc);
-        e1.set_type(duel, EFFECT_TYPE_SINGLE);
-        e1.set_code(duel, EFFECT_UPDATE_DEFENSE);
-        e1.set_value(duel, amt);
-        e1.set_reset_full(duel, reset, reset_count.unwrap_or(1));
-        c.register_effect(duel, e1);
-        c.get_defense(duel) - def
+        let def = self.get_defense(duel);
+        update_stat(self, duel, EFFECT_UPDATE_DEFENSE, amt, reset, rc, reset_count);
+        self.get_defense(duel) - def
     }
 
     // Card.EquipByEffectAndLimitRegister; `up` is nil in Lua unless mustbefaceup is given, which Duel.Equip reads as false.
@@ -2160,19 +2070,13 @@ impl CardUtility for CardId {
     }
 
     fn add_must_be_special_summoned(self, duel: &mut Duel) -> EffectId {
-        let e0 = duel.create_effect(self);
-        e0.set_type(duel, EFFECT_TYPE_SINGLE);
-        e0.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
-        e0.set_code(duel, EFFECT_SPSUMMON_CONDITION);
+        let e0 = single_uncopyable(duel, self, EFFECT_SPSUMMON_CONDITION);
         self.register_effect(duel, e0);
         e0
     }
 
     fn add_must_be_special_summoned_by_card_effect(self, duel: &mut Duel) -> EffectId {
-        let e0 = duel.create_effect(self);
-        e0.set_type(duel, EFFECT_TYPE_SINGLE);
-        e0.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
-        e0.set_code(duel, EFFECT_SPSUMMON_CONDITION);
+        let e0 = single_uncopyable(duel, self, EFFECT_SPSUMMON_CONDITION);
         e0.set_value(
             duel,
             Value::SpSummonCondition(|duel, _, se, _, _, _, _| se.is_some_and(|se| se.is_has_type(duel, EFFECT_TYPE_ACTIONS))),
@@ -2182,10 +2086,7 @@ impl CardUtility for CardId {
     }
 
     fn add_must_be_fusion_summoned(self, duel: &mut Duel) -> EffectId {
-        let e0 = duel.create_effect(self);
-        e0.set_type(duel, EFFECT_TYPE_SINGLE);
-        e0.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
-        e0.set_code(duel, EFFECT_SPSUMMON_CONDITION);
+        let e0 = single_uncopyable(duel, self, EFFECT_SPSUMMON_CONDITION);
         e0.set_value(
             duel,
             Value::SpSummonCondition(|_, _, _, _, sum_type, _, _| sum_type & SUMMON_TYPE_FUSION == SUMMON_TYPE_FUSION),
@@ -2195,20 +2096,14 @@ impl CardUtility for CardId {
     }
 
     fn add_must_be_synchro_summoned(self, duel: &mut Duel) -> EffectId {
-        let e0 = duel.create_effect(self);
-        e0.set_type(duel, EFFECT_TYPE_SINGLE);
-        e0.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
-        e0.set_code(duel, EFFECT_SPSUMMON_CONDITION);
+        let e0 = single_uncopyable(duel, self, EFFECT_SPSUMMON_CONDITION);
         e0.set_value(duel, Value::SpSummonCondition(aux::synlimit));
         self.register_effect(duel, e0);
         e0
     }
 
     fn add_must_first_be_fusion_summoned(self, duel: &mut Duel) -> EffectId {
-        let e0 = duel.create_effect(self);
-        e0.set_type(duel, EFFECT_TYPE_SINGLE);
-        e0.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
-        e0.set_code(duel, EFFECT_SPSUMMON_CONDITION);
+        let e0 = single_uncopyable(duel, self, EFFECT_SPSUMMON_CONDITION);
         e0.set_value(
             duel,
             Value::SpSummonCondition(|duel, e, _, _, sum_type, _, _| {
@@ -2220,16 +2115,10 @@ impl CardUtility for CardId {
     }
 
     fn add_must_be_special_summoned_by_dark_fusion(self, duel: &mut Duel) -> EffectId {
-        let e0 = duel.create_effect(self);
-        e0.set_type(duel, EFFECT_TYPE_SINGLE);
-        e0.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
-        e0.set_code(duel, EFFECT_SPSUMMON_CONDITION);
+        let e0 = single_uncopyable(duel, self, EFFECT_SPSUMMON_CONDITION);
         e0.set_value(duel, Value::SpSummonCondition(aux::evil_hero_limit));
         self.register_effect(duel, e0);
-        let e1 = duel.create_effect(self);
-        e1.set_type(duel, EFFECT_TYPE_SINGLE);
-        e1.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
-        e1.set_code(duel, CARD_CLOCK_LIZARD);
+        let e1 = single_uncopyable(duel, self, CARD_CLOCK_LIZARD);
         e1.set_condition(duel, |duel, a| {
             duel.is_player_affected_by_effect(a.e.get_handler_player(duel), EFFECT_SUPREME_CASTLE)
                 .is_none()
@@ -2298,8 +2187,7 @@ impl EffectUtility for EffectId {
         self.is_active_type(duel, TYPE_SPELL | TYPE_TRAP)
     }
 
-    // Effect.HasSelfDiscardCost, which looks the cost up in a table of the library's own costs: Cost.SelfDiscard, Cost.SelfDiscardToGrave and
-    // the Dragon Ruler ones, the only composite costs ported with it.
+    // A table of the library's costs, compared by address; the Dragon Ruler ones are the only composite costs ported with it.
     fn has_self_discard_cost(self, duel: &Duel) -> bool {
         let costs: [CostFn; 7] = [
             Cost::self_discard,
@@ -2332,11 +2220,11 @@ impl EffectUtility for EffectId {
     }
 }
 
-// Card.AnnounceAnotherAttribute and Duel.AnnounceAnotherAttribute: any attribute but the one of `attribute`, if it is single.
 fn match_setcode(setcode: u16, to_match: u16) -> bool {
     setcode & 0xfff == to_match & 0xfff && setcode & to_match == setcode
 }
 
+// Card.AnnounceAnotherAttribute and Duel.AnnounceAnotherAttribute: any attribute but `attribute`, if it is single.
 fn announce_another_attribute(duel: &mut Duel, attribute: u32, tp: u8) -> Script<u32> {
     duel.hint(HINT_SELECTMSG, tp, HINTMSG_ATTRIBUTE);
     let available = if attribute & attribute.wrapping_sub(1) == 0 {
@@ -2501,7 +2389,25 @@ impl DuelUtility for Duel {
     }
 }
 
-// Card.EquipByEffectLimit.
+fn single_uncopyable(duel: &mut Duel, c: CardId, code: u32) -> EffectId {
+    let effect = duel.create_effect(c);
+    effect.set_type(duel, EFFECT_TYPE_SINGLE);
+    effect.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
+    effect.set_code(duel, code);
+    effect
+}
+
+fn update_stat(c: CardId, duel: &mut Duel, code: u32, amt: i32, reset: Option<u32>, rc: Option<CardId>, reset_count: Option<u16>) {
+    let rc = rc.unwrap_or(c);
+    let r = if c == rc { RESETS_STANDARD_DISABLE } else { RESETS_STANDARD };
+    let e1 = duel.create_effect(rc);
+    e1.set_type(duel, EFFECT_TYPE_SINGLE);
+    e1.set_code(duel, code);
+    e1.set_value(duel, amt);
+    e1.set_reset_full(duel, reset.unwrap_or(RESET_EVENT + r), reset_count.unwrap_or(1));
+    c.register_effect(duel, e1);
+}
+
 pub(crate) fn equip_by_effect_limit(duel: &Duel, e: EffectId, c: CardId) -> bool {
     e.get_owner(duel) == c
         && c.get_card_effect(duel, 89785779 + EFFECT_EQUIP_LIMIT)
@@ -2509,8 +2415,7 @@ pub(crate) fn equip_by_effect_limit(duel: &Duel, e: EffectId, c: CardId) -> bool
             .any(|te| Some(te) == e.get_label_object(duel))
 }
 
-// The parameters of Cyberdark.EquipFilter, EquipTarget and EquipOperation for the effects that target (targets true); the ones that
-// do not come with the cards that use them. `f` is the filter before EquipFilter wraps it, `equipop` the op.
+// The Cyberdark.EquipFilter/EquipTarget/EquipOperation parameters with targets true; `f` is the filter EquipFilter wraps.
 pub trait CyberdarkEquip {
     const MANDATORY: bool;
 
@@ -2585,7 +2490,7 @@ impl Witchcrafter {
 pub struct DragonRuler;
 
 impl DragonRuler {
-    // discard_with_other_cost(filter): returns false when executed, which stops the Cost.AND it is part of: it sends both cards.
+    // Returns false when executed, which stops the Cost.AND it is part of, so it sends both cards.
     fn discard_with_other_cost(duel: &mut Duel, args: &Args, chk: i32, filter: impl Fn(CardId, &Duel) -> bool) -> Script<bool> {
         let (c, tp) = (args.e.get_handler(duel), args.tp);
         if chk == 0 {
@@ -2614,9 +2519,7 @@ impl DragonRuler {
     }
 }
 
-// The parameters of Effect.CreateMysteruneQPEffect: the unique effect's category, target and operation (the operation returns
-// whether to go on to the banishment), the cards banished from the opponent's Deck and the unique effect's extra property.
-// The uniquecode variant, which returns two effects, and a rmcount function have no caller.
+// Effect.CreateMysteruneQPEffect's parameters (`uniqueop` returns whether to banish); uniquecode and a rmcount function have no caller.
 pub trait MysteruneQuickPlay {
     const ID: u32;
     const UNIQUECAT: u64;

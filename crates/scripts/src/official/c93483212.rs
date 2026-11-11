@@ -75,8 +75,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e4.set_condition(duel, |duel, a| {
         a.e.get_handler(duel).get_summon_type(duel) == SUMMON_TYPE_SPECIAL + 1
     });
-    e4.set_target(duel, drtg);
-    e4.set_operation(duel, drop);
+    e4.set_target(duel, stock::draw_target::<1>);
+    e4.set_operation(duel, stock::draw);
     c.register_effect(duel, e4);
 }
 
@@ -155,23 +155,5 @@ fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
     if c.is_relate_to_effect(duel, e) {
         duel.special_summon(c, 1, tp, tp, false, false, POS_FACEUP)?;
     }
-    Ok(())
-}
-
-fn drtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_player_can_draw(tp, 1));
-    }
-    duel.set_target_player(tp);
-    duel.set_target_param(1);
-    duel.set_operation_info(0, CATEGORY_DRAW, None, 0, tp, 1);
-    Ok(false)
-}
-
-fn drop(duel: &mut Duel, _: &Args) -> Script<()> {
-    let p: u8 = duel.get_chain_info(0, CHAININFO_TARGET_PLAYER);
-    let d: u32 = duel.get_chain_info(0, CHAININFO_TARGET_PARAM);
-    duel.draw(p, d, REASON_EFFECT)?;
     Ok(())
 }

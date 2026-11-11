@@ -39,7 +39,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_code(duel, EVENT_SPSUMMON_SUCCESS);
     e1.set_count_limit(duel, 1, ID);
     e1.set_target(duel, thtg);
-    e1.set_operation(duel, thop);
+    e1.set_operation(duel, stock::first_target_to_hand);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
     e2.set_category(duel, CATEGORY_NEGATE + CATEGORY_DESTROY);
@@ -71,15 +71,6 @@ fn thtg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<boo
     let g = duel.select_target(tp, filter, tp, 0, LOCATION_MZONE, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_TOHAND, g, 1, 0, 0);
     Ok(false)
-}
-
-fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.send_to_hand(tc, PLAYER_NONE, REASON_EFFECT)?;
-    }
-    Ok(())
 }
 
 fn discon(duel: &Duel, a: &Args) -> bool {

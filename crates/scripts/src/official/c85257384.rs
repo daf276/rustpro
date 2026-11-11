@@ -128,11 +128,7 @@ fn xyzfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn xyztg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(xyzfilter, a.tp, LOCATION_EXTRA, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, a.tp, LOCATION_EXTRA as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, xyzfilter, LOCATION_EXTRA, CATEGORY_SPECIAL_SUMMON)
 }
 
 fn xyzop(duel: &mut Duel, a: &Args) -> Script<()> {

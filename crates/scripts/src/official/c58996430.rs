@@ -17,7 +17,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_code(duel, EVENT_TO_GRAVE);
     e1.set_condition(duel, |duel, a| a.e.get_handler(duel).get_previous_location(duel) == LOCATION_DECK);
     e1.set_target(duel, target);
-    e1.set_operation(duel, operation);
+    e1.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
     e2.set_type(duel, EFFECT_TYPE_SINGLE);
@@ -37,12 +37,4 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool
     let c = a.e.get_handler(duel);
     duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, 0, 0);
     Ok(false)
-}
-
-fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
-    let c = a.e.get_handler(duel);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.special_summon(c, 0, a.tp, a.tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
 }

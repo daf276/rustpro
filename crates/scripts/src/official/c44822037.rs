@@ -80,14 +80,7 @@ fn ngfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn ngcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(ngfilter, tp, LOCATION_MZONE, 0, 1, None));
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_TOGRAVE);
-    let g = duel.select_matching_card(tp, ngfilter, tp, LOCATION_MZONE, 0, 1, 1, None)?;
-    duel.send_to_grave(g, REASON_COST)?;
-    Ok(false)
+    stock::send_to_grave_cost(duel, a, chk, ngfilter, LOCATION_MZONE)
 }
 
 fn ngtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {

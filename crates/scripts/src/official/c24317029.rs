@@ -13,17 +13,9 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_description(duel, aux::stringid(ID, 0));
     e1.set_category(duel, CATEGORY_SPECIAL_SUMMON);
     e1.set_type(duel, EFFECT_TYPE_SINGLE + EFFECT_TYPE_FLIP);
-    e1.set_target(duel, target);
+    e1.set_target(duel, stock::operation_info_target::<CATEGORY_SPECIAL_SUMMON, LOCATION_DECK>);
     e1.set_operation(duel, operation);
     c.register_effect(duel, e1);
-}
-
-fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, a.tp, LOCATION_DECK as i32);
-    Ok(false)
 }
 
 fn filter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
@@ -31,14 +23,5 @@ fn filter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
 }
 
 fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (e, tp) = (a.e, a.tp);
-    if duel.get_location_count(tp, LOCATION_MZONE) <= 0 {
-        return Ok(());
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_SPSUMMON);
-    let g = duel.select_matching_card(tp, |c, duel| filter(c, duel, e, tp), tp, LOCATION_DECK, 0, 1, 1, None)?;
-    if !g.is_empty() {
-        duel.special_summon(g, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
+    stock::special_summon(duel, a, |c, duel| filter(c, duel, a.e, a.tp), LOCATION_DECK, POS_FACEUP)
 }

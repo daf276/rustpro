@@ -42,8 +42,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e3.set_range(duel, LOCATION_GRAVE);
     e3.set_count_limit_full(duel, 1, (ID, 1), EFFECT_COUNT_CODE_DUEL);
     e3.set_condition(duel, spcon);
-    e3.set_target(duel, sptg);
-    e3.set_operation(duel, spop);
+    e3.set_target(duel, stock::special_summon_self_target_player_0);
+    e3.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e3);
 }
 
@@ -95,23 +95,4 @@ fn spfilter(c: CardId, duel: &Duel) -> bool {
 
 fn spcon(duel: &Duel, a: &Args) -> bool {
     duel.is_existing_matching_card(spfilter, a.tp, LOCATION_ONFIELD | LOCATION_GRAVE, 0, 1, None)
-}
-
-fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, e, 0, tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, 0, 0);
-    Ok(false)
-}
-
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if c.is_relate_to_effect(duel, e) {
-        duel.special_summon(c, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
 }

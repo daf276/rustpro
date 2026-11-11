@@ -49,12 +49,14 @@ fn filter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
 }
 
 fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(|c, duel| filter(c, duel, e, tp), tp, LOCATION_DECK | LOCATION_HAND, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, tp, (LOCATION_DECK | LOCATION_HAND) as i32);
-    Ok(false)
+    stock::exists_target(
+        duel,
+        a,
+        chk,
+        |c, duel| filter(c, duel, a.e, a.tp),
+        LOCATION_DECK | LOCATION_HAND,
+        CATEGORY_SPECIAL_SUMMON,
+    )
 }
 
 fn operation(duel: &mut Duel, a: &Args) -> Script<()> {

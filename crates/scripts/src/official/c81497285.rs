@@ -47,7 +47,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
         duel.get_custom_activity_count(ID, 0, ACTIVITY_CHAIN) > 0 || duel.get_custom_activity_count(ID, 1, ACTIVITY_CHAIN) > 0
     });
     e3.set_target(duel, sptg);
-    e3.set_operation(duel, spop);
+    e3.set_operation(duel, stock::special_summon_self::<POS_FACEUP_DEFENSE>);
     c.register_effect(duel, e3);
     let e4 = duel.create_effect(c);
     e4.set_description(duel, aux::stringid(ID, 1));
@@ -77,14 +77,6 @@ fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> 
     }
     duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, tp, LOCATION_HAND as i32);
     Ok(false)
-}
-
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let c = a.e.get_handler(duel);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.special_summon(c, 0, a.tp, a.tp, false, false, POS_FACEUP_DEFENSE)?;
-    }
-    Ok(())
 }
 
 fn setcond(duel: &Duel, a: &Args) -> bool {

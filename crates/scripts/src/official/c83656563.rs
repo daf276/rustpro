@@ -67,7 +67,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_property(duel, EFFECT_FLAG_PLAYER_TARGET);
     e2.set_condition(duel, aux::bdocon);
     e2.set_target(duel, damtg);
-    e2.set_operation(duel, damop);
+    e2.set_operation(duel, stock::damage);
     c.register_effect(duel, e2);
     let e3 = duel.create_effect(c);
     e3.set_description(duel, aux::stringid(ID, 1));
@@ -78,7 +78,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e3.set_count_limit(duel, 1, ID);
     e3.set_cost(duel, Cost::self_banish);
     e3.set_target(duel, destg);
-    e3.set_operation(duel, desop);
+    e3.set_operation(duel, stock::destroy_first_target);
     c.register_effect(duel, e3);
 }
 
@@ -97,13 +97,6 @@ fn damtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool>
     Ok(false)
 }
 
-fn damop(duel: &mut Duel, _: &Args) -> Script<()> {
-    let p: u8 = duel.get_chain_info(0, CHAININFO_TARGET_PLAYER);
-    let d: u32 = duel.get_chain_info(0, CHAININFO_TARGET_PARAM);
-    duel.damage(p, d, REASON_EFFECT)?;
-    Ok(())
-}
-
 fn destg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bool> {
     let tp = a.tp;
     if let Some(chkc) = chkc {
@@ -116,13 +109,4 @@ fn destg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bo
     let g = duel.select_target(tp, CardId::is_spell_trap, tp, LOCATION_ONFIELD, LOCATION_ONFIELD, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_DESTROY, g, g.map_or(0, |g| g.len() as u8), 0, 0);
     Ok(false)
-}
-
-fn desop(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.destroy(tc, REASON_EFFECT)?;
-    }
-    Ok(())
 }

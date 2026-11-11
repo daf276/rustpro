@@ -45,7 +45,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e3.set_property(duel, EFFECT_FLAG_PLAYER_TARGET);
     e3.set_condition(duel, |duel, a| Some(a.e.get_handler(duel)) == duel.get_attack_target());
     e3.set_target(duel, damtg);
-    e3.set_operation(duel, damop);
+    e3.set_operation(duel, stock::damage);
     c.register_effect(duel, e3);
     let e4 = duel.create_effect(c);
     e4.set_description(duel, aux::stringid(ID, 1));
@@ -87,13 +87,6 @@ fn damtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool>
     duel.set_target_param(atk as u32);
     duel.set_operation_info(0, CATEGORY_DAMAGE, None, 0, 1 - tp, atk);
     Ok(false)
-}
-
-fn damop(duel: &mut Duel, _: &Args) -> Script<()> {
-    let p: u8 = duel.get_chain_info(0, CHAININFO_TARGET_PLAYER);
-    let d: u32 = duel.get_chain_info(0, CHAININFO_TARGET_PARAM);
-    duel.damage(p, d, REASON_EFFECT)?;
-    Ok(())
 }
 
 fn others(duel: &Duel, a: &Args) -> CardSet {

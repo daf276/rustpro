@@ -19,7 +19,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_count_limit_full(duel, 1, ID, EFFECT_COUNT_CODE_DUEL);
     e1.set_condition(duel, |duel, a| a.e.get_handler(duel).get_previous_location(duel) == LOCATION_GRAVE);
     e1.set_target(duel, target);
-    e1.set_operation(duel, operation);
+    e1.set_operation(duel, stock::draw);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
     e2.set_type(duel, EFFECT_TYPE_SINGLE + EFFECT_TYPE_CONTINUOUS);
@@ -36,13 +36,6 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool
     duel.set_target_param(2);
     duel.set_operation_info(0, CATEGORY_DRAW, None, 0, a.tp, 2);
     Ok(false)
-}
-
-fn operation(duel: &mut Duel, _: &Args) -> Script<()> {
-    let p: u8 = duel.get_chain_info(0, CHAININFO_TARGET_PLAYER);
-    let d: u32 = duel.get_chain_info(0, CHAININFO_TARGET_PARAM);
-    duel.draw(p, d, REASON_EFFECT)?;
-    Ok(())
 }
 
 fn tgop(duel: &mut Duel, a: &Args) -> Script<()> {

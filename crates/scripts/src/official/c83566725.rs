@@ -60,11 +60,7 @@ fn setfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn settg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(setfilter, a.tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_SET, None, 1, a.tp, LOCATION_DECK as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, setfilter, LOCATION_DECK, CATEGORY_SET)
 }
 
 fn setop(duel: &mut Duel, a: &Args) -> Script<()> {

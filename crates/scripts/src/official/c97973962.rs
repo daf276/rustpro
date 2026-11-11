@@ -119,21 +119,9 @@ fn thfilter2(c: CardId, duel: &Duel) -> bool {
 }
 
 fn thtg2(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(thfilter2, tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, tp, LOCATION_DECK as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, thfilter2, LOCATION_DECK, CATEGORY_TOHAND)
 }
 
 fn thop2(duel: &mut Duel, a: &Args) -> Script<()> {
-    let tp = a.tp;
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_ATOHAND);
-    let g = duel.select_matching_card(tp, thfilter2, tp, LOCATION_DECK, 0, 1, 1, None)?;
-    if !g.is_empty() {
-        duel.send_to_hand(g, PLAYER_NONE, REASON_EFFECT)?;
-        duel.confirm_cards(1 - tp, g)?;
-    }
-    Ok(())
+    stock::search(duel, a, thfilter2, LOCATION_DECK)
 }

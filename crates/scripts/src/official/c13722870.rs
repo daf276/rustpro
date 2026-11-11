@@ -47,21 +47,16 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_type(duel, EFFECT_TYPE_SINGLE + EFFECT_TYPE_TRIGGER_F);
     e2.set_code(duel, EVENT_BATTLE_DESTROYED);
     e2.set_condition(duel, |duel, a| a.e.get_handler(duel).is_location(duel, LOCATION_GRAVE));
-    e2.set_target(duel, sptg);
+    e2.set_target(
+        duel,
+        stock::operation_info_target::<CATEGORY_SPECIAL_SUMMON, { LOCATION_HAND | LOCATION_DECK }>,
+    );
     e2.set_operation(duel, spop);
     c.register_effect(duel, e2);
 }
 
 fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
     c.is_code(duel, 49217579) && c.is_can_be_special_summoned(duel, e, 0, tp, true, false)
-}
-
-fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, a.tp, (LOCATION_HAND | LOCATION_DECK) as i32);
-    Ok(false)
 }
 
 fn spop(duel: &mut Duel, a: &Args) -> Script<()> {

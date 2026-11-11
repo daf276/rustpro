@@ -50,7 +50,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_count_limit(duel, 1, (ID, 1));
     e2.set_condition(duel, |duel, a| a.e.get_handler(duel).is_xyz_summoned(duel));
     e2.set_cost(duel, thcost);
-    e2.set_target(duel, thtg);
+    e2.set_target(duel, stock::operation_info_target::<CATEGORY_TOHAND, LOCATION_DECK>);
     e2.set_operation(duel, thop);
     c.register_effect(duel, e2);
 }
@@ -70,12 +70,14 @@ fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
 }
 
 fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(|c, duel| spfilter(c, duel, e, tp), tp, LOCATION_HAND | LOCATION_GRAVE, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, tp, (LOCATION_HAND | LOCATION_GRAVE) as i32);
-    Ok(false)
+    stock::exists_target(
+        duel,
+        a,
+        chk,
+        |c, duel| spfilter(c, duel, a.e, a.tp),
+        LOCATION_HAND | LOCATION_GRAVE,
+        CATEGORY_SPECIAL_SUMMON,
+    )
 }
 
 fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
@@ -121,14 +123,6 @@ fn thcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
 
 fn deck_has(duel: &Duel, a: &Args, filter: fn(CardId, &Duel) -> bool) -> bool {
     duel.is_existing_matching_card(filter, a.tp, LOCATION_DECK, 0, 1, None)
-}
-
-fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, a.tp, LOCATION_DECK as i32);
-    Ok(false)
 }
 
 fn thop(duel: &mut Duel, a: &Args) -> Script<()> {

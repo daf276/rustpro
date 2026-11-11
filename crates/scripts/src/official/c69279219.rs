@@ -18,7 +18,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_code(duel, EVENT_CHAINING);
     e1.set_condition(duel, condition);
     e1.set_cost(duel, Cost::pay_lp::<1500>);
-    e1.set_target(duel, target);
+    e1.set_target(duel, stock::negate_destroy_target);
     e1.set_operation(duel, operation);
     c.register_effect(duel, e1);
 }
@@ -39,20 +39,6 @@ fn condition(duel: &Duel, a: &Args) -> bool {
         info.op_cards
             .is_some_and(|tg| i32::from(info.op_count) + tg.filter_count(duel, cfilter, None) as i32 - tg.len() as i32 > 0)
     })
-}
-
-fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_NEGATE, a.eg, 1, 0, 0);
-    if let Some(re) = a.re {
-        let rc = re.get_handler(duel);
-        if rc.is_destructable(duel) && rc.is_relate_to_effect(duel, re) {
-            duel.set_operation_info(0, CATEGORY_DESTROY, a.eg, 1, 0, 0);
-        }
-    }
-    Ok(false)
 }
 
 fn operation(duel: &mut Duel, a: &Args) -> Script<()> {

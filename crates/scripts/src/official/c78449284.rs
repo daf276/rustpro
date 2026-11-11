@@ -69,26 +69,11 @@ fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
 }
 
 fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0
-            && duel.is_existing_matching_card(|c, duel| spfilter(c, duel, e, tp), tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, tp, LOCATION_DECK as i32);
-    Ok(false)
+    stock::special_summon_target(duel, a, chk, |c, duel| spfilter(c, duel, a.e, a.tp), LOCATION_DECK)
 }
 
 fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (e, tp) = (a.e, a.tp);
-    if duel.get_location_count(tp, LOCATION_MZONE) <= 0 {
-        return Ok(());
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_SPSUMMON);
-    let g = duel.select_matching_card(tp, |c, duel| spfilter(c, duel, e, tp), tp, LOCATION_DECK, 0, 1, 1, None)?;
-    if !g.is_empty() {
-        duel.special_summon(g, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
+    stock::special_summon(duel, a, |c, duel| spfilter(c, duel, a.e, a.tp), LOCATION_DECK, POS_FACEUP)
 }
 
 fn deckthconfilter(c: CardId, duel: &Duel, tp: u8) -> bool {
@@ -104,11 +89,7 @@ fn deckthfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn deckthtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(deckthfilter, a.tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, a.tp, LOCATION_DECK as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, deckthfilter, LOCATION_DECK, CATEGORY_TOHAND)
 }
 
 fn deckthop(duel: &mut Duel, a: &Args) -> Script<()> {
@@ -126,11 +107,7 @@ fn banthfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn banthtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(banthfilter, a.tp, LOCATION_REMOVED, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, a.tp, LOCATION_REMOVED as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, banthfilter, LOCATION_REMOVED, CATEGORY_TOHAND)
 }
 
 fn banthop(duel: &mut Duel, a: &Args) -> Script<()> {

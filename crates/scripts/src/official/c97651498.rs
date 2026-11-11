@@ -17,7 +17,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
         a.e.get_handler(duel).get_previous_location(duel) == LOCATION_HAND && a.r & REASON_DISCARD != 0
     });
     e1.set_target(duel, sptg);
-    e1.set_operation(duel, spop);
+    e1.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e1);
 }
 
@@ -28,12 +28,4 @@ fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> 
     let c = a.e.get_handler(duel);
     duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, 0, 0);
     Ok(false)
-}
-
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (c, tp) = (a.e.get_handler(duel), a.tp);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.special_summon(c, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
 }

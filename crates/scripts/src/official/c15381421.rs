@@ -22,7 +22,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_range(duel, LOCATION_MZONE);
     e1.set_count_limit(duel, 1, ID);
     e1.set_cost(duel, thcost);
-    e1.set_target(duel, thtg);
+    e1.set_target(duel, stock::operation_info_target::<CATEGORY_TOHAND, LOCATION_DECK>);
     e1.set_operation(duel, thop);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
@@ -33,7 +33,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_count_limit(duel, 1, (ID, 1));
     e2.set_cost(duel, Cost::self_banish);
     e2.set_target(duel, thtg2);
-    e2.set_operation(duel, thop2);
+    e2.set_operation(duel, stock::first_target_to_hand);
     c.register_effect(duel, e2);
 }
 
@@ -74,14 +74,6 @@ fn thcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     Ok(false)
 }
 
-fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, a.tp, LOCATION_DECK as i32);
-    Ok(false)
-}
-
 fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
     let tp = a.tp;
     let lv = a.e.get_label(duel) as u32;
@@ -113,13 +105,4 @@ fn thtg2(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bo
     let g = duel.select_target(tp, thfilter2, tp, LOCATION_GRAVE, 0, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_TOHAND, g, g.map_or(0, |g| g.len() as u8), 0, 0);
     Ok(false)
-}
-
-fn thop2(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.send_to_hand(tc, PLAYER_NONE, REASON_EFFECT)?;
-    }
-    Ok(())
 }

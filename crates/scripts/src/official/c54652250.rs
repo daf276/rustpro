@@ -10,7 +10,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_property(duel, EFFECT_FLAG_CARD_TARGET);
     e1.set_type(duel, EFFECT_TYPE_SINGLE + EFFECT_TYPE_FLIP);
     e1.set_target(duel, target);
-    e1.set_operation(duel, operation);
+    e1.set_operation(duel, stock::destroy_first_target);
     c.register_effect(duel, e1);
 }
 
@@ -26,13 +26,4 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<b
     let count = g.map_or(0, |g| g.len() as u8);
     duel.set_operation_info(0, CATEGORY_DESTROY, g, count, 0, 0);
     Ok(false)
-}
-
-fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.destroy(tc, REASON_EFFECT)?;
-    }
-    Ok(())
 }

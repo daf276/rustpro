@@ -37,8 +37,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
             None,
         )
     });
-    e1.set_target(duel, sptg);
-    e1.set_operation(duel, spop);
+    e1.set_target(duel, stock::special_summon_self_target_player_0);
+    e1.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
     e2.set_description(duel, aux::stringid(ID, 1));
@@ -48,8 +48,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_range(duel, LOCATION_MZONE);
     e2.set_count_limit(duel, 1, (ID, 1));
     e2.set_cost(duel, drcost);
-    e2.set_target(duel, drtg);
-    e2.set_operation(duel, drop);
+    e2.set_target(duel, stock::draw_target::<1>);
+    e2.set_operation(duel, stock::draw);
     c.register_effect(duel, e2);
     let e3 = duel.create_effect(c);
     e3.set_description(duel, aux::stringid(ID, 2));
@@ -65,55 +65,12 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.register_effect(duel, e3);
 }
 
-fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, e, 0, tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, 0, 0);
-    Ok(false)
-}
-
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let c = a.e.get_handler(duel);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.special_summon(c, 0, a.tp, a.tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
-}
-
 fn costfilter(c: CardId, duel: &Duel) -> bool {
     c.is_spell_trap(duel) && c.is_able_to_grave_as_cost(duel)
 }
 
 fn drcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(costfilter, tp, LOCATION_HAND | LOCATION_ONFIELD, 0, 1, None));
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_TOGRAVE);
-    let g = duel.select_matching_card(tp, costfilter, tp, LOCATION_HAND | LOCATION_ONFIELD, 0, 1, 1, None)?;
-    duel.send_to_grave(g, REASON_COST)?;
-    Ok(false)
-}
-
-fn drtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_player_can_draw(tp, 1));
-    }
-    duel.set_target_player(tp);
-    duel.set_target_param(1);
-    duel.set_operation_info(0, CATEGORY_DRAW, None, 0, tp, 1);
-    Ok(false)
-}
-
-fn drop(duel: &mut Duel, _: &Args) -> Script<()> {
-    let p: u8 = duel.get_chain_info(0, CHAININFO_TARGET_PLAYER);
-    let d: u32 = duel.get_chain_info(0, CHAININFO_TARGET_PARAM);
-    duel.draw(p, d, REASON_EFFECT)?;
-    Ok(())
+    stock::send_to_grave_cost(duel, a, chk, costfilter, LOCATION_HAND | LOCATION_ONFIELD)
 }
 
 fn tdfilter(c: CardId, duel: &Duel, tp: u8) -> bool {

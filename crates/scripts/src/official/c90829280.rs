@@ -50,8 +50,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e4.set_condition(duel, |duel, a| {
         duel.get_attacker().is_some_and(|at| at.is_controler(duel, 1 - a.tp))
     });
-    e4.set_target(duel, hsptg);
-    e4.set_operation(duel, hspop);
+    e4.set_target(duel, stock::special_summon_self_target_player_0);
+    e4.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e4);
     let e5 = duel.create_effect(c);
     e5.set_description(duel, aux::stringid(ID, 2));
@@ -74,13 +74,7 @@ fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
 }
 
 fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0
-            && duel.is_existing_matching_card(|c, duel| spfilter(c, duel, e, tp), tp, SOURCES, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, tp, SOURCES as i32);
-    Ok(false)
+    stock::special_summon_target(duel, a, chk, |c, duel| spfilter(c, duel, a.e, a.tp), SOURCES)
 }
 
 fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
@@ -93,24 +87,6 @@ fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
     let g = duel.select_matching_card(tp, filter, tp, SOURCES, 0, 1, 1, None)?;
     if !g.is_empty() {
         duel.special_summon(g, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
-}
-
-fn hsptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, e, 0, tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, 0, 0);
-    Ok(false)
-}
-
-fn hspop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let c = a.e.get_handler(duel);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.special_summon(c, 0, a.tp, a.tp, false, false, POS_FACEUP)?;
     }
     Ok(())
 }

@@ -47,7 +47,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e3.set_range(duel, LOCATION_MZONE);
     e3.set_count_limit(duel, 1, (ID, 1));
     e3.set_target(duel, gythtg);
-    e3.set_operation(duel, gythop);
+    e3.set_operation(duel, stock::first_target_to_hand);
     c.register_effect(duel, e3);
     let e4 = duel.create_effect(c);
     e4.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
@@ -143,13 +143,4 @@ fn gythtg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<b
     duel.set_target_card(tg);
     duel.set_operation_info(0, CATEGORY_TOHAND, Some(tg), 1, tp, 0);
     Ok(false)
-}
-
-fn gythop(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.send_to_hand(tc, PLAYER_NONE, REASON_EFFECT)?;
-    }
-    Ok(())
 }

@@ -57,7 +57,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e3.set_count_limit(duel, 1, (ID, 1));
     e3.set_cost(duel, super::c60764609::spcost);
     e3.set_target(duel, damtg);
-    e3.set_operation(duel, damop);
+    e3.set_operation(duel, stock::damage);
     c.register_effect(duel, e3);
 }
 
@@ -133,11 +133,4 @@ fn damtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool>
     duel.set_target_param(1200);
     duel.set_operation_info(0, CATEGORY_DAMAGE, None, 0, 1 - tp, 1200);
     Ok(false)
-}
-
-fn damop(duel: &mut Duel, _: &Args) -> Script<()> {
-    let p: u8 = duel.get_chain_info(0, CHAININFO_TARGET_PLAYER);
-    let d: u32 = duel.get_chain_info(0, CHAININFO_TARGET_PARAM);
-    duel.damage(p, d, REASON_EFFECT)?;
-    Ok(())
 }

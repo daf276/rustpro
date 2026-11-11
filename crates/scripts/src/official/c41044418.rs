@@ -53,14 +53,7 @@ fn thcfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn thcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(thcfilter, tp, LOCATION_HAND, 0, 1, None));
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_TOGRAVE);
-    let g = duel.select_matching_card(tp, thcfilter, tp, LOCATION_HAND, 0, 1, 1, None)?;
-    duel.send_to_grave(g, REASON_COST)?;
-    Ok(false)
+    stock::send_to_grave_cost(duel, a, chk, thcfilter, LOCATION_HAND)
 }
 
 fn thfilter(c: CardId, duel: &Duel) -> bool {
@@ -68,12 +61,7 @@ fn thfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(thfilter, tp, LOCATION_DECK | LOCATION_GRAVE, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, tp, (LOCATION_DECK | LOCATION_GRAVE) as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, thfilter, LOCATION_DECK | LOCATION_GRAVE, CATEGORY_TOHAND)
 }
 
 fn thop(duel: &mut Duel, a: &Args) -> Script<()> {

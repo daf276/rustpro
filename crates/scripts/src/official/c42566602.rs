@@ -46,7 +46,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_count_limit(duel, 1, 0);
     e1.set_cost(duel, cost);
     e1.set_target(duel, target);
-    e1.set_operation(duel, operation);
+    e1.set_operation(duel, stock::destroy_first_target);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
     e2.set_description(duel, aux::stringid(ID, 1));
@@ -59,8 +59,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
         let c = a.e.get_handler(duel);
         c.is_previous_location(duel, LOCATION_MZONE) && c.is_synchro_summoned(duel)
     });
-    e2.set_target(duel, drtg);
-    e2.set_operation(duel, drop);
+    e2.set_target(duel, stock::draw_target::<1>);
+    e2.set_operation(duel, stock::draw);
     c.register_effect(duel, e2);
 }
 
@@ -85,31 +85,4 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<b
     let g = duel.select_target(tp, aux::TRUE, tp, 0, LOCATION_ONFIELD, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_DESTROY, g, 1, 0, 0);
     Ok(false)
-}
-
-fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.destroy(tc, REASON_EFFECT)?;
-    }
-    Ok(())
-}
-
-fn drtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_player_can_draw(tp, 1));
-    }
-    duel.set_target_player(tp);
-    duel.set_target_param(1);
-    duel.set_operation_info(0, CATEGORY_DRAW, None, 0, tp, 1);
-    Ok(false)
-}
-
-fn drop(duel: &mut Duel, _: &Args) -> Script<()> {
-    let p: u8 = duel.get_chain_info(0, CHAININFO_TARGET_PLAYER);
-    let d: u32 = duel.get_chain_info(0, CHAININFO_TARGET_PARAM);
-    duel.draw(p, d, REASON_EFFECT)?;
-    Ok(())
 }

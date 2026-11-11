@@ -39,7 +39,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_code(duel, EVENT_TO_GRAVE);
     e2.set_count_limit(duel, 1, (ID, 1));
     e2.set_condition(duel, spcon);
-    e2.set_target(duel, sptg);
+    e2.set_target(duel, stock::operation_info_target::<CATEGORY_SPECIAL_SUMMON, LOCATION_DECK>);
     e2.set_operation(duel, spop);
     c.register_effect(duel, e2);
 }
@@ -91,14 +91,6 @@ fn spcon(duel: &Duel, a: &Args) -> bool {
     a.e.get_handler(duel).is_reason(duel, REASON_COST)
         && a.re.is_some_and(|re| re.is_activated(duel) && re.is_monster_effect(duel))
         && attribute & ATTRIBUTE_WATER > 0
-}
-
-fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, a.tp, LOCATION_DECK as i32);
-    Ok(false)
 }
 
 fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {

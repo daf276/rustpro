@@ -62,16 +62,7 @@ fn sptarget(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bo
 }
 
 fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (e, tp) = (a.e, a.tp);
-    if duel.get_location_count(tp, LOCATION_MZONE) <= 0 {
-        return Ok(());
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_SPSUMMON);
-    let g = duel.select_matching_card(tp, |c, duel| spfilter(c, duel, e, tp), tp, LOCATION_DECK, 0, 1, 1, None)?;
-    if !g.is_empty() {
-        duel.special_summon(g, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
+    stock::special_summon(duel, a, |c, duel| spfilter(c, duel, a.e, a.tp), LOCATION_DECK, POS_FACEUP)
 }
 
 fn tgfilter(c: CardId, duel: &Duel) -> bool {
@@ -79,20 +70,9 @@ fn tgfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn tgtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(tgfilter, tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_TOGRAVE, None, 1, tp, LOCATION_DECK as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, tgfilter, LOCATION_DECK, CATEGORY_TOGRAVE)
 }
 
 fn tgop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let tp = a.tp;
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_TOGRAVE);
-    let g = duel.select_matching_card(tp, tgfilter, tp, LOCATION_DECK, 0, 1, 1, None)?;
-    if !g.is_empty() {
-        duel.send_to_grave(g, REASON_EFFECT)?;
-    }
-    Ok(())
+    stock::send_to_grave(duel, a, tgfilter, LOCATION_DECK)
 }

@@ -33,7 +33,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e3.set_range(duel, LOCATION_MZONE);
     e3.set_cost(duel, cost);
     e3.set_target(duel, target);
-    e3.set_operation(duel, activate);
+    e3.set_operation(duel, stock::destroy_first_target);
     c.register_effect(duel, e3);
 }
 
@@ -49,14 +49,7 @@ fn costfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn cost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(costfilter, tp, LOCATION_MZONE | LOCATION_GRAVE, 0, 1, None));
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_REMOVE);
-    let g = duel.select_matching_card(tp, costfilter, tp, LOCATION_MZONE | LOCATION_GRAVE, 0, 1, 1, None)?;
-    duel.remove(g, POS_FACEUP, REASON_COST)?;
-    Ok(false)
+    stock::banish_cost(duel, a, chk, costfilter, LOCATION_MZONE | LOCATION_GRAVE)
 }
 
 fn target(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bool> {
@@ -71,13 +64,4 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<b
     let g = duel.select_target(tp, aux::TRUE, tp, LOCATION_ONFIELD, LOCATION_ONFIELD, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_DESTROY, g, 1, 0, 0);
     Ok(false)
-}
-
-fn activate(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.destroy(tc, REASON_EFFECT)?;
-    }
-    Ok(())
 }

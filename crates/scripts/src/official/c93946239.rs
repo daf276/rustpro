@@ -13,20 +13,9 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_type(duel, EFFECT_TYPE_ACTIVATE);
     e1.set_code(duel, EVENT_FREE_CHAIN);
     e1.set_condition(duel, |duel, a| duel.get_field_group_count(a.tp, LOCATION_HAND, 0) > 2);
-    e1.set_target(duel, target);
+    e1.set_target(duel, stock::draw_target::<1>);
     e1.set_operation(duel, activate);
     c.register_effect(duel, e1);
-}
-
-fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_player_can_draw(tp, 1));
-    }
-    duel.set_target_player(tp);
-    duel.set_target_param(1);
-    duel.set_operation_info(0, CATEGORY_DRAW, None, 0, tp, 1);
-    Ok(false)
 }
 
 fn activate(duel: &mut Duel, a: &Args) -> Script<()> {

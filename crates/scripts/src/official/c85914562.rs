@@ -28,7 +28,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_range(duel, LOCATION_HAND);
     e1.set_count_limit(duel, 1, ID);
     e1.set_condition(duel, spcon);
-    e1.set_target(duel, sptg);
+    e1.set_target(duel, stock::special_summon_self_target);
     e1.set_operation(duel, spop);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
@@ -48,16 +48,6 @@ fn cfilter(c: CardId, duel: &Duel) -> bool {
 
 fn spcon(duel: &Duel, a: &Args) -> bool {
     duel.is_existing_matching_card(cfilter, a.tp, LOCATION_MZONE, 0, 1, None)
-}
-
-fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, e, 0, tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, tp, 0);
-    Ok(false)
 }
 
 pub fn spop(duel: &mut Duel, a: &Args) -> Script<()> {

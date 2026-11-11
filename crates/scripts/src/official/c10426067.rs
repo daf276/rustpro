@@ -47,7 +47,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_condition(duel, thcon);
     e2.set_cost(duel, Cost::self_banish);
     e2.set_target(duel, thtg);
-    e2.set_operation(duel, thop);
+    e2.set_operation(duel, stock::first_target_to_hand);
     c.register_effect(duel, e2);
 }
 
@@ -58,13 +58,7 @@ fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
 }
 
 fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0
-            && duel.is_existing_matching_card(|c, duel| spfilter(c, duel, e, tp), tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, tp, LOCATION_DECK as i32);
-    Ok(false)
+    stock::special_summon_target(duel, a, chk, |c, duel| spfilter(c, duel, a.e, a.tp), LOCATION_DECK)
 }
 
 fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
@@ -115,13 +109,4 @@ fn thtg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<boo
     let g = duel.select_target(tp, thfilter, tp, LOCATION_GRAVE, 0, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_TOHAND, g, 1, tp, 0);
     Ok(false)
-}
-
-fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.send_to_hand(tc, PLAYER_NONE, REASON_EFFECT)?;
-    }
-    Ok(())
 }

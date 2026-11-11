@@ -33,7 +33,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e4.set_code(duel, EVENT_TO_GRAVE);
     e4.set_condition(duel, |duel, a| a.e.get_handler(duel).is_previous_location(duel, LOCATION_ONFIELD));
     e4.set_target(duel, damtg);
-    e4.set_operation(duel, damop);
+    e4.set_operation(duel, stock::damage);
     c.register_effect(duel, e4);
 }
 
@@ -46,11 +46,4 @@ fn damtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool>
     duel.set_target_param(500);
     duel.set_operation_info(0, CATEGORY_DAMAGE, None, 0, 1 - tp, 500);
     Ok(false)
-}
-
-fn damop(duel: &mut Duel, _: &Args) -> Script<()> {
-    let p: u8 = duel.get_chain_info(0, CHAININFO_TARGET_PLAYER);
-    let d: u32 = duel.get_chain_info(0, CHAININFO_TARGET_PARAM);
-    duel.damage(p, d, REASON_EFFECT)?;
-    Ok(())
 }

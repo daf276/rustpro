@@ -65,14 +65,7 @@ fn cfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn bdcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(cfilter, tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_REMOVE);
-    let g = duel.select_matching_card(tp, cfilter, tp, LOCATION_DECK, 0, 1, 1, None)?;
-    duel.remove(g, POS_FACEUP, REASON_COST)?;
-    Ok(false)
+    stock::banish_cost(duel, a, chk, cfilter, LOCATION_DECK)
 }
 
 fn bdop(duel: &mut Duel, a: &Args) -> Script<()> {

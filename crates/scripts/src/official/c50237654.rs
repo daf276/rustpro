@@ -55,7 +55,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_property(duel, EFFECT_FLAG_DELAY);
     e1.set_count_limit(duel, 1, 0);
     e1.set_condition(duel, |duel, a| a.re.is_some_and(|re| re.is_spell_trap_effect(duel)));
-    e1.set_target(duel, drtg);
+    e1.set_target(duel, stock::draw_target::<1>);
     e1.set_operation(duel, drop);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
@@ -67,17 +67,6 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_target(duel, sptg);
     e2.set_operation(duel, spop);
     c.register_effect(duel, e2);
-}
-
-fn drtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_player_can_draw(tp, 1));
-    }
-    duel.set_target_player(tp);
-    duel.set_target_param(1);
-    duel.set_operation_info(0, CATEGORY_DRAW, None, 0, tp, 1);
-    Ok(false)
 }
 
 fn drop(duel: &mut Duel, a: &Args) -> Script<()> {

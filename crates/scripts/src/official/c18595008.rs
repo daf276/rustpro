@@ -50,8 +50,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e3.set_code(duel, EVENT_SPSUMMON_SUCCESS);
     e3.set_count_limit(duel, 1, (ID, 2));
     e3.set_condition(duel, |duel, a| a.e.get_handler(duel).is_summon_location(duel, LOCATION_GRAVE));
-    e3.set_target(duel, drtg);
-    e3.set_operation(duel, drop);
+    e3.set_target(duel, stock::draw_target::<1>);
+    e3.set_operation(duel, stock::draw);
     c.register_effect(duel, e3);
 }
 
@@ -122,23 +122,5 @@ pub fn atop(duel: &mut Duel, a: &Args) -> Script<()> {
         e1.set_reset(duel, RESETS_STANDARD_PHASE_END);
         tc.register_effect(duel, e1);
     }
-    Ok(())
-}
-
-fn drtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_player_can_draw(tp, 1));
-    }
-    duel.set_target_player(tp);
-    duel.set_target_param(1);
-    duel.set_operation_info(0, CATEGORY_DRAW, None, 0, tp, 1);
-    Ok(false)
-}
-
-fn drop(duel: &mut Duel, _: &Args) -> Script<()> {
-    let p: u8 = duel.get_chain_info(0, CHAININFO_TARGET_PLAYER);
-    let d: u32 = duel.get_chain_info(0, CHAININFO_TARGET_PARAM);
-    duel.draw(p, d, REASON_EFFECT)?;
     Ok(())
 }

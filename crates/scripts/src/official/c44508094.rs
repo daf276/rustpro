@@ -34,7 +34,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_range(duel, LOCATION_MZONE);
     e1.set_condition(duel, condition);
     e1.set_cost(duel, |duel, a, chk| Cost::replaceable(duel, a, chk, Cost::self_tribute));
-    e1.set_target(duel, target);
+    e1.set_target(duel, stock::negate_destroy_target);
     e1.set_operation(duel, operation);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
@@ -45,7 +45,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_range(duel, LOCATION_GRAVE);
     e2.set_count_limit(duel, 1, 0);
     e2.set_target(duel, sumtg);
-    e2.set_operation(duel, sumop);
+    e2.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e2);
 }
 
@@ -70,20 +70,6 @@ pub fn condition(duel: &Duel, a: &Args) -> bool {
     })
 }
 
-fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_NEGATE, a.eg, 1, 0, 0);
-    if let Some(re) = a.re {
-        let rc = re.get_handler(duel);
-        if rc.is_destructable(duel) && rc.is_relate_to_effect(duel, re) {
-            duel.set_operation_info(0, CATEGORY_DESTROY, a.eg, 1, 0, 0);
-        }
-    }
-    Ok(false)
-}
-
 fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
     if let Some(re) = a.re
         && duel.negate_activation(a.ev as u8)
@@ -106,12 +92,4 @@ fn sumtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool>
     }
     duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, 0, 0);
     Ok(false)
-}
-
-fn sumop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (c, tp) = (a.e.get_handler(duel), a.tp);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.special_summon(c, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
 }

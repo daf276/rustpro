@@ -78,14 +78,7 @@ fn descostfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn descost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(descostfilter, tp, LOCATION_EXTRA, 0, 1, None));
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_TOGRAVE);
-    let g = duel.select_matching_card(tp, descostfilter, tp, LOCATION_EXTRA, 0, 1, 1, None)?;
-    duel.send_to_grave(g, REASON_COST)?;
-    Ok(false)
+    stock::send_to_grave_cost(duel, a, chk, descostfilter, LOCATION_EXTRA)
 }
 
 fn destg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {

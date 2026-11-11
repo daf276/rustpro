@@ -29,8 +29,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_range(duel, LOCATION_HAND);
     e1.set_count_limit(duel, 1, ID);
     e1.set_cost(duel, cost);
-    e1.set_target(duel, target);
-    e1.set_operation(duel, operation);
+    e1.set_target(duel, stock::special_summon_self_target_player_0);
+    e1.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
     e2.set_description(duel, aux::stringid(ID, 1));
@@ -48,32 +48,7 @@ fn costfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn cost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(costfilter, tp, LOCATION_GRAVE, 0, 1, None));
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_REMOVE);
-    let g = duel.select_matching_card(tp, costfilter, tp, LOCATION_GRAVE, 0, 1, 1, None)?;
-    duel.remove(g, POS_FACEUP, REASON_COST)?;
-    Ok(false)
-}
-
-fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, e, 0, tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, 0, 0);
-    Ok(false)
-}
-
-fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
-    let c = a.e.get_handler(duel);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.special_summon(c, 0, a.tp, a.tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
+    stock::banish_cost(duel, a, chk, costfilter, LOCATION_GRAVE)
 }
 
 fn tgtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {

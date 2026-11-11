@@ -28,6 +28,7 @@ mod proc_synchro;
 mod proc_union;
 mod proc_workaround;
 mod proc_xyz;
+pub mod stock;
 pub mod testing;
 mod utility;
 
@@ -59,6 +60,7 @@ pub mod prelude {
     pub use crate::proc_union::{Union, UnionProcedure};
     pub use crate::proc_workaround::{CardWorkaround, DuelWorkaround};
     pub use crate::proc_xyz::{AlterFilter, Xyz, XyzFilter, XyzProcedure};
+    pub use crate::stock;
     pub use crate::utility::{
         COST_DETACHED_MATERIALS, CardUtility, Cost, CostChoice, Cyberdark, CyberdarkEquip, DragonRuler, DuelUtility, EffectUtility,
         Mysterune, MysteruneQuickPlay, Witchcrafter, aux,

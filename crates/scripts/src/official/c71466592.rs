@@ -21,7 +21,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_code(duel, EVENT_CHAINING);
     e1.set_condition(duel, condition);
     e1.set_cost(duel, Cost::self_tribute);
-    e1.set_target(duel, target);
+    e1.set_target(duel, stock::negate_destroy_target);
     e1.set_operation(duel, activate);
     c.register_effect(duel, e1);
 }
@@ -33,20 +33,6 @@ fn condition(duel: &Duel, a: &Args) -> bool {
             .is_some_and(|re| re.is_spell_effect(duel) && re.is_has_type(duel, EFFECT_TYPE_ACTIVATE))
         && duel.is_chain_negatable(a.ev as u8)
         && duel.get_turn_player() != a.tp
-}
-
-fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_NEGATE, a.eg, 1, 0, 0);
-    if let Some(re) = a.re {
-        let rc = re.get_handler(duel);
-        if rc.is_destructable(duel) && rc.is_relate_to_effect(duel, re) {
-            duel.set_operation_info(0, CATEGORY_DESTROY, a.eg, 1, 0, 0);
-        }
-    }
-    Ok(false)
 }
 
 fn activate(duel: &mut Duel, a: &Args) -> Script<()> {

@@ -38,7 +38,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_code(duel, EVENT_BATTLE_DESTROYED);
     e2.set_condition(duel, condition);
     e2.set_target(duel, target);
-    e2.set_operation(duel, operation);
+    e2.set_operation(duel, stock::destroy_first_target);
     c.register_effect(duel, e2);
     let e3 = duel.create_effect(c);
     e3.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
@@ -111,15 +111,6 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<b
     let g = duel.select_target(tp, aux::TRUE, tp, 0, LOCATION_ONFIELD, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_DESTROY, g, g.map_or(0, |g| g.len() as u8), 0, 0);
     Ok(false)
-}
-
-fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.destroy(tc, REASON_EFFECT)?;
-    }
-    Ok(())
 }
 
 fn hdop(duel: &mut Duel, a: &Args) -> Script<()> {

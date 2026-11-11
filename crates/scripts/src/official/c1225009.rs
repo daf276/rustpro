@@ -46,7 +46,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e3.set_range(duel, LOCATION_MZONE);
     e3.set_count_limit(duel, 1, ID);
     e3.set_condition(duel, drcon);
-    e3.set_target(duel, drtg);
+    e3.set_target(duel, stock::draw_target::<1>);
     e3.set_operation(duel, drop);
     c.register_effect(duel, e3);
 }
@@ -56,23 +56,11 @@ fn filter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(filter, tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, tp, LOCATION_DECK as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, filter, LOCATION_DECK, CATEGORY_TOHAND)
 }
 
 fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let tp = a.tp;
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_ATOHAND);
-    let g = duel.select_matching_card(tp, filter, tp, LOCATION_DECK, 0, 1, 1, None)?;
-    if !g.is_empty() {
-        duel.send_to_hand(g, PLAYER_NONE, REASON_EFFECT)?;
-        duel.confirm_cards(1 - tp, g)?;
-    }
-    Ok(())
+    stock::search(duel, a, filter, LOCATION_DECK)
 }
 
 fn cfilter(c: CardId, duel: &Duel) -> bool {
@@ -86,17 +74,6 @@ fn drcon(duel: &Duel, a: &Args) -> bool {
             && re.get_handler(duel).get_original_type(duel) == TYPE_TRAP
             && a.eg.unwrap_or_default().is_exists(duel, cfilter, 1, None)
     })
-}
-
-fn drtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_player_can_draw(tp, 1));
-    }
-    duel.set_target_player(tp);
-    duel.set_target_param(1);
-    duel.set_operation_info(0, CATEGORY_DRAW, None, 0, tp, 1);
-    Ok(false)
 }
 
 fn ffilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {

@@ -36,7 +36,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_range(duel, LOCATION_MZONE);
     e1.set_count_limit(duel, 1, ID);
     e1.set_cost(duel, cost);
-    e1.set_target(duel, target);
+    e1.set_target(duel, stock::draw_target::<1>);
     e1.set_operation(duel, operation);
     c.register_effect(duel, e1);
 }
@@ -50,17 +50,6 @@ fn cost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     }
     let g = duel.select_release_group_cost(tp, filter, (1, 1), false, None, None)?;
     duel.release(g, REASON_COST)?;
-    Ok(false)
-}
-
-fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_player_can_draw(tp, 1));
-    }
-    duel.set_target_player(tp);
-    duel.set_target_param(1);
-    duel.set_operation_info(0, CATEGORY_DRAW, None, 0, tp, 1);
     Ok(false)
 }
 

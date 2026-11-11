@@ -37,7 +37,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_count_limit(duel, 1, ID);
     e2.set_cost(duel, spcost);
     e2.set_target(duel, sptg);
-    e2.set_operation(duel, spop);
+    e2.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e2);
     let e3 = duel.create_effect(c);
     e3.set_description(duel, aux::stringid(ID, 1));
@@ -48,7 +48,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e3.set_count_limit(duel, 1, (ID, 1));
     e3.set_cost(duel, thcost);
     e3.set_target(duel, thtg);
-    e3.set_operation(duel, thop);
+    e3.set_operation(duel, stock::first_target_to_hand);
     c.register_effect(duel, e3);
     let e4 = e3.clone_effect(duel);
     e4.set_code(duel, EVENT_SPSUMMON_SUCCESS);
@@ -93,28 +93,12 @@ fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> 
     Ok(false)
 }
 
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if c.is_relate_to_effect(duel, e) {
-        duel.special_summon(c, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
-}
-
 fn thcostfilter(c: CardId, duel: &Duel) -> bool {
     c.is_set_card(duel, &[SET_ATLANTEAN, SET_MERMAIL]) && c.is_monster(duel) && c.is_able_to_grave_as_cost(duel)
 }
 
 fn thcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(thcostfilter, tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_TOGRAVE);
-    let g = duel.select_matching_card(tp, thcostfilter, tp, LOCATION_DECK, 0, 1, 1, None)?;
-    duel.send_to_grave(g, REASON_COST)?;
-    Ok(false)
+    stock::send_to_grave_cost(duel, a, chk, thcostfilter, LOCATION_DECK)
 }
 
 fn thtg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bool> {
@@ -129,13 +113,4 @@ fn thtg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<boo
     let g = duel.select_target(tp, CardId::is_able_to_hand, tp, 0, LOCATION_ONFIELD, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_TOHAND, g, 1, tp, 0);
     Ok(false)
-}
-
-fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.send_to_hand(tc, PLAYER_NONE, REASON_EFFECT)?;
-    }
-    Ok(())
 }

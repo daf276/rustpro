@@ -42,7 +42,7 @@ pub fn add_self_special_summon(duel: &mut Duel, c: CardId, id: u32) {
             && !duel.is_phase(PHASE_DRAW)
     });
     e2.set_target(duel, selfsptg);
-    e2.set_operation(duel, selfspop);
+    e2.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e2);
 }
 
@@ -67,14 +67,6 @@ fn selfsptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bo
     }
     duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, tp, 0);
     Ok(false)
-}
-
-fn selfspop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (c, tp) = (a.e.get_handler(duel), a.tp);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.special_summon(c, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
 }
 
 fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {

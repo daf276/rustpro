@@ -42,7 +42,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e3.set_condition(duel, condition);
     e3.set_cost(duel, cost);
     e3.set_target(duel, target);
-    e3.set_operation(duel, operation);
+    e3.set_operation(duel, stock::self_to_hand);
     c.register_effect(duel, e3);
 }
 
@@ -51,23 +51,11 @@ fn thfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(thfilter, tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, tp, LOCATION_DECK as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, thfilter, LOCATION_DECK, CATEGORY_TOHAND)
 }
 
 fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let tp = a.tp;
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_ATOHAND);
-    let g = duel.select_matching_card(tp, thfilter, tp, LOCATION_DECK, 0, 1, 1, None)?;
-    if !g.is_empty() {
-        duel.send_to_hand(g, PLAYER_NONE, REASON_EFFECT)?;
-        duel.confirm_cards(1 - tp, g)?;
-    }
-    Ok(())
+    stock::search(duel, a, thfilter, LOCATION_DECK)
 }
 
 fn condition(duel: &Duel, a: &Args) -> bool {
@@ -92,12 +80,4 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool
     }
     duel.set_operation_info(0, CATEGORY_TOHAND, Some(c.into()), 1, 0, 0);
     Ok(false)
-}
-
-fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
-    let c = a.e.get_handler(duel);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.send_to_hand(c, PLAYER_NONE, REASON_EFFECT)?;
-    }
-    Ok(())
 }

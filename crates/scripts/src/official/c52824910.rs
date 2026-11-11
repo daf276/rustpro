@@ -22,7 +22,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_code(duel, EVENT_TO_GRAVE);
     e2.set_condition(duel, |duel, a| a.e.get_handler(duel).is_reason(duel, REASON_DESTROY));
     e2.set_target(duel, target);
-    e2.set_operation(duel, operation);
+    e2.set_operation(duel, stock::first_target_to_hand);
     c.register_effect(duel, e2);
 }
 
@@ -43,13 +43,4 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<b
     let count = g.map_or(0, |g| g.len() as u8);
     duel.set_operation_info(0, CATEGORY_TOHAND, g, count, 0, 0);
     Ok(false)
-}
-
-fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.send_to_hand(tc, PLAYER_NONE, REASON_EFFECT)?;
-    }
-    Ok(())
 }

@@ -37,7 +37,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_count_limit(duel, 1, ID);
     e2.set_cost(duel, spcost);
     e2.set_target(duel, sptg);
-    e2.set_operation(duel, spop);
+    e2.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e2);
     let e3 = duel.create_effect(c);
     e3.set_description(duel, aux::stringid(ID, 1));
@@ -94,33 +94,14 @@ fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> 
     Ok(false)
 }
 
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (c, tp) = (a.e.get_handler(duel), a.tp);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.special_summon(c, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
-}
-
 fn tgfilter(c: CardId, duel: &Duel) -> bool {
     c.is_set_card(duel, &[SET_SINFUL_SPOILS, SET_DIABELL]) && c.is_able_to_grave(duel)
 }
 
 fn tgtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(tgfilter, tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_TOGRAVE, None, 1, tp, LOCATION_DECK as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, tgfilter, LOCATION_DECK, CATEGORY_TOGRAVE)
 }
 
 fn tgop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let tp = a.tp;
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_TOGRAVE);
-    let g = duel.select_matching_card(tp, tgfilter, tp, LOCATION_DECK, 0, 1, 1, None)?;
-    if !g.is_empty() {
-        duel.send_to_grave(g, REASON_EFFECT)?;
-    }
-    Ok(())
+    stock::send_to_grave(duel, a, tgfilter, LOCATION_DECK)
 }

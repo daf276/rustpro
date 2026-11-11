@@ -20,7 +20,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_count_limit(duel, 1, (ID, 0));
     e1.set_cost(duel, spcost);
     e1.set_target(duel, sptg);
-    e1.set_operation(duel, spop);
+    e1.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e1);
     let e2a = duel.create_effect(c);
     e2a.set_description(duel, aux::stringid(ID, 1));
@@ -71,14 +71,6 @@ fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> 
     }
     duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, tp, 0);
     Ok(false)
-}
-
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let c = a.e.get_handler(duel);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.special_summon(c, 0, a.tp, a.tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
 }
 
 fn rthtg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bool> {

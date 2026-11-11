@@ -46,7 +46,10 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_code(duel, EVENT_RELEASE);
     e2.set_property(duel, EFFECT_FLAG_DAMAGE_STEP + EFFECT_FLAG_DELAY);
     e2.set_count_limit(duel, 1, ID);
-    e2.set_target(duel, sptg);
+    e2.set_target(
+        duel,
+        stock::operation_info_target::<CATEGORY_SPECIAL_SUMMON, { LOCATION_HAND | LOCATION_DECK }>,
+    );
     e2.set_operation(duel, spop);
     c.register_effect(duel, e2);
 }
@@ -108,14 +111,6 @@ fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
 
 fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
     c.is_race(duel, RACE_DRAGON) && c.is_can_be_special_summoned(duel, e, 0, tp, false, false)
-}
-
-fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, a.tp, (LOCATION_HAND | LOCATION_DECK) as i32);
-    Ok(false)
 }
 
 fn spop(duel: &mut Duel, a: &Args) -> Script<()> {

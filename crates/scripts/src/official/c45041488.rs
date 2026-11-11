@@ -35,7 +35,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_range(duel, LOCATION_MZONE);
     e2.set_condition(duel, condition);
     e2.set_cost(duel, Cost::self_tribute);
-    e2.set_target(duel, target);
+    e2.set_target(duel, stock::negate_destroy_target);
     e2.set_operation(duel, operation);
     c.register_effect(duel, e2);
 }
@@ -82,20 +82,6 @@ fn condition(duel: &Duel, a: &Args) -> bool {
     !a.e.get_handler(duel).is_status(duel, STATUS_BATTLE_DESTROYED)
         && a.re.is_some_and(|re| re.is_monster_effect(duel))
         && duel.is_chain_negatable(a.ev as u8)
-}
-
-fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_NEGATE, a.eg, 1, 0, 0);
-    if let Some(re) = a.re {
-        let rc = re.get_handler(duel);
-        if rc.is_destructable(duel) && rc.is_relate_to_effect(duel, re) {
-            duel.set_operation_info(0, CATEGORY_DESTROY, a.eg, 1, 0, 0);
-        }
-    }
-    Ok(false)
 }
 
 fn operation(duel: &mut Duel, a: &Args) -> Script<()> {

@@ -18,7 +18,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_range(duel, LOCATION_MZONE);
     e2.set_condition(duel, discon);
     e2.set_cost(duel, discost);
-    e2.set_target(duel, distg);
+    e2.set_target(duel, stock::negate_destroy_target);
     e2.set_operation(duel, disop);
     c.register_effect(duel, e2);
 }
@@ -43,20 +43,6 @@ fn discost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     }
     let sg = duel.select_release_group_cost(tp, costfilter, (1, 1), false, None, None)?;
     duel.release(sg, REASON_COST)?;
-    Ok(false)
-}
-
-fn distg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_NEGATE, a.eg, 1, 0, 0);
-    if let Some(re) = a.re {
-        let rc = re.get_handler(duel);
-        if rc.is_destructable(duel) && rc.is_relate_to_effect(duel, re) {
-            duel.set_operation_info(0, CATEGORY_DESTROY, a.eg, 1, 0, 0);
-        }
-    }
     Ok(false)
 }
 

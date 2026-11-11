@@ -84,12 +84,7 @@ fn th1filter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn th1tg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(th1filter, tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, tp, LOCATION_DECK as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, th1filter, LOCATION_DECK, CATEGORY_TOHAND)
 }
 
 fn th1op(duel: &mut Duel, a: &Args) -> Script<()> {

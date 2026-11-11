@@ -34,7 +34,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_range(duel, LOCATION_HAND);
     e1.set_count_limit(duel, 1, ID);
     e1.set_condition(duel, hspcon);
-    e1.set_target(duel, hsptg);
+    e1.set_target(duel, stock::special_summon_self_target_player_0);
     e1.set_operation(duel, hspop);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
@@ -60,16 +60,6 @@ fn hspcon(duel: &Duel, a: &Args) -> bool {
         1,
         None,
     )
-}
-
-fn hsptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, e, 0, tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, 0, 0);
-    Ok(false)
 }
 
 fn hspop(duel: &mut Duel, a: &Args) -> Script<()> {

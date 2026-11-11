@@ -66,7 +66,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e3.set_count_limit(duel, 1, (ID, 1));
     e3.set_condition(duel, descon);
     e3.set_target(duel, destg);
-    e3.set_operation(duel, desop);
+    e3.set_operation(duel, stock::destroy_first_target);
     c.register_effect(duel, e3);
 }
 
@@ -119,13 +119,4 @@ fn destg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bo
     let g = duel.select_target(tp, CardId::is_spell_trap, tp, 0, LOCATION_ONFIELD, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_DESTROY, g, 1, tp, 0);
     Ok(false)
-}
-
-fn desop(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.destroy(tc, REASON_EFFECT)?;
-    }
-    Ok(())
 }

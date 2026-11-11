@@ -29,8 +29,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_code(duel, EVENT_SUMMON_SUCCESS);
     e1.set_count_limit(duel, 1, ID);
     e1.set_cost(duel, cost);
-    e1.set_target(duel, target);
-    e1.set_operation(duel, operation);
+    e1.set_target(duel, stock::draw_target::<1>);
+    e1.set_operation(duel, stock::draw);
     c.register_effect(duel, e1);
     let e2 = e1.clone_effect(duel);
     e2.set_code(duel, EVENT_SPSUMMON_SUCCESS);
@@ -63,44 +63,14 @@ fn cost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     Ok(false)
 }
 
-fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_player_can_draw(tp, 1));
-    }
-    duel.set_target_player(tp);
-    duel.set_target_param(1);
-    duel.set_operation_info(0, CATEGORY_DRAW, None, 0, tp, 1);
-    Ok(false)
-}
-
-fn operation(duel: &mut Duel, _: &Args) -> Script<()> {
-    let p: u8 = duel.get_chain_info(0, CHAININFO_TARGET_PLAYER);
-    let d: u32 = duel.get_chain_info(0, CHAININFO_TARGET_PARAM);
-    duel.draw(p, d, REASON_EFFECT)?;
-    Ok(())
-}
-
 fn thfilter(c: CardId, duel: &Duel) -> bool {
     c.is_able_to_hand(duel) && c.is_race(duel, RACE_BEAST) && c.is_attribute(duel, ATTRIBUTE_WIND) && c.is_level_below(duel, 6)
 }
 
 fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(thfilter, tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, tp, LOCATION_DECK as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, thfilter, LOCATION_DECK, CATEGORY_TOHAND)
 }
 
 fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let tp = a.tp;
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_ATOHAND);
-    let g = duel.select_matching_card(tp, thfilter, tp, LOCATION_DECK, 0, 1, 1, None)?;
-    if !g.is_empty() {
-        duel.send_to_hand(g, PLAYER_NONE, REASON_EFFECT)?;
-        duel.confirm_cards(1 - tp, g)?;
-    }
-    Ok(())
+    stock::search(duel, a, thfilter, LOCATION_DECK)
 }

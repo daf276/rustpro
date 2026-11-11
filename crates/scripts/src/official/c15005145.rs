@@ -55,8 +55,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e4.set_condition(duel, |duel, a| {
         duel.is_main_phase() && a.e.get_handler(duel).is_continuous_trap(duel)
     });
-    e4.set_target(duel, sptg);
-    e4.set_operation(duel, spop);
+    e4.set_target(duel, stock::special_summon_self_target_player_0);
+    e4.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e4);
 }
 
@@ -65,12 +65,7 @@ fn thfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(thfilter, tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, tp, LOCATION_DECK as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, thfilter, LOCATION_DECK, CATEGORY_TOHAND)
 }
 
 fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
@@ -90,22 +85,5 @@ fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
     e1.set_target_spsummon(duel, |duel, _, c, _, _, _, _, _| c.is_code(duel, ID));
     e1.set_reset(duel, RESET_PHASE | PHASE_END);
     duel.register_effect(e1, tp);
-    Ok(())
-}
-
-fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (c, tp) = (a.e.get_handler(duel), a.tp);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, a.e, 0, tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, 0, 0);
-    Ok(false)
-}
-
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (c, tp) = (a.e.get_handler(duel), a.tp);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.special_summon(c, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
     Ok(())
 }

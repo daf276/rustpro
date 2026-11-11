@@ -64,7 +64,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e3.set_condition(duel, |duel, a| {
         !a.e.get_handler(duel).is_status(duel, STATUS_BATTLE_DESTROYED) && duel.is_chain_negatable(a.ev as u8)
     });
-    e3.set_target(duel, distg);
+    e3.set_target(duel, stock::negate_destroy_target);
     e3.set_operation(duel, disop);
     c.register_effect(duel, e3);
     let e4 = duel.create_effect(c);
@@ -103,20 +103,6 @@ fn mtop(duel: &mut Duel, a: &Args) -> Script<()> {
     Ok(())
 }
 
-fn distg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_NEGATE, a.eg, 1, 0, 0);
-    if let Some(re) = a.re {
-        let rc = re.get_handler(duel);
-        if rc.is_destructable(duel) && rc.is_relate_to_effect(duel, re) {
-            duel.set_operation_info(0, CATEGORY_DESTROY, a.eg, 1, 0, 0);
-        }
-    }
-    Ok(false)
-}
-
 fn disop(duel: &mut Duel, a: &Args) -> Script<()> {
     if let Some(re) = a.re
         && duel.negate_activation(a.ev as u8)
@@ -134,12 +120,14 @@ fn filter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
 }
 
 fn sumtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(|c, duel| filter(c, duel, e, tp), tp, LOCATION_EXTRA, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, tp, LOCATION_EXTRA as i32);
-    Ok(false)
+    stock::exists_target(
+        duel,
+        a,
+        chk,
+        |c, duel| filter(c, duel, a.e, a.tp),
+        LOCATION_EXTRA,
+        CATEGORY_SPECIAL_SUMMON,
+    )
 }
 
 fn sumop(duel: &mut Duel, a: &Args) -> Script<()> {

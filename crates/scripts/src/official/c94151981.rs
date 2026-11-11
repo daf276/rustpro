@@ -33,8 +33,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_range(duel, LOCATION_MZONE);
     e2.set_count_limit(duel, 1, ID);
     e2.set_cost(duel, Cost::detach_from_self::<2, 2>);
-    e2.set_target(duel, drwtg);
-    e2.set_operation(duel, drwop);
+    e2.set_target(duel, stock::draw_target::<1>);
+    e2.set_operation(duel, stock::draw);
     c.register_effect(duel, e2);
     let e3 = duel.create_effect(c);
     e3.set_type(duel, EFFECT_TYPE_FIELD);
@@ -75,24 +75,6 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
         Ok(())
     });
     c.register_effect(duel, e6);
-}
-
-fn drwtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_player_can_draw(tp, 1));
-    }
-    duel.set_target_player(tp);
-    duel.set_target_param(1);
-    duel.set_operation_info(0, CATEGORY_DRAW, None, 0, tp, 1);
-    Ok(false)
-}
-
-fn drwop(duel: &mut Duel, _: &Args) -> Script<()> {
-    let p: u8 = duel.get_chain_info(0, CHAININFO_TARGET_PLAYER);
-    let d: u32 = duel.get_chain_info(0, CHAININFO_TARGET_PARAM);
-    duel.draw(p, d, REASON_EFFECT)?;
-    Ok(())
 }
 
 fn btlcond(duel: &Duel, a: &Args) -> bool {

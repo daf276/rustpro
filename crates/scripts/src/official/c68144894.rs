@@ -38,8 +38,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_condition(duel, |duel, a| {
         a.eg.is_some_and(|eg| eg.is_exists(duel, |c, duel| c.is_controler(duel, 1 - a.tp), 1, None)) && !duel.is_phase(PHASE_DRAW)
     });
-    e2.set_target(duel, selfsptg);
-    e2.set_operation(duel, selfspop);
+    e2.set_target(duel, stock::special_summon_self_target);
+    e2.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e2);
     let e3 = duel.create_effect(c);
     e3.set_description(duel, aux::stringid(ID, 1));
@@ -59,24 +59,6 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
 pub(crate) fn indestg(duel: &Duel, e: EffectId, c: CardId) -> bool {
     let handler = e.get_handler(duel);
     c == handler || Some(c) == handler.get_battle_target(duel)
-}
-
-fn selfsptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, e, 0, tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, tp, 0);
-    Ok(false)
-}
-
-fn selfspop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (c, tp) = (a.e.get_handler(duel), a.tp);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.special_summon(c, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
 }
 
 fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {

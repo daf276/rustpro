@@ -44,7 +44,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
             None,
         )
     });
-    e2.set_target(duel, sptg);
+    e2.set_target(duel, stock::special_summon_self_target);
     e2.set_operation(duel, spop);
     c.register_effect(duel, e2);
     let e3 = duel.create_effect(c);
@@ -56,7 +56,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e3.set_count_limit(duel, 1, (ID, 1));
     e3.set_condition(duel, |duel, a| !quickdescon(duel, a));
     e3.set_target(duel, destg);
-    e3.set_operation(duel, desop);
+    e3.set_operation(duel, stock::destroy_first_target);
     c.register_effect(duel, e3);
     let e3a = e3.clone_effect(duel);
     e3a.set_type(duel, EFFECT_TYPE_QUICK_O);
@@ -64,16 +64,6 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e3a.set_hint_timing(duel, 0, TIMING_STANDBY_PHASE | TIMING_MAIN_END | TIMINGS_CHECK_MONSTER_E);
     e3a.set_condition(duel, quickdescon);
     c.register_effect(duel, e3a);
-}
-
-fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, e, 0, tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, tp, 0);
-    Ok(false)
 }
 
 fn setfilter(c: CardId, duel: &Duel) -> bool {
@@ -111,15 +101,6 @@ fn destg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bo
     let g = duel.select_target(tp, CardId::is_spell_trap, tp, 0, LOCATION_ONFIELD, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_DESTROY, g, 1, tp, 0);
     Ok(false)
-}
-
-fn desop(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.destroy(tc, REASON_EFFECT)?;
-    }
-    Ok(())
 }
 
 fn quickdescon(duel: &Duel, a: &Args) -> bool {

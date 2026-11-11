@@ -14,7 +14,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_type(duel, EFFECT_TYPE_IGNITION);
     e1.set_range(duel, LOCATION_GRAVE);
     e1.set_cost(duel, cost);
-    e1.set_target(duel, target);
+    e1.set_target(duel, stock::special_summon_self_target_player_0);
     e1.set_operation(duel, operation);
     c.register_effect(duel, e1);
 }
@@ -27,16 +27,6 @@ fn cost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     duel.hint(HINT_SELECTMSG, tp, HINTMSG_TODECK);
     let g = duel.select_matching_card(tp, CardId::is_able_to_deck_as_cost, tp, LOCATION_HAND, 0, 1, 1, None)?;
     duel.send_to_deck(g, PLAYER_NONE, SEQ_DECKTOP, REASON_COST)?;
-    Ok(false)
-}
-
-fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, e, 0, tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, 0, 0);
     Ok(false)
 }
 

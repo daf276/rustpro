@@ -32,7 +32,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_count_limit(duel, 1, ID);
     e2.set_condition(duel, descon);
     e2.set_target(duel, destg);
-    e2.set_operation(duel, desop);
+    e2.set_operation(duel, stock::destroy_first_target);
     c.register_effect(duel, e2);
     let e3 = e2.clone_effect(duel);
     e3.set_code(duel, EVENT_REMOVE);
@@ -104,13 +104,4 @@ fn destg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bo
     let count = g.map_or(0, |g| g.len() as u8);
     duel.set_operation_info(0, CATEGORY_DESTROY, g, count, 0, 0);
     Ok(false)
-}
-
-fn desop(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.destroy(tc, REASON_EFFECT)?;
-    }
-    Ok(())
 }

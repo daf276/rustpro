@@ -28,12 +28,7 @@ fn filter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn tg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(filter, tp, LOCATION_DECK | LOCATION_GRAVE, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, tp, (LOCATION_DECK | LOCATION_GRAVE) as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, filter, LOCATION_DECK | LOCATION_GRAVE, CATEGORY_TOHAND)
 }
 
 fn op(duel: &mut Duel, a: &Args) -> Script<()> {

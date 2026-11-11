@@ -47,7 +47,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_code(duel, EVENT_SPSUMMON_SUCCESS);
     e1.set_condition(duel, |duel, a| a.e.get_handler(duel).is_fusion_summoned(duel));
     e1.set_target(duel, damtg);
-    e1.set_operation(duel, damop);
+    e1.set_operation(duel, stock::damage);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
     e2.set_type(duel, EFFECT_TYPE_SINGLE);
@@ -84,13 +84,6 @@ fn damtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool>
     duel.set_target_param(dmg);
     duel.set_operation_info(0, CATEGORY_DAMAGE, None, 0, 1 - tp, dmg as i32);
     Ok(false)
-}
-
-fn damop(duel: &mut Duel, _: &Args) -> Script<()> {
-    let p: u8 = duel.get_chain_info(0, CHAININFO_TARGET_PLAYER);
-    let d: u32 = duel.get_chain_info(0, CHAININFO_TARGET_PARAM);
-    duel.damage(p, d, REASON_EFFECT)?;
-    Ok(())
 }
 
 fn damrmcon(duel: &Duel, a: &Args) -> bool {

@@ -28,7 +28,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_range(duel, LOCATION_HAND);
     e1.set_count_limit(duel, 1, (ID, 0));
     e1.set_cost(duel, |duel, a, chk| Cost::and(duel, a, chk, &[selfspcost, effcost]));
-    e1.set_target(duel, selfsptg);
+    e1.set_target(duel, stock::special_summon_self_target);
     e1.set_operation(duel, selfspop);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
@@ -86,16 +86,6 @@ fn selfspcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     Ok(false)
 }
 
-fn selfsptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, e, 0, tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, tp, 0);
-    Ok(false)
-}
-
 fn selfspop(duel: &mut Duel, a: &Args) -> Script<()> {
     let (e, tp) = (a.e, a.tp);
     let c = e.get_handler(duel);
@@ -143,20 +133,13 @@ fn dragonspcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
 }
 
 fn dragonsptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0
-            && duel.is_existing_matching_card(
-                |c, duel| dragonspfilter(c, duel, e, tp),
-                tp,
-                LOCATION_HAND | LOCATION_GRAVE,
-                0,
-                1,
-                None,
-            ));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, tp, (LOCATION_HAND | LOCATION_GRAVE) as i32);
-    Ok(false)
+    stock::special_summon_target(
+        duel,
+        a,
+        chk,
+        |c, duel| dragonspfilter(c, duel, a.e, a.tp),
+        LOCATION_HAND | LOCATION_GRAVE,
+    )
 }
 
 fn dragonspop(duel: &mut Duel, a: &Args) -> Script<()> {

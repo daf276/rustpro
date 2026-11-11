@@ -14,7 +14,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_property(duel, EFFECT_FLAG_CARD_TARGET);
     e1.set_type(duel, EFFECT_TYPE_SINGLE + EFFECT_TYPE_FLIP);
     e1.set_target(duel, target);
-    e1.set_operation(duel, operation);
+    e1.set_operation(duel, stock::first_target_to_hand);
     c.register_effect(duel, e1);
 }
 
@@ -30,13 +30,4 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<b
     let g = duel.select_target(tp, CardId::is_able_to_hand, tp, LOCATION_MZONE, LOCATION_MZONE, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_TOHAND, g, g.map_or(0, |g| g.len()) as u8, 0, 0);
     Ok(false)
-}
-
-fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.send_to_hand(tc, PLAYER_NONE, REASON_EFFECT)?;
-    }
-    Ok(())
 }

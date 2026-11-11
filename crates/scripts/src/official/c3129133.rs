@@ -56,7 +56,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e3.set_count_limit(duel, 1, (ID, 2));
     e3.set_condition(duel, thcon);
     e3.set_target(duel, thtg);
-    e3.set_operation(duel, thop);
+    e3.set_operation(duel, stock::self_to_hand);
     c.register_effect(duel, e3);
 }
 
@@ -126,12 +126,4 @@ fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> 
     }
     duel.set_operation_info(0, CATEGORY_TOHAND, Some(c.into()), 1, a.tp, 0);
     Ok(false)
-}
-
-fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let c = a.e.get_handler(duel);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.send_to_hand(c, PLAYER_NONE, REASON_EFFECT)?;
-    }
-    Ok(())
 }

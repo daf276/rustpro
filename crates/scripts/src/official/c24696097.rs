@@ -84,7 +84,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e4.set_range(duel, LOCATION_REMOVED);
     e4.set_count_limit(duel, 1, 0);
     e4.set_target(duel, sumtg);
-    e4.set_operation(duel, sumop);
+    e4.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e4);
     let e5 = duel.create_effect(c);
     e5.set_type(duel, EFFECT_TYPE_SINGLE);
@@ -175,14 +175,6 @@ fn sumtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool>
     }
     duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, 0, 0);
     Ok(false)
-}
-
-fn sumop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (c, tp) = (a.e.get_handler(duel), a.tp);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.special_summon(c, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
 }
 
 fn valcheck(duel: &mut Duel, _: EffectId, c: CardId) {

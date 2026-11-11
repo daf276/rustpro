@@ -59,7 +59,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_count_limit(duel, 1, ID);
     e1.set_condition(duel, |duel, a| a.e.get_handler(duel).is_fusion_summoned(duel));
     e1.set_target(duel, sptg);
-    e1.set_operation(duel, spop);
+    e1.set_operation(duel, stock::special_summon_first_target::<POS_FACEUP>);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
     e2.set_description(duel, aux::stringid(ID, 1));
@@ -108,15 +108,6 @@ fn sptg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<boo
     let g = duel.select_target(tp, |c, duel| spfilter(c, duel, e, tp), tp, LOCATION_GRAVE, 0, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, g, 1, 0, 0);
     Ok(false)
-}
-
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.special_summon(tc, 0, a.tp, a.tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
 }
 
 fn attcheck(duel: &Duel, sg: CardSet, tp: u8, _: CardSet) -> (bool, bool) {

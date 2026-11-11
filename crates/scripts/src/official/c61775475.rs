@@ -52,7 +52,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_range(duel, LOCATION_MZONE);
     e1.set_condition(duel, negcon);
     e1.set_cost(duel, negcost);
-    e1.set_target(duel, negtg);
+    e1.set_target(duel, stock::negate_destroy_target);
     e1.set_operation(duel, negop);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
@@ -100,20 +100,6 @@ fn negcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
         duel.set_script_state(key, used);
     }
     duel.remove(g, POS_FACEUP, REASON_COST)?;
-    Ok(false)
-}
-
-fn negtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_NEGATE, a.eg, 1, 0, 0);
-    if let Some(re) = a.re {
-        let rc = re.get_handler(duel);
-        if rc.is_destructable(duel) && rc.is_relate_to_effect(duel, re) {
-            duel.set_operation_info(0, CATEGORY_DESTROY, a.eg, 1, 0, 0);
-        }
-    }
     Ok(false)
 }
 

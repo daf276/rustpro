@@ -39,7 +39,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_count_limit(duel, 1, ID);
     e2.set_condition(duel, spcon2);
     e2.set_target(duel, sptg2);
-    e2.set_operation(duel, spop2);
+    e2.set_operation(duel, stock::special_summon_first_target::<POS_FACEUP_DEFENSE>);
     c.register_effect(duel, e2);
 }
 
@@ -48,26 +48,11 @@ fn spfilter1(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
 }
 
 fn sptg1(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0
-            && duel.is_existing_matching_card(|c, duel| spfilter1(c, duel, e, tp), tp, LOCATION_HAND, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, tp, LOCATION_HAND as i32);
-    Ok(false)
+    stock::special_summon_target(duel, a, chk, |c, duel| spfilter1(c, duel, a.e, a.tp), LOCATION_HAND)
 }
 
 fn spop1(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (e, tp) = (a.e, a.tp);
-    if duel.get_location_count(tp, LOCATION_MZONE) <= 0 {
-        return Ok(());
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_SPSUMMON);
-    let g = duel.select_matching_card(tp, |c, duel| spfilter1(c, duel, e, tp), tp, LOCATION_HAND, 0, 1, 1, None)?;
-    if !g.is_empty() {
-        duel.special_summon(g, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
+    stock::special_summon(duel, a, |c, duel| spfilter1(c, duel, a.e, a.tp), LOCATION_HAND, POS_FACEUP)
 }
 
 fn spcon2(duel: &Duel, a: &Args) -> bool {
@@ -96,14 +81,4 @@ fn sptg2(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bo
     let g = duel.select_target(tp, |c, duel| spfilter2(c, duel, e, tp), tp, LOCATION_GRAVE, 0, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, g, 1, 0, 0);
     Ok(false)
-}
-
-fn spop2(duel: &mut Duel, a: &Args) -> Script<()> {
-    let tp = a.tp;
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.special_summon(tc, 0, tp, tp, false, false, POS_FACEUP_DEFENSE)?;
-    }
-    Ok(())
 }

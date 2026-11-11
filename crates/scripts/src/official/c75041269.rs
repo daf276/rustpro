@@ -61,7 +61,10 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e5.set_type(duel, EFFECT_TYPE_SINGLE + EFFECT_TYPE_TRIGGER_F);
     e5.set_code(duel, EVENT_TO_GRAVE);
     e5.set_condition(duel, spcon);
-    e5.set_target(duel, sptg);
+    e5.set_target(
+        duel,
+        stock::operation_info_target::<CATEGORY_SPECIAL_SUMMON, { LOCATION_HAND | LOCATION_DECK }>,
+    );
     e5.set_operation(duel, spop);
     e5.set_label_object(duel, Some(e4));
     c.register_effect(duel, e5);
@@ -79,14 +82,6 @@ fn spcon(duel: &Duel, a: &Args) -> bool {
 
 fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
     c.is_code(duel, DREADMASTER) && c.is_can_be_special_summoned(duel, e, 0, tp, false, false)
-}
-
-fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, a.tp, (LOCATION_HAND | LOCATION_DECK) as i32);
-    Ok(false)
 }
 
 fn spop(duel: &mut Duel, a: &Args) -> Script<()> {

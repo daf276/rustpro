@@ -33,8 +33,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_range(duel, LOCATION_GRAVE);
     e2.set_count_limit(duel, 1, (ID, 1));
     e2.set_condition(duel, spcon2);
-    e2.set_target(duel, sptg2);
-    e2.set_operation(duel, spop2);
+    e2.set_target(duel, stock::special_summon_self_target_player_0);
+    e2.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e2);
 }
 
@@ -45,12 +45,14 @@ fn spfilter1(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
 }
 
 fn sptg1(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(|c, duel| spfilter1(c, duel, e, tp), tp, LOCATION_EXTRA, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, tp, LOCATION_EXTRA as i32);
-    Ok(false)
+    stock::exists_target(
+        duel,
+        a,
+        chk,
+        |c, duel| spfilter1(c, duel, a.e, a.tp),
+        LOCATION_EXTRA,
+        CATEGORY_SPECIAL_SUMMON,
+    )
 }
 
 fn spop1(duel: &mut Duel, a: &Args) -> Script<()> {
@@ -76,23 +78,4 @@ fn spcon2(duel: &Duel, a: &Args) -> bool {
     let (tp, rp) = (a.tp, a.rp);
     let Some(eg) = a.eg else { return false };
     !eg.is_contains(a.e.get_handler(duel)) && eg.is_exists(duel, |c, duel| cfilter(c, duel, tp, rp), 1, None)
-}
-
-fn sptg2(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, e, 0, tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, 0, 0);
-    Ok(false)
-}
-
-fn spop2(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if c.is_relate_to_effect(duel, e) {
-        duel.special_summon(c, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
 }

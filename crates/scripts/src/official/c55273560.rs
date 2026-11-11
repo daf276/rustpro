@@ -57,7 +57,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e3.set_count_limit(duel, 1, (ID, 2));
     e3.set_condition(duel, |duel, a| duel.get_flag_effect(a.tp, ID) > 0);
     e3.set_target(duel, thtg);
-    e3.set_operation(duel, thop);
+    e3.set_operation(duel, stock::self_to_hand);
     c.register_effect(duel, e3);
     aux::global_check(duel, ID, |duel| {
         let ge1 = duel.create_effect(c);
@@ -99,25 +99,13 @@ fn sstg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> 
 }
 
 fn ssop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (e, tp) = (a.e, a.tp);
-    if duel.get_location_count(tp, LOCATION_MZONE) <= 0 {
-        return Ok(());
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_SPSUMMON);
-    let g = duel.select_matching_card(
-        tp,
-        |c, duel| ssfilter(c, duel, e, tp),
-        tp,
+    stock::special_summon(
+        duel,
+        a,
+        |c, duel| ssfilter(c, duel, a.e, a.tp),
         LOCATION_HAND | LOCATION_DECK,
-        0,
-        1,
-        1,
-        None,
-    )?;
-    if !g.is_empty() {
-        duel.special_summon(g, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
+        POS_FACEUP,
+    )
 }
 
 fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
@@ -127,12 +115,4 @@ fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> 
     }
     duel.set_operation_info(0, CATEGORY_TOHAND, Some(c.into()), 1, 0, 0);
     Ok(false)
-}
-
-fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let c = a.e.get_handler(duel);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.send_to_hand(c, PLAYER_NONE, REASON_EFFECT)?;
-    }
-    Ok(())
 }

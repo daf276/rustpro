@@ -11,21 +11,13 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_code(duel, EVENT_TO_GRAVE);
     e1.set_count_limit(duel, 1, ID);
     e1.set_condition(duel, condition);
-    e1.set_target(duel, target);
+    e1.set_target(duel, stock::operation_info_target::<CATEGORY_TOHAND, LOCATION_DECK>);
     e1.set_operation(duel, operation);
     c.register_effect(duel, e1);
 }
 
 fn condition(duel: &Duel, a: &Args) -> bool {
     a.e.get_handler(duel).is_previous_location(duel, LOCATION_ONFIELD)
-}
-
-fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, a.tp, LOCATION_DECK as i32);
-    Ok(false)
 }
 
 fn filter(c: CardId, duel: &Duel) -> bool {

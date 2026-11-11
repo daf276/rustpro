@@ -34,7 +34,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
         a.eg.is_some_and(|eg| eg.is_exists(duel, |c, duel| thconfilter(c, duel, a.tp), 1, None))
     });
     e1.set_target(duel, thtg);
-    e1.set_operation(duel, thop);
+    e1.set_operation(duel, stock::first_target_to_hand);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
     e2.set_description(duel, aux::stringid(ID, 1));
@@ -44,8 +44,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_code(duel, EVENT_TO_GRAVE);
     e2.set_count_limit(duel, 1, (ID, 1));
     e2.set_condition(duel, spcon);
-    e2.set_target(duel, sptg);
-    e2.set_operation(duel, spop);
+    e2.set_target(duel, stock::special_summon_self_target);
+    e2.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e2);
     let e3 = e2.clone_effect(duel);
     e3.set_code(duel, EVENT_REMOVE);
@@ -85,37 +85,10 @@ fn thtg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<boo
     Ok(false)
 }
 
-fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.send_to_hand(tc, PLAYER_NONE, REASON_EFFECT)?;
-    }
-    Ok(())
-}
-
 fn spcon(duel: &Duel, a: &Args) -> bool {
     let c = a.e.get_handler(duel);
     c.is_previous_location(duel, LOCATION_HAND | LOCATION_ONFIELD)
         && c.is_previous_controler(duel, a.tp)
         && c.is_reason(duel, REASON_EFFECT)
         && a.re.is_some_and(|re| re.is_activated(duel))
-}
-
-fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, e, 0, tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, tp, 0);
-    Ok(false)
-}
-
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (c, tp) = (a.e.get_handler(duel), a.tp);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.special_summon(c, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
 }

@@ -27,7 +27,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_range(duel, LOCATION_HAND);
     e1.set_condition(duel, discon);
     e1.set_cost(duel, discost);
-    e1.set_target(duel, distg);
+    e1.set_target(duel, stock::negate_destroy_target);
     e1.set_operation(duel, disop);
     c.register_effect(duel, e1);
 }
@@ -52,20 +52,6 @@ fn discost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     let mut g = duel.select_matching_card(tp, costfilter, tp, LOCATION_HAND, 0, 1, 1, Some(c.into()))?;
     g.insert(c);
     duel.send_to_grave(g, REASON_COST)?;
-    Ok(false)
-}
-
-fn distg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_NEGATE, a.eg, 1, 0, 0);
-    if let Some(re) = a.re {
-        let rc = re.get_handler(duel);
-        if rc.is_destructable(duel) && rc.is_relate_to_effect(duel, re) {
-            duel.set_operation_info(0, CATEGORY_DESTROY, a.eg, 1, 0, 0);
-        }
-    }
     Ok(false)
 }
 

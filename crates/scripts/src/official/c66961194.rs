@@ -32,8 +32,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_range(duel, LOCATION_HAND);
     e1.set_count_limit(duel, 1, (ID, 1));
     e1.set_cost(duel, spcost1);
-    e1.set_target(duel, sptg1);
-    e1.set_operation(duel, spop1);
+    e1.set_target(duel, stock::special_summon_self_target_player_0);
+    e1.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
     e2.set_description(duel, aux::stringid(ID, 1));
@@ -44,7 +44,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_count_limit(duel, 1, (ID, 2));
     e2.set_cost(duel, spcost2);
     e2.set_target(duel, sptg2);
-    e2.set_operation(duel, spop2);
+    e2.set_operation(duel, stock::special_summon_first_target::<POS_FACEUP>);
     c.register_effect(duel, e2);
     let e3 = duel.create_effect(c);
     e3.set_type(duel, EFFECT_TYPE_FIELD);
@@ -70,23 +70,6 @@ fn spcost1(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     let g = duel.select_matching_card(tp, tgfilter, tp, LOCATION_HAND | LOCATION_DECK, 0, 1, 1, Some(c.into()))?;
     duel.send_to_grave(g, REASON_COST)?;
     Ok(false)
-}
-
-fn sptg1(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let c = a.e.get_handler(duel);
-    if chk == 0 {
-        return Ok(duel.get_location_count(a.tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, a.e, 0, a.tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, 0, 0);
-    Ok(false)
-}
-
-fn spop1(duel: &mut Duel, a: &Args) -> Script<()> {
-    let c = a.e.get_handler(duel);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.special_summon(c, 0, a.tp, a.tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
 }
 
 fn cfilter(c: CardId, duel: &Duel) -> bool {
@@ -118,15 +101,6 @@ fn sptg2(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool>
     let g = duel.select_target(tp, |c, duel| filter(c, duel, e, tp), tp, LOCATION_GRAVE, 0, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, g, 1, 0, 0);
     Ok(false)
-}
-
-fn spop2(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.special_summon(tc, 0, a.tp, a.tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
 }
 
 fn condition(duel: &Duel, a: &Args) -> bool {

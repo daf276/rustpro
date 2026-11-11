@@ -46,7 +46,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_count_limit(duel, 1, (ID, 1));
     e2.set_cost(duel, thcost);
     e2.set_target(duel, thtg);
-    e2.set_operation(duel, thop);
+    e2.set_operation(duel, stock::self_to_hand);
     c.register_effect(duel, e2);
 }
 
@@ -61,14 +61,7 @@ fn thcostfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn thcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(thcostfilter, tp, LOCATION_HAND | LOCATION_MZONE, 0, 1, None));
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_TOGRAVE);
-    let g = duel.select_matching_card(tp, thcostfilter, tp, LOCATION_HAND | LOCATION_MZONE, 0, 1, 1, None)?;
-    duel.send_to_grave(g, REASON_COST)?;
-    Ok(false)
+    stock::send_to_grave_cost(duel, a, chk, thcostfilter, LOCATION_HAND | LOCATION_MZONE)
 }
 
 fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
@@ -78,12 +71,4 @@ fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> 
     }
     duel.set_operation_info(0, CATEGORY_TOHAND, Some(c.into()), 1, a.tp, 0);
     Ok(false)
-}
-
-fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let c = a.e.get_handler(duel);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.send_to_hand(c, PLAYER_NONE, REASON_EFFECT)?;
-    }
-    Ok(())
 }

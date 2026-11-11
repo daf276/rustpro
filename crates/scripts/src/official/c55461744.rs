@@ -49,7 +49,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
         a.e.get_handler(duel).is_location(duel, LOCATION_GRAVE) && a.r & REASON_FUSION == REASON_FUSION
     });
     e3.set_target(duel, sptg);
-    e3.set_operation(duel, spop);
+    e3.set_operation(duel, stock::special_summon_first_target::<POS_FACEUP>);
     c.register_effect(duel, e3);
 }
 
@@ -62,12 +62,7 @@ fn thfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(thfilter, tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, tp, LOCATION_DECK as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, thfilter, LOCATION_DECK, CATEGORY_TOHAND)
 }
 
 fn rescon(duel: &Duel, sg: CardSet, _: CardSet, _: Option<CardId>) -> (bool, bool) {
@@ -115,14 +110,4 @@ fn sptg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<boo
     let g = duel.select_target(tp, filter, tp, LOCATION_GRAVE, 0, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, g, 1, 0, 0);
     Ok(false)
-}
-
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (e, tp) = (a.e, a.tp);
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, e)
-    {
-        duel.special_summon(tc, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
 }

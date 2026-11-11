@@ -22,7 +22,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_code(duel, EVENT_FREE_CHAIN);
     e1.set_count_limit_full(duel, 1, ID, EFFECT_COUNT_CODE_OATH);
     e1.set_target(duel, target);
-    e1.set_operation(duel, operation);
+    e1.set_operation(duel, stock::special_summon_first_target::<POS_FACEUP_DEFENSE>);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
     e2.set_description(duel, aux::stringid(ID, 0));
@@ -58,15 +58,6 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<b
     let g = duel.select_target(tp, |c, duel| filter(c, duel, e, tp), tp, LOCATION_GRAVE, 0, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, g, 1, 0, 0);
     Ok(false)
-}
-
-fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.special_summon(tc, 0, a.tp, a.tp, false, false, POS_FACEUP_DEFENSE)?;
-    }
-    Ok(())
 }
 
 fn thfilter(c: CardId, duel: &Duel) -> bool {

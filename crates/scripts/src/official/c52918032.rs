@@ -48,7 +48,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
                 .is_some_and(|re| re.is_monster_effect(duel) && re.get_handler(duel).is_set_card(duel, &[SET_MEMENTO]))
     });
     e3.set_target(duel, sptg);
-    e3.set_operation(duel, spop);
+    e3.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e3);
 }
 
@@ -87,12 +87,4 @@ fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> 
     }
     duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, tp, 0);
     Ok(false)
-}
-
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (c, tp) = (a.e.get_handler(duel), a.tp);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.special_summon(c, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
 }

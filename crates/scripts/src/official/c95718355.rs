@@ -55,7 +55,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e4.set_count_limit(duel, 1, (ID, 2));
     e4.set_condition(duel, selfthcon);
     e4.set_target(duel, selfthtg);
-    e4.set_operation(duel, selfthop);
+    e4.set_operation(duel, stock::self_to_hand);
     c.register_effect(duel, e4);
 }
 
@@ -97,23 +97,11 @@ fn thfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(thfilter, tp, LOCATION_DECK | LOCATION_REMOVED, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, tp, (LOCATION_DECK | LOCATION_REMOVED) as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, thfilter, LOCATION_DECK | LOCATION_REMOVED, CATEGORY_TOHAND)
 }
 
 fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let tp = a.tp;
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_ATOHAND);
-    let g = duel.select_matching_card(tp, thfilter, tp, LOCATION_DECK | LOCATION_REMOVED, 0, 1, 1, None)?;
-    if !g.is_empty() {
-        duel.send_to_hand(g, PLAYER_NONE, REASON_EFFECT)?;
-        duel.confirm_cards(1 - tp, g)?;
-    }
-    Ok(())
+    stock::search(duel, a, thfilter, LOCATION_DECK | LOCATION_REMOVED)
 }
 
 fn selfthcon(duel: &Duel, a: &Args) -> bool {
@@ -128,12 +116,4 @@ fn selfthtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bo
     }
     duel.set_operation_info(0, CATEGORY_TOHAND, Some(c.into()), 1, a.tp, 0);
     Ok(false)
-}
-
-fn selfthop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let c = a.e.get_handler(duel);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.send_to_hand(c, PLAYER_NONE, REASON_EFFECT)?;
-    }
-    Ok(())
 }

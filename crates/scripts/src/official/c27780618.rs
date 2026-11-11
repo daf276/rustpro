@@ -51,22 +51,11 @@ fn tgfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn tgtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(tgfilter, tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_TOGRAVE, None, 1, tp, LOCATION_DECK as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, tgfilter, LOCATION_DECK, CATEGORY_TOGRAVE)
 }
 
 fn tgop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let tp = a.tp;
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_TOGRAVE);
-    let g = duel.select_matching_card(tp, tgfilter, tp, LOCATION_DECK, 0, 1, 1, None)?;
-    if !g.is_empty() {
-        duel.send_to_grave(g, REASON_EFFECT)?;
-    }
-    Ok(())
+    stock::send_to_grave(duel, a, tgfilter, LOCATION_DECK)
 }
 
 fn thcfilter(c: CardId, duel: &Duel) -> bool {
@@ -74,14 +63,7 @@ fn thcfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn thcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(thcfilter, tp, LOCATION_MZONE | LOCATION_GRAVE, 0, 1, None));
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_REMOVE);
-    let g = duel.select_matching_card(tp, thcfilter, tp, LOCATION_MZONE | LOCATION_GRAVE, 0, 1, 1, None)?;
-    duel.remove(g, POS_FACEUP, REASON_COST)?;
-    Ok(false)
+    stock::banish_cost(duel, a, chk, thcfilter, LOCATION_MZONE | LOCATION_GRAVE)
 }
 
 fn thfilter(c: CardId, duel: &Duel) -> bool {
@@ -89,21 +71,9 @@ fn thfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(thfilter, tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, tp, LOCATION_DECK as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, thfilter, LOCATION_DECK, CATEGORY_TOHAND)
 }
 
 fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let tp = a.tp;
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_ATOHAND);
-    let g = duel.select_matching_card(tp, thfilter, tp, LOCATION_DECK, 0, 1, 1, None)?;
-    if !g.is_empty() {
-        duel.send_to_hand(g, PLAYER_NONE, REASON_EFFECT)?;
-        duel.confirm_cards(1 - tp, g)?;
-    }
-    Ok(())
+    stock::search(duel, a, thfilter, LOCATION_DECK)
 }

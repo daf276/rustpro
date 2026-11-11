@@ -49,7 +49,7 @@ pub fn add_summon_and_return_effects<const ID: u32, const ATTRIBUTE: u32>(duel: 
     e1.set_count_limit(duel, 1, ID);
     e1.set_cost(duel, selfspcost::<ATTRIBUTE>);
     e1.set_target(duel, selfsptg);
-    e1.set_operation(duel, selfspop);
+    e1.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
     e2.set_description(duel, aux::stringid(ID, 1));
@@ -112,14 +112,6 @@ fn selfsptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bo
     Ok(false)
 }
 
-fn selfspop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (c, tp) = (a.e.get_handler(duel), a.tp);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.special_summon(c, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
-}
-
 fn rthtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
     if chk == 0 {
         return Ok(true);
@@ -150,13 +142,7 @@ fn tgtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> 
 }
 
 fn tgop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let tp = a.tp;
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_TOGRAVE);
-    let g = duel.select_matching_card(tp, tgfilter, tp, LOCATION_DECK, 0, 1, 1, None)?;
-    if !g.is_empty() {
-        duel.send_to_grave(g, REASON_EFFECT)?;
-    }
-    Ok(())
+    stock::send_to_grave(duel, a, tgfilter, LOCATION_DECK)
 }
 
 fn thfilter<const ATTRIBUTE: u32>(c: CardId, duel: &Duel) -> bool {

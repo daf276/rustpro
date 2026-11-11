@@ -49,7 +49,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_condition(duel, |_, a| a.rp == 1 - a.tp);
     e1.set_cost(duel, Cost::detach_from_self::<1, 1>);
     e1.set_target(duel, destg);
-    e1.set_operation(duel, desop);
+    e1.set_operation(duel, stock::destroy_first_target);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
     e2.set_description(duel, aux::stringid(ID, 1));
@@ -87,15 +87,6 @@ fn destg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bo
     let g = duel.select_target(tp, aux::TRUE, tp, LOCATION_ONFIELD, LOCATION_ONFIELD, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_DESTROY, g, 1, tp, 0);
     Ok(false)
-}
-
-fn desop(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.destroy(tc, REASON_EFFECT)?;
-    }
-    Ok(())
 }
 
 fn attachfilter(c: CardId, duel: &Duel, xyzc: CardId, tp: u8) -> bool {

@@ -105,12 +105,7 @@ fn exgythfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn exgythtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(exgythfilter, tp, LOCATION_EXTRA | LOCATION_GRAVE, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, tp, (LOCATION_EXTRA | LOCATION_GRAVE) as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, exgythfilter, LOCATION_EXTRA | LOCATION_GRAVE, CATEGORY_TOHAND)
 }
 
 fn exgythop(duel: &mut Duel, a: &Args) -> Script<()> {

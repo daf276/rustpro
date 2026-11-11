@@ -52,7 +52,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_type(duel, EFFECT_TYPE_IGNITION);
     e2.set_range(duel, LOCATION_SZONE);
     e2.set_target(duel, sptg);
-    e2.set_operation(duel, spop);
+    e2.set_operation(duel, stock::special_summon_self::<POS_FACEUP_ATTACK>);
     c.register_effect(duel, e2);
     let e3 = duel.create_effect(c);
     e3.set_type(duel, EFFECT_TYPE_EQUIP);
@@ -130,15 +130,6 @@ fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> 
     c.register_flag_effect(duel, ID, RESETS_STANDARD_PHASE_END & !(RESET_TOFIELD | RESET_LEAVE), 0, 1);
     duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, tp, 0);
     Ok(false)
-}
-
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if c.is_relate_to_effect(duel, e) {
-        duel.special_summon(c, 0, tp, tp, false, false, POS_FACEUP_ATTACK)?;
-    }
-    Ok(())
 }
 
 fn damcon(duel: &Duel, a: &Args) -> bool {

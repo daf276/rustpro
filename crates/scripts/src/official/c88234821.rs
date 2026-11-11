@@ -79,14 +79,7 @@ fn cfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn negcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(cfilter, tp, LOCATION_GRAVE | LOCATION_MZONE, 0, 1, None));
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_REMOVE);
-    let g = duel.select_matching_card(tp, cfilter, tp, LOCATION_GRAVE | LOCATION_MZONE, 0, 1, 1, None)?;
-    duel.remove(g, POS_FACEUP, REASON_COST)?;
-    Ok(false)
+    stock::banish_cost(duel, a, chk, cfilter, LOCATION_GRAVE | LOCATION_MZONE)
 }
 
 fn negtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {

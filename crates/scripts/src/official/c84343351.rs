@@ -137,12 +137,14 @@ fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
 }
 
 fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(|c, duel| spfilter(c, duel, e, tp), tp, LOCATION_EXTRA, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, tp, LOCATION_EXTRA as i32);
-    Ok(false)
+    stock::exists_target(
+        duel,
+        a,
+        chk,
+        |c, duel| spfilter(c, duel, a.e, a.tp),
+        LOCATION_EXTRA,
+        CATEGORY_SPECIAL_SUMMON,
+    )
 }
 
 fn spop(duel: &mut Duel, a: &Args) -> Script<()> {

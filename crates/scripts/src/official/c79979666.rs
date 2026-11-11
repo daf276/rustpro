@@ -23,7 +23,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_property(duel, EFFECT_FLAG_PLAYER_TARGET + EFFECT_FLAG_DAMAGE_STEP);
     e2.set_code(duel, EVENT_SUMMON_SUCCESS);
     e2.set_condition(duel, condition);
-    e2.set_target(duel, target);
+    e2.set_target(duel, stock::draw_target::<2>);
     e2.set_operation(duel, operation);
     c.register_effect(duel, e2);
     let e3 = e2.clone_effect(duel);
@@ -57,17 +57,6 @@ fn others(duel: &Duel, a: &Args) -> bool {
 
 fn condition(duel: &Duel, a: &Args) -> bool {
     !others(duel, a)
-}
-
-fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_player_can_draw(tp, 2));
-    }
-    duel.set_target_player(tp);
-    duel.set_target_param(2);
-    duel.set_operation_info(0, CATEGORY_DRAW, None, 0, tp, 2);
-    Ok(false)
 }
 
 fn operation(duel: &mut Duel, a: &Args) -> Script<()> {

@@ -33,7 +33,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_code(duel, EVENT_RELEASE);
     e2.set_count_limit(duel, 1, (ID, 1));
     e2.set_target(duel, thtg);
-    e2.set_operation(duel, thop);
+    e2.set_operation(duel, stock::first_target_to_hand);
     c.register_effect(duel, e2);
 }
 
@@ -42,12 +42,7 @@ fn nsfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn nstg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(nsfilter, tp, LOCATION_HAND, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_SUMMON, None, 1, tp, LOCATION_HAND as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, nsfilter, LOCATION_HAND, CATEGORY_SUMMON)
 }
 
 fn nsop(duel: &mut Duel, a: &Args) -> Script<()> {
@@ -80,14 +75,4 @@ fn thtg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<boo
         duel.set_operation_info(0, CATEGORY_TOHAND, Some(g), 1, tp, 0);
     }
     Ok(false)
-}
-
-fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let e = a.e;
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, e)
-    {
-        duel.send_to_hand(tc, PLAYER_NONE, REASON_EFFECT)?;
-    }
-    Ok(())
 }

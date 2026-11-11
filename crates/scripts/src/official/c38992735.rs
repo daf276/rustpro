@@ -22,7 +22,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_range(duel, LOCATION_SZONE);
     e2.set_cost(duel, Cost::self_to_grave);
     e2.set_target(duel, tg);
-    e2.set_operation(duel, op);
+    e2.set_operation(duel, stock::damage);
     c.register_effect(duel, e2);
     let e3 = duel.create_effect(c);
     e3.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
@@ -61,11 +61,4 @@ fn tg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
     duel.set_target_param(dam);
     duel.set_operation_info(0, CATEGORY_DAMAGE, None, 0, 1 - tp, dam as i32);
     Ok(false)
-}
-
-fn op(duel: &mut Duel, _: &Args) -> Script<()> {
-    let p: u8 = duel.get_chain_info(0, CHAININFO_TARGET_PLAYER);
-    let d: u32 = duel.get_chain_info(0, CHAININFO_TARGET_PARAM);
-    duel.damage(p, d, REASON_EFFECT)?;
-    Ok(())
 }

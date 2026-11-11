@@ -40,7 +40,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_count_limit(duel, 1, (ID, 1));
     e2.set_cost(duel, drcost);
     e2.set_target(duel, drtg);
-    e2.set_operation(duel, drop);
+    e2.set_operation(duel, stock::draw);
     c.register_effect(duel, e2);
 }
 
@@ -49,14 +49,7 @@ fn cfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn cost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(cfilter, tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_TOGRAVE);
-    let g = duel.select_matching_card(tp, cfilter, tp, LOCATION_DECK, 0, 1, 1, None)?;
-    duel.send_to_grave(g, REASON_COST)?;
-    Ok(false)
+    stock::send_to_grave_cost(duel, a, chk, cfilter, LOCATION_DECK)
 }
 
 fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
@@ -144,11 +137,4 @@ fn drtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> 
     duel.set_target_param(label as u32);
     duel.set_operation_info(0, CATEGORY_DRAW, None, 0, tp, label as i32);
     Ok(false)
-}
-
-fn drop(duel: &mut Duel, _: &Args) -> Script<()> {
-    let p: u8 = duel.get_chain_info(0, CHAININFO_TARGET_PLAYER);
-    let d: u32 = duel.get_chain_info(0, CHAININFO_TARGET_PARAM);
-    duel.draw(p, d, REASON_EFFECT)?;
-    Ok(())
 }

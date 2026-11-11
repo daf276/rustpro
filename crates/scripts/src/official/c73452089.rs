@@ -56,7 +56,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e3.set_range(duel, LOCATION_MZONE);
     e3.set_condition(duel, discon);
     e3.set_cost(duel, discost);
-    e3.set_target(duel, distg);
+    e3.set_target(duel, stock::negate_destroy_target);
     e3.set_operation(duel, disop);
     c.register_effect(duel, e3);
 }
@@ -88,20 +88,6 @@ fn discon(duel: &Duel, a: &Args) -> bool {
     }
     let tg = duel.get_chain_info::<Option<CardSet>>(a.ev as u8, CHAININFO_TARGET_CARDS);
     tg.is_some_and(|tg| tg.is_exists(duel, CardId::is_on_field, 1, None)) && duel.is_chain_negatable(a.ev as u8)
-}
-
-fn distg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_NEGATE, a.eg, 1, 0, 0);
-    if let Some(re) = a.re {
-        let rc = re.get_handler(duel);
-        if rc.is_destructable(duel) && rc.is_relate_to_effect(duel, re) {
-            duel.set_operation_info(0, CATEGORY_DESTROY, a.eg, 1, 0, 0);
-        }
-    }
-    Ok(false)
 }
 
 fn disop(duel: &mut Duel, a: &Args) -> Script<()> {

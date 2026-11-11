@@ -37,8 +37,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
         let filter = aux::faceup_filter(CardId::is_link_monster);
         duel.is_existing_matching_card(filter, a.tp, LOCATION_MZONE, 0, 1, None)
     });
-    e1.set_target(duel, sptg);
-    e1.set_operation(duel, spop);
+    e1.set_target(duel, stock::special_summon_self_target);
+    e1.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
     e2.set_description(duel, aux::stringid(ID, 1));
@@ -60,25 +60,6 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e3.set_target(duel, linktg);
     e3.set_operation(duel, linkop);
     c.register_effect(duel, e3);
-}
-
-fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, e, 0, tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, tp, 0);
-    Ok(false)
-}
-
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if c.is_relate_to_effect(duel, e) {
-        duel.special_summon(c, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
 }
 
 fn effop(duel: &mut Duel, a: &Args) -> Script<()> {
@@ -171,12 +152,7 @@ fn linkfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn linktg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(linkfilter, tp, LOCATION_EXTRA, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, tp, LOCATION_EXTRA as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, linkfilter, LOCATION_EXTRA, CATEGORY_SPECIAL_SUMMON)
 }
 
 fn linkop(duel: &mut Duel, a: &Args) -> Script<()> {

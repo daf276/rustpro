@@ -45,7 +45,10 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_hint_timing(duel, TIMING_DAMAGE_STEP, TIMING_DAMAGE_STEP | TIMING_END_PHASE);
     e1.set_condition(duel, aux::stat_change_damage_step_condition);
     e1.set_cost(duel, atkcost);
-    e1.set_target(duel, atktg);
+    e1.set_target(
+        duel,
+        stock::operation_info_target::<CATEGORY_TOGRAVE, { LOCATION_HAND | LOCATION_DECK }>,
+    );
     e1.set_operation(duel, atkop);
     c.register_effect(duel, e1);
 }
@@ -68,14 +71,6 @@ fn atkcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
         return Ok(duel.is_existing_matching_card(|c, duel| cfilter(c, duel, tp), tp, LOCATION_HAND, 0, 1, None));
     }
     duel.discard_hand(tp, |c, duel| cfilter(c, duel, tp), 1, 1, REASON_COST | REASON_DISCARD)?;
-    Ok(false)
-}
-
-fn atktg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_TOGRAVE, None, 1, a.tp, (LOCATION_HAND | LOCATION_DECK) as i32);
     Ok(false)
 }
 

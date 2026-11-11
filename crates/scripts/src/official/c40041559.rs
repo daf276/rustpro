@@ -42,7 +42,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2a.set_count_limit(duel, 1, (ID, 1));
     e2a.set_condition(duel, thcon);
     e2a.set_target(duel, thtg);
-    e2a.set_operation(duel, thop);
+    e2a.set_operation(duel, stock::self_to_hand);
     c.register_effect(duel, e2a);
     let e2b = e2a.clone_effect(duel);
     e2b.set_code(duel, EVENT_REMOVE);
@@ -138,12 +138,4 @@ fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> 
     }
     duel.set_operation_info(0, CATEGORY_TOHAND, Some(c.into()), 1, a.tp, 0);
     Ok(false)
-}
-
-fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let c = a.e.get_handler(duel);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.send_to_hand(c, PLAYER_NONE, REASON_EFFECT)?;
-    }
-    Ok(())
 }

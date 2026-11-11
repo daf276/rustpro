@@ -33,7 +33,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_code(duel, EVENT_TO_GRAVE);
     e2.set_count_limit(duel, 1, (ID, 1));
     e2.set_cost(duel, thcost);
-    e2.set_target(duel, thtg);
+    e2.set_target(duel, stock::operation_info_target::<CATEGORY_TOHAND, LOCATION_DECK>);
     e2.set_operation(duel, thop);
     c.register_effect(duel, e2);
 }
@@ -119,14 +119,6 @@ fn thcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
         duel.send_to_grave(sc, REASON_COST)?;
         a.e.set_label_object_group(duel, Some(sc.into()));
     }
-    Ok(false)
-}
-
-fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, a.tp, LOCATION_DECK as i32);
     Ok(false)
 }
 

@@ -36,7 +36,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_range(duel, LOCATION_GRAVE);
     e2.set_count_limit(duel, 1, ID);
     e2.set_condition(duel, spcon);
-    e2.set_target(duel, sptg);
+    e2.set_target(duel, stock::special_summon_self_target_player_0);
     e2.set_operation(duel, spop);
     c.register_effect(duel, e2);
 }
@@ -54,13 +54,7 @@ fn filter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
 }
 
 fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0
-            && duel.is_existing_matching_card(|c, duel| filter(c, duel, e, tp), tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, tp, LOCATION_DECK as i32);
-    Ok(false)
+    stock::special_summon_target(duel, a, chk, |c, duel| filter(c, duel, a.e, a.tp), LOCATION_DECK)
 }
 
 fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
@@ -84,16 +78,6 @@ fn cfilter(c: CardId, duel: &Duel, tp: u8) -> bool {
 fn spcon(duel: &Duel, a: &Args) -> bool {
     let eg = a.eg.unwrap_or_default();
     !eg.is_contains(a.e.get_handler(duel)) && eg.is_exists(duel, |c, duel| cfilter(c, duel, a.tp), 1, None)
-}
-
-fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, e, 0, tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, 0, 0);
-    Ok(false)
 }
 
 fn spop(duel: &mut Duel, a: &Args) -> Script<()> {

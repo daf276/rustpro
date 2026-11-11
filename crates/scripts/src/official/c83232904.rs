@@ -41,7 +41,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_condition(duel, aux::exccon);
     e2.set_cost(duel, |duel, a, chk| Cost::and(duel, a, chk, &[Cost::self_banish, rthcost]));
     e2.set_target(duel, rthtg);
-    e2.set_operation(duel, rthop);
+    e2.set_operation(duel, stock::first_target_to_hand);
     c.register_effect(duel, e2);
 }
 
@@ -172,13 +172,4 @@ fn rthtg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bo
     let g = duel.select_target(tp, CardId::is_able_to_hand, tp, LOCATION_ONFIELD, LOCATION_ONFIELD, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_TOHAND, g, 1, tp, 0);
     Ok(false)
-}
-
-fn rthop(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.send_to_hand(tc, PLAYER_NONE, REASON_EFFECT)?;
-    }
-    Ok(())
 }

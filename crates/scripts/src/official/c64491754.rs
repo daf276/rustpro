@@ -24,7 +24,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_range(duel, LOCATION_SZONE);
     e2.set_count_limit(duel, 1, ID);
     e2.set_cost(duel, spcost);
-    e2.set_target(duel, sptg);
+    e2.set_target(duel, stock::operation_info_target::<CATEGORY_SPECIAL_SUMMON, LOCATION_DECK>);
     e2.set_operation(duel, spop);
     c.register_effect(duel, e2);
 }
@@ -58,14 +58,6 @@ fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     };
     e.set_label(duel, sc.get_original_attribute(duel).into());
     duel.send_to_grave(sc, REASON_COST)?;
-    Ok(false)
-}
-
-fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, a.tp, LOCATION_DECK as i32);
     Ok(false)
 }
 

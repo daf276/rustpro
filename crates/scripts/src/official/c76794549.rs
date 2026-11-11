@@ -55,7 +55,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e3.set_type(duel, EFFECT_TYPE_IGNITION);
     e3.set_range(duel, LOCATION_MZONE);
     e3.set_cost(duel, hncost);
-    e3.set_target(duel, hntg);
+    e3.set_target(duel, stock::operation_info_target::<CATEGORY_SPECIAL_SUMMON, LOCATION_EXTRA>);
     e3.set_operation(duel, hnop);
     c.register_effect(duel, e3);
     aux::global_check(duel, ID, |duel| {
@@ -224,14 +224,6 @@ fn hncost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     }
     let sg = aux::select_unselect_group_full(duel, mg, 4, 4, &check, tp, HINTMSG_REMOVE, Some(&check), false)?;
     duel.remove(sg.union(c.into()), POS_FACEUP, REASON_COST)?;
-    Ok(false)
-}
-
-fn hntg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, a.tp, LOCATION_EXTRA as i32);
     Ok(false)
 }
 

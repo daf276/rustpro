@@ -60,8 +60,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_condition(duel, |duel, a| {
         a.eg.is_some_and(|eg| eg.is_exists(duel, |c, duel| spconfilter(c, duel, a.tp), 1, None))
     });
-    e2.set_target(duel, sptg);
-    e2.set_operation(duel, spop);
+    e2.set_target(duel, stock::special_summon_self_target_player_0);
+    e2.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e2);
 }
 
@@ -120,21 +120,4 @@ fn remtg(duel: &Duel, e: EffectId, c: CardId, rp: u8, r: u32) -> bool {
 
 fn spconfilter(c: CardId, duel: &Duel, tp: u8) -> bool {
     c.is_reason(duel, REASON_EFFECT) && c.get_reason_player(duel) == 1 - tp
-}
-
-fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (c, tp) = (a.e.get_handler(duel), a.tp);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, a.e, 0, tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, 0, 0);
-    Ok(false)
-}
-
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (c, tp) = (a.e.get_handler(duel), a.tp);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.special_summon(c, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
 }

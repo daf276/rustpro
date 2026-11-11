@@ -29,7 +29,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_range(duel, LOCATION_HAND);
     e1.set_code(duel, EVENT_DAMAGE);
     e1.set_condition(duel, sumcon);
-    e1.set_target(duel, sumtg);
+    e1.set_target(duel, stock::special_summon_self_target_player_0);
     e1.set_operation(duel, sumop);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
@@ -54,7 +54,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
         a.e.get_handler(duel).get_summon_type(duel) == SUMMON_TYPE_SPECIAL + 1
     });
     e3.set_target(duel, sumtg3);
-    e3.set_operation(duel, sumop3);
+    e3.set_operation(duel, stock::damage);
     e3.set_label_object(duel, Some(e1));
     c.register_effect(duel, e3);
 }
@@ -70,16 +70,6 @@ fn sumcon(duel: &Duel, a: &Args) -> bool {
             1,
             None,
         )
-}
-
-fn sumtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, e, 0, tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, 0, 0);
-    Ok(false)
 }
 
 fn sumop(duel: &mut Duel, a: &Args) -> Script<()> {
@@ -140,11 +130,4 @@ fn sumtg3(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool
     duel.set_target_param(d);
     duel.set_operation_info(0, CATEGORY_DAMAGE, None, 0, 1 - tp, d as i32);
     Ok(false)
-}
-
-fn sumop3(duel: &mut Duel, _: &Args) -> Script<()> {
-    let p: u8 = duel.get_chain_info(0, CHAININFO_TARGET_PLAYER);
-    let d: u32 = duel.get_chain_info(0, CHAININFO_TARGET_PARAM);
-    duel.damage(p, d, REASON_EFFECT)?;
-    Ok(())
 }

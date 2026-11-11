@@ -17,7 +17,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_count_limit(duel, 1, 0);
     e1.set_cost(duel, cost);
     e1.set_target(duel, target);
-    e1.set_operation(duel, operation);
+    e1.set_operation(duel, stock::damage);
     c.register_effect(duel, e1);
 }
 
@@ -49,11 +49,4 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool
     duel.set_target_param(label as u32);
     duel.set_operation_info(0, CATEGORY_DAMAGE, None, 0, 1 - tp, label as i32);
     Ok(false)
-}
-
-fn operation(duel: &mut Duel, _: &Args) -> Script<()> {
-    let p: u8 = duel.get_chain_info(0, CHAININFO_TARGET_PLAYER);
-    let d: u32 = duel.get_chain_info(0, CHAININFO_TARGET_PARAM);
-    duel.damage(p, d, REASON_EFFECT)?;
-    Ok(())
 }

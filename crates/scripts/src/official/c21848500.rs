@@ -74,7 +74,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_code(duel, EVENT_REMOVE);
     e2.set_count_limit(duel, 1, (ID, 1));
     e2.set_cost(duel, Cost::pay_lp::<900>);
-    e2.set_target(duel, sptg);
+    e2.set_target(duel, stock::special_summon_self_target);
     e2.set_operation(duel, spop);
     c.register_effect(duel, e2);
 }
@@ -119,15 +119,6 @@ fn tdop(duel: &mut Duel, a: &Args) -> Script<()> {
 fn inactfilter(duel: &Duel, _: EffectId, ct: u8) -> bool {
     duel.get_chain_info::<Option<EffectId>>(ct, CHAININFO_TRIGGERING_EFFECT)
         .is_some_and(|te| te.get_label(duel) == i64::from(ID) && te.get_handler(duel).get_linked_group_count(duel) > 0)
-}
-
-fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (c, tp) = (a.e.get_handler(duel), a.tp);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, a.e, 0, tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, tp, 0);
-    Ok(false)
 }
 
 fn spop(duel: &mut Duel, a: &Args) -> Script<()> {

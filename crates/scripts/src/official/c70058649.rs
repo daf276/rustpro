@@ -122,12 +122,7 @@ fn tribsumfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn tribsumtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(tribsumfilter, tp, LOCATION_HAND, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_SUMMON, None, 1, tp, LOCATION_HAND as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, tribsumfilter, LOCATION_HAND, CATEGORY_SUMMON)
 }
 
 fn tribsumop(duel: &mut Duel, a: &Args) -> Script<()> {

@@ -17,7 +17,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_code(duel, EVENT_TO_GRAVE);
     e1.set_condition_mut(duel, super::c34230233::descon);
     e1.set_target(duel, drtg);
-    e1.set_operation(duel, drop);
+    e1.set_operation(duel, stock::draw);
     c.register_effect(duel, e1);
 }
 
@@ -31,11 +31,4 @@ fn drtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> 
     duel.set_target_param(count);
     duel.set_operation_info(0, CATEGORY_DRAW, None, 0, tp, count as i32);
     Ok(false)
-}
-
-fn drop(duel: &mut Duel, _: &Args) -> Script<()> {
-    let p: u8 = duel.get_chain_info(0, CHAININFO_TARGET_PLAYER);
-    let d: u32 = duel.get_chain_info(0, CHAININFO_TARGET_PARAM);
-    duel.draw(p, d, REASON_EFFECT)?;
-    Ok(())
 }

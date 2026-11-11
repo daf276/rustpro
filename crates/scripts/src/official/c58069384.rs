@@ -46,7 +46,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_count_limit(duel, 1, 0);
     e1.set_cost(duel, Cost::detach_from_self::<1, 1>);
     e1.set_target(duel, target);
-    e1.set_operation(duel, operation);
+    e1.set_operation(duel, stock::special_summon_first_target::<POS_FACEUP>);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
     e2.set_description(duel, aux::stringid(ID, 1));
@@ -92,28 +92,12 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<b
     Ok(false)
 }
 
-fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.special_summon(tc, 0, a.tp, a.tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
-}
-
 fn atkfilter(c: CardId, duel: &Duel) -> bool {
     c.is_code(duel, CARD_CYBER_DRAGON) && c.is_able_to_remove_as_cost(duel) && (!c.is_on_field(duel) || c.is_faceup(duel))
 }
 
 fn atkcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(atkfilter, tp, LOCATION_HAND | LOCATION_ONFIELD, 0, 1, None));
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_REMOVE);
-    let g = duel.select_matching_card(tp, atkfilter, tp, LOCATION_HAND | LOCATION_ONFIELD, 0, 1, 1, None)?;
-    duel.remove(g, POS_FACEUP, REASON_COST)?;
-    Ok(false)
+    stock::banish_cost(duel, a, chk, atkfilter, LOCATION_HAND | LOCATION_ONFIELD)
 }
 
 fn atkop(duel: &mut Duel, a: &Args) -> Script<()> {
@@ -141,12 +125,14 @@ fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
 }
 
 fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(|c, duel| spfilter(c, duel, e, tp), tp, LOCATION_EXTRA, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, tp, LOCATION_EXTRA as i32);
-    Ok(false)
+    stock::exists_target(
+        duel,
+        a,
+        chk,
+        |c, duel| spfilter(c, duel, a.e, a.tp),
+        LOCATION_EXTRA,
+        CATEGORY_SPECIAL_SUMMON,
+    )
 }
 
 fn spop(duel: &mut Duel, a: &Args) -> Script<()> {

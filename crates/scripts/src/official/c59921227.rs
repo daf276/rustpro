@@ -46,7 +46,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_range(duel, LOCATION_SZONE);
     e2.set_count_limit(duel, 1, (ID, 0));
     e2.set_cost(duel, thunderthcost);
-    e2.set_target(duel, thunderthtg);
+    e2.set_target(duel, stock::operation_info_target::<CATEGORY_TOHAND, LOCATION_DECK>);
     e2.set_operation(duel, thunderthop);
     e2.set_hint_timing(duel, 0, TIMING_STANDBY_PHASE | TIMING_MAIN_END | TIMINGS_CHECK_MONSTER_E);
     c.register_effect(duel, e2);
@@ -96,14 +96,6 @@ fn thunderthcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     Ok(false)
 }
 
-fn thunderthtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, a.tp, LOCATION_DECK as i32);
-    Ok(false)
-}
-
 fn thunderthop(duel: &mut Duel, a: &Args) -> Script<()> {
     let tp = a.tp;
     let code = a.e.get_label(duel) as u32;
@@ -117,20 +109,9 @@ fn thunderthop(duel: &mut Duel, a: &Args) -> Script<()> {
 }
 
 fn blitzthtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(blitzthfilter, a.tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, a.tp, LOCATION_DECK as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, blitzthfilter, LOCATION_DECK, CATEGORY_TOHAND)
 }
 
 fn blitzthop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let tp = a.tp;
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_ATOHAND);
-    let g = duel.select_matching_card(tp, blitzthfilter, tp, LOCATION_DECK, 0, 1, 1, None)?;
-    if !g.is_empty() {
-        duel.send_to_hand(g, PLAYER_NONE, REASON_EFFECT)?;
-        duel.confirm_cards(1 - tp, g)?;
-    }
-    Ok(())
+    stock::search(duel, a, blitzthfilter, LOCATION_DECK)
 }

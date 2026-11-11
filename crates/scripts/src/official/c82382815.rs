@@ -28,7 +28,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e4.set_type(duel, EFFECT_TYPE_ACTIVATE);
     e4.set_code(duel, EVENT_CHAINING);
     e4.set_condition(duel, condition2);
-    e4.set_target(duel, target2);
+    e4.set_target(duel, stock::negate_destroy_target);
     e4.set_operation(duel, activate2);
     c.register_effect(duel, e4);
 }
@@ -62,20 +62,6 @@ fn condition2(duel: &Duel, a: &Args) -> bool {
     a.re.is_some_and(|re| re.is_has_type(duel, EFFECT_TYPE_ACTIVATE))
         && duel.is_chain_negatable(a.ev as u8)
         && duel.is_existing_matching_card(cfilter, a.tp, LOCATION_MZONE, 0, 1, None)
-}
-
-fn target2(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_NEGATE, a.eg, 1, 0, 0);
-    if let Some(re) = a.re {
-        let rc = re.get_handler(duel);
-        if rc.is_destructable(duel) && rc.is_relate_to_effect(duel, re) {
-            duel.set_operation_info(0, CATEGORY_DESTROY, a.eg, 1, 0, 0);
-        }
-    }
-    Ok(false)
 }
 
 fn activate2(duel: &mut Duel, a: &Args) -> Script<()> {

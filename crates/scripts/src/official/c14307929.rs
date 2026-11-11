@@ -46,7 +46,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
         e.get_handler(duel).is_synchro_summoned(duel) && e.get_label(duel) == 1
     });
     e1.set_target(duel, thtg);
-    e1.set_operation(duel, thop);
+    e1.set_operation(duel, stock::first_target_to_hand);
     c.register_effect(duel, e1);
     let e1a = duel.create_effect(c);
     e1a.set_type(duel, EFFECT_TYPE_SINGLE);
@@ -63,7 +63,10 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_count_limit(duel, 1, (ID, 1));
     e2.set_condition(duel, |_, a| a.ep == 1 - a.tp);
     e2.set_cost(duel, spcost);
-    e2.set_target(duel, sptg);
+    e2.set_target(
+        duel,
+        stock::operation_info_target::<CATEGORY_SPECIAL_SUMMON, { LOCATION_EXTRA | LOCATION_GRAVE | LOCATION_REMOVED }>,
+    );
     e2.set_operation(duel, spop);
     c.register_effect(duel, e2);
 }
@@ -84,15 +87,6 @@ fn thtg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<boo
     let g = duel.select_target(tp, thfilter, tp, LOCATION_GRAVE, 0, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_TOHAND, g, 1, tp, 0);
     Ok(false)
-}
-
-fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.send_to_hand(tc, PLAYER_NONE, REASON_EFFECT)?;
-    }
-    Ok(())
 }
 
 fn matfilter(c: CardId, duel: &Duel, sc: CardId, tp: u8) -> bool {
@@ -138,46 +132,13 @@ fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8, mc: Option<CardId>) -> 
 }
 
 fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(
-            |c, duel| spcostfilter(c, duel, e, tp),
-            tp,
-            LOCATION_HAND | LOCATION_ONFIELD,
-            0,
-            1,
-            None,
-        ));
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_TOGRAVE);
-    let g = duel.select_matching_card(
-        tp,
-        |c, duel| spcostfilter(c, duel, e, tp),
-        tp,
+    stock::send_to_grave_cost(
+        duel,
+        a,
+        chk,
+        |c, duel| spcostfilter(c, duel, a.e, a.tp),
         LOCATION_HAND | LOCATION_ONFIELD,
-        0,
-        1,
-        1,
-        None,
-    )?;
-    duel.send_to_grave(g, REASON_COST)?;
-    Ok(false)
-}
-
-fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    let tp = a.tp;
-    duel.set_operation_info(
-        0,
-        CATEGORY_SPECIAL_SUMMON,
-        None,
-        1,
-        tp,
-        (LOCATION_EXTRA | LOCATION_GRAVE | LOCATION_REMOVED) as i32,
-    );
-    Ok(false)
+    )
 }
 
 fn spop(duel: &mut Duel, a: &Args) -> Script<()> {

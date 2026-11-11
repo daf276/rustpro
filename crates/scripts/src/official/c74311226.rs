@@ -23,7 +23,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_type(duel, EFFECT_TYPE_SINGLE + EFFECT_TYPE_TRIGGER_F);
     e2.set_code(duel, EVENT_TO_GRAVE);
     e2.set_condition(duel, thcon);
-    e2.set_target(duel, thtg);
+    e2.set_target(duel, stock::operation_info_target::<CATEGORY_TOHAND, LOCATION_DECK>);
     e2.set_operation(duel, thop);
     c.register_effect(duel, e2);
 }
@@ -41,21 +41,6 @@ fn thfilter(c: CardId, duel: &Duel) -> bool {
     !c.is_code(duel, ID) && c.is_race(duel, RACE_SEASERPENT) && c.is_able_to_hand(duel)
 }
 
-fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, a.tp, LOCATION_DECK as i32);
-    Ok(false)
-}
-
 fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let tp = a.tp;
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_ATOHAND);
-    let g = duel.select_matching_card(tp, thfilter, tp, LOCATION_DECK, 0, 1, 1, None)?;
-    if !g.is_empty() {
-        duel.send_to_hand(g, PLAYER_NONE, REASON_EFFECT)?;
-        duel.confirm_cards(1 - tp, g)?;
-    }
-    Ok(())
+    stock::search(duel, a, thfilter, LOCATION_DECK)
 }

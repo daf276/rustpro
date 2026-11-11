@@ -28,7 +28,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_type(duel, EFFECT_TYPE_ACTIVATE);
     e1.set_code(duel, EVENT_FREE_CHAIN);
     e1.set_target(duel, target);
-    e1.set_operation(duel, activate);
+    e1.set_operation(duel, stock::special_summon_first_target::<POS_FACEUP>);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
     e2.set_description(duel, aux::stringid(ID, 1));
@@ -60,16 +60,6 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<b
     Ok(false)
 }
 
-fn activate(duel: &mut Duel, a: &Args) -> Script<()> {
-    let tp = a.tp;
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.special_summon(tc, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
-}
-
 fn thcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     let tp = a.tp;
     let c = a.e.get_handler(duel);
@@ -88,21 +78,9 @@ fn filter2(c: CardId, duel: &Duel) -> bool {
 }
 
 fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(filter2, tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, tp, LOCATION_DECK as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, filter2, LOCATION_DECK, CATEGORY_TOHAND)
 }
 
 fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let tp = a.tp;
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_ATOHAND);
-    let g = duel.select_matching_card(tp, filter2, tp, LOCATION_DECK, 0, 1, 1, None)?;
-    if !g.is_empty() {
-        duel.send_to_hand(g, PLAYER_NONE, REASON_EFFECT)?;
-        duel.confirm_cards(1 - tp, g)?;
-    }
-    Ok(())
+    stock::search(duel, a, filter2, LOCATION_DECK)
 }

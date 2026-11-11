@@ -38,7 +38,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_type(duel, EFFECT_TYPE_SINGLE + EFFECT_TYPE_TRIGGER_O);
     e1.set_condition(duel, aux::bdogcon);
     e1.set_target(duel, sptg);
-    e1.set_operation(duel, spop);
+    e1.set_operation(duel, stock::special_summon_first_target::<POS_FACEUP_DEFENSE>);
     c.register_effect(duel, e1);
 }
 
@@ -54,13 +54,4 @@ fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> 
     duel.set_target_card(bc);
     duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(bc.into()), 1, 0, 0);
     Ok(false)
-}
-
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.special_summon(tc, 0, a.tp, a.tp, false, false, POS_FACEUP_DEFENSE)?;
-    }
-    Ok(())
 }

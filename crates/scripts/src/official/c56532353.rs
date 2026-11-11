@@ -72,14 +72,7 @@ fn atcon(duel: &Duel, a: &Args) -> bool {
 }
 
 fn atcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(costfilter, tp, LOCATION_EXTRA, 0, 1, None));
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_TOGRAVE);
-    let g = duel.select_matching_card(tp, costfilter, tp, LOCATION_EXTRA, 0, 1, 1, None)?;
-    duel.send_to_grave(g, REASON_COST)?;
-    Ok(false)
+    stock::send_to_grave_cost(duel, a, chk, costfilter, LOCATION_EXTRA)
 }
 
 fn atop(duel: &mut Duel, _: &Args) -> Script<()> {

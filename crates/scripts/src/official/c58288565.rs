@@ -35,7 +35,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     });
     e1.set_cost(duel, thcost);
     e1.set_target(duel, thtg);
-    e1.set_operation(duel, thop);
+    e1.set_operation(duel, stock::self_to_hand);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
     e2.set_description(duel, aux::stringid(ID, 1));
@@ -47,8 +47,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_count_limit(duel, 1, ID);
     e2.set_condition(duel, spcon);
     e2.set_cost(duel, spcost);
-    e2.set_target(duel, sptg);
-    e2.set_operation(duel, spop);
+    e2.set_target(duel, stock::special_summon_self_target);
+    e2.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e2);
     let counterfilter = |duel: &Duel, c: CardId| !c.is_summon_location(duel, LOCATION_EXTRA) || c.is_attribute(duel, ATTRIBUTE_WATER);
     duel.add_custom_activity_counter(ID, ACTIVITY_SPSUMMON, CounterFilter::Card(counterfilter));
@@ -82,14 +82,6 @@ fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> 
     Ok(false)
 }
 
-fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let c = a.e.get_handler(duel);
-    if c.is_relate_to_effect(duel, a.e) {
-        duel.send_to_hand(c, PLAYER_NONE, REASON_EFFECT)?;
-    }
-    Ok(())
-}
-
 fn spconfilter(c: CardId, duel: &Duel, tp: u8) -> bool {
     c.is_monster(duel) && c.is_controler(duel, tp) && !c.is_reason(duel, REASON_BATTLE)
 }
@@ -112,23 +104,4 @@ fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     }
     duel.discard_hand(tp, discard_filter, 1, 1, REASON_COST | REASON_DISCARD)?;
     thcost(duel, a, 1)
-}
-
-fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, e, 0, tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, tp, 0);
-    Ok(false)
-}
-
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if c.is_relate_to_effect(duel, e) {
-        duel.special_summon(c, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
 }

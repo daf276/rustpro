@@ -47,7 +47,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_code(duel, EVENT_BATTLE_DAMAGE);
     e2.set_condition(duel, |_, a| a.ep == 1 - a.tp && a.ev >= 1000);
     e2.set_target(duel, drtg);
-    e2.set_operation(duel, drop);
+    e2.set_operation(duel, stock::draw);
     c.register_effect(duel, e2);
 }
 
@@ -69,11 +69,4 @@ fn drtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> 
     duel.set_target_param(ct);
     duel.set_operation_info(0, CATEGORY_DRAW, None, 0, tp, ct as i32);
     Ok(false)
-}
-
-fn drop(duel: &mut Duel, _: &Args) -> Script<()> {
-    let p: u8 = duel.get_chain_info(0, CHAININFO_TARGET_PLAYER);
-    let d: u32 = duel.get_chain_info(0, CHAININFO_TARGET_PARAM);
-    duel.draw(p, d, REASON_EFFECT)?;
-    Ok(())
 }

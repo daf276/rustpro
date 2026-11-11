@@ -37,8 +37,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
             None,
         )
     });
-    e1.set_target(duel, selfsptg);
-    e1.set_operation(duel, selfspop);
+    e1.set_target(duel, stock::special_summon_self_target);
+    e1.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
     e2.set_description(duel, aux::stringid(ID, 1));
@@ -53,25 +53,6 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_operation(duel, rmspop);
     e2.set_hint_timing(duel, 0, TIMING_MAIN_END | TIMINGS_CHECK_MONSTER);
     c.register_effect(duel, e2);
-}
-
-fn selfsptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, e, 0, tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, tp, 0);
-    Ok(false)
-}
-
-fn selfspop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if c.is_relate_to_effect(duel, e) {
-        duel.special_summon(c, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
 }
 
 fn rmfilter(c: CardId, duel: &Duel, tp: u8) -> bool {

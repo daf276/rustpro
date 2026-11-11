@@ -26,7 +26,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_type(duel, EFFECT_TYPE_ACTIVATE);
     e1.set_code(duel, EVENT_FREE_CHAIN);
     e1.set_target(duel, target);
-    e1.set_operation(duel, activate);
+    e1.set_operation(duel, stock::special_summon_first_target::<POS_FACEUP>);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
     e2.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
@@ -58,16 +58,6 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<b
     let g = duel.select_target(tp, |c, duel| filter(c, duel, e, tp), tp, LOCATION_GRAVE, 0, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, g, 1, 0, 0);
     Ok(false)
-}
-
-fn activate(duel: &mut Duel, a: &Args) -> Script<()> {
-    let tp = a.tp;
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.special_summon(tc, 0, tp, tp, false, false, POS_FACEUP)?;
-    }
-    Ok(())
 }
 
 fn repfilter(c: CardId, duel: &Duel, tp: u8) -> bool {

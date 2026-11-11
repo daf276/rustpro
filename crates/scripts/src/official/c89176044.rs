@@ -34,7 +34,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_condition(duel, descon);
     e2.set_cost(duel, Cost::self_banish);
     e2.set_target(duel, destg);
-    e2.set_operation(duel, desop);
+    e2.set_operation(duel, stock::destroy_first_target);
     c.register_effect(duel, e2);
 }
 
@@ -61,11 +61,7 @@ fn thcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
 }
 
 fn thtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(thfilter, a.tp, LOCATION_DECK, 0, 1, None));
-    }
-    duel.set_operation_info(0, CATEGORY_TOHAND, None, 1, a.tp, LOCATION_DECK as i32);
-    Ok(false)
+    stock::exists_target(duel, a, chk, thfilter, LOCATION_DECK, CATEGORY_TOHAND)
 }
 
 fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
@@ -111,13 +107,4 @@ fn destg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bo
     let g = duel.select_target(tp, desfilter, tp, LOCATION_MZONE, 0, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_DESTROY, g, 1, tp, 0);
     Ok(false)
-}
-
-fn desop(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.destroy(tc, REASON_EFFECT)?;
-    }
-    Ok(())
 }

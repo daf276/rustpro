@@ -33,6 +33,8 @@ registers every `c<code>.rs` and reads its `LISTED_NAMES`, `FIT_MONSTER`, `SUPPO
    build.rs includes them).
    The card command and the diff suites cache the oracle (a hash of each run's stream in `target/oracle-cache`) and
    replay a cached run in the engine alone; `ORACLE_CACHE=off` disables it, `ORACLE_CACHE=<dir>` moves it.
+6. Run `python tools/stock.py --write`: it folds each function that is exactly one of the `crate::stock` bodies into a
+   call of it and reformats those files. Run the card command once more after it.
 
 Never weaken a check (the card's own or another card's) or the harness to get a pass. If a card cannot be ported
 without engine work out of scope, stop and report what is missing.
@@ -252,5 +254,12 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - Comments are rare: the card name, a path left out and why, a mirrored oracle bug, a non-obvious `SUPPORT`.
   One line each. No commented-out code.
 - Minimal code: no copy-pasted blocks; share a helper rather than repeat it.
+- `crates/scripts/src/stock.rs` holds the bodies many scripts write out identically (`exists_target`, `search`,
+  `special_summon_target`, `special_summon`, `special_summon_self`, `draw_target`, `draw`, `destroy_first_target`, the
+  select-and-pay costs, ...). Port the Lua line by line and let `tools/stock.py` fold the exact matches: a function
+  with only constant parameters becomes the setter's argument (`e1.set_operation(duel, stock::draw)`,
+  `stock::special_summon_self::<POS_FACEUP>`), one with a filter keeps its Lua name around the call. Never call a
+  stock function by hand for a Lua function that differs from it by a call, an argument or the order. A new shape
+  goes into `stock.rs` and the tool only with 20 or more exact copies.
 - LF line endings. On Windows a Python script's `open(path, "w")` writes CRLF: pass `newline=""` or edit with the
   edit tools.

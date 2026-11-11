@@ -21,7 +21,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_range(duel, LOCATION_SZONE);
     e2.set_count_limit(duel, 1, ID);
     e2.set_cost(duel, nscost);
-    e2.set_target(duel, nstg);
+    e2.set_target(duel, stock::operation_info_target::<CATEGORY_SUMMON, LOCATION_HAND>);
     e2.set_operation(duel, nsop);
     c.register_effect(duel, e2);
     let e3 = duel.create_effect(c);
@@ -63,14 +63,6 @@ fn nscost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     duel.confirm_cards(1 - tp, g)?;
     duel.shuffle_hand(tp)?;
     duel.set_target_card(g);
-    Ok(false)
-}
-
-fn nstg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    if chk == 0 {
-        return Ok(true);
-    }
-    duel.set_operation_info(0, CATEGORY_SUMMON, None, 1, a.tp, LOCATION_HAND as i32);
     Ok(false)
 }
 

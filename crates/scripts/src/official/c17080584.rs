@@ -42,8 +42,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_hint_timing(duel, 0, TIMING_STANDBY_PHASE | TIMING_MAIN_END | TIMINGS_CHECK_MONSTER_E);
     e2.set_condition(duel, |duel, a| duel.is_turn_player(1 - a.tp));
     e2.set_cost(duel, drawcost);
-    e2.set_target(duel, drawtg);
-    e2.set_operation(duel, drawop);
+    e2.set_target(duel, stock::draw_target::<1>);
+    e2.set_operation(duel, stock::draw);
     c.register_effect(duel, e2);
 }
 
@@ -134,22 +134,4 @@ fn drawcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     duel.remove(c, POS_FACEUP, REASON_COST)?;
     duel.discard_hand(tp, discardable, 1, 1, REASON_COST | REASON_DISCARD)?;
     Ok(false)
-}
-
-fn drawtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_player_can_draw(tp, 1));
-    }
-    duel.set_target_player(tp);
-    duel.set_target_param(1);
-    duel.set_operation_info(0, CATEGORY_DRAW, None, 0, tp, 1);
-    Ok(false)
-}
-
-fn drawop(duel: &mut Duel, _: &Args) -> Script<()> {
-    let p: u8 = duel.get_chain_info(0, CHAININFO_TARGET_PLAYER);
-    let d: u32 = duel.get_chain_info(0, CHAININFO_TARGET_PARAM);
-    duel.draw(p, d, REASON_EFFECT)?;
-    Ok(())
 }

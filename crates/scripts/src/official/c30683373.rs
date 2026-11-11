@@ -14,7 +14,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_property(duel, EFFECT_FLAG_CARD_TARGET);
     e1.set_code(duel, EVENT_FREE_CHAIN);
     e1.set_target(duel, target);
-    e1.set_operation(duel, activate);
+    e1.set_operation(duel, stock::destroy_first_target);
     c.register_effect(duel, e1);
 }
 
@@ -34,13 +34,4 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<b
     let g = duel.select_target(tp, filter, tp, LOCATION_MZONE, LOCATION_MZONE, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_DESTROY, g, 1, 0, 0);
     Ok(false)
-}
-
-fn activate(duel: &mut Duel, a: &Args) -> Script<()> {
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, a.e)
-    {
-        duel.destroy(tc, REASON_EFFECT)?;
-    }
-    Ok(())
 }

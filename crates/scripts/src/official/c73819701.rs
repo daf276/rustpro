@@ -22,7 +22,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_range(duel, LOCATION_HAND);
     e1.set_count_limit(duel, 1, ID);
     e1.set_cost(duel, selfspcost);
-    e1.set_target(duel, selfsptg);
+    e1.set_target(duel, stock::special_summon_self_target);
     e1.set_operation(duel, selfspop);
     c.register_effect(duel, e1);
     let e2a = duel.create_effect(c);
@@ -45,24 +45,7 @@ fn selfspcostfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn selfspcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
-    let tp = a.tp;
-    if chk == 0 {
-        return Ok(duel.is_existing_matching_card(selfspcostfilter, tp, LOCATION_EXTRA, 0, 1, None));
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_TOGRAVE);
-    let g = duel.select_matching_card(tp, selfspcostfilter, tp, LOCATION_EXTRA, 0, 1, 1, None)?;
-    duel.send_to_grave(g, REASON_COST)?;
-    Ok(false)
-}
-
-fn selfsptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    let c = e.get_handler(duel);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, e, 0, tp, false, false));
-    }
-    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, tp, 0);
-    Ok(false)
+    stock::send_to_grave_cost(duel, a, chk, selfspcostfilter, LOCATION_EXTRA)
 }
 
 fn selfspop(duel: &mut Duel, a: &Args) -> Script<()> {
@@ -93,27 +76,13 @@ fn hdgyspfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
 }
 
 fn hdgysptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
-    let (e, tp) = (a.e, a.tp);
-    if chk == 0 {
-        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0
-            && duel.is_existing_matching_card(
-                |c, duel| hdgyspfilter(c, duel, e, tp),
-                tp,
-                LOCATION_HAND | LOCATION_DECK | LOCATION_GRAVE,
-                0,
-                1,
-                None,
-            ));
-    }
-    duel.set_operation_info(
-        0,
-        CATEGORY_SPECIAL_SUMMON,
-        None,
-        1,
-        tp,
-        (LOCATION_HAND | LOCATION_DECK | LOCATION_GRAVE) as i32,
-    );
-    Ok(false)
+    stock::special_summon_target(
+        duel,
+        a,
+        chk,
+        |c, duel| hdgyspfilter(c, duel, a.e, a.tp),
+        LOCATION_HAND | LOCATION_DECK | LOCATION_GRAVE,
+    )
 }
 
 fn hdgyspop(duel: &mut Duel, a: &Args) -> Script<()> {

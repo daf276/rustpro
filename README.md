@@ -85,7 +85,7 @@ Elfnote mirror matches (a YCS-winning deck with Synchro, Xyz and Link play) unde
 | Encode the legal actions, median | 0.4 µs | 0.6 µs |
 | Determinize (resample hidden cards), median | 19.3 µs | 26.8 µs |
 
-The table is from before the performance pass of 2026-11-11 and is re-measured when it ends. Measured against it side by side (both binaries at once on two cores, median of six rounds, 1 thread), master runs 1.24x on the Elfnote mirror (about 276k actions/s) and 1.58x on Normal Monster duels (about 1.11M); built with PGO, 1.56x (about 347k) and 2.22x (about 1.57M). The `sim` profile aborts on panic and the benches use mimalloc (`--features system-allocator` for the system heap); `-C target-cpu=x86-64-v3` adds about 2% on AVX2 machines. For comparison, ocgcore with Lua runs about 10.8k decisions per second per thread on random Advanced decks.
+The table is from before the performance pass of 2026-11-11 and is re-measured when it ends. Measured against it side by side (both binaries at once on two cores, median of six rounds, 1 thread), master (11fd0b2) runs 1.44x on the Elfnote mirror (about 322k actions/s) and 1.61x on Normal Monster duels (about 1.14M); built with PGO, 1.77x (about 395k) and 2.26x (about 1.59M). The benches play through `fiber::Fiber`, which resumes a script function waiting at a prompt in place; a plain `Duel` reruns it from a snapshot instead. The `sim` profile aborts on panic and the benches use mimalloc (`--features system-allocator` for the system heap); `-C target-cpu=x86-64-v3` adds about 2% on AVX2 machines. For comparison, ocgcore with Lua runs about 10.8k decisions per second per thread on random Advanced decks.
 
 ## License
 

@@ -976,9 +976,19 @@ impl CardId {
         duel.reset(self, flag_code(code), RESET_CODE);
     }
 
-    // Only card::get_race, card::get_type and card::get_level read an assumed property so far; the other kinds come with their cards.
+    // Only the card getters of the listed kinds read an assumed property so far; the other kinds come with their cards.
     pub fn assume_property(self, duel: &Duel, assume: u32, value: u64) {
-        if ![ASSUME_RACE, ASSUME_TYPE, ASSUME_LEVEL].contains(&assume) {
+        if ![
+            ASSUME_CODE,
+            ASSUME_TYPE,
+            ASSUME_LEVEL,
+            ASSUME_ATTRIBUTE,
+            ASSUME_RACE,
+            ASSUME_ATTACK,
+            ASSUME_DEFENSE,
+        ]
+        .contains(&assume)
+        {
             unported!(duel);
             return;
         }

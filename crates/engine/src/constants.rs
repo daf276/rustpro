@@ -720,9 +720,13 @@ pub const HINT_NUMBER: u8 = 9;
 pub const ATTRIBUTE_ALL: u32 = 0x7f;
 pub const RACE_ALL: u64 = 0x4000_0000_ffff_ffff;
 pub const EFFECT_CHANGE_SETCODE: u32 = 350;
+pub const ASSUME_CODE: u32 = 1;
 pub const ASSUME_TYPE: u32 = 2;
 pub const ASSUME_LEVEL: u32 = 3;
+pub const ASSUME_ATTRIBUTE: u32 = 5;
 pub const ASSUME_RACE: u32 = 6;
+pub const ASSUME_ATTACK: u32 = 7;
+pub const ASSUME_DEFENSE: u32 = 8;
 
 pub const MSG_TOSS_COIN: u8 = 130;
 pub const MSG_TOSS_DICE: u8 = 131;

@@ -1526,7 +1526,10 @@ impl Duel {
             return;
         };
         for (sequence, &card) in list.iter().enumerate() {
-            self.cards[card].current.sequence = sequence as u32;
+            // A write marks the card for the next script snapshot to copy.
+            if self.cards[card].current.sequence != sequence as u32 {
+                self.cards[card].current.sequence = sequence as u32;
+            }
         }
         if let Some(slot) = self.list_mut(playerid, location) {
             *slot = list;
@@ -2933,7 +2936,7 @@ impl Duel {
             if target.is_status(STATUS_DISABLED) && target.is_status(STATUS_TO_DISABLE) && !target.is_status(STATUS_TO_ENABLE) {
                 self.reset(card, RESET_DISABLE, RESET_EVENT);
             }
-            self.cards[card].set_status(STATUS_TO_ENABLE | STATUS_TO_DISABLE, false);
+            self.cards.set_status(card, STATUS_TO_ENABLE | STATUS_TO_DISABLE, false);
         }
     }
 

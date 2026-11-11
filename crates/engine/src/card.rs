@@ -175,6 +175,14 @@ impl Cards {
         Some(id)
     }
 
+    // Card::set_status for the statuses every adjustment sets again: an unchanged card stays unmarked for sync_from.
+    pub fn set_status(&mut self, card: CardId, status: u32, enabled: bool) {
+        let current = self[card].status;
+        if current != if enabled { current | status } else { current & !status } {
+            self[card].set_status(status, enabled);
+        }
+    }
+
     // Duel.GetCardFromCardID: the core's cardid counts from 1, which its temp_card takes.
     pub fn find_by_card_id(&self, id: u32) -> Option<CardId> {
         let index = u16::try_from(id.checked_sub(1)?)
@@ -1337,9 +1345,8 @@ impl Duel {
         self.immune_effects.retain(|(cached, _)| *cached != card);
         let immune_effects = self.filter_immune_effect(card);
         self.immune_effects.extend(immune_effects.iter().map(|&effect| (card, effect)));
-        let card = &mut self.cards[card];
-        card.set_status(STATUS_FORBIDDEN, forbidden);
-        card.set_status(STATUS_DISABLED, disabled);
+        self.cards.set_status(card, STATUS_FORBIDDEN, forbidden);
+        self.cards.set_status(card, STATUS_DISABLED, disabled);
     }
 
     pub(crate) fn reset(&mut self, card: CardId, id: u32, reset_type: u32) {

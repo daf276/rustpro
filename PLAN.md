@@ -113,10 +113,13 @@ The survey and the item numbers are in `REFACTOR.md`. Behaviour, messages, rando
 Goal of 2026-11-11: the phase 0 target of 1M actions/s per thread on the Elfnote mirror, and beyond if anything allows it. The profile and the ranked list are in the findings (P0).
 - [x] P0. Fresh profile of the refactored engine, counts per action, build experiments and a ranked list
 - [ ] P1. Build defaults for simulation users: PGO as one command, `panic = "abort"` and mimalloc for the sim builds
-- [ ] P2. Effect lookups: no materialised `EffectSet` where the caller only iterates, the registry search, card data inline, `xmaterial_effects` and `filter_immune_effect` answered by what is registered
-- [ ] P3. Idle command: work shared across the procedure conditions of one idle prompt, the tribute release list once per hand card
+- [x] P2. Effect lookups (branch `perf-lookups`, merged): `xmaterial_effects` and `filter_immune_effect` gated by what is registered, the registry bucketed per card and container with one-word entries, an `EffectSet` that holds no list until its first push. Elfnote +7.7%, Normal Monster +26.9% against da52c27. Card data inline measured inside the noise and was dropped
+- [x] P3. Idle command (branch `perf-idle`, merged): tribute counts and Synchro materials computed once per idle prompt while no effect can enter them, `has_code` gates in the cost, summon-limit and summon-target checks. Elfnote +6.4%, Normal Monster +19.9% against da52c27
 - [ ] P4. Processor: Adjust dispatch, large moves (`Chain`, `Unit`), allocations per action
-- [ ] P5. Decide on resumable script functions (snapshot, restore and redo are 13% of apply) and on anything that goes past exact parity
+- [ ] P5. Resumable script functions (snapshot, restore and redo are 13% of apply)
+- [ ] P6. Cheaper clones and determinize for search: shared immutable parts, `clone_from` without allocations (exact)
+- [ ] P7. Legality cached across prompts, reused only while nothing it read was written (exact)
+- [ ] P8. Experiment on branch `rules-timestamps`, not for master until decided: a `fast` engine feature that checks cheapest-first and refreshes effect timestamps only when a condition runs, plus a converter that replays its semantic choice log through the exact engine (giving EDOPro's message stream) and reports how often duels diverge
 
 ## Findings
 

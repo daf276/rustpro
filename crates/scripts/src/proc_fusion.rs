@@ -1,9 +1,4 @@
-// Port of proc_fusion.lua and proc_fusion_spell.lua: the Fusion.AddProc* procedures (Mix and the variants built on it,
-// MixRep, contact fusion) and the Fusion Summon effect (Fusion.CreateSummonEff, SummonEffTG/OP) with their helpers.
-// Material lists given as Lua tables, Fusion.AddProcMixRepUnfix and the effect value a card may set on the procedure
-// (matcheck) of anything but AddProcMix have no caller in the TCG pool. The paths behind EFFECT_FUSION_MAT_RESTRICTION,
-// EFFECT_CHAIN_MATERIAL and unofficial effect 511004008 are `unported!` checks; Fusion.SummonEffect and the metatable
-// fields (material, material_count, contactfus) are read only by cards that are not ported.
+// Port of proc_fusion.lua and proc_fusion_spell.lua; AddProcMixRepUnfix and matcheck outside AddProcMix have no caller.
 use std::cell::Cell;
 
 use engine::{Args, CardId, CardSet, ConditionFn, Duel, EffectId, FusionCheck, FusionMaterialFn, Operation, OperationFn, Script, Value};
@@ -14,18 +9,15 @@ use crate::utility::{CardUtility, aux};
 
 pub struct Fusion;
 
-// f(c, fc, sumtype, tp).
 pub type MaterialFilter = fn(CardId, &Duel, CardId, u64, u8) -> bool;
 
-// f(c, fc, sumtype, tp, sub, mg, sg) for a filter that reads sg, the materials chosen with c (nil in the first pass, as
-// the Lua's globals are); sub and mg have no caller.
+// A filter that reads sg, the materials chosen with c (nil in the first pass, as the Lua's globals are).
 pub type GroupMaterialFilter = fn(CardId, &Duel, CardId, u64, u8, Option<CardSet>) -> bool;
 
-// f(c, fc, sumtype, tp, sub, mg, sg, contact) for a filter that reads contact, whether this is a contact fusion.
+// A filter that reads contact, whether this is a contact fusion.
 pub type ContactMaterialFilter = fn(CardId, &Duel, CardId, u64, u8, bool) -> bool;
 
-// matcheck(c, fc, sub, sub2, mg, sg, tp, contact, sumtype), the value a card sets on the effect AddProcMix returns, without the
-// arguments nothing reads.
+// matcheck(c, fc, tp, contact, sumtype), the value a card sets on the effect AddProcMix returns.
 pub type MatCheck = fn(&Duel, CardId, CardId, u8, bool, u64) -> bool;
 
 // preselect(e, tc): false stops the summon.
@@ -41,8 +33,7 @@ pub enum FusionMaterial {
     Table(&'static [FusionMaterial]),
 }
 
-// Fusion.AddProcMix(c, sub, insf, ...) and the procedures that call it (AddProcMixN, AddProcCode2, ...), with each
-// material written out.
+// Fusion.AddProcMix and the procedures that call it (AddProcMixN, AddProcCode2, ...), with each material written out.
 pub trait FusionMix {
     const SUB: bool;
     const INSF: bool;
@@ -50,7 +41,6 @@ pub trait FusionMix {
     const MATCHECK: Option<MatCheck> = None;
 }
 
-// Fusion.AddProcMixRep(c, sub, insf, fun1, minc, maxc, ...).
 pub trait FusionMixRep {
     const SUB: bool;
     const INSF: bool;
@@ -60,8 +50,7 @@ pub trait FusionMixRep {
     const MATERIALS: &'static [FusionMaterial] = &[];
 }
 
-// Fusion.AddContactProc(c, group, op, sumcon, condition, sumtype, desc, cannotBeLizard): sumcon None for nil or false,
-// Value::Int(0) for true. summonToPlayer and summonToZones have no caller among the ported cards.
+// Fusion.AddContactProc: sumcon None for nil or false, Value::Int(0) for true; summonToPlayer and summonToZones unused.
 pub trait ContactFusion {
     const SUMCON: Option<Value> = None;
     const CONDITION: Option<fn(&Duel, u8) -> bool> = None;
@@ -126,8 +115,7 @@ const EFFECT_OPPONENT_SELECTS: u32 = 511004008;
 const CHECK_EXACT: u64 = 4;
 const CHECK_MIN: u64 = 5;
 const CHECK_MAX: u64 = 6;
-// The field id of proc_fusion_spell's global EFFECT_EXTRA_FUSION_MATERIAL as script state, and Fusion.ExtraGroup as a
-// script group.
+// The field id of proc_fusion_spell's global EFFECT_EXTRA_FUSION_MATERIAL, and Fusion.ExtraGroup as a script group.
 const GEFF: u64 = 8;
 const EXTRA_GROUP: u64 = 9;
 // The chkf upvalue of a SummonEffTG or SummonEffOP closure, per card that created it; SET marks a value.
@@ -142,6 +130,13 @@ fn check(duel: &Duel, key: u64) -> Option<usize> {
 
 fn set_check(duel: &mut Duel, key: u64, count: Option<usize>) {
     duel.set_script_state(key, count.map_or(0, |count| count as i64));
+}
+
+fn set_checks(duel: &mut Duel, counts: [Option<usize>; 3]) {
+    [CHECK_EXACT, CHECK_MIN, CHECK_MAX]
+        .into_iter()
+        .zip(counts)
+        .for_each(|(key, count)| set_check(duel, key, count));
 }
 
 fn check_additional(duel: &Duel, tp: u8, sg: CardSet, fc: CardId) -> bool {
@@ -189,8 +184,7 @@ impl FusionMaterial {
     }
 }
 
-// What the procedures read from chkfnf and the procedure: the Fusion Monster and its controller, the player whose field
-// must fit it, the forced zones, whether this is a contact fusion and the summon type the materials are checked for.
+// What the procedures read from chkfnf and the procedure.
 #[derive(Clone, Copy)]
 struct Proc {
     fc: CardId,
@@ -252,6 +246,26 @@ impl Proc {
             1,
             None,
         )
+    }
+
+    fn must_materials(
+        self,
+        duel: &Duel,
+        mg: CardSet,
+        mut mustg: CardSet,
+        gc: Option<CardSet>,
+        filter: impl Fn(CardId, &Duel) -> bool,
+    ) -> Option<(CardSet, CardSet)> {
+        if !mg.includes(mustg) || self.cannot_be_material(duel, mustg) {
+            return None;
+        }
+        if let Some(gc) = gc {
+            if self.cannot_be_material(duel, gc) || gc.is_exists(duel, |mc, duel| !filter(mc, duel), 1, None) {
+                return None;
+            }
+            mustg.merge(gc);
+        }
+        Some((mg.union(mustg), mustg))
     }
 
     // The field check of CheckMixGoal (`mzone`) and of the MixRep goals, which ask the Extra Deck count only.
@@ -374,21 +388,14 @@ impl Fusion {
         let (s, sub) = Proc::new(duel, a.e, a.chkf, M::SUB);
         let funs = M::MATERIALS;
         let filter = |mc, duel: &Duel| s.condition_filter(duel, mc, sub, M::MATCHECK, funs.iter().copied());
-        let mut mg = g.filter(duel, filter, Some(c.into()));
+        let mg = g.filter(duel, filter, Some(c.into()));
         let mut mustg = aux::get_must_be_material_group(duel, tp, Some(g), tp, Some(c), Some(mg), REASON_FUSION);
         if s.contact {
             mustg.clear();
         }
-        if !mg.includes(mustg) || s.cannot_be_material(duel, mustg) {
+        let Some((mg, mustg)) = s.must_materials(duel, mg, mustg, a.must, filter) else {
             return false;
-        }
-        if let Some(gc) = a.must {
-            if s.cannot_be_material(duel, gc) || gc.is_exists(duel, |mc, duel| !filter(mc, duel), 1, None) {
-                return false;
-            }
-            mustg.merge(gc);
-        }
-        mg.merge(mustg);
+        };
         let sg = CardSet::default();
         mg.is_exists(
             duel,
@@ -504,16 +511,14 @@ impl Fusion {
     }
 }
 
-// Which of the fixed materials of Fusion.AddProcMixRep (FusionMixRep::MATERIALS) are still to fill, by index: the Lua's
-// varargs after table.remove, in their order.
+// The bits of FusionMixRep::MATERIALS still to fill: the Lua's varargs after table.remove, in their order.
 type Rest = u8;
 
 fn rest_iter<M: FusionMixRep>(rest: Rest) -> impl Iterator<Item = (usize, FusionMaterial)> {
     M::MATERIALS.iter().copied().enumerate().filter(move |&(i, _)| rest & (1 << i) != 0)
 }
 
-// The groups the MixRep selection checks share: the procedure, the material pool, the selection and the materials it
-// must use.
+// The groups the MixRep selection checks share.
 #[derive(Clone, Copy)]
 struct Search {
     proc: Proc,
@@ -522,8 +527,7 @@ struct Search {
     mustg: CardSet,
 }
 
-// The state the MixRep recursion carries: whether substitutes may still be used (sub and sub2), the counts of fun1
-// still possible, and the fixed materials still to fill.
+// The state the MixRep recursion carries: substitutes still allowed, fun1 counts still possible, fixed materials left.
 #[derive(Clone, Copy)]
 struct Rep {
     sub: bool,
@@ -589,17 +593,10 @@ impl Fusion {
             mustg.clear();
         }
         let filter = |mc, duel: &Duel| s.condition_filter(duel, mc, sub, None, Fusion::rep_funs::<M>());
-        let mut mg = g.filter(duel, filter, Some(c.into()));
-        if !mg.includes(mustg) || s.cannot_be_material(duel, mustg) {
+        let mg = g.filter(duel, filter, Some(c.into()));
+        let Some((mg, mustg)) = s.must_materials(duel, mg, mustg, a.must, filter) else {
             return false;
-        }
-        if let Some(gc) = a.must {
-            if s.cannot_be_material(duel, gc) || gc.is_exists(duel, |mc, duel| !filter(mc, duel), 1, None) {
-                return false;
-            }
-            mustg.merge(gc);
-        }
-        mg.merge(mustg);
+        };
         let search = Search {
             proc: s,
             mg,
@@ -657,8 +654,7 @@ impl Fusion {
         Ok(())
     }
 
-    // Fusion.CheckMixRep: whether sg fills the fixed materials still to fill and fun1 with the others; g holds the cards
-    // given to fixed materials so far.
+    // Fusion.CheckMixRep; g holds the cards given to fixed materials so far.
     fn check_mix_rep<M: FusionMixRep>(duel: &Duel, sg: CardSet, g: CardSet, s: Proc, rep: Rep) -> bool {
         if let Some((i, fun2)) = rest_iter::<M>(rep.rest).next() {
             let filter = |c: CardId, duel: &Duel| {
@@ -884,8 +880,7 @@ fn set_extra_group(duel: &mut Duel, group: Option<CardSet>) {
     duel.set_script_group(EXTRA_GROUP, group);
 }
 
-// GetExtraMatEff: the first EFFECT_EXTRA_FUSION_MATERIAL effect on c but the global one, with summon_card the first
-// whose value also accepts it.
+// GetExtraMatEff: the first EFFECT_EXTRA_FUSION_MATERIAL effect on c but the global one whose value accepts summon_card.
 fn get_extra_mat_eff(duel: &Duel, c: CardId, summon_card: Option<CardId>) -> Option<EffectId> {
     let geff = duel.get_script_state(GEFF);
     c.is_has_effects(duel, EFFECT_EXTRA_FUSION_MATERIAL).into_iter().find(|&eff| {
@@ -902,8 +897,7 @@ fn extra_mat_eff(c: CardId, duel: &Duel) -> bool {
     get_extra_mat_eff(duel, c, None).is_some()
 }
 
-// ExtraMatOPTCheck: once the count of the EFFECT_EXTRA_FUSION_MATERIAL effect is used up, its materials leave mg1 and
-// efmg.
+// ExtraMatOPTCheck: once the extra material effect's count is used up, its materials leave mg1 and efmg.
 fn extra_mat_opt_check<P: FusionSummonParams>(duel: &Duel, e: EffectId, tp: u8, mg1: &mut CardSet, efmg: &mut CardSet) {
     let extra_feff_mg = mg1.filter(duel, extra_mat_eff, None);
     let Some(first) = extra_feff_mg.get_first() else {
@@ -959,9 +953,7 @@ impl Fusion {
         duel.set_script_state(key, 0);
     }
 
-    // The closures SummonEffTG and SummonEffOP return assign their chkf upvalue on every call (chkf|tp), so a closure
-    // keeps the bit of every player who used it; Effect.Clone shares the closure, so it is kept per card that created
-    // it.
+    // The SummonEffTG/OP closures keep chkf|tp of every caller; Effect.Clone shares the closure, so it is kept per creator.
     fn upvalue_chkf<P: FusionSummonParams>(duel: &mut Duel, e: EffectId, tp: u8, op: bool, add: u64) -> u64 {
         let key = Fusion::upvalue_key(duel, e, op);
         let stored = duel.get_script_state(key);
@@ -978,8 +970,7 @@ impl Fusion {
         chkf
     }
 
-    // Fusion.SummonEffFilter: the materials of efmg whose effect accepts c join mg for good, since the Lua merges them
-    // into the group every call shares.
+    // Fusion.SummonEffFilter: efmg materials accepting c join mg for good, as the Lua merges them into the shared group.
     fn summon_eff_filter<P: FusionSummonParams>(
         c: CardId,
         duel: &Duel,
@@ -1001,9 +992,7 @@ impl Fusion {
             && c.check_fusion_material(duel, Some(mg.get()), gc, chkf)
     }
 
-    // The materials the target and the operation start from: mg1 after matfilter with the extra materials merged, the
-    // materials with an EFFECT_EXTRA_FUSION_MATERIAL effect (efmg), the extra materials, and the additional check
-    // extrafil returns. Fusion.ExtraGroup becomes the extra materials `extra_group` keeps.
+    // The materials the target and the operation start from; Fusion.ExtraGroup becomes what `extra_group` keeps.
     fn summon_materials<P: FusionSummonParams>(
         duel: &mut Duel,
         e: EffectId,
@@ -1047,9 +1036,7 @@ impl Fusion {
             duel.set_fusion_check_additional(check_addition);
             mg1.keep_matching(duel, can_be_material, None);
             mg1.keep_matching(duel, not_immune, None);
-            set_check(duel, CHECK_EXACT, P::EXACTCOUNT);
-            set_check(duel, CHECK_MIN, P::MINCOUNT);
-            set_check(duel, CHECK_MAX, P::MAXCOUNT);
+            set_checks(duel, [P::EXACTCOUNT, P::MINCOUNT, P::MAXCOUNT]);
             extra_mat_opt_check::<P>(duel, e, tp, &mut mg1, &mut efmg);
             let mg = Cell::new(mg1);
             let filter = |c, duel: &Duel| Fusion::summon_eff_filter::<P>(c, duel, e, tp, (&mg, efmg), gc, chkf, value as u32, sumlimit);
@@ -1059,9 +1046,7 @@ impl Fusion {
             if !res && !notfusion {
                 unported!(duel, !duel.get_player_effect(tp, EFFECT_CHAIN_MATERIAL).is_empty());
             }
-            set_check(duel, CHECK_EXACT, None);
-            set_check(duel, CHECK_MIN, None);
-            set_check(duel, CHECK_MAX, None);
+            set_checks(duel, [None; 3]);
             return Ok(res);
         }
         duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, tp, P::LOCATION as i32);
@@ -1094,9 +1079,7 @@ impl Fusion {
             set_extra_group(duel, None);
             return Ok(());
         }
-        set_check(duel, CHECK_EXACT, P::EXACTCOUNT);
-        set_check(duel, CHECK_MIN, P::MINCOUNT);
-        set_check(duel, CHECK_MAX, P::MAXCOUNT);
+        set_checks(duel, [P::EXACTCOUNT, P::MINCOUNT, P::MAXCOUNT]);
         duel.set_fusion_check_additional(check_addition);
         extra_mat_opt_check::<P>(duel, e, tp, &mut mg1, &mut efmg);
         let mg = Cell::new(mg1);

@@ -47,9 +47,7 @@ impl ProgressiveBuffer {
     }
 }
 
-// The message trace in the framing of OCG_DuelGetMessage: each message prefixed by its u32 length.
-// `count` numbers every message written, `mute` skips the next ones (a script rerun's messages that its earlier attempt
-// already wrote). Cells, so that a check on a copy of the duel can hand back what it wrote ([Duel::check_mut]).
+// The messages framed as OCG_DuelGetMessage does; `mute` skips what a rerun already wrote; cells for [Duel::check_mut].
 #[derive(Debug, Clone, Default)]
 pub struct Trace {
     pub buffer: RefCell<Option<Vec<u8>>>,

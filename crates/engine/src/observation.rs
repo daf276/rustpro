@@ -1,6 +1,4 @@
-// What a player may know of a duel, and duels resampled to agree with it. The visibility rules mirror what EDOPro's
-// server sends each player: card::get_infos's QUERY_IS_PUBLIC to both, and to the controller its cards outside the Deck.
-// Like the core, they keep no memory: a card confirmed earlier is known only while something keeps it public.
+// What a player may know of a duel, as EDOPro's server shows it (no memory of earlier confirms), and duels resampled to agree.
 use std::cell::Cell;
 use std::sync::{Arc, Mutex};
 
@@ -110,8 +108,7 @@ impl Kind {
     }
 }
 
-// Hidden cards taking the places of others (each card of `assigned` the place of the card of `cards` at its index), then
-// hidden cards taking other codes.
+// Hidden cards taking the places of others (`assigned[i]` the place of `cards[i]`), then hidden cards taking other codes.
 #[derive(Debug)]
 struct Changes {
     cards: Vec<CardId>,
@@ -137,8 +134,7 @@ fn same_place(a: &CardState, b: &CardState) -> bool {
     (a.controler, a.location, a.sequence, a.position) == (b.controler, b.location, b.sequence, b.position)
 }
 
-// Receives an observation piece by piece, in the order of [Observation]'s lists, each chain link (its targets left
-// out) followed by its targets: [Duel::observe_into] feeds one without building the lists.
+// Receives an observation piece by piece in the order of [Observation]'s lists, each chain link (without) then its targets.
 pub trait ObservationSink {
     fn card(&mut self, card: SeenCard);
     fn link(&mut self, link: &SeenLink);
@@ -195,9 +191,7 @@ impl Duel {
         self.unchanged(|| self.observe_now(player, sink))
     }
 
-    // Runs `read`, then puts back the effect ids and statuses and the field id counter its effect lookups changed in
-    // this duel: a condition becoming available takes a new id, which orders later lookups. Script state a condition
-    // writes (Skyscraper's) goes back too.
+    // Runs `read`, then puts back the effect ids, statuses, field id counter and script state its lookups changed.
     fn unchanged<T>(&self, read: impl FnOnce() -> T) -> T {
         let mut saved = SAVED.take();
         self.effects.save_cells(&mut saved);
@@ -244,8 +238,7 @@ impl Duel {
         }
     }
 
-    // Every card in a location: per player its Deck, hand, Monster Zones (an Xyz Monster followed by its materials),
-    // Spell & Trap Zones, GY, banishment and Extra Deck, each in sequence order.
+    // Per player: Deck, hand, Monster Zones (each Xyz Monster then its materials), S/T Zones, GY, banished and Extra Deck.
     pub(crate) fn located_cards(&self) -> List<CardId, MAX_CARDS> {
         let mut cards = List::default();
         for p in 0..2 {
@@ -269,8 +262,7 @@ impl Duel {
         cards
     }
 
-    // card::get_infos's QUERY_IS_PUBLIC, or the player controls the card outside the Deck. An Xyz material shows with
-    // its monster, as QUERY_OVERLAY_CARD lists the materials' codes.
+    // QUERY_IS_PUBLIC, or the player controls the card outside the Deck; a material shows with its monster (QUERY_OVERLAY_CARD).
     fn is_visible(&self, card: CardId, player: u8) -> bool {
         let target = &self.cards[card];
         if let Some(xyz) = target.overlay_target {
@@ -327,14 +319,10 @@ impl Duel {
         };
         let choice = |action: Action| {
             let (card, description) = match action {
-                Action::IdleCommand(IdleCommand::Summon(index)) => (pick(&core.summonable_cards, index), 0),
-                Action::IdleCommand(IdleCommand::SpecialSummon(index)) => (pick(&core.spsummonable_cards, index), 0),
-                Action::IdleCommand(IdleCommand::Reposition(index)) => (pick(&core.repositionable_cards, index), 0),
-                Action::IdleCommand(IdleCommand::MonsterSet(index)) => (pick(&core.msetable_cards, index), 0),
-                Action::IdleCommand(IdleCommand::SpellSet(index)) => (pick(&core.ssetable_cards, index), 0),
                 Action::IdleCommand(IdleCommand::Activate(index))
                 | Action::BattleCommand(BattleCommand::Activate(index))
                 | Action::Chain(Some(index)) => activation(index),
+                Action::IdleCommand(command) => (self.idle_card(command).map(|card| self.seen(card, player, true)), 0),
                 Action::BattleCommand(BattleCommand::Attack(index)) => (pick(&core.attackable_cards, index), 0),
                 Action::Card(index) if matches!(prompt, Prompt::UnselectCard { .. }) => (unselect(index), 0),
                 Action::Card(index) => (pick(&core.select_cards, index), 0),
@@ -353,8 +341,7 @@ impl Duel {
         actions
     }
 
-    // [Duel::legal_actions_into] as a policy chooses among them, which [Duel::observe]'s choices list; see
-    // [Duel::extend_policy_actions].
+    // [Duel::legal_actions_into] as a policy chooses among them, as [Duel::observe]'s choices list them.
     pub fn policy_actions_into(&self, actions: &mut Vec<Action>) {
         actions.clear();
         match self.prompt() {
@@ -363,9 +350,7 @@ impl Duel {
         }
     }
 
-    // The legal actions, a card-name declaration offering only the codes its player knows (of the cards it owns and the
-    // opponent's it sees) in database order, or else the first declarable ones, up to [MAX_DECLARED_CODES]; any
-    // declarable code stays legal.
+    // A card-name declaration offers only the codes its player knows, else the first declarable ones, up to [MAX_DECLARED_CODES].
     fn extend_policy_actions(&self, prompt: Prompt, actions: &mut impl Extend<Action>) {
         let Prompt::AnnounceCard { player } = prompt else {
             return self.extend_legal_actions(actions);
@@ -388,15 +373,7 @@ impl Duel {
         actions.extend(known_declarable.chain(fallback).take(MAX_DECLARED_CODES).map(Action::Code));
     }
 
-    // A duel agreeing with what `player` may know of this one ([Duel::observe]), its hidden cards resampled: the
-    // opponent's hand, Deck, face-down cards and face-down Extra Deck from `pool` (its Main and Extra Deck as known or
-    // assumed) less the opponent's cards the player knows, the player's own Deck reshuffled, and the duel's RNG reseeded.
-    // Hidden cards that something in the duel refers to as the cards they are keep their place and code
-    // ([Duel::referenced_cards]), and a face-down card keeps whether it is an Extra Deck card.
-    // While a function waits midway for an answer, its snapshot is resampled instead (the cards it has moved since
-    // keep theirs) and the function reruns to its prompt, as an answer would rerun it; a sample whose rerun shows the
-    // player anything else, or stops at another prompt or one without actions (the opponent's earlier answers can lead
-    // elsewhere in it), is drawn again, up to [RERUN_ATTEMPTS] times. Its RNG stays, as the rerun replays it.
+    // A duel agreeing with what `player` sees, its hidden cards resampled from `pool` (in a waiting function's snapshot, rerun).
     pub fn determinize(&self, player: u8, rng: &mut Xoshiro256StarStar, pool: &Deck) -> Result<Duel, DeterminizeError> {
         if player > 1 {
             return Err(DeterminizeError::Player(player));
@@ -436,8 +413,7 @@ impl Duel {
         Err(DeterminizeError::Rerun)
     }
 
-    // What a function waiting midway for an answer does once answered, without the answer: it reruns from its snapshot
-    // with the answers so far, up to the prompt that waits, whose picks so far are kept.
+    // Reruns a waiting function from its snapshot up to its prompt, without a new answer, keeping the picks so far.
     fn rerun_to_prompt(&mut self) {
         self.core.units.pop();
         let picks = std::mem::take(&mut self.returns);
@@ -449,9 +425,7 @@ impl Duel {
         self.returns = picks;
     }
 
-    // The changes that resample what `player` cannot see (see [Duel::determinize]): the codes the opponent's hidden
-    // cards are to show, drawn for the zones that restrict them first, then the hand and Deck, and a new order of the
-    // player's own Deck.
+    // Draws the opponent's hidden codes, restricted zones first, then hand and Deck, and a new order of the player's own Deck.
     fn sample(
         &self,
         player: u8,
@@ -545,8 +519,7 @@ impl Duel {
         }
     }
 
-    // The cards to put in the places of `cards` so that they show the `targets` codes, and the cards to recode: a card
-    // of the right code trades places where one is left, which keeps its effects as they are.
+    // The cards to place on `cards` to show the `targets` codes, preferring a card of the right code, and those to recode.
     fn arrange(&self, cards: &[CardId], targets: &[u32]) -> (Vec<CardId>, Vec<(CardId, u32)>) {
         let mut free: Vec<(u32, Option<CardId>)> = cards.iter().map(|&card| (self.cards[card].data.code, Some(card))).collect();
         free.sort_unstable();
@@ -576,9 +549,7 @@ impl Duel {
         }
     }
 
-    // Each card of `assigned` takes the place of the card of `cards` at its index: its location, position, status and
-    // the rest of what the place holds, with its field effects leaving and joining the field when the location changes.
-    // Pending events then name the card in the place of the one they named, as a drawn card stands for whatever was drawn.
+    // `assigned[i]` takes over everything `cards[i]`'s place holds, field effects and pending events included.
     fn rearrange(&mut self, cards: &[CardId], assigned: &[CardId]) {
         let places: Vec<Card> = cards.iter().map(|&card| self.cards[card]).collect();
         let moving: Vec<bool> = places
@@ -666,8 +637,7 @@ impl Duel {
             .for_each(|chain| remap(&mut chain.evt));
     }
 
-    // card::replace_effect for Card.Recreate, without its traces: the card drops the effects its script registered and
-    // its new code's script registers them.
+    // card::replace_effect for Card.Recreate, without its messages.
     fn recode(&mut self, card: CardId, data: &'static CardData) {
         for effect in self.card_effects(card) {
             if self.effects[effect].is_flag(EFFECT_FLAG_INITIAL) {
@@ -678,8 +648,7 @@ impl Duel {
         self.register_card(card);
     }
 
-    // The cards something refers to as the cards they are, depending on their code or effects: the prompt's cards, the
-    // chains' cards and targets, relations, materials, counters, attack announcements and the groups scripts keep.
+    // The cards something in the duel refers to as the cards they are, so they keep their place and code when resampled.
     fn referenced_cards(&self) -> CardSet {
         let core = &self.core;
         let prompt = self.prompt();
@@ -712,13 +681,7 @@ impl Duel {
             cards.union(handler).union(chain.target_cards.unwrap_or_default())
         });
         let lists: [&[CardId]; 5] = match prompt {
-            Some(Prompt::IdleCommand { .. }) => [
-                &core.summonable_cards,
-                &core.spsummonable_cards,
-                &core.repositionable_cards,
-                &core.msetable_cards,
-                &core.ssetable_cards,
-            ],
+            Some(Prompt::IdleCommand { .. }) => self.idle_lists(),
             Some(Prompt::BattleCommand { .. }) => [&core.attackable_cards, &[], &[], &[], &[]],
             Some(Prompt::Card { .. } | Prompt::Tribute { .. } | Prompt::Sum { .. } | Prompt::UnselectCard { .. } | Prompt::Sort { .. }) => {
                 cards = cards.union(core.must_select_cards.get());

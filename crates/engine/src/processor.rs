@@ -1,5 +1,4 @@
-// Ports of processor_unit.h, processor_visit.cpp and processor.cpp. Steps keep the core's numbering; the chain units
-// are in chain.rs.
+// Ports of processor_unit.h, processor_visit.cpp and processor.cpp with the core's step numbers; chain units are in chain.rs.
 use crate::card::{Card, CardId, CardSet, LocInfo, SendtoParam};
 use crate::chain::{AddChain, Execute, ExecuteKind, SolveChain, SolveContinuous};
 use crate::constants::*;
@@ -52,17 +51,17 @@ pub struct Startup {
     pub turn: Turn,
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct SelectBattleCmd {
-    pub step: u16,
-    pub playerid: u8,
+macro_rules! player_units {
+    ($($name:ident),*) => {$(
+        #[derive(Debug, Clone, Default)]
+        pub struct $name {
+            pub step: u16,
+            pub playerid: u8,
+        }
+    )*};
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct SelectIdleCmd {
-    pub step: u16,
-    pub playerid: u8,
-}
+player_units! { SelectBattleCmd, SelectIdleCmd, SelectOption, AnnounceNumber, AnnounceCard, SortChain }
 
 #[derive(Debug, Clone, Default)]
 pub struct SelectEffectYesNo {
@@ -77,18 +76,6 @@ pub struct SelectYesNo {
     pub step: u16,
     pub playerid: u8,
     pub description: u64,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct SelectOption {
-    pub step: u16,
-    pub playerid: u8,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct AnnounceNumber {
-    pub step: u16,
-    pub playerid: u8,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -108,22 +95,10 @@ pub struct AnnounceAttribute {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct AnnounceCard {
-    pub step: u16,
-    pub playerid: u8,
-}
-
-#[derive(Debug, Clone, Default)]
 pub struct SortCard {
     pub step: u16,
     pub playerid: u8,
     pub is_chain: bool,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct SortChain {
-    pub step: u16,
-    pub playerid: u8,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -243,8 +218,6 @@ pub struct PhaseEvent {
     pub priority_passed: bool,
 }
 
-// `forced_attack` (ForcedBattle, from Duel.ForceAttack), the damage change effect and must_attack_map
-// (EFFECT_MUST_ATTACK_MONSTER) come with the cards that use them.
 // Duel.CalculateDamage: the damage step of one attacker against one target, run apart from the Battle Phase's attack.
 #[derive(Debug, Clone, Default)]
 pub struct DamageStep {
@@ -256,6 +229,7 @@ pub struct DamageStep {
     pub cards_destroyed_by_battle: Option<CardSet>,
 }
 
+// `forced_attack` (Duel.ForceAttack), the damage change effect and must_attack_map come with the cards that use them.
 #[derive(Debug, Clone, Default)]
 pub struct BattleCommand {
     pub step: u16,
@@ -277,84 +251,27 @@ pub struct RefreshRelay {
     pub step: u16,
 }
 
-#[derive(Debug, Clone)]
-pub enum Unit {
-    Adjust(Adjust),
-    Turn(Turn),
-    RefreshLoc(RefreshLoc),
-    Startup(Startup),
-    SelectBattleCmd(SelectBattleCmd),
-    SelectIdleCmd(SelectIdleCmd),
-    SelectEffectYesNo(SelectEffectYesNo),
-    SelectYesNo(SelectYesNo),
-    SelectOption(SelectOption),
-    AnnounceNumber(AnnounceNumber),
-    AnnounceRace(AnnounceRace),
-    AnnounceAttribute(AnnounceAttribute),
-    AnnounceCard(AnnounceCard),
-    SortCard(SortCard),
-    SortChain(SortChain),
-    SortDeck(SortDeck),
-    SelectCard(SelectCard),
-    SelectUnselectCard(SelectUnselectCard),
-    SelectCounter(SelectCounter),
-    SelectSum(SelectSum),
-    SelectChain(SelectChain),
-    SelectPlace(SelectPlace),
-    SelectPosition(SelectPosition),
-    SelectTributeP(SelectTributeP),
-    SelectTribute(SelectTribute),
-    QuickEffect(QuickEffect),
-    IdleCommand(IdleCommand),
-    PhaseEvent(PhaseEvent),
-    PointEvent(PointEvent),
-    BattleCommand(BattleCommand),
-    DamageStep(DamageStep),
-    Destroy(Destroy),
-    DestroyReplace(DestroyReplace),
-    OperationReplace(OperationReplace),
-    Release(Release),
-    SendTo(SendTo),
-    MoveToField(MoveToField),
-    ChangePos(ChangePos),
-    SummonRule(SummonRule),
-    FlipSummon(FlipSummon),
-    MonsterSet(MonsterSet),
-    SpellSet(SpellSet),
-    SpSummon(SpSummon),
-    SpSummonStep(SpSummonStep),
-    SpSummonRule(SpSummonRule),
-    SpellSetGroup(SpellSetGroup),
-    RemoveCounter(RemoveCounter),
-    RemoveOverlay(RemoveOverlay),
-    XyzOverlay(XyzOverlay),
-    Draw(Draw),
-    DiscardDeck(DiscardDeck),
-    Equip(Equip),
-    GetControl(GetControl),
-    SwapControl(SwapControl),
-    TrapMonsterAdjust(TrapMonsterAdjust),
-    SelfDestroyUnique(SelfDestroyUnique),
-    SelfDestroy(SelfDestroy),
-    TossCoin(TossCoin),
-    TossDice(TossDice),
-    Damage(Damage),
-    Recover(Recover),
-    PayLpCost(PayLpCost),
-    Execute(Execute),
-    AddChain(AddChain),
-    SolveChain(SolveChain),
-    SolveContinuous(SolveContinuous),
-    RefreshRelay(RefreshRelay),
-}
-
-// A unit's step counter, which `run_steps` advances.
 trait Steps {
     fn step(&mut self) -> &mut u16;
 }
 
 macro_rules! units {
-    ($($name:ident),*) => {
+    (@prompt) => { false };
+    (@prompt prompt) => { true };
+    ($($name:ident => $process:ident $($prompt:ident)?),* $(,)?) => {
+        #[derive(Debug, Clone)]
+        pub enum Unit {
+            $($name($name),)*
+        }
+
+        impl Unit {
+            pub(crate) fn step(&self) -> u16 {
+                match self {
+                    $(Self::$name(arg) => arg.step,)*
+                }
+            }
+        }
+
         $(impl From<$name> for Unit {
             fn from(unit: $name) -> Self {
                 Unit::$name(unit)
@@ -366,86 +283,94 @@ macro_rules! units {
                 &mut self.step
             }
         })*
+
+        impl Duel {
+            #[inline(always)]
+            fn run_unit(&mut self, unit: &mut Unit) -> (bool, bool) {
+                match unit {
+                    $(Unit::$name(arg) => self.run_steps(arg, Self::$process, units!(@prompt $($prompt)?)),)*
+                }
+            }
+        }
     };
 }
 
-units!(
-    Adjust,
-    Turn,
-    RefreshLoc,
-    Startup,
-    SelectBattleCmd,
-    SelectIdleCmd,
-    SelectEffectYesNo,
-    SelectYesNo,
-    SelectOption,
-    AnnounceNumber,
-    AnnounceRace,
-    AnnounceAttribute,
-    AnnounceCard,
-    SortCard,
-    SortChain,
-    SortDeck,
-    SelectCard,
-    SelectUnselectCard,
-    SelectCounter,
-    SelectSum,
-    SelectChain,
-    SelectPlace,
-    SelectPosition,
-    SelectTributeP,
-    SelectTribute,
-    QuickEffect,
-    IdleCommand,
-    PhaseEvent,
-    PointEvent,
-    BattleCommand,
-    DamageStep,
-    Destroy,
-    DestroyReplace,
-    OperationReplace,
-    Release,
-    SendTo,
-    MoveToField,
-    ChangePos,
-    SummonRule,
-    FlipSummon,
-    MonsterSet,
-    SpellSet,
-    SpSummon,
-    SpSummonStep,
-    SpSummonRule,
-    SpellSetGroup,
-    RemoveCounter,
-    RemoveOverlay,
-    XyzOverlay,
-    Draw,
-    DiscardDeck,
-    Equip,
-    GetControl,
-    SwapControl,
-    TrapMonsterAdjust,
-    SelfDestroyUnique,
-    SelfDestroy,
-    TossCoin,
-    TossDice,
-    Damage,
-    Recover,
-    PayLpCost,
-    Execute,
-    AddChain,
-    SolveChain,
-    SolveContinuous,
-    RefreshRelay
-);
+units! {
+    Adjust => process_adjust,
+    Turn => process_turn,
+    RefreshLoc => process_refresh_loc,
+    Startup => process_startup,
+    SelectBattleCmd => process_select_battle_cmd prompt,
+    SelectIdleCmd => process_select_idle_cmd prompt,
+    SelectEffectYesNo => process_select_effect_yes_no prompt,
+    SelectYesNo => process_select_yes_no prompt,
+    SelectOption => process_select_option prompt,
+    AnnounceNumber => process_announce_number prompt,
+    AnnounceRace => process_announce_race prompt,
+    AnnounceAttribute => process_announce_attribute prompt,
+    AnnounceCard => process_announce_card prompt,
+    SortCard => process_sort_card prompt,
+    SortChain => process_sort_chain,
+    SortDeck => process_sort_deck,
+    SelectCard => process_select_card prompt,
+    SelectUnselectCard => process_select_unselect_card prompt,
+    SelectCounter => process_select_counter prompt,
+    SelectSum => process_select_sum prompt,
+    SelectChain => process_select_chain prompt,
+    SelectPlace => process_select_place prompt,
+    SelectPosition => process_select_position prompt,
+    SelectTributeP => process_select_tribute_p prompt,
+    SelectTribute => process_select_tribute,
+    QuickEffect => process_quick_effect,
+    IdleCommand => process_idle_command,
+    PhaseEvent => process_phase_event,
+    PointEvent => process_point_event,
+    BattleCommand => process_battle_command,
+    DamageStep => process_damage_step,
+    Destroy => process_destroy,
+    DestroyReplace => process_destroy_replace,
+    OperationReplace => process_operation_replace,
+    Release => process_release,
+    SendTo => process_send_to,
+    MoveToField => process_move_to_field,
+    ChangePos => process_change_pos,
+    SummonRule => process_summon_rule,
+    FlipSummon => process_flip_summon,
+    MonsterSet => process_monster_set,
+    SpellSet => process_spell_set,
+    SpSummon => process_sp_summon,
+    SpSummonStep => process_sp_summon_step,
+    SpSummonRule => process_sp_summon_rule,
+    SpellSetGroup => process_spell_set_group,
+    RemoveCounter => process_remove_counter,
+    RemoveOverlay => process_remove_overlay,
+    XyzOverlay => process_xyz_overlay,
+    Draw => process_draw,
+    DiscardDeck => process_discard_deck,
+    Equip => process_equip,
+    GetControl => process_get_control,
+    SwapControl => process_swap_control,
+    TrapMonsterAdjust => process_trap_monster_adjust,
+    SelfDestroyUnique => process_self_destroy_unique,
+    SelfDestroy => process_self_destroy,
+    TossCoin => process_toss_coin,
+    TossDice => process_toss_dice,
+    Damage => process_damage,
+    Recover => process_recover,
+    PayLpCost => process_pay_lp_cost,
+    Execute => process_execute,
+    AddChain => process_add_chain,
+    SolveChain => process_solve_chain,
+    SolveContinuous => process_solve_continuous,
+    RefreshRelay => process_refresh_relay,
+}
 
 impl Duel {
     pub(crate) fn emplace_process(&mut self, unit: impl Into<Unit>) {
         self.core.subunits.push(unit.into());
     }
 
-    // field::process in processor_visit.cpp. `units` is core.units, taken out by `run` so the front unit runs in place,
-    // or the stack of a script's nested run.
+    // field::process; `units` is core.units, taken out by `run` so the front unit runs in place, or a script's nested stack.
     pub(crate) fn process_unit(&mut self, units: &mut Vec<Unit>) -> OcgStatus {
         if !self.pending_resets.get_mut().is_empty() {
             self.reset_pending();
@@ -457,81 +382,10 @@ impl Duel {
         let Some(unit) = units.last_mut() else {
             return OcgStatus::End;
         };
-        let (done, needs_answer) = match unit {
-            Unit::Adjust(arg) => self.run_steps(arg, Self::process_adjust, false),
-            Unit::Turn(arg) => self.run_steps(arg, Self::process_turn, false),
-            Unit::RefreshLoc(arg) => self.run_steps(arg, Self::process_refresh_loc, false),
-            Unit::Startup(arg) => self.run_steps(arg, Self::process_startup, false),
-            Unit::SelectBattleCmd(arg) => self.run_steps(arg, Self::process_select_battle_cmd, true),
-            Unit::SelectIdleCmd(arg) => self.run_steps(arg, Self::process_select_idle_cmd, true),
-            Unit::SelectEffectYesNo(arg) => self.run_steps(arg, Self::process_select_effect_yes_no, true),
-            Unit::SelectYesNo(arg) => self.run_steps(arg, Self::process_select_yes_no, true),
-            Unit::SelectOption(arg) => self.run_steps(arg, Self::process_select_option, true),
-            Unit::AnnounceNumber(arg) => self.run_steps(arg, Self::process_announce_number, true),
-            Unit::AnnounceRace(arg) => self.run_steps(arg, Self::process_announce_race, true),
-            Unit::AnnounceAttribute(arg) => self.run_steps(arg, Self::process_announce_attribute, true),
-            Unit::AnnounceCard(arg) => self.run_steps(arg, Self::process_announce_card, true),
-            Unit::SortCard(arg) => self.run_steps(arg, Self::process_sort_card, true),
-            Unit::SortChain(arg) => self.run_steps(arg, Self::process_sort_chain, false),
-            Unit::SortDeck(arg) => self.run_steps(arg, Self::process_sort_deck, false),
-            Unit::SelectCard(arg) => self.run_steps(arg, Self::process_select_card, true),
-            Unit::SelectUnselectCard(arg) => self.run_steps(arg, Self::process_select_unselect_card, true),
-            Unit::SelectCounter(arg) => self.run_steps(arg, Self::process_select_counter, true),
-            Unit::SelectSum(arg) => self.run_steps(arg, Self::process_select_sum, true),
-            Unit::SelectChain(arg) => self.run_steps(arg, Self::process_select_chain, true),
-            Unit::SelectPlace(arg) => self.run_steps(arg, Self::process_select_place, true),
-            Unit::SelectPosition(arg) => self.run_steps(arg, Self::process_select_position, true),
-            Unit::SelectTributeP(arg) => self.run_steps(arg, Self::process_select_tribute_p, true),
-            Unit::SelectTribute(arg) => self.run_steps(arg, Self::process_select_tribute, false),
-            Unit::QuickEffect(arg) => self.run_steps(arg, Self::process_quick_effect, false),
-            Unit::IdleCommand(arg) => self.run_steps(arg, Self::process_idle_command, false),
-            Unit::PhaseEvent(arg) => self.run_steps(arg, Self::process_phase_event, false),
-            Unit::PointEvent(arg) => self.run_steps(arg, Self::process_point_event, false),
-            Unit::BattleCommand(arg) => self.run_steps(arg, Self::process_battle_command, false),
-            Unit::DamageStep(arg) => self.run_steps(arg, Self::process_damage_step, false),
-            Unit::Destroy(arg) => self.run_steps(arg, Self::process_destroy, false),
-            Unit::DestroyReplace(arg) => self.run_steps(arg, Self::process_destroy_replace, false),
-            Unit::OperationReplace(arg) => self.run_steps(arg, Self::process_operation_replace, false),
-            Unit::Release(arg) => self.run_steps(arg, Self::process_release, false),
-            Unit::SendTo(arg) => self.run_steps(arg, Self::process_send_to, false),
-            Unit::MoveToField(arg) => self.run_steps(arg, Self::process_move_to_field, false),
-            Unit::ChangePos(arg) => self.run_steps(arg, Self::process_change_pos, false),
-            Unit::SummonRule(arg) => self.run_steps(arg, Self::process_summon_rule, false),
-            Unit::FlipSummon(arg) => self.run_steps(arg, Self::process_flip_summon, false),
-            Unit::MonsterSet(arg) => self.run_steps(arg, Self::process_monster_set, false),
-            Unit::SpellSet(arg) => self.run_steps(arg, Self::process_spell_set, false),
-            Unit::SpSummon(arg) => self.run_steps(arg, Self::process_sp_summon, false),
-            Unit::SpSummonStep(arg) => self.run_steps(arg, Self::process_sp_summon_step, false),
-            Unit::SpSummonRule(arg) => self.run_steps(arg, Self::process_sp_summon_rule, false),
-            Unit::SpellSetGroup(arg) => self.run_steps(arg, Self::process_spell_set_group, false),
-            Unit::RemoveCounter(arg) => self.run_steps(arg, Self::process_remove_counter, false),
-            Unit::RemoveOverlay(arg) => self.run_steps(arg, Self::process_remove_overlay, false),
-            Unit::XyzOverlay(arg) => self.run_steps(arg, Self::process_xyz_overlay, false),
-            Unit::Draw(arg) => self.run_steps(arg, Self::process_draw, false),
-            Unit::DiscardDeck(arg) => self.run_steps(arg, Self::process_discard_deck, false),
-            Unit::Equip(arg) => self.run_steps(arg, Self::process_equip, false),
-            Unit::GetControl(arg) => self.run_steps(arg, Self::process_get_control, false),
-            Unit::SwapControl(arg) => self.run_steps(arg, Self::process_swap_control, false),
-            Unit::TrapMonsterAdjust(arg) => self.run_steps(arg, Self::process_trap_monster_adjust, false),
-            Unit::SelfDestroyUnique(arg) => self.run_steps(arg, Self::process_self_destroy_unique, false),
-            Unit::SelfDestroy(arg) => self.run_steps(arg, Self::process_self_destroy, false),
-            Unit::TossCoin(arg) => self.run_steps(arg, Self::process_toss_coin, false),
-            Unit::TossDice(arg) => self.run_steps(arg, Self::process_toss_dice, false),
-            Unit::Damage(arg) => self.run_steps(arg, Self::process_damage, false),
-            Unit::Recover(arg) => self.run_steps(arg, Self::process_recover, false),
-            Unit::PayLpCost(arg) => self.run_steps(arg, Self::process_pay_lp_cost, false),
-            Unit::Execute(arg) => self.run_steps(arg, Self::process_execute, false),
-            Unit::AddChain(arg) => self.run_steps(arg, Self::process_add_chain, false),
-            Unit::SolveChain(arg) => self.run_steps(arg, Self::process_solve_chain, false),
-            Unit::SolveContinuous(arg) => self.run_steps(arg, Self::process_solve_continuous, false),
-            Unit::RefreshRelay(arg) => (arg.step >= 2, false),
-        };
+        let (done, needs_answer) = self.run_unit(unit);
         if done {
             units.truncate(units.len() - 1);
             return OcgStatus::Continue;
-        }
-        if let Unit::RefreshRelay(arg) = unit {
-            arg.step += 1;
         }
         // A script function's prompt, shown on top of the unit that ran the function.
         if let Some(prompt) = self.core.presented.take() {
@@ -541,9 +395,7 @@ impl Duel {
         if needs_answer { OcgStatus::Awaiting } else { OcgStatus::Continue }
     }
 
-    // Runs steps of the front unit until it ends, prompts, or emplaces a unit that then runs first: what the core's
-    // loop of one step per call does, without dispatching again for each step. Not inlined, so that every unit's
-    // loop is a function of its own instead of one process_unit holding all of them.
+    // The core's one step per call, looped until the unit ends, prompts or emplaces one; not inlined, one function per unit.
     #[inline(never)]
     fn run_steps<U: Steps>(&mut self, arg: &mut U, process: impl Fn(&mut Self, &mut U) -> bool, needs_answer: bool) -> (bool, bool) {
         loop {
@@ -568,7 +420,6 @@ impl Duel {
         core.new_ochain.splice(0..0, std::mem::take(&mut core.new_ochain_b));
     }
 
-    // A chain window's candidate the core collects with only its effect set.
     fn push_candidate(&mut self, effect: EffectId) {
         self.core.select_chains.push(Chain::new(effect));
     }
@@ -598,7 +449,7 @@ impl Duel {
                 let (mut tf_count, mut to_count, mut fc_count, mut cn_count) = (0, 0, 0, 0);
                 for effect in self.field_effect_range(Container::TriggerF, phase_event) {
                     self.set_activate_location(effect);
-                    if self.is_activateable(effect, check_player, &nil_event, false, false, false, false, false) {
+                    if self.can_activate(effect, check_player, &nil_event) {
                         self.effects.set_id(effect, self.next_field_id());
                         self.push_candidate(effect);
                         tf_count += 1;
@@ -606,9 +457,7 @@ impl Duel {
                 }
                 // The continuous effects may change while their conditions run (Rescue Cat).
                 for effect in self.field_effect_range(Container::Continuous, phase_event) {
-                    if self.get_handler_player(effect) == check_player
-                        && self.is_activateable(effect, check_player, &nil_event, false, false, false, false, false)
-                    {
+                    if self.get_handler_player(effect) == check_player && self.can_activate(effect, check_player, &nil_event) {
                         self.effects.set_id(effect, self.next_field_id());
                         self.push_candidate(effect);
                         cn_count += 1;
@@ -642,7 +491,7 @@ impl Duel {
                 if !self.core.hand_adjusted {
                     for effect in self.field_effect_range(Container::TriggerO, phase_event) {
                         self.set_activate_location(effect);
-                        if self.is_activateable(effect, check_player, &nil_event, false, false, false, false, false) {
+                        if self.can_activate(effect, check_player, &nil_event) {
                             self.effects.set_id(effect, self.next_field_id());
                             self.push_candidate(effect);
                             to_count += 1;
@@ -659,9 +508,7 @@ impl Duel {
                     for (container, cteffect) in [(Container::Activate, true), (Container::QuickO, false)] {
                         for effect in self.field_effect_range(container, EVENT_FREE_CHAIN) {
                             self.set_activate_location(effect);
-                            if !self.is_chainable(effect, check_player)
-                                || !self.is_activateable(effect, check_player, &nil_event, false, false, false, false, false)
-                            {
+                            if !self.is_chainable(effect, check_player) || !self.can_activate(effect, check_player, &nil_event) {
                                 continue;
                             }
                             self.effects.set_id(effect, self.next_field_id());
@@ -673,9 +520,7 @@ impl Duel {
                         }
                     }
                     for effect in self.field_effect_range(Container::Continuous, EVENT_FREE_CHAIN) {
-                        if self.get_handler_player(effect) == check_player
-                            && self.is_activateable(effect, check_player, &nil_event, false, false, false, false, false)
-                        {
+                        if self.get_handler_player(effect) == check_player && self.can_activate(effect, check_player, &nil_event) {
                             self.effects.set_id(effect, self.next_field_id());
                             self.push_candidate(effect);
                             fc_count += 1;
@@ -736,7 +581,7 @@ impl Duel {
                     return false;
                 }
                 arg.priority_passed = false;
-                let Some(mut chain) = self.take_select_chain(selected as usize) else {
+                let Some(chain) = self.take_select_chain(selected as usize) else {
                     return true;
                 };
                 let effect = chain.triggering_effect;
@@ -747,27 +592,14 @@ impl Duel {
                     arg.step = 3;
                 } else if effect_type & EFFECT_TYPE_CONTINUOUS == 0 {
                     let check_player = if arg.is_opponent { 1 - turn_player } else { turn_player };
-                    let handler = self.get_handler(effect);
-                    chain.flag = 0;
-                    chain.chain_id = self.next_field_id() as u16;
-                    chain.evt = self.nil_event;
-                    self.set_triggering_state(&mut chain, handler);
-                    chain.triggering_player = check_player;
-                    self.core.new_chains.push(chain);
-                    self.cards[handler].set_status(STATUS_CHAINING, true);
-                    self.dec_count(effect, check_player);
+                    let chain = self.chain_candidate(effect, self.nil_event, check_player);
                     self.core.select_chains.clear();
-                    self.emplace_process(AddChain::default());
                     let priority_player = if self.is_flag(DUEL_INVERTED_QUICK_PRIORITY) {
                         check_player
                     } else {
                         1 - check_player
                     };
-                    self.emplace_process(QuickEffect {
-                        priority_player,
-                        ..QuickEffect::default()
-                    });
-                    self.infos.priorities = PerPlayer::default();
+                    self.activate_chain(chain, priority_player);
                 } else {
                     self.core.select_chains.clear();
                     let nil_event = self.nil_event;
@@ -777,15 +609,12 @@ impl Duel {
                 false
             }
             3 => {
-                self.core.chain_limit.clear();
-                self.clear_chaining_status();
-                self.emplace_process(SolveChain::default());
+                self.solve_activated_chain();
                 arg.step = RESTART;
                 false
             }
             4 => {
-                self.adjust_instant();
-                self.emplace_process(PointEvent::default());
+                self.open_point_event();
                 arg.step = RESTART;
                 false
             }
@@ -855,6 +684,42 @@ impl Duel {
             }
             _ => true,
         }
+    }
+
+    fn solve_activated_chain(&mut self) {
+        self.core.chain_limit.clear();
+        self.clear_chaining_status();
+        self.emplace_process(SolveChain::default());
+    }
+
+    fn open_point_event(&mut self) {
+        self.adjust_instant();
+        self.emplace_process(PointEvent::default());
+    }
+
+    fn end_phase_or_solve(&mut self, phase: u16) -> bool {
+        let solve = !self.core.current_chain.is_empty();
+        if solve {
+            self.solve_activated_chain();
+        } else {
+            self.core.chain_limit.clear();
+            self.reset_phase(phase);
+            self.adjust_all();
+        }
+        solve
+    }
+
+    fn pass_end_of_phase(&mut self, hint: u64, timing: u32) {
+        let turn_player = self.infos.turn_player;
+        self.trace.message(MSG_HINT).u8(HINT_EVENT).u8(1 - turn_player).u64(hint);
+        self.core.select_chains.clear();
+        self.core.hint_timing[turn_player] = timing;
+        self.emplace_process(QuickEffect {
+            priority_player: 1 - turn_player,
+            ..QuickEffect::default()
+        });
+        self.infos.priorities[turn_player] = 1;
+        self.infos.priorities[1 - turn_player] = 0;
     }
 
     // The chains that just were built stop being STATUS_CHAINING before they solve.
@@ -1075,9 +940,7 @@ impl Duel {
                 self.core.spe_effect[check_player] = 0;
                 let nil_event = self.nil_event;
                 for effect in self.field_effect_range(Container::Continuous, EVENT_FREE_CHAIN) {
-                    if self.get_handler_player(effect) == check_player
-                        && self.is_activateable(effect, check_player, &nil_event, false, false, false, false, false)
-                    {
+                    if self.get_handler_player(effect) == check_player && self.can_activate(effect, check_player, &nil_event) {
                         self.push_candidate(effect);
                         self.core.spe_effect[check_player] += 1;
                     }
@@ -1124,6 +987,20 @@ impl Duel {
         self.dec_count(effect, chain.triggering_player);
         self.core.new_chains.push(chain);
         self.emplace_process(AddChain::default());
+    }
+
+    fn activate_chain(&mut self, chain: Chain, priority_player: u8) {
+        let effect = chain.triggering_effect;
+        self.core.new_chains.push(chain);
+        let handler = self.get_handler(effect);
+        self.cards[handler].set_status(STATUS_CHAINING, true);
+        self.dec_count(effect, chain.triggering_player);
+        self.emplace_process(AddChain::default());
+        self.emplace_process(QuickEffect {
+            priority_player,
+            ..QuickEffect::default()
+        });
+        self.infos.priorities = PerPlayer::default();
     }
 
     fn process_quick_effect(&mut self, arg: &mut QuickEffect) -> bool {
@@ -1204,7 +1081,7 @@ impl Duel {
                             self.set_activate_location(effect);
                             if !self.effects[effect].is_flag(EFFECT_FLAG_DELAY)
                                 && self.is_chainable(effect, priority)
-                                && self.is_activateable(effect, priority, &event, false, false, false, false, false)
+                                && self.can_activate(effect, priority, &event)
                             {
                                 let chain = self.chain_candidate(effect, event, priority);
                                 self.core.select_chains.push(chain);
@@ -1256,7 +1133,7 @@ impl Duel {
                         self.set_activate_location(effect);
                         if self.effects[effect].is_flag(EFFECT_FLAG_DELAY)
                             && self.is_chainable(effect, priority)
-                            && self.is_activateable(effect, priority, &event, false, false, false, false, false)
+                            && self.can_activate(effect, priority, &event)
                         {
                             let chain = self.chain_candidate(effect, event, priority);
                             self.core.select_chains.push(chain);
@@ -1279,9 +1156,7 @@ impl Duel {
                     for (container, cteffect) in [(Container::Activate, true), (Container::QuickO, false)] {
                         for effect in self.field_effect_range(container, EVENT_FREE_CHAIN) {
                             self.set_activate_location(effect);
-                            if !self.is_chainable(effect, priority)
-                                || !self.is_activateable(effect, priority, &nil_event, false, false, false, false, false)
-                            {
+                            if !self.is_chainable(effect, priority) || !self.can_activate(effect, priority, &nil_event) {
                                 continue;
                             }
                             let chain = self.chain_candidate(effect, nil_event, priority);
@@ -1314,16 +1189,7 @@ impl Duel {
                     self.core
                         .delayed_quick
                         .retain(|&(other, event)| (other, event) != (effect, chain.evt));
-                    self.core.new_chains.push(chain);
-                    let handler = self.get_handler(effect);
-                    self.cards[handler].set_status(STATUS_CHAINING, true);
-                    self.dec_count(effect, priority);
-                    self.emplace_process(AddChain::default());
-                    self.emplace_process(QuickEffect {
-                        priority_player: 1 - priority,
-                        ..QuickEffect::default()
-                    });
-                    self.infos.priorities = PerPlayer::default();
+                    self.activate_chain(chain, 1 - priority);
                 } else {
                     self.infos.priorities[priority] = 1;
                     if self.infos.priorities[0] == 0 || self.infos.priorities[1] == 0 {
@@ -1334,8 +1200,9 @@ impl Duel {
                             ..QuickEffect::default()
                         });
                     } else {
-                        self.core.hint_timing[0] &= TIMING_DAMAGE_STEP | TIMING_DAMAGE_CAL;
-                        self.core.hint_timing[1] &= TIMING_DAMAGE_STEP | TIMING_DAMAGE_CAL;
+                        for timing in &mut self.core.hint_timing.0 {
+                            *timing &= TIMING_DAMAGE_STEP | TIMING_DAMAGE_CAL;
+                        }
                     }
                 }
                 self.core.select_chains.clear();
@@ -1345,11 +1212,10 @@ impl Duel {
         }
     }
 
-    // IdleCommand step 1 and BattleCommand step 1: an activation chosen from the command builds a chain (the
-    // continuous effects solve at once). Returns whether it was a continuous effect.
+    // IdleCommand and BattleCommand step 1: chains the chosen activation, or solves a continuous effect at once (true).
     fn activate_from_command(&mut self, selected: usize) -> bool {
         let turn_player = self.infos.turn_player;
-        let Some(mut chain) = self.take_select_chain(selected) else {
+        let Some(chain) = self.take_select_chain(selected) else {
             return false;
         };
         let effect = chain.triggering_effect;
@@ -1359,52 +1225,35 @@ impl Duel {
             self.solve_continuous(self.get_handler_player(effect), effect, nil_event);
             return true;
         }
-        let handler = self.get_handler(effect);
-        chain.flag = 0;
-        chain.chain_id = self.next_field_id() as u16;
-        chain.evt = crate::effect::Event {
+        let event = Event {
             event_code: self.effects[effect].code,
             event_player: PLAYER_NONE,
             reason_player: PLAYER_NONE,
-            ..crate::effect::Event::default()
+            ..Event::default()
         };
-        self.set_triggering_state(&mut chain, handler);
-        chain.triggering_player = turn_player;
-        self.core.new_chains.push(chain);
-        self.cards[handler].set_status(STATUS_CHAINING, true);
-        self.dec_count(effect, turn_player);
+        let chain = self.chain_candidate(effect, event, turn_player);
         self.core.select_chains.clear();
-        self.emplace_process(AddChain::default());
-        self.emplace_process(QuickEffect {
-            priority_player: 1 - turn_player,
-            ..QuickEffect::default()
-        });
-        self.infos.priorities = PerPlayer::default();
+        self.activate_chain(chain, 1 - turn_player);
         false
     }
 
-    // The free chain effects the turn player can activate from the idle and battle commands.
     fn collect_command_activations(&mut self, battle: bool) {
         let turn_player = self.infos.turn_player;
         let nil_event = self.nil_event;
         for effect in self.field_effect_range(Container::Activate, EVENT_FREE_CHAIN) {
             self.set_activate_location(effect);
-            if self.is_activateable(effect, turn_player, &nil_event, false, false, false, false, false)
-                && (!battle || self.get_speed(effect) > 1)
-            {
+            if self.can_activate(effect, turn_player, &nil_event) && (!battle || self.get_speed(effect) > 1) {
                 self.push_candidate(effect);
             }
         }
         for effect in self.field_effect_range(Container::QuickO, EVENT_FREE_CHAIN) {
             self.set_activate_location(effect);
-            if self.is_activateable(effect, turn_player, &nil_event, false, false, false, false, false) {
+            if self.can_activate(effect, turn_player, &nil_event) {
                 self.push_candidate(effect);
             }
         }
         for effect in self.field_effect_range(Container::Continuous, EVENT_FREE_CHAIN) {
-            if self.get_handler_player(effect) == turn_player
-                && self.is_activateable(effect, turn_player, &nil_event, false, false, false, false, false)
-            {
+            if self.get_handler_player(effect) == turn_player && self.can_activate(effect, turn_player, &nil_event) {
                 self.push_candidate(effect);
             }
         }
@@ -1417,7 +1266,7 @@ impl Duel {
                 .collect();
             for effect in ignition {
                 self.set_activate_location(effect);
-                if self.is_activateable(effect, turn_player, &nil_event, false, false, false, false, false) {
+                if self.can_activate(effect, turn_player, &nil_event) {
                     self.push_candidate(effect);
                 }
             }
@@ -1568,30 +1417,19 @@ impl Duel {
                     }
                     _ => {
                         arg.step = 9;
-                        self.trace.message(MSG_HINT).u8(HINT_EVENT).u8(1 - turn_player).u64(23);
-                        self.core.select_chains.clear();
-                        self.core.hint_timing[turn_player] = TIMING_MAIN_END;
-                        self.emplace_process(QuickEffect {
-                            priority_player: 1 - turn_player,
-                            ..QuickEffect::default()
-                        });
-                        self.infos.priorities[turn_player] = 1;
-                        self.infos.priorities[1 - turn_player] = 0;
+                        self.pass_end_of_phase(23, TIMING_MAIN_END);
                         arg.phase_to_change_to = kind as u8;
                         false
                     }
                 }
             }
             2 => {
-                self.core.chain_limit.clear();
-                self.clear_chaining_status();
-                self.emplace_process(SolveChain::default());
+                self.solve_activated_chain();
                 arg.step = RESTART;
                 false
             }
             3 => {
-                self.adjust_instant();
-                self.emplace_process(PointEvent::default());
+                self.open_point_event();
                 arg.step = RESTART;
                 false
             }
@@ -1680,15 +1518,9 @@ impl Duel {
                 false
             }
             10 => {
-                self.core.chain_limit.clear();
-                if !self.core.current_chain.is_empty() {
-                    self.clear_chaining_status();
-                    self.emplace_process(SolveChain::default());
+                if self.end_phase_or_solve(phase) {
                     arg.step = RESTART;
-                    return false;
                 }
-                self.reset_phase(phase);
-                self.adjust_all();
                 false
             }
             11 => {
@@ -1723,7 +1555,6 @@ impl Duel {
         }
     }
 
-    // IdleCommand's change of position by the turn player, followed by an adjust and a chain window.
     fn reposition(&mut self, target: CardId, npos: u32) {
         self.core.phase_action = true;
         self.field_change_position(target, None, self.infos.turn_player, npos, 0, false);
@@ -1731,8 +1562,7 @@ impl Duel {
         self.emplace_process(PointEvent::default());
     }
 
-    // Steps 0, 1 and 40-42 run the Battle Step's command loop, process_attack the attacks in between. Step 2 resolves
-    // a chain activated from the command, steps 14 and 15 a continuous effect.
+    // Steps 0, 1 and 40-42 run the command loop and process_attack the attacks between; step 2 solves an activated chain.
     fn process_battle_command(&mut self, arg: &mut BattleCommand) -> bool {
         let turn_player = self.infos.turn_player;
         match arg.step {
@@ -1811,15 +1641,7 @@ impl Duel {
                 if arg.forced_attack_done || (kind != 0 && kind != 1) {
                     arg.step = 39;
                     arg.phase_to_change_to = kind as u16;
-                    self.trace.message(MSG_HINT).u8(HINT_EVENT).u8(1 - turn_player).u64(29);
-                    self.core.select_chains.clear();
-                    self.core.hint_timing[turn_player] = TIMING_BATTLE_STEP_END;
-                    self.emplace_process(QuickEffect {
-                        priority_player: 1 - turn_player,
-                        ..QuickEffect::default()
-                    });
-                    self.infos.priorities[turn_player] = 1;
-                    self.infos.priorities[1 - turn_player] = 0;
+                    self.pass_end_of_phase(29, TIMING_BATTLE_STEP_END);
                     return false;
                 }
                 if kind == 0 {
@@ -1873,15 +1695,12 @@ impl Duel {
                 false
             }
             2 => {
-                self.core.chain_limit.clear();
-                self.clear_chaining_status();
-                self.emplace_process(SolveChain::default());
+                self.solve_activated_chain();
                 arg.step = RESTART;
                 false
             }
             15 => {
-                self.adjust_instant();
-                self.emplace_process(PointEvent::default());
+                self.open_point_event();
                 arg.step = RESTART;
                 false
             }
@@ -1890,15 +1709,9 @@ impl Duel {
                 self.process_attack(arg, attacker)
             }
             40 => {
-                self.core.chain_limit.clear();
-                if !self.core.current_chain.is_empty() {
-                    self.clear_chaining_status();
-                    self.emplace_process(SolveChain::default());
+                if self.end_phase_or_solve(PHASE_BATTLE_STEP) {
                     arg.step = RESTART;
-                    return false;
                 }
-                self.reset_phase(PHASE_BATTLE_STEP);
-                self.adjust_all();
                 false
             }
             41 => {
@@ -1926,8 +1739,7 @@ impl Duel {
         }
     }
 
-    // One attack, from its declaration to the end of its damage step. Steps 14-16 (attack costs, continuous effects,
-    // EFFECT_MUST_ATTACK_MONSTER) and core.effect_damage_step (Duel.CalculateDamage) need effects (phase 2).
+    // One attack, from its declaration to the end of its damage step; step 16 (EFFECT_MUST_ATTACK_MONSTER) is not ported.
     fn process_attack(&mut self, arg: &mut BattleCommand, attacker: CardId) -> bool {
         let turn_player = self.infos.turn_player;
         let attack_target = self.core.attack_target;
@@ -2155,7 +1967,7 @@ impl Duel {
             20 => {
                 self.trace.message(MSG_DAMAGE_STEP_START);
                 self.raise_battle_events(EVENT_BATTLE_START, attacker, attack_target);
-                let triggers = !self.core.new_fchain.is_empty() || !self.core.new_ochain.is_empty();
+                let triggers = self.has_new_triggers();
                 arg.previous_point_event_had_any_trigger_to_resolve = false;
                 if !self.is_flag(DUEL_6_STEP_BATLLE_STEP) || triggers {
                     arg.previous_point_event_had_any_trigger_to_resolve = triggers;
@@ -2183,7 +1995,7 @@ impl Duel {
                     self.core.pre_field[1] = self.cards[target].fieldid_r;
                 }
                 self.raise_battle_events(EVENT_BATTLE_CONFIRM, attacker, attack_target);
-                let triggers = !self.core.new_fchain.is_empty() || !self.core.new_ochain.is_empty();
+                let triggers = self.has_new_triggers();
                 if !self.is_flag(DUEL_6_STEP_BATLLE_STEP) || !arg.previous_point_event_had_any_trigger_to_resolve || triggers {
                     self.core.hint_timing[turn_player] = TIMING_DAMAGE_STEP;
                     self.battle_window(41, false);
@@ -2500,9 +2312,7 @@ impl Duel {
         }
     }
 
-    // Duel.CalculateDamage's DamageStep: steps 0 and 1 run the damage calculation (BattleCommand step 26) apart from the
-    // attack, then the unit waits in core.reserved for the chain it was called in to end, and step 2 runs the rest of
-    // the damage step (BattleCommand step 32).
+    // BattleCommand step 26 at once, then step 32 from core.reserved once the chain it was called in ends.
     pub(crate) fn process_damage_step(&mut self, arg: &mut DamageStep) -> bool {
         match arg.step {
             0 => {
@@ -2578,8 +2388,9 @@ impl Duel {
     }
 
     fn battled_window(&mut self) {
-        self.core.hint_timing[0] |= TIMING_BATTLED;
-        self.core.hint_timing[1] |= TIMING_BATTLED;
+        for timing in &mut self.core.hint_timing.0 {
+            *timing |= TIMING_BATTLED;
+        }
         self.battle_window(43, false);
     }
 
@@ -2607,8 +2418,7 @@ impl Duel {
         }
     }
 
-    // One of the damage step's chain windows, announced to both players by `hint`; `skip_new` (also from
-    // DUEL_SINGLE_CHAIN_IN_DAMAGE_SUBSTEP) keeps a solved chain from opening another free chain window.
+    // A damage step chain window announced by `hint`; `skip_new` keeps a solved chain from opening another free chain window.
     fn battle_window(&mut self, hint: u64, skip_new: bool) {
         self.hint_both(hint);
         let skip_new = skip_new || self.is_flag(DUEL_SINGLE_CHAIN_IN_DAMAGE_SUBSTEP);
@@ -2618,7 +2428,6 @@ impl Duel {
         });
     }
 
-    // Raises the event on the attacker (value 0), the target (value 1) and the field, then processes them.
     fn raise_battle_events(&mut self, code: u32, attacker: CardId, attack_target: Option<CardId>) {
         self.field_raise_single_event(attacker, code, None, 0, 0, 0, 0);
         if let Some(target) = attack_target {
@@ -2629,7 +2438,6 @@ impl Duel {
         self.process_instant_event();
     }
 
-    // Sets core.battle_damage and returns the card dealing it and whether the attacker and the target are destroyed.
     fn calculate_battle_damage(&mut self) -> (Option<CardId>, [bool; 2]) {
         self.core.battle_damage = PerPlayer::default();
         let Some(attacker) = self.core.attacker else {
@@ -2790,8 +2598,7 @@ impl Duel {
         (reason_card, destroyed)
     }
 
-    // card.is_affected_by_effect(EFFECT_AVOID_BATTLE_DAMAGE, dam_card) with a dam_card that may be nil, which only an
-    // effect whose value is an integer can be told apart for.
+    // card.is_affected_by_effect(EFFECT_AVOID_BATTLE_DAMAGE, dam_card) with a nil dam_card, ported for integer values only.
     fn is_avoiding_battle_damage(&self, reason_card: CardId, dam_card: Option<CardId>) -> bool {
         let found = self.is_affected_by_effect_target(reason_card, EFFECT_AVOID_BATTLE_DAMAGE, dam_card.unwrap_or(reason_card));
         unported!(
@@ -2923,8 +2730,7 @@ impl Duel {
                 self.infos.phase = PHASE_DRAW;
                 self.core.phase_action = false;
                 self.core.hand_adjusted = false;
-                self.field_raise_event(None, EVENT_PHASE_START + u32::from(PHASE_DRAW), None, 0, 0, turn_player, 0);
-                self.process_instant_event();
+                self.raise_phase_start(turn_player);
                 self.adjust_all();
                 false
             }
@@ -2940,7 +2746,7 @@ impl Duel {
                 self.field_raise_event(None, EVENT_PREDRAW, None, 0, 0, turn_player, 0);
                 self.process_instant_event();
                 self.trace.message(MSG_HINT).u8(HINT_EVENT).u8(turn_player).u64(27);
-                if !self.core.new_fchain.is_empty() || !self.core.new_ochain.is_empty() {
+                if self.has_new_triggers() {
                     self.emplace_process(PointEvent {
                         skip_freechain: true,
                         ..PointEvent::default()
@@ -2980,17 +2786,13 @@ impl Duel {
                     return false;
                 }
                 self.trace.message(MSG_NEW_PHASE).u16(self.infos.phase);
-                self.field_raise_event(None, EVENT_PHASE_START + u32::from(PHASE_STANDBY), None, 0, 0, turn_player, 0);
-                self.process_instant_event();
+                self.raise_phase_start(turn_player);
                 false
             }
             6 => {
                 // EVENT_PHASE_START + PHASE_STANDBY is a special case (c89642993).
                 let standby_start = EVENT_PHASE_START + u32::from(PHASE_STANDBY);
-                if !self.core.new_fchain.is_empty()
-                    || !self.core.new_ochain.is_empty()
-                    || self.core.instant_event.last().is_none_or(|event| event.event_code != standby_start)
-                {
+                if self.has_new_triggers() || self.core.instant_event.last().is_none_or(|event| event.event_code != standby_start) {
                     self.emplace_process(PointEvent::default());
                 }
                 self.emplace_process(PhaseEvent {
@@ -3002,8 +2804,7 @@ impl Duel {
             7 => {
                 self.infos.phase = PHASE_MAIN1;
                 self.core.phase_action = false;
-                self.field_raise_event(None, EVENT_PHASE_START + u32::from(PHASE_MAIN1), None, 0, 0, turn_player, 0);
-                self.process_instant_event();
+                self.raise_phase_start(turn_player);
                 self.adjust_all();
                 false
             }
@@ -3032,13 +2833,12 @@ impl Duel {
                     self.adjust_all();
                     return false;
                 }
-                self.field_raise_event(None, EVENT_PHASE_START + u32::from(PHASE_BATTLE_START), None, 0, 0, turn_player, 0);
-                self.process_instant_event();
+                self.raise_phase_start(turn_player);
                 self.adjust_all();
                 false
             }
             11 => {
-                if !self.core.new_fchain.is_empty() || !self.core.new_ochain.is_empty() {
+                if self.has_new_triggers() {
                     self.emplace_process(PointEvent::default());
                 }
                 self.emplace_process(PhaseEvent {
@@ -3083,13 +2883,12 @@ impl Duel {
                 self.core.skip_m2 = self.returns.at_i32(0) == 3 || self.core.force_turn_end;
                 self.infos.phase = PHASE_MAIN2;
                 self.core.phase_action = false;
-                self.field_raise_event(None, EVENT_PHASE_START + u32::from(PHASE_MAIN2), None, 0, 0, turn_player, 0);
-                self.process_instant_event();
+                self.raise_phase_start(turn_player);
                 self.adjust_all();
                 false
             }
             14 | 17 => {
-                if !self.core.new_fchain.is_empty() || !self.core.new_ochain.is_empty() {
+                if self.has_new_triggers() {
                     self.emplace_process(PointEvent::default());
                 }
                 false
@@ -3111,8 +2910,7 @@ impl Duel {
                     return false;
                 }
                 self.trace.message(MSG_NEW_PHASE).u16(self.infos.phase);
-                self.field_raise_event(None, EVENT_PHASE_START + u32::from(PHASE_END), None, 0, 0, turn_player, 0);
-                self.process_instant_event();
+                self.raise_phase_start(turn_player);
                 self.adjust_all();
                 false
             }
@@ -3138,6 +2936,15 @@ impl Duel {
             }
             _ => true,
         }
+    }
+
+    fn raise_phase_start(&mut self, turn_player: u8) {
+        self.field_raise_event(None, EVENT_PHASE_START + u32::from(self.infos.phase), None, 0, 0, turn_player, 0);
+        self.process_instant_event();
+    }
+
+    fn has_new_triggers(&self) -> bool {
+        !self.core.new_fchain.is_empty() || !self.core.new_ochain.is_empty()
     }
 
     fn clear_new_chains(&mut self) {
@@ -3271,13 +3078,12 @@ impl Duel {
                 false
             }
             2 => {
-                let mut turn_player = self.infos.turn_player;
-                for _ in 0..2 {
-                    let player = &self.player[turn_player];
+                let turn_player = self.infos.turn_player;
+                for p in [turn_player, 1 - turn_player] {
+                    let player = &self.player[p];
                     for card in player.list_mzone.into_iter().chain(player.list_szone).flatten() {
                         self.add_to_disable_check_list(card);
                     }
-                    turn_player = 1 - turn_player;
                 }
                 self.adjust_disable_check_list();
                 self.emplace_process(RefreshLoc::default());
@@ -3303,16 +3109,15 @@ impl Duel {
             }
             10 => {
                 let mut destroy_set = CardSet::default();
-                let mut turn_player = self.infos.turn_player;
-                for _ in 0..2 {
-                    for card in self.player[turn_player].list_szone.into_iter().take(5).flatten() {
+                let turn_player = self.infos.turn_player;
+                for p in [turn_player, 1 - turn_player] {
+                    for card in self.player[p].list_szone.into_iter().take(5).flatten() {
                         if let Some(target) = self.cards[card].equiping_target
                             && self.is_affected_by_effect_target(card, EFFECT_EQUIP_LIMIT, target).is_none()
                         {
                             destroy_set.insert(card);
                         }
                     }
-                    turn_player = 1 - turn_player;
                 }
                 if !destroy_set.is_empty() {
                     self.core.re_adjust = true;
@@ -3321,10 +3126,10 @@ impl Duel {
                 false
             }
             11 => {
-                let mut turn_player = self.infos.turn_player;
+                let turn_player = self.infos.turn_player;
                 let mut pos_adjust = CardSet::default();
-                for _ in 0..2 {
-                    for card in self.player[turn_player].list_mzone.into_iter().flatten() {
+                for p in [turn_player, 1 - turn_player] {
+                    for card in self.player[p].list_mzone.into_iter().flatten() {
                         let card_type = self.cards[card].data.card_type;
                         if (card_type & TYPE_LINK != 0 && card_type & TYPE_MONSTER != 0)
                             || self.is_affected_by_effect(card, EFFECT_CANNOT_CHANGE_POS_E).is_some()
@@ -3345,7 +3150,6 @@ impl Duel {
                         }
                         self.cards[card].set_status(STATUS_JUST_POS, false);
                     }
-                    turn_player = 1 - turn_player;
                 }
                 if !pos_adjust.is_empty() {
                     self.core.re_adjust = true;
@@ -3472,8 +3276,7 @@ impl Duel {
         }
     }
 
-    // Adjust step 14: cancels the attack when the attacker can no longer attack or a battling monster left, and marks
-    // a replay when the opponent's monsters changed.
+    // Adjust step 14: cancels the attack once a battler left or cannot attack; a change to the opponent's monsters replays it.
     fn adjust_attack(&mut self) {
         let Some(attacker) = self.core.attacker else { return };
         let unstoppable = self.is_affected_by_effect(attacker, EFFECT_UNSTOPPABLE_ATTACK).is_some();
@@ -3506,8 +3309,7 @@ impl Duel {
         }
     }
 
-    // Steps 1 and 2 apply the EFFECT_DISABLE_FIELD effects step 0 collects; steps 3-6 apply the EFFECT_USE_EXTRA_*ZONE effects,
-    // which come with the cards that register them.
+    // Steps 1 and 2 apply the EFFECT_DISABLE_FIELD effects step 0 collects; EFFECT_USE_EXTRA_*ZONE (steps 3-6) is not ported.
     fn process_refresh_loc(&mut self, arg: &mut RefreshLoc) -> bool {
         match arg.step {
             0 => {
@@ -3603,6 +3405,10 @@ impl Duel {
             }
             _ => true,
         }
+    }
+
+    fn process_refresh_relay(&mut self, arg: &mut RefreshRelay) -> bool {
+        arg.step >= 2
     }
 }
 

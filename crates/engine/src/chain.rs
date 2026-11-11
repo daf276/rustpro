@@ -1,5 +1,4 @@
-// Ports of processor.cpp's chain machinery: events, triggers, the Execute units that run script functions, AddChain,
-// SolveChain and SolveContinuous.
+// Ports of processor.cpp's chain machinery: events, triggers, Execute, AddChain, SolveChain and SolveContinuous.
 use crate::card::{CardId, CardSet};
 use crate::constants::*;
 use crate::duel::Duel;
@@ -171,6 +170,11 @@ impl Duel {
         chain
     }
 
+    #[inline]
+    pub(crate) fn can_activate(&mut self, effect: EffectId, player: u8, event: &Event) -> bool {
+        self.is_activateable(effect, player, event, false, false, false, false, false)
+    }
+
     pub(crate) fn process_instant_event(&mut self) {
         if self.core.queue_event.is_empty() {
             return;
@@ -183,22 +187,7 @@ impl Duel {
         while let Some(event) = self.core.queue_event.get(index).copied() {
             index += 1;
             for effect in self.field_effect_range(Container::Continuous, event.event_code) {
-                let mut owner_player = self.get_handler_player(effect);
-                if self.effects[effect].is_flag(EFFECT_FLAG_EVENT_PLAYER) && event.event_player < 2 {
-                    owner_player = event.event_player;
-                }
-                if !self.is_activateable(effect, owner_player, &event, false, false, false, false, false) {
-                    continue;
-                }
-                let chain = Chain {
-                    triggering_effect: effect,
-                    triggering_player: owner_player,
-                    evt: event,
-                    target_player: PLAYER_NONE,
-                    disable_player: PLAYER_NONE,
-                    ..Chain::default()
-                };
-                self.continuous_chain_list(effect, owner_player, &mut tp, &mut ntp).push(chain);
+                self.collect_continuous(effect, &event, &mut tp, &mut ntp);
             }
             if event.event_code == EVENT_ADJUST
                 || event.event_code == EVENT_BREAK_EFFECT
@@ -243,7 +232,7 @@ impl Duel {
                 let handler = self.get_handler(effect);
                 self.set_activate_location(effect);
                 let controler = self.cards[handler].current.controler;
-                if self.is_activateable(effect, controler, &event, false, false, false, false, false) {
+                if self.can_activate(effect, controler, &event) {
                     self.insert_quick_f_chain(effect, &event, handler);
                 }
             }
@@ -260,8 +249,7 @@ impl Duel {
         core.instant_event.append(&mut core.queue_event);
     }
 
-    // core.quick_f_chain[effect], a map ordered by effect address (the effect id stands in for it): an entry the effect
-    // already has is overwritten.
+    // core.quick_f_chain[effect], ordered by effect address (the id stands in for it); the effect's entry is overwritten.
     fn insert_quick_f_chain(&mut self, effect: EffectId, event: &Event, handler: CardId) {
         let existing = self.core.quick_f_chain.iter().position(|&(other, _)| other == effect);
         let mut chain = existing
@@ -272,11 +260,7 @@ impl Duel {
         chain.evt = *event;
         chain.triggering_effect = effect;
         self.set_triggering_state(&mut chain, handler);
-        chain.triggering_player = if self.effects[effect].is_flag(EFFECT_FLAG_EVENT_PLAYER) && event.event_player < 2 {
-            event.event_player
-        } else {
-            self.cards[handler].current.controler
-        };
+        chain.triggering_player = self.event_player(effect, event).unwrap_or(self.cards[handler].current.controler);
         self.create_relation(handler, effect, chain.chain_id);
         match existing {
             Some(index) => {
@@ -292,8 +276,7 @@ impl Duel {
         }
     }
 
-    // The core keeps delayed quick effects in a set ordered by effect address then event; effect id and event id
-    // stand in for the addresses, which follow allocation order.
+    // A set ordered by effect address then event in the core; the effect and event ids follow the same allocation order.
     fn insert_delayed_quick(&mut self, effect: EffectId, event: Event) {
         let key = |duel: &Self, (effect, event): (EffectId, Event)| (duel.effects.id(effect), event.global_id);
         let new_key = key(self, (effect, event));
@@ -322,7 +305,6 @@ impl Duel {
         self.effects[effect].is_flag2(EFFECT_FLAG2_CHECK_SIMULTANEOUS) && self.core.just_sent_cards.contains(handler)
     }
 
-    // A trigger collected by process_instant_event, with the player the core gives it.
     fn new_trigger(&mut self, effect: EffectId, event: &Event, was_just_sent: bool) -> Chain {
         self.set_activate_location(effect);
         let handler = self.get_handler(effect);
@@ -332,12 +314,20 @@ impl Duel {
         chain.event_id = event.global_id;
         chain.evt = *event;
         self.set_triggering_state(&mut chain, handler);
-        chain.triggering_player = if self.effects[effect].is_flag(EFFECT_FLAG_EVENT_PLAYER) && event.event_player < 2 {
-            event.event_player
-        } else {
-            self.cards[handler].current.controler
-        };
+        chain.triggering_player = self.event_player(effect, event).unwrap_or(self.cards[handler].current.controler);
         chain
+    }
+
+    fn event_player(&self, effect: EffectId, event: &Event) -> Option<u8> {
+        (self.effects[effect].is_flag(EFFECT_FLAG_EVENT_PLAYER) && event.event_player < 2).then_some(event.event_player)
+    }
+
+    fn collect_continuous(&mut self, effect: EffectId, event: &Event, tp: &mut Vec<Chain>, ntp: &mut Vec<Chain>) {
+        let owner_player = self.event_player(effect, event).unwrap_or_else(|| self.get_handler_player(effect));
+        if self.can_activate(effect, owner_player, event) {
+            let chain = Chain::continuous(effect, owner_player, *event);
+            self.continuous_chain_list(effect, owner_player, tp, ntp).push(chain);
+        }
     }
 
     // Continuous effects with EFFECT_FLAG_DELAY wait while a chain or another continuous effect solves.
@@ -364,10 +354,14 @@ impl Duel {
 
     fn push_continuous(&mut self, mut tp: Vec<Chain>, mut ntp: Vec<Chain>) {
         for chain in tp.drain(..).chain(ntp.drain(..)) {
-            self.core.sub_solving_continuous.push(chain);
-            self.emplace_process(SolveContinuous::default());
+            self.queue_continuous(chain);
         }
         (self.core.continuous_tp, self.core.continuous_ntp) = (tp, ntp);
+    }
+
+    fn queue_continuous(&mut self, chain: Chain) {
+        self.core.sub_solving_continuous.push(chain);
+        self.emplace_process(SolveContinuous::default());
     }
 
     pub(crate) fn process_single_event(&mut self) {
@@ -405,21 +399,7 @@ impl Duel {
             return;
         }
         if effect_type & EFFECT_TYPE_CONTINUOUS != 0 {
-            let mut owner_player = self.get_handler_player(effect);
-            if self.effects[effect].is_flag(EFFECT_FLAG_EVENT_PLAYER) && event.event_player < 2 {
-                owner_player = event.event_player;
-            }
-            if self.is_activateable(effect, owner_player, event, false, false, false, false, false) {
-                let chain = Chain {
-                    triggering_effect: effect,
-                    triggering_player: owner_player,
-                    evt: *event,
-                    target_player: PLAYER_NONE,
-                    disable_player: PLAYER_NONE,
-                    ..Chain::default()
-                };
-                self.continuous_chain_list(effect, owner_player, tp, ntp).push(chain);
-            }
+            self.collect_continuous(effect, event, tp, ntp);
             return;
         }
         let handler = self.get_handler(effect);
@@ -432,8 +412,8 @@ impl Duel {
         chain.event_id = event.global_id;
         chain.evt = *event;
         self.set_triggering_state(&mut chain, handler);
-        chain.triggering_player = if self.effects[effect].is_flag(EFFECT_FLAG_EVENT_PLAYER) && event.event_player < 2 {
-            event.event_player
+        chain.triggering_player = if let Some(player) = self.event_player(effect, event) {
+            player
         } else if self.cards[handler].current.reason & REASON_TEMPORARY != 0 {
             self.cards[handler].previous.controler
         } else {
@@ -455,19 +435,10 @@ impl Duel {
     }
 
     pub(crate) fn solve_continuous(&mut self, playerid: u8, effect: EffectId, event: Event) {
-        self.core.sub_solving_continuous.push(Chain {
-            triggering_effect: effect,
-            triggering_player: playerid,
-            evt: event,
-            target_player: PLAYER_NONE,
-            disable_player: PLAYER_NONE,
-            ..Chain::default()
-        });
-        self.emplace_process(SolveContinuous::default());
+        self.queue_continuous(Chain::continuous(effect, playerid, event));
     }
 
-    // ExecuteCost, ExecuteTarget and ExecuteOperation: the script function runs whole here (see script.rs); while one
-    // of its prompts waits, the unit stays at step 0 under it.
+    // ExecuteCost, ExecuteTarget and ExecuteOperation: the function runs whole, the unit waiting at step 0 under its prompt.
     pub(crate) fn process_execute(&mut self, arg: &mut Execute) -> bool {
         let (effect, player, kind) = (arg.triggering_effect, arg.triggering_player, arg.kind);
         let peffect = &self.effects[effect];
@@ -486,29 +457,8 @@ impl Duel {
         let result = self.run_script(effect, player, promptless, |duel| {
             duel.splice_sub_solving_event();
             let event = duel.core.solving_event.first().copied().unwrap_or_default();
-            let args = match procedure {
-                Some(Procedure {
-                    card,
-                    must,
-                    materials,
-                    min,
-                    max,
-                    chkf,
-                    zone,
-                    releasable,
-                }) => Args {
-                    c: Some(card),
-                    must,
-                    materials,
-                    min,
-                    max,
-                    chkf,
-                    zone,
-                    releasable,
-                    ..Args::event(effect, player, &event)
-                },
-                None => Args::event(effect, player, &event),
-            };
+            let args = Args::event(effect, player, &event);
+            let args = procedure.map_or(args, |procedure| args.with_procedure(procedure));
             if duel.core.check_level == 0 {
                 duel.core.shuffle_deck_check = Default::default();
                 duel.core.shuffle_hand_check = Default::default();
@@ -582,10 +532,7 @@ impl Duel {
 
     fn splice_sub_solving_event(&mut self) {
         let core = &mut self.core;
-        for (index, &event) in core.sub_solving_event.iter().enumerate() {
-            core.solving_event.insert(index, event);
-        }
-        core.sub_solving_event.clear();
+        core.solving_event.prepend(&mut core.sub_solving_event);
     }
 
     pub(crate) fn execute(&mut self, kind: ExecuteKind, effect: EffectId, player: u8, event: Event) {
@@ -1065,8 +1012,7 @@ impl Duel {
                 if self.core.conti_player == turn_player {
                     if !self.core.delayed_continuous_tp.is_empty() {
                         let chain = self.core.delayed_continuous_tp.remove(0);
-                        self.core.sub_solving_continuous.push(chain);
-                        self.emplace_process(SolveContinuous::default());
+                        self.queue_continuous(chain);
                     } else {
                         self.core.conti_player = 1 - turn_player;
                     }
@@ -1074,13 +1020,11 @@ impl Duel {
                 if self.core.conti_player == 1 - turn_player {
                     if !self.core.delayed_continuous_ntp.is_empty() {
                         let chain = self.core.delayed_continuous_ntp.remove(0);
-                        self.core.sub_solving_continuous.push(chain);
-                        self.emplace_process(SolveContinuous::default());
+                        self.queue_continuous(chain);
                     } else if !self.core.delayed_continuous_tp.is_empty() {
                         self.core.conti_player = turn_player;
                         let chain = self.core.delayed_continuous_tp.remove(0);
-                        self.core.sub_solving_continuous.push(chain);
-                        self.emplace_process(SolveContinuous::default());
+                        self.queue_continuous(chain);
                     } else {
                         self.core.conti_player = PLAYER_NONE;
                     }
@@ -1201,13 +1145,11 @@ impl Duel {
                 if !self.core.delayed_continuous_tp.is_empty() {
                     self.core.conti_player = turn_player;
                     let delayed = self.core.delayed_continuous_tp.remove(0);
-                    self.core.sub_solving_continuous.push(delayed);
-                    self.emplace_process(SolveContinuous::default());
+                    self.queue_continuous(delayed);
                 } else if !self.core.delayed_continuous_ntp.is_empty() {
                     self.core.conti_player = 1 - turn_player;
                     let delayed = self.core.delayed_continuous_ntp.remove(0);
-                    self.core.sub_solving_continuous.push(delayed);
-                    self.emplace_process(SolveContinuous::default());
+                    self.queue_continuous(delayed);
                 } else {
                     self.core.conti_player = PLAYER_NONE;
                 }
@@ -1294,8 +1236,9 @@ impl Duel {
                 self.process_instant_event();
                 self.adjust_all();
                 if !arg.skip_trigger || !arg.skip_new {
-                    self.core.hint_timing[0] |= TIMING_CHAIN_END;
-                    self.core.hint_timing[1] |= TIMING_CHAIN_END;
+                    for timing in &mut self.core.hint_timing.0 {
+                        *timing |= TIMING_CHAIN_END;
+                    }
                     self.emplace_process(PointEvent {
                         skip_trigger: arg.skip_trigger,
                         skip_freechain: arg.skip_freechain || arg.skip_new,
@@ -1310,8 +1253,7 @@ impl Duel {
         }
     }
 
-    // The procedure summon a resolved chain link started (Duel.SynchroSummon and friends).
-    // `damage_step` also resumes the damage step of Duel.CalculateDamage, which waits for the chain to end.
+    // The procedure summon a solved link started (Duel.SynchroSummon...); `damage_step` also resumes Duel.CalculateDamage.
     fn run_reserved(&mut self, damage_step: bool) {
         let summoning = self.core.summoning_card.take().is_some();
         if (summoning || (damage_step && self.core.effect_damage_step == 1))
@@ -1325,8 +1267,9 @@ impl Duel {
         if clear_sent {
             self.core.just_sent_cards.clear();
         }
-        self.core.hint_timing[0] &= TIMING_DAMAGE_STEP | TIMING_DAMAGE_CAL;
-        self.core.hint_timing[1] &= TIMING_DAMAGE_STEP | TIMING_DAMAGE_CAL;
+        for timing in &mut self.core.hint_timing.0 {
+            *timing &= TIMING_DAMAGE_STEP | TIMING_DAMAGE_CAL;
+        }
         let ochain = std::mem::take(&mut self.core.new_ochain);
         for chain in ochain {
             let effect = chain.triggering_effect;
@@ -1351,8 +1294,7 @@ impl Duel {
         }
     }
 
-    // The trigger and quick effect windows of PointEvent steps 2 and 4: the forced or optional triggers of the
-    // current player that still apply, dropping the others from `list`.
+    // PointEvent steps 2 and 4: the current player's forced or optional triggers that still apply, dropping the others.
     pub(crate) fn collect_triggers(&mut self, forced: bool) {
         self.core.select_chains.clear();
         let mut list = std::mem::take(if forced {
@@ -1435,7 +1377,7 @@ impl Duel {
         }
     }
 
-    // Moves the chosen candidate to new_chains, as the core splices it.
+    // Removes and returns the chosen candidate, which the core splices out of select_chains.
     pub(crate) fn take_select_chain(&mut self, index: usize) -> Option<Chain> {
         (index < self.core.select_chains.len()).then(|| self.core.select_chains.remove(index))
     }
@@ -1477,6 +1419,19 @@ impl Duel {
             card,
             ..SelectEffectYesNo::default()
         });
+    }
+}
+
+impl Chain {
+    fn continuous(triggering_effect: EffectId, triggering_player: u8, evt: Event) -> Self {
+        Self {
+            triggering_effect,
+            triggering_player,
+            evt,
+            target_player: PLAYER_NONE,
+            disable_player: PLAYER_NONE,
+            ..Self::default()
+        }
     }
 }
 

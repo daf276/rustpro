@@ -60,6 +60,21 @@ pub struct NewCardInfo {
     pub pos: u32,
 }
 
+// The Main Deck from the bottom, then the Extra Deck.
+pub(crate) fn deck_cards(team: u8, deck: &Deck) -> impl Iterator<Item = NewCardInfo> + '_ {
+    let main = deck.main.iter().map(|&code| (code, LOCATION_DECK));
+    let cards = main.chain(deck.extra.iter().map(|&code| (code, LOCATION_EXTRA)));
+    cards.map(move |(code, location)| NewCardInfo {
+        team,
+        duelist: 0,
+        code,
+        con: team,
+        loc: location.into(),
+        seq: 0,
+        pos: POS_FACEDOWN_DEFENSE,
+    })
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Status {
     Awaiting,
@@ -87,8 +102,7 @@ pub struct Duel {
     pub(crate) library: Option<&'static Library>,
     // The database the duel's cards were read from, which Duel.CreateToken and Duel.AnnounceCard read at runtime.
     pub(crate) database: Option<&'static CardDatabase>,
-    // The scripts' own state for this duel (s.xxx tables and aux.GlobalCheck), keyed by script and slot. A cell, since
-    // Lua conditions and values write it too.
+    // The scripts' s.xxx tables and aux.GlobalCheck, keyed by script and slot; a cell, as conditions and values write it too.
     pub(crate) script_state: std::cell::RefCell<List<(u64, i64), 16>>,
     pub(crate) script_groups: Vec<(u64, CardSet)>,
     // aux.ToResetFuncTable: the functions the turn end runs, in the order the scripts registered them.
@@ -99,8 +113,7 @@ pub struct Duel {
     pub(crate) synchro_check_additional: Option<SynchroCheck>,
     // proc_ritual.lua's Ritual.SummoningLevel, which Ritual.Filter sets while a check runs.
     pub(crate) ritual_summoning_level: std::cell::Cell<Option<u32>>,
-    // card::assume of the cards duel::assumes lists, as (card, ASSUME_ kind, value): what Card.AssumeProperty fixes until
-    // Duel.AssumeReset or the end of the outermost script call. Set in checks that only read.
+    // duel::assumes with each card::assume as (card, ASSUME_ kind, value), until Duel.AssumeReset or the outermost call ends.
     pub(crate) assumes: std::cell::RefCell<List<(CardId, u8, u64), 2>>,
     // Effects a check reset on a copy of this duel (check_mut), reset here at the next processor step.
     pub(crate) pending_resets: std::cell::RefCell<List<EffectId, 2>>,
@@ -122,13 +135,11 @@ pub struct Duel {
     pub(crate) battled_cards: Vec<(CardId, u32)>,
     // The cards equipped to a monster; card::equiping_cards of a card are those whose equiping_target it is.
     pub(crate) equip_cards: CardSet,
-    // card::immune_effect as (card, effect) pairs: refreshed only by refresh_disable_status, so an effect registered
-    // since is not in it.
+    // card::immune_effect as (card, effect) pairs, refreshed only by refresh_disable_status.
     pub(crate) immune_effects: List<(CardId, EffectId), 16>,
     // The first unported call site an effect reached, set in checks that only read.
     pub(crate) unported: std::cell::Cell<Option<&'static str>>,
-    // The card and destination a cost check sets as sendto_param.location while it asks the redirects (see cost_destination);
-    // None between calls.
+    // The card and destination a cost check sets as sendto_param.location while it asks the redirects (cost_destination).
     pub(crate) destination_probe: std::cell::Cell<Option<(CardId, u8)>>,
 }
 
@@ -222,9 +233,7 @@ impl Duel {
         Ok(())
     }
 
-    // Debug.AddCard, which puzzles use: unlike OCG_DuelNewCard it places face-up Pendulums in the Extra Deck and the
-    // Pendulum Zones, and a card placed on an occupied field zone becomes an Xyz material of the card there.
-    // `info.team` is the owner and `info.con` the controller. Returns the card, or None if there was no room.
+    // Debug.AddCard: also places face-up Pendulums, and a card put on an occupied field zone becomes an Xyz material there.
     pub fn debug_add_card(&mut self, info: NewCardInfo, proc: bool, database: &'static CardDatabase) -> Result<Option<CardId>, DuelError> {
         let location = info.loc as u16;
         if !self.is_location_useable(info.con, location, info.seq) {
@@ -306,28 +315,14 @@ impl Duel {
     }
 
     pub fn add_deck(&mut self, team: u8, deck: &Deck, database: &'static CardDatabase) -> Result<(), DuelError> {
-        let main = deck.main.iter().map(|&code| (code, LOCATION_DECK));
-        for (code, location) in main.chain(deck.extra.iter().map(|&code| (code, LOCATION_EXTRA))) {
-            let info = NewCardInfo {
-                team,
-                duelist: 0,
-                code,
-                con: team,
-                loc: u32::from(location),
-                seq: 0,
-                pos: POS_FACEDOWN_DEFENSE,
-            };
-            self.new_card(info, database)?;
-        }
-        Ok(())
+        deck_cards(team, deck).try_for_each(|info| self.new_card(info, database))
     }
 
     pub fn start(&mut self) {
         self.emplace_process(Startup::default());
     }
 
-    // Runs until a prompt or MSG_WIN; unlike the core, which keeps going after MSG_WIN, the duel then stays ended.
-    // A pending prompt is left waiting for `apply`.
+    // Runs until a prompt, or MSG_WIN, after which the duel stays ended unlike the core; a pending prompt waits for `apply`.
     pub fn process(&mut self) -> Status {
         if self.prompt().is_some() {
             return Status::Awaiting;
@@ -361,8 +356,7 @@ impl Duel {
         self.result
     }
 
-    // The first call site an effect reached whose handling is not ported yet ("file:line"); once set, the duel may
-    // have diverged from the core, so its result cannot be trusted.
+    // The first unported call site an effect reached ("file:line"); once set, the duel's result cannot be trusted.
     pub fn unported_site(&self) -> Option<&'static str> {
         self.unported.get()
     }

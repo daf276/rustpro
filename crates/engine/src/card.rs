@@ -149,12 +149,14 @@ impl FromIterator<CardId> for CardSet {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct Cards {
     list: Vec<Card>,
     scratch: Card,
     changed: Marks<{ MAX_CARDS / 64 }>,
 }
+
+clone_by_field!(Cards { list, scratch, changed });
 
 impl Cards {
     // `source` must have been equal apart from the cards either changed since they last synced.

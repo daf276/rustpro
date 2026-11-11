@@ -60,9 +60,10 @@ static GLOBAL: Counting = Counting;
 const SAMPLE_EVERY: u64 = 16;
 const LEGAL_REPEATS: u32 = 16;
 const SPIN: u64 = 50_000_000;
-const OPS: [&str; 6] = [
+const OPS: [&str; 7] = [
     "legal_actions_into",
     "clone",
+    "clone_from",
     "observe",
     "encode",
     "observe into tensors",
@@ -109,7 +110,8 @@ impl Op {
 
 type Ops = [Op; OPS.len()];
 
-// The calls of OPS at every SAMPLE_EVERY-th prompt of one duel, determinizing with the deck as the opponent's decklist.
+// The calls of OPS at every SAMPLE_EVERY-th prompt of one duel, determinizing with the deck as the opponent's decklist; the
+// `_from` call copies into the duel cloned at the previous prompt.
 fn sample(seed: u64, cards: &'static CardDatabase, decks: &Decks, deck: &Deck) -> BenchResult<Ops> {
     let (mut duel, mut rng) = setup(seed, cards, decks)?;
     let mut ops = Ops::default();
@@ -117,13 +119,16 @@ fn sample(seed: u64, cards: &'static CardDatabase, decks: &Decks, deck: &Deck) -
     let mut sampler = Xoshiro256StarStar::new([seed, 1, 2, 3]);
     let mut buffers = Buffers::new(1);
     let mut tensors = buffers.tensors()?;
+    let mut pooled: Option<Duel> = None;
     play(&mut duel, &mut rng, |duel, _, action| {
-        let [legal_op, clone, observe, encode, straight, determinize] = &mut ops;
+        let [legal_op, clone, clone_from, observe, encode, straight, determinize] = &mut ops;
         if action % SAMPLE_EVERY != 0 {
             return;
         }
         legal_op.time(LEGAL_REPEATS, || duel.legal_actions_into(&mut legal));
         clone.time(1, || duel.clone());
+        let target = pooled.get_or_insert_with(|| duel.clone());
+        clone_from.time(1, || target.clone_from(duel));
         for player in 0..2 {
             observe.time(1, || duel.observe(player));
             let observation = duel.observe(player);
@@ -288,12 +293,13 @@ fn main() -> BenchResult<()> {
     let earlier = [
         "",
         "5b mean 4.7-4.95 us in play",
+        "",
         "5b median 4.7 us",
         "5d observe+encode ~5 us",
         "5e observe 2.8 us, est. ~1.5 us",
         "5b median 22.5 us",
     ];
-    let targets = ["", "<= ~1 us", "", "", "", ""];
+    let targets = ["", "<= ~1 us", "", "", "", "", ""];
     for (((name, (one, many)), target), earlier) in OPS.iter().zip(one.iter().zip(&many)).zip(targets).zip(earlier) {
         row(
             out,

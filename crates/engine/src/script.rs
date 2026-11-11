@@ -114,7 +114,7 @@ pub struct Library {
 pub type Response = List<u8, 32>;
 
 // The choice log of the outermost running function and what its attempts carry over.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct Replay {
     pub log: Vec<Response>,
     pub cursor: usize,
@@ -132,6 +132,18 @@ pub struct Replay {
     pub stack: List<(EffectId, u8), 4>,
 }
 
+clone_by_field!(Replay {
+    log,
+    cursor,
+    messages,
+    snapshot,
+    spare,
+    prompt,
+    units,
+    interrupted,
+    stack
+});
+
 pub type Snapshot = Arc<Mutex<Duel>>;
 
 // Panics only follow bugs, so a poisoned snapshot is used as it is.
@@ -139,13 +151,21 @@ pub(crate) fn lock(snapshot: &Snapshot) -> MutexGuard<'_, Duel> {
     snapshot.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-// The last finished function's snapshot, which the next one reuses unless a clone shares it; a clone starts without one.
+// The last finished function's snapshot, which the next one reuses unless a clone shares it; a clone starts without one, and a
+// duel cloned into keeps its own only for its buffers.
 #[derive(Debug, Default)]
-pub struct Spare(Option<Snapshot>);
+pub struct Spare {
+    snapshot: Option<Snapshot>,
+    synced: bool,
+}
 
 impl Clone for Spare {
     fn clone(&self) -> Self {
-        Self(None)
+        Self::default()
+    }
+
+    fn clone_from(&mut self, _: &Self) {
+        self.synced = false;
     }
 }
 
@@ -204,7 +224,10 @@ impl Duel {
                 debug_assert_eq!(self.trace.mute.get(), 0, "a rerun wrote fewer messages than its previous attempt");
                 self.core.replay.log.clear();
                 self.core.replay.messages = 0;
-                self.core.replay.spare = Spare(Some(snapshot));
+                self.core.replay.spare = Spare {
+                    snapshot: Some(snapshot),
+                    synced: true,
+                };
                 Some(value)
             }
             Err(Interrupt) => {
@@ -256,18 +279,27 @@ impl Duel {
 
     // A copy without the trace and the replay state, which live on across attempts.
     fn snapshot(&mut self) -> Snapshot {
-        if let Some(mut spare) = self.core.replay.spare.0.take()
+        let Spare { snapshot, synced } = std::mem::take(&mut self.core.replay.spare);
+        if let Some(mut spare) = snapshot
             && let Some(spare_duel) = Arc::get_mut(&mut spare)
         {
-            spare_duel.get_mut().unwrap_or_else(PoisonError::into_inner).copy_from(self);
+            let spare_duel = spare_duel.get_mut().unwrap_or_else(PoisonError::into_inner);
+            if synced {
+                spare_duel.copy_from(self);
+            } else {
+                self.without_replay(|duel| spare_duel.clone_from(duel));
+            }
             return spare;
         }
+        Arc::new(Mutex::new(self.without_replay(Duel::clone)))
+    }
+
+    fn without_replay<T>(&mut self, read: impl FnOnce(&Duel) -> T) -> T {
         let trace = std::mem::take(&mut self.trace);
         let replay = std::mem::take(&mut self.core.replay);
-        let snapshot = Arc::new(Mutex::new(self.clone()));
-        self.trace = trace;
-        self.core.replay = replay;
-        snapshot
+        let result = read(self);
+        (self.trace, self.core.replay) = (trace, replay);
+        result
     }
 
     // Equals `source` but for the trace and replay state; one must be a snapshot of the other, as sync_from copies only changes.

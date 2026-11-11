@@ -48,12 +48,14 @@ impl ProgressiveBuffer {
 }
 
 // The messages framed as OCG_DuelGetMessage does; `mute` skips what a rerun already wrote; cells for [Duel::check_mut].
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct Trace {
     pub buffer: RefCell<Option<Vec<u8>>>,
     pub count: Cell<u64>,
     pub mute: Cell<u64>,
 }
+
+clone_by_field!(Trace { buffer, count, mute });
 
 impl Trace {
     pub fn message(&mut self, id: u8) -> Message<'_> {

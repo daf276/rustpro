@@ -32,6 +32,11 @@ fn exclusive<T>(mutex: &mut Mutex<T>) -> &mut T {
     mutex.get_mut().unwrap_or_else(PoisonError::into_inner)
 }
 
+fn copy_into(duel: &engine::Duel, target: &mut engine::Duel) -> PyResult<()> {
+    target.clone_from(duel);
+    Ok(())
+}
+
 fn same_length(values: usize, slots: usize) -> PyResult<()> {
     match values == slots {
         true => Ok(()),
@@ -160,6 +165,31 @@ impl Duel {
     fn duel(&mut self) -> &mut engine::Duel {
         exclusive(&mut self.duel)
     }
+
+    // A copy written into `out`, reusing its buffers, if given; else a new duel `make` builds.
+    fn copy(
+        py: Python<'_>,
+        out: Option<Py<Self>>,
+        record: Option<&DuelRecord>,
+        write: impl FnOnce(&mut engine::Duel) -> PyResult<()>,
+        make: impl FnOnce() -> PyResult<engine::Duel>,
+    ) -> PyResult<Py<Self>> {
+        let Some(out) = out else {
+            let duel = Mutex::new(make()?);
+            return Py::new(
+                py,
+                Self {
+                    duel,
+                    record: record.cloned(),
+                },
+            );
+        };
+        let mut target = out.try_borrow_mut(py)?;
+        write(target.duel())?;
+        target.record = record.cloned();
+        drop(target);
+        Ok(out)
+    }
 }
 
 #[pymethods]
@@ -182,11 +212,11 @@ impl Duel {
         Self::replay(database, DuelRecord { seed, position, actions })
     }
 
-    fn clone(&mut self) -> Self {
-        Self {
-            duel: Mutex::new(self.duel().clone()),
-            record: self.record.clone(),
-        }
+    /// A copy, written into `out` (another Duel, whose buffers it reuses) if given.
+    #[pyo3(signature = (out = None))]
+    fn clone(&mut self, py: Python<'_>, out: Option<Py<Self>>) -> PyResult<Py<Self>> {
+        let duel = &*exclusive(&mut self.duel);
+        Self::copy(py, out, self.record.as_ref(), |target| copy_into(duel, target), || Ok(duel.clone()))
     }
 
     /// The player the prompt waits for, None once the duel ended.
@@ -395,13 +425,13 @@ impl Batch {
         Ok(out)
     }
 
-    /// A copy of the slot's duel, None for a retired slot.
-    fn duel(&mut self, slot: usize) -> Option<Duel> {
-        let duel = exclusive(&mut self.batch).duel(slot)?.clone();
-        Some(Duel {
-            duel: Mutex::new(duel),
-            record: None,
-        })
+    /// A copy of the slot's duel, written into `out` if given; None for a retired slot.
+    #[pyo3(signature = (slot, out = None))]
+    fn duel(&mut self, py: Python<'_>, slot: usize, out: Option<Py<Duel>>) -> PyResult<Option<Py<Duel>>> {
+        let Some(duel) = exclusive(&mut self.batch).duel(slot) else {
+            return Ok(None);
+        };
+        Duel::copy(py, out, None, |target| copy_into(duel, target), || Ok(duel.clone())).map(Some)
     }
 }
 

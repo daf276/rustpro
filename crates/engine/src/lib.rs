@@ -14,8 +14,8 @@ macro_rules! unported {
 
 // Clone whose clone_from goes field by field, so that copying into an existing value keeps its buffers.
 macro_rules! clone_by_field {
-    ($type:ty { $($field:ident),* $(,)? }) => {
-        impl Clone for $type {
+    ([$($generics:tt)*] $type:ty { $($field:ident),* $(,)? }) => {
+        impl<$($generics)*> Clone for $type {
             fn clone(&self) -> Self {
                 Self { $($field: self.$field.clone()),* }
             }
@@ -24,6 +24,9 @@ macro_rules! clone_by_field {
                 $(self.$field.clone_from(&source.$field);)*
             }
         }
+    };
+    ($type:ty { $($field:ident),* $(,)? }) => {
+        clone_by_field!([] $type { $($field),* });
     };
 }
 

@@ -9,8 +9,7 @@ use crate::duel::Duel;
 use crate::list::{List, Shared};
 use crate::script::{Args, Script};
 
-// The effect's index in the duel's arena. Slots of effects the core deletes are reused, as the core reuses memory.
-// Stored plus one, so that an Option<EffectId> takes no more space.
+// The index in the duel's arena, whose slots are reused after a delete as the core reuses memory. Stored plus one.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct EffectId(NonZeroU16);
 
@@ -44,8 +43,7 @@ pub type EffectSet = List<EffectId, 8>;
 
 pub type ConditionFn = fn(&Duel, &Args) -> bool;
 
-// effect::condition. A condition whose Lua writes state that persists (its effect's label or label object, script
-// state, flag effects) is `Mut`; the core reaches the conditions of actions only where the engine holds `&mut Duel`.
+// effect::condition; one whose Lua writes persistent state (labels, script state, flag effects) is `Mut`.
 #[derive(Debug, Clone, Copy)]
 pub enum Condition {
     Check(ConditionFn),
@@ -72,8 +70,7 @@ pub struct ChainLimit {
 // The operation of EFFECT_SPSUMMON_PROC_G, which fills the group of cards to summon the core passes it.
 pub type GroupOperationFn = fn(&mut Duel, &Args, &mut CardSet) -> Script<()>;
 
-// effect::target holds a Lua function whose parameters depend on the effect: the activation target of actions, or
-// the card filter (e, c) of field effects, which ignores the further parameters some codes pass.
+// effect::target: the activation target of actions, or the card filter (e, c) of field effects, by the parameters the code passes.
 #[derive(Debug, Clone, Copy, Default)]
 pub enum Target {
     #[default]
@@ -172,8 +169,7 @@ pub enum Value {
     CostReplace(fn(&Duel, EffectId, CostReplaceCall) -> bool),
 }
 
-// What Cost.Replaceable passes an EFFECT_COST_REPLACE value besides the replacing effect: its extracon, and the
-// activated effect's parameters and chk.
+// What Cost.Replaceable passes an EFFECT_COST_REPLACE value besides the replacing effect.
 #[derive(Debug, Clone, Copy)]
 pub struct CostReplaceCall<'a> {
     pub extracon: CostReplaceCondition,
@@ -184,8 +180,7 @@ pub struct CostReplaceCall<'a> {
 // extracon(base, e, tp, eg, ep, ev, re, r, rp) of Cost.Replaceable, with the replacing effect first.
 pub type CostReplaceCondition = fn(&Duel, EffectId, &Args) -> bool;
 
-// The calls aux.GetExtraMaterials and Link.Operation make: chk 0 (tp, sc) for the extra materials, chk 1 (sg, sc, tp)
-// once they are used, chk 2 (eg) when the procedure is done with them.
+// The calls of aux.GetExtraMaterials and Link.Operation: chk 0 to get the materials, chk 1 once used, chk 2 when done.
 #[derive(Debug, Clone, Copy)]
 pub enum ExtraMaterialCall {
     Get { summon_type: u32, tp: u8, sc: CardId },
@@ -200,7 +195,7 @@ impl Default for Value {
 }
 
 // effect in effect.h; `id` and `status` are kept in [Effects].
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Effect {
     pub count_limit: u8,
     pub count_limit_max: u8,
@@ -235,8 +230,7 @@ pub struct Effect {
     pub handler: Option<CardId>,
     pub active_handler: Option<CardId>,
     pub description: u64,
-    // The values Effect.SetLabel stores (up to eight: a token's stats, a group's levels) and their count, a field of its
-    // own so that it packs with the other small fields.
+    // The values Effect.SetLabel stores (up to eight) and their count, kept apart so that it packs with the small fields.
     pub label: [i64; 8],
     pub label_len: u8,
     pub label_object: Option<EffectId>,
@@ -245,52 +239,12 @@ pub struct Effect {
     pub field_key: Option<NonZeroU64>,
 }
 
-impl Default for Effect {
-    fn default() -> Self {
-        Self::new(CardId::default())
-    }
-}
-
 impl Effect {
     pub fn new(owner: CardId) -> Self {
         Self {
-            count_limit: 0,
-            count_limit_max: 0,
-            count_flag: 0,
-            count_hopt_index: 0,
-            effect_owner: PLAYER_NONE,
-            effect_type: 0,
-            copy_id: 0,
-            range: 0,
-            s_range: 0,
-            o_range: 0,
-            reset_count: 0,
-            active_location: 0,
-            active_sequence: 0,
-            code: 0,
-            flag: [0; 2],
-            initial_id: 0,
-            reset_flag: 0,
-            count_code: 0,
-            hint_timing: [0; 2],
-            card_type: 0,
-            active_type: 0,
-            condition: None,
-            cost: None,
-            cost_condition: None,
-            target: Target::None,
-            value: Value::Int(0),
-            operation: None,
-            category: 0,
             owner,
-            handler: None,
-            active_handler: None,
-            description: 0,
-            label: [0; 8],
-            label_len: 0,
-            label_object: None,
-            card_key: None,
-            field_key: None,
+            effect_owner: PLAYER_NONE,
+            ..Self::default()
         }
     }
 
@@ -340,6 +294,7 @@ impl Effect {
     }
 
     // The integer value; callers of function values ask for their signature instead.
+    #[inline]
     pub fn int_value(&self) -> i32 {
         match self.value {
             Value::Int(value) => value,
@@ -349,8 +304,7 @@ impl Effect {
     }
 }
 
-// effect::id and effect::status change while effects are only read (is_available), so they are Cells beside the
-// effects, which keeps Effect itself Copy and lets clones share the effects' chunks.
+// effect::id and effect::status change while effects are only read, so they are Cells beside the Copy effects' shared chunks.
 #[derive(Debug, Clone, Default)]
 pub struct Effects {
     list: Shared<Effect, CHUNK>,
@@ -442,8 +396,7 @@ impl Effects {
             .map(|index| EffectId::new(index as u16))
     }
 
-    // duel::delete_effect: the slot is reused by the next new effect. Label objects are the only references to an
-    // effect that scripts keep, so they are the ones that turn into the deleted object.
+    // duel::delete_effect; label objects, the only effect references scripts keep, turn into the deleted object.
     pub fn delete(&mut self, ids: &[EffectId]) {
         let holders: EffectSet = (self.list.iter().enumerate())
             .filter(|(_, effect)| effect.label_object.is_some_and(|label| ids.contains(&label)))
@@ -519,9 +472,7 @@ pub fn container_key(container: Container, card: Option<CardId>, code: u32) -> u
     ((container as u64) << 48) | (card << 32) | u64::from(code)
 }
 
-// Every effect_container of the duel in one sorted list: entries of one key keep insertion order, like a multimap's
-// equal range, so lookups are a binary search and iteration needs no allocation. Most lookups find nothing, so bitmaps
-// of the codes, the containers of each card and the keys that have entries answer those without searching.
+// Every effect_container in one sorted list of multimap equal ranges; bitmaps of codes, cards and keys answer most misses.
 #[derive(Debug, Default)]
 pub struct Registry {
     entries: Vec<(u64, EffectId)>,
@@ -611,8 +562,7 @@ impl Registry {
         }
     }
 
-    // False when no container holds an effect with this code. The lookups that run most check it in an inlined
-    // wrapper first, so that the usual lookup of a code no effect has costs one bit test at the call site.
+    // False when no container holds this code; hot lookups test it in an inlined wrapper, so a miss costs one bit test.
     #[inline]
     pub fn has_code(&self, code: u32) -> bool {
         test(&self.codes, code_bit(code))
@@ -654,8 +604,7 @@ impl Registry {
     }
 }
 
-// field_effect in field.h apart from the containers the registry holds. The core keeps the collections in hash sets,
-// iterated in address order; these keep insertion order, which only orders the messages of removed hint effects.
+// field_effect apart from the registry; insertion order instead of the core's hash sets only orders removed hint messages.
 #[derive(Debug, Default)]
 pub struct FieldEffect {
     pub registry: Registry,
@@ -702,6 +651,41 @@ impl FieldEffect {
         self.disable_check_set = *disable_check_set;
         self.grant_effect.clone_from(grant_effect);
     }
+
+    pub fn track(&mut self, effect: EffectId, flag: u32, reset_flag: u32, reason: Option<EffectId>) {
+        if flag & EFFECT_FLAG_OATH != 0 {
+            self.oath.push((effect, reason));
+        }
+        if reset_flag & RESET_PHASE != 0 {
+            self.pheff.push(effect);
+        }
+        if reset_flag & RESET_CHAIN != 0 {
+            self.cheff.push(effect);
+        }
+        if flag & EFFECT_FLAG_COUNT_LIMIT != 0 {
+            self.rechargeable.push(effect);
+        }
+    }
+
+    pub fn untrack(&mut self, effect: EffectId, flag: u32, reset_flag: u32) {
+        if flag & EFFECT_FLAG_OATH != 0 {
+            self.oath.retain(|&(oath, _)| oath != effect);
+        }
+        if reset_flag & RESET_PHASE != 0 {
+            remove_item(&mut self.pheff, &effect);
+        }
+        if reset_flag & RESET_CHAIN != 0 {
+            remove_item(&mut self.cheff, &effect);
+        }
+        if flag & EFFECT_FLAG_COUNT_LIMIT != 0 {
+            remove_item(&mut self.rechargeable, &effect);
+        }
+    }
+}
+
+pub fn misread<T: Default>(value: &str) -> T {
+    debug_assert!(false, "{value} read with the wrong parameters");
+    T::default()
 }
 
 pub fn remove_item<T: Copy + Default + PartialEq, const N: usize>(list: &mut List<T, N>, item: &T) {
@@ -858,8 +842,7 @@ impl Duel {
         id
     }
 
-    // Whether a single, equip, field or target effect applies now: range, owner relation, the handler's state and the
-    // condition. Actions are never available.
+    // Whether a single, equip, field or target effect applies now; actions never do.
     pub(crate) fn is_available(&self, effect: EffectId) -> bool {
         let peffect = &self.effects[effect];
         let effect_type = peffect.effect_type;
@@ -955,8 +938,6 @@ impl Duel {
         true
     }
 
-    // Whether an EFFECT_TYPE_ACTIONS effect can be activated, checking EFFECT_FLAG_DAMAGE_STEP and
-    // EFFECT_FLAG_SET_AVAILABLE for triggers.
     pub(crate) fn is_activateable(
         &mut self,
         effect: EffectId,
@@ -985,9 +966,8 @@ impl Duel {
         if !allowed {
             return false;
         }
-        let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
-        self.core.reason_effect.set(Some(effect));
-        self.core.reason_player.set(playerid);
+        let reason_effect = self.core.reason_effect.replace(Some(effect));
+        let reason_player = self.core.reason_player.replace(playerid);
         let result = (effect_type & EFFECT_TYPE_CONTINUOUS != 0 || self.is_action_check(effect, playerid))
             && self.is_activate_ready(effect, effect, playerid, event, neglect_cond, neglect_cost, neglect_target);
         self.core.reason_effect.set(reason_effect);
@@ -995,8 +975,7 @@ impl Duel {
         result
     }
 
-    // The damage step and damage calculation forbid effects without EFFECT_FLAG_DAMAGE_STEP/CAL, except at the events
-    // of those steps.
+    // The damage step and calculation forbid effects without EFFECT_FLAG_DAMAGE_STEP/CAL, except at their own events.
     fn damage_step_forbids(&self, effect: EffectId) -> bool {
         let peffect = &self.effects[effect];
         let code = peffect.code;
@@ -1170,7 +1149,7 @@ impl Duel {
                 return false;
             }
         }
-        // The cost of EFFECT_ACTIVATE_COST is kept as the value, which it has none of.
+        // The cost (e, te, tp) of EFFECT_ACTIVATE_COST is stored as its value, which it otherwise lacks.
         self.activate_cost_effects(effect, playerid)
             .into_iter()
             .all(|cost| !matches!(self.effects[cost].value, Value::EffectPlayer(check) if !check(self, cost, effect, playerid)))
@@ -1242,9 +1221,8 @@ impl Duel {
             return false;
         }
         let Some(condition) = peffect.condition else { return true };
-        let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
-        self.core.reason_effect.set(Some(effect));
-        self.core.reason_player.set(playerid);
+        let reason_effect = self.core.reason_effect.replace(Some(effect));
+        let reason_player = self.core.reason_player.replace(playerid);
         let result = self.run_condition(condition, &Args::event(effect, playerid, event));
         self.core.reason_effect.set(reason_effect);
         self.core.reason_player.set(reason_player);
@@ -1302,9 +1280,9 @@ impl Duel {
 
     // effect::get_value(card): the integer, or the first value the function returns.
     pub(crate) fn get_value(&self, effect: EffectId, card: CardId) -> i32 {
-        match self.effects[effect].value {
-            Value::Int(value) => value,
-            Value::Values(values) => values.first().copied().unwrap_or(0),
+        let peffect = &self.effects[effect];
+        match peffect.value {
+            Value::Int(_) | Value::Values(_) => peffect.int_value(),
             Value::SpSummonProcedure(value) => value(self, effect, card).0,
             Value::Card(value) => value(self, effect, card),
             Value::EffectPlayer(_)
@@ -1326,23 +1304,17 @@ impl Duel {
             | Value::HandSynchro(_)
             | Value::ExtraMaterial(_)
             | Value::CostReplace(_)
-            | Value::Own(_) => {
-                debug_assert!(false, "a value read with the wrong parameters");
-                0
-            }
+            | Value::Own(_) => misread("a value"),
         }
     }
 
     // effect::get_value(): the integer, or what the function returns for the effect alone.
     pub(crate) fn get_own_value(&self, effect: EffectId) -> i32 {
-        match self.effects[effect].value {
-            Value::Int(value) => value,
-            Value::Values(values) => values.first().copied().unwrap_or(0),
+        let peffect = &self.effects[effect];
+        match peffect.value {
+            Value::Int(_) | Value::Values(_) => peffect.int_value(),
             Value::Own(value) => value(self, effect),
-            _ => {
-                debug_assert!(false, "a value read with the wrong parameters");
-                0
-            }
+            _ => misread("a value"),
         }
     }
 
@@ -1351,10 +1323,7 @@ impl Duel {
         match self.effects[effect].value {
             Value::Int(value) => value as u32,
             Value::Zones(value) => value(self, effect, playerid, uplayer, reason) as u32,
-            _ => {
-                debug_assert!(false, "a zone limit read with the wrong parameters");
-                0
-            }
+            _ => misread("a zone limit"),
         }
     }
 
@@ -1363,10 +1332,7 @@ impl Duel {
         match self.effects[effect].value {
             Value::Int(value) => i64::from(value),
             Value::BattleDamage(value) => value(self, effect, playerid, reason_card),
-            _ => {
-                debug_assert!(false, "a battle damage value read with the wrong parameters");
-                0
-            }
+            _ => misread("a battle damage value"),
         }
     }
 
@@ -1374,10 +1340,7 @@ impl Duel {
     pub(crate) fn get_player_battle_damage_value(&self, effect: EffectId) -> i64 {
         match self.effects[effect].value {
             Value::Int(value) => i64::from(value),
-            _ => {
-                debug_assert!(false, "a battle damage value read with the wrong parameters");
-                0
-            }
+            _ => misread("a battle damage value"),
         }
     }
 
@@ -1394,10 +1357,7 @@ impl Duel {
         match self.effects[effect].value {
             Value::Int(value) => value as u32,
             Value::ChangeDamage(value) => value(self, effect, reason_effect, amount, reason, reason_player, reason_card),
-            _ => {
-                debug_assert!(false, "a damage value read with the wrong parameters");
-                0
-            }
+            _ => misread("a damage value"),
         }
     }
 
@@ -1432,10 +1392,7 @@ impl Duel {
                 && match self.effects[immune].value {
                     Value::Int(value) => value != 0,
                     Value::Effect(value) => value(self, immune, effect),
-                    _ => {
-                        debug_assert!(false, "an immunity value read with the wrong parameters");
-                        false
-                    }
+                    _ => misread("an immunity value"),
                 }
         };
         self.immune_effects
@@ -1474,8 +1431,7 @@ impl Duel {
             .all(|limit| (limit.function)(self, effect, limit.player, tp, limit.capture))
     }
 
-    // effect::reset: whether a reset of `reset_level` removes the effect. RESET_DISABLE only applies when the owner is
-    // the handler.
+    // effect::reset: whether the reset removes the effect; RESET_DISABLE only applies when the owner is the handler.
     pub(crate) fn effect_reset(&mut self, effect: EffectId, reset_level: u32, reset_type: u32) -> bool {
         let tp = self.infos.turn_player;
         let pid = self.get_handler_player(effect);
@@ -1546,10 +1502,7 @@ impl Duel {
         match self.effects[effect].value {
             Value::Int(value) => value != 0,
             Value::EffectPlayer(value) => value(self, effect, activated, playerid),
-            _ => {
-                debug_assert!(false, "an activation limit read with the wrong parameters");
-                false
-            }
+            _ => misread("an activation limit"),
         }
     }
 
@@ -1558,10 +1511,7 @@ impl Duel {
         match self.effects[effect].value {
             Value::Int(value) => value != 0,
             Value::Chain(value) => value(self, effect, chaincount),
-            _ => {
-                debug_assert!(false, "an inactivation limit read with the wrong parameters");
-                false
-            }
+            _ => misread("an inactivation limit"),
         }
     }
 

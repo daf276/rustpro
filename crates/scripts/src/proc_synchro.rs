@@ -130,11 +130,46 @@ impl Levels {
     }
 
     fn get(&self, duel: &Duel, c: CardId, sc: CardId) -> u32 {
-        self.0
-            .iter()
-            .find(|(card, _)| *card == Some(c))
-            .map_or_else(|| c.get_synchro_level(duel, sc), |&(_, level)| level)
+        self.known(c).unwrap_or_else(|| c.get_synchro_level(duel, sc))
     }
+
+    fn known(&self, c: CardId) -> Option<u32> {
+        self.0.iter().find(|(card, _)| *card == Some(c)).map(|&(_, level)| level)
+    }
+
+    // As bits, the sums below 64 of `min` to `max` cards of g, each its level's lower or nonzero upper half.
+    fn sums(&self, g: CardSet, min: usize, max: usize) -> Option<u64> {
+        // by_count[k] holds the sums of k cards; when g has no more than max cards, the last holds those of min or more.
+        let saturate = max >= g.len();
+        let mut by_count = [0u64; 17];
+        let by_count = by_count.get_mut(..=if saturate { min } else { max }.min(16))?;
+        *by_count.first_mut()? = 1;
+        for c in g {
+            let level = self.known(c)?;
+            let shift = |sums: u64, by: u32| sums.checked_shl(by).unwrap_or(0);
+            let add = |sums: u64| shift(sums, level & 0xffff) | if level >> 16 != 0 { shift(sums, level >> 16) } else { 0 };
+            let mut carry = 0;
+            for sums in by_count.iter_mut() {
+                (*sums, carry) = (*sums | carry, add(*sums));
+            }
+            if saturate {
+                *by_count.last_mut()? |= carry;
+            }
+        }
+        Some(by_count.iter().skip(min).fold(0, |all, &sums| all | sums))
+    }
+}
+
+// Whether a sum of `first` and one of `second` make `total`, below 64.
+fn sums_meet(first: u64, second: u64, total: u32) -> bool {
+    let mut first = first & (u64::MAX >> (63 - total));
+    while first != 0 {
+        if (second >> (total - first.trailing_zeros())) & 1 != 0 {
+            return true;
+        }
+        first &= first - 1;
+    }
+    false
 }
 
 impl Synchro {
@@ -476,7 +511,7 @@ impl Synchro {
         let ntg = g.filter(duel, |mc, duel| Synchro::non_tuner_filter::<P>(mc, duel, c, tp), None);
         let search = |duel: &Duel, tg: CardSet, ntg: CardSet, s: &mut Search| {
             s.plain = Synchro::is_plain::<P>(duel);
-            Synchro::level_reachable::<P>(duel, tg.union(ntg), s)
+            Synchro::level_reachable::<P>(duel, tg, ntg, s)
                 && tg.is_exists(
                     duel,
                     |tc, duel| Synchro::check_p41::<P>(duel, tc, tg, ntg, none, none, none, s),
@@ -511,8 +546,25 @@ impl Synchro {
             && !codes.iter().any(|&code| duel.may_have_effect(code))
     }
 
-    fn level_reachable<P: SynchroProcedure>(duel: &Duel, g: CardSet, s: &Search) -> bool {
-        !s.plain || g.check_with_sum_equal(duel, |c, duel| s.levels.get(duel, c, s.sc), s.lv, P::MIN1 + P::MIN2, g.len())
+    fn level_reachable<P: SynchroProcedure>(duel: &Duel, tg: CardSet, ntg: CardSet, s: &Search) -> bool {
+        if !s.plain {
+            return true;
+        }
+        Synchro::level_sums::<P>(duel, tg, ntg, s).unwrap_or_else(|| {
+            let g = tg.union(ntg);
+            g.check_with_sum_equal(duel, |c, duel| s.levels.get(duel, c, s.sc), s.lv, P::MIN1 + P::MIN2, g.len())
+        })
+    }
+
+    // Whether the Tuners' and non-Tuners' levels can sum to the level, a card counted as either; None where the sums cannot tell.
+    fn level_sums<P: SynchroProcedure>(duel: &Duel, tg: CardSet, ntg: CardSet, s: &Search) -> Option<bool> {
+        if !(1..64).contains(&s.lv) || duel.has_selected_cards() {
+            return None;
+        }
+        // Only a forced maximum lets the search go on to the non-Tuners with fewer than MIN1 Tuners.
+        let tuners = s.levels.sums(tg, if s.max == 0 { P::MIN1 } else { 1 }, P::MAX1)?;
+        let non_tuners = s.levels.sums(ntg, P::MIN2, P::MAX2)?;
+        Some(sums_meet(tuners, non_tuners, s.lv))
     }
 
     fn level_exceeded(duel: &Duel, sg: CardSet, s: &Search) -> bool {

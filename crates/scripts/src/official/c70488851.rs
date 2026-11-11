@@ -82,7 +82,17 @@ fn selfspcon(duel: &Duel, a: &Args) -> bool {
     let e = a.e;
     let tp = e.get_handler_player(duel);
     let g = duel.get_matching_group(tdfilter, tp, LOCATION_MZONE | LOCATION_GRAVE, 0, None);
+    if g.len() >= 3 && lacks_type(duel, g) {
+        return false;
+    }
     aux::select_unselect_group_check(duel, g, 3, 3, &|duel, sg, _, _| tdrescon(duel, e, tp, sg))
+}
+
+// Not in the Lua: tdrescon passes no three cards without all three types, and the search would only read types that run nothing.
+fn lacks_type(duel: &Duel, g: CardSet) -> bool {
+    let codes = [EFFECT_ADD_TYPE, EFFECT_REMOVE_TYPE, EFFECT_CHANGE_TYPE];
+    g.iter().all(|c| codes.iter().all(|&code| !duel.lookup_may_run(c, code)))
+        && g.iter().fold(0, |types, c| types | c.get_type(duel)) & TYPES_FSX != TYPES_FSX
 }
 
 fn selfsptg(duel: &mut Duel, a: &Args, _: i32, _: Option<CardId>) -> Script<bool> {

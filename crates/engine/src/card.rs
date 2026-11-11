@@ -451,14 +451,6 @@ pub struct Relation {
     pub chain_id: u16,
 }
 
-const CARD_CONTAINERS: [Container; 5] = [
-    Container::Single,
-    Container::Field,
-    Container::Equip,
-    Container::Target,
-    Container::XMaterial,
-];
-
 impl Duel {
     pub(crate) fn card_operation_sort(&self, c1: CardId, c2: CardId) -> Ordering {
         let less = |c1: CardId, c2: CardId| {
@@ -1072,12 +1064,7 @@ impl Duel {
 
     // The effects registered on the card in any container (card::indexer), as a copy.
     pub(crate) fn card_effects(&self, card: CardId) -> List<EffectId, 32> {
-        let registry = &self.field_effects.registry;
-        let mut effects = List::default();
-        for container in CARD_CONTAINERS {
-            effects.extend(registry.all(container, Some(card)).map(|(_, effect)| effect));
-        }
-        effects
+        self.field_effects.registry.of_card(card).collect()
     }
 
     // STATUS_EFFECT_ENABLED: the card is ready to use; false while moving, summoning or chaining.
@@ -1534,11 +1521,14 @@ impl Duel {
 
     // xmaterial_effect of the Xyz materials in overlay order, without those that also apply to the field.
     pub(crate) fn xmaterial_effects(&self, card: CardId, code: u32) -> impl Iterator<Item = EffectId> + '_ {
-        let mut materials: Cards8 = if self.overlay_cards.is_empty() {
-            Cards8::default()
-        } else {
-            self.xyz_materials(card).into_iter().collect()
-        };
+        (!self.overlay_cards.is_empty())
+            .then(|| self.attached_material_effects(card, code))
+            .into_iter()
+            .flatten()
+    }
+
+    fn attached_material_effects(&self, card: CardId, code: u32) -> impl Iterator<Item = EffectId> + '_ {
+        let mut materials: Cards8 = self.xyz_materials(card).into_iter().collect();
         materials.sort_by_key(|&material| self.cards[material].current.sequence);
         materials
             .into_iter()
@@ -1634,6 +1624,9 @@ impl Duel {
 
     pub(crate) fn filter_immune_effect(&self, card: CardId) -> EffectSet {
         let registry = &self.field_effects.registry;
+        if !registry.has_code(EFFECT_IMMUNE_EFFECT) {
+            return EffectSet::default();
+        }
         let mut effects: EffectSet = registry.equal_range(Container::Single, Some(card), EFFECT_IMMUNE_EFFECT).collect();
         if !self.equip_cards.is_empty() {
             effects.extend(self.equip_effects(card, EFFECT_IMMUNE_EFFECT));

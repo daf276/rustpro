@@ -997,7 +997,7 @@ impl Duel {
     }
 
     // The MSG_MOVE that move_card writes when a card changes place within one location.
-    fn write_move(&mut self, card: CardId, from: LocInfo) {
+    pub(crate) fn write_move(&mut self, card: CardId, from: LocInfo) {
         let (code, to, reason) = (
             self.cards[card].data.code,
             self.cards.get_info_location(card),

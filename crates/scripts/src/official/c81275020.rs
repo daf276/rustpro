@@ -1,14 +1,14 @@
 // Speedroid Terrortop
 use crate::prelude::*;
-use crate::testing::{Check, HAND};
+use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 81275020;
 
 pub const LISTED_NAMES: &[u32] = &[ID];
 
-// No Speedroid monster is ported yet, so the search never has a target.
-pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND)];
-pub const CHECKS: &[Check] = &[Check::SpecialSummoned, Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 0)))];
+// Speedroid Darumaknocker in the Deck to search.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (85482105, DECK), (85482105, DECK)];
+pub const CHECKS: &[Check] = &[Check::SpecialSummoned, Check::ResolvesEffect(aux::stringid(ID, 0))];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e1 = duel.create_effect(c);

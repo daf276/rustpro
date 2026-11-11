@@ -454,6 +454,11 @@ impl Duel {
         }
     }
 
+    // Whether Duel.SetSelectedCard left cards that the next sum check takes.
+    pub fn has_selected_cards(&self) -> bool {
+        !self.core.must_select_cards.get().is_empty()
+    }
+
     // No property is assumed and no type is being worked out, the two cells get_type reads.
     fn reads_own_types(&self) -> bool {
         self.assumes.borrow().is_empty() && self.core.type_temp.borrow().is_empty()

@@ -892,9 +892,7 @@ pub mod aux {
 
     // The lowest limit of the player's Summon Gate effects, which come with the cards that register them.
     pub fn check_summon_gate(duel: &Duel, tp: u8) -> Option<i32> {
-        if !duel.get_player_effect(tp, CARD_SUMMON_GATE).is_empty() {
-            duel.reach_unported(concat!(file!(), ":", line!()));
-        }
+        unported!(duel, !duel.get_player_effect(tp, CARD_SUMMON_GATE).is_empty());
         None
     }
 

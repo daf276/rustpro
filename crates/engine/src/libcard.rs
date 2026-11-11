@@ -144,10 +144,7 @@ impl CardId {
     }
 
     pub fn is_attack_below(self, duel: &Duel, attack: i32) -> bool {
-        if duel.cards[self].data.card_type & TYPE_MONSTER == 0
-            && duel.get_type(self) & TYPE_MONSTER == 0
-            && duel.is_affected_by_effect(self, EFFECT_PRE_MONSTER).is_none()
-        {
+        if !duel.is_monster_now(self) {
             return false;
         }
         let current = duel.get_attack(self);
@@ -982,7 +979,7 @@ impl CardId {
     // Only card::get_race and card::get_type read an assumed property so far; the other kinds come with their cards.
     pub fn assume_property(self, duel: &Duel, assume: u32, value: u64) {
         if assume != ASSUME_RACE && assume != ASSUME_TYPE {
-            duel.reach_unported(concat!(file!(), ":", line!()));
+            unported!(duel);
             return;
         }
         let mut assumes = duel.assumes.borrow_mut();
@@ -1289,22 +1286,16 @@ impl CardId {
         current > 0 && current >= level
     }
 
-    fn is_monster_now(self, duel: &Duel) -> bool {
-        duel.cards[self].data.card_type & TYPE_MONSTER != 0
-            || duel.get_type(self) & TYPE_MONSTER != 0
-            || duel.is_affected_by_effect(self, EFFECT_PRE_MONSTER).is_some()
-    }
-
     pub fn is_attack_above(self, duel: &Duel, attack: i32) -> bool {
-        self.is_monster_now(duel) && duel.get_attack(self) >= attack
+        duel.is_monster_now(self) && duel.get_attack(self) >= attack
     }
 
     pub fn is_defense_above(self, duel: &Duel, defense: i32) -> bool {
-        duel.cards[self].data.card_type & TYPE_LINK == 0 && self.is_monster_now(duel) && duel.get_defense(self) >= defense
+        duel.cards[self].data.card_type & TYPE_LINK == 0 && duel.is_monster_now(self) && duel.get_defense(self) >= defense
     }
 
     pub fn is_attack(self, duel: &Duel, attacks: &[i32]) -> bool {
-        self.is_monster_now(duel) && attacks.contains(&duel.get_attack(self))
+        duel.is_monster_now(self) && attacks.contains(&duel.get_attack(self))
     }
 
     pub fn get_text_attack(self, duel: &Duel) -> i32 {
@@ -1327,7 +1318,7 @@ impl CardId {
     }
 
     pub fn is_defense(self, duel: &Duel, defenses: &[i32]) -> bool {
-        duel.cards[self].data.card_type & TYPE_LINK == 0 && self.is_monster_now(duel) && defenses.contains(&duel.get_defense(self))
+        duel.cards[self].data.card_type & TYPE_LINK == 0 && duel.is_monster_now(self) && defenses.contains(&duel.get_defense(self))
     }
 
     pub fn is_releasable(self, duel: &Duel) -> bool {

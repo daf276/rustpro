@@ -9,9 +9,6 @@ macro_rules! unported {
             $duel.reach_unported(concat!(file!(), ":", line!()));
         }
     };
-    ($duel:expr) => {
-        $duel.reach_unported(concat!(file!(), ":", line!()))
-    };
 }
 
 pub mod chain;

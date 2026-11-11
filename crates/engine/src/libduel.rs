@@ -2070,9 +2070,10 @@ impl Duel {
 
     // A second counter with the same id is ignored; activities but chain, Special Summon and attack come with their cards.
     pub fn add_custom_activity_counter(&mut self, id: u32, activity: u8, filter: CounterFilter) {
-        if ![ACTIVITY_CHAIN, ACTIVITY_SPSUMMON, ACTIVITY_ATTACK].contains(&activity) {
-            self.reach_unported(concat!(file!(), ":", line!()));
-        }
+        unported!(
+            self,
+            (![ACTIVITY_CHAIN, ACTIVITY_SPSUMMON, ACTIVITY_ATTACK].contains(&activity)).then_some(())
+        );
         let counters = &mut self.core.custom_counters;
         if counters.iter().any(|counter| counter.id == id && counter.activity == activity) {
             return;
@@ -2372,9 +2373,10 @@ impl Duel {
     // The Lua errors of attaching to a material or a card to itself stop the oracle's script; no port does either.
     pub fn overlay_core(&mut self, target: CardId, materials: impl Into<CardSet>, send_materials_to_grave: bool) -> Script<()> {
         let materials = materials.into();
-        if self.cards[target].overlay_target.is_some() || materials.contains(target) {
-            self.reach_unported(concat!(file!(), ":", line!()));
-        }
+        unported!(
+            self,
+            (self.cards[target].overlay_target.is_some() || materials.contains(target)).then_some(())
+        );
         self.xyz_overlay(target, materials, send_materials_to_grave);
         self.yield_script()
     }

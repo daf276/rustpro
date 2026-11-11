@@ -1,5 +1,5 @@
 use std::num::NonZeroU64;
-use std::ops::{Index, IndexMut};
+use std::ops::{DerefMut, Index, IndexMut};
 
 use crate::card::{CardId, CardSet, LocInfo, Relation};
 use crate::constants::*;
@@ -1864,7 +1864,10 @@ impl Duel {
 
     #[inline(always)]
     pub(crate) fn filter_field_effect(&self, code: u32) -> EffectSet {
-        self.filter_field_effect_list(code)
+        if !self.field_effects.registry.has_code(code) {
+            return EffectSet::default();
+        }
+        self.filter_field_effect_lookup(code)
     }
 
     // filter_field_effect into a list of any inline size: the summon procedures of both Extra Decks outgrow an EffectSet.
@@ -1876,8 +1879,8 @@ impl Duel {
         self.filter_field_effect_lookup(code)
     }
 
-    fn filter_field_effect_lookup<const N: usize>(&self, code: u32) -> List<EffectId, N> {
-        let mut effects: List<EffectId, N> = self
+    fn filter_field_effect_lookup<S: FromIterator<EffectId> + DerefMut<Target = [EffectId]>>(&self, code: u32) -> S {
+        let mut effects: S = self
             .field_effects
             .registry
             .equal_range(Container::Aura, None, code)

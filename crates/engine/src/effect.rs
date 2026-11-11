@@ -1,12 +1,12 @@
 // Port of effect.h/effect.cpp: effects are plain data in one per-duel arena, their behaviour static function pointers.
 use std::cell::Cell;
 use std::num::{NonZeroU16, NonZeroU64};
-use std::ops::{Index, IndexMut};
+use std::ops::{Deref, DerefMut, Index, IndexMut};
 
 use crate::card::{CardId, CardSet, MAX_CARDS};
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::list::{List, Shared};
+use crate::list::{self, List, Shared};
 use crate::script::{Args, Script};
 
 // The index in the duel's arena, whose slots are reused after a delete as the core reuses memory. Stored plus one.
@@ -38,8 +38,78 @@ impl std::fmt::Debug for EffectId {
     }
 }
 
-// effect_set: effects collected from containers, sorted by id where the core sorts them.
-pub type EffectSet = List<EffectId, 8>;
+// effect_set: effects collected from containers, sorted by id where the core sorts them. Most lookups find nothing, so
+// the list is only made by the first push: an empty set is one word to write, test and drop.
+#[derive(Debug, Clone, Default)]
+pub struct EffectSet(Option<List<EffectId, 8>>);
+
+impl EffectSet {
+    pub fn push(&mut self, effect: EffectId) {
+        self.0.get_or_insert_default().push(effect);
+    }
+
+    pub fn retain(&mut self, keep: impl FnMut(&EffectId) -> bool) {
+        if let Some(effects) = &mut self.0 {
+            effects.retain(keep);
+        }
+    }
+}
+
+impl Deref for EffectSet {
+    type Target = [EffectId];
+
+    fn deref(&self) -> &[EffectId] {
+        self.0.as_deref().unwrap_or_default()
+    }
+}
+
+impl DerefMut for EffectSet {
+    fn deref_mut(&mut self) -> &mut [EffectId] {
+        self.0.as_deref_mut().unwrap_or_default()
+    }
+}
+
+impl Extend<EffectId> for EffectSet {
+    fn extend<I: IntoIterator<Item = EffectId>>(&mut self, effects: I) {
+        effects.into_iter().for_each(|effect| self.push(effect));
+    }
+}
+
+impl FromIterator<EffectId> for EffectSet {
+    fn from_iter<I: IntoIterator<Item = EffectId>>(effects: I) -> Self {
+        let mut set = Self::default();
+        set.extend(effects);
+        set
+    }
+}
+
+impl<'a> IntoIterator for &'a EffectSet {
+    type Item = &'a EffectId;
+    type IntoIter = std::slice::Iter<'a, EffectId>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+pub struct EffectSetIter(Option<list::IntoIter<EffectId, 8>>);
+
+impl Iterator for EffectSetIter {
+    type Item = EffectId;
+
+    fn next(&mut self) -> Option<EffectId> {
+        self.0.as_mut()?.next()
+    }
+}
+
+impl IntoIterator for EffectSet {
+    type Item = EffectId;
+    type IntoIter = EffectSetIter;
+
+    fn into_iter(self) -> EffectSetIter {
+        EffectSetIter(self.0.map(List::into_iter))
+    }
+}
 
 pub type ConditionFn = fn(&Duel, &Args) -> bool;
 

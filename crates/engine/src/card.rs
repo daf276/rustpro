@@ -451,14 +451,6 @@ pub struct Relation {
     pub chain_id: u16,
 }
 
-const CARD_CONTAINERS: [Container; 5] = [
-    Container::Single,
-    Container::Field,
-    Container::Equip,
-    Container::Target,
-    Container::XMaterial,
-];
-
 impl Duel {
     pub(crate) fn card_operation_sort(&self, c1: CardId, c2: CardId) -> Ordering {
         let less = |c1: CardId, c2: CardId| {
@@ -1072,12 +1064,7 @@ impl Duel {
 
     // The effects registered on the card in any container (card::indexer), as a copy.
     pub(crate) fn card_effects(&self, card: CardId) -> List<EffectId, 32> {
-        let registry = &self.field_effects.registry;
-        let mut effects = List::default();
-        for container in CARD_CONTAINERS {
-            effects.extend(registry.all(container, Some(card)).map(|(_, effect)| effect));
-        }
-        effects
+        self.field_effects.registry.of_card(card).collect()
     }
 
     // STATUS_EFFECT_ENABLED: the card is ready to use; false while moving, summoning or chaining.

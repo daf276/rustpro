@@ -66,8 +66,7 @@ pub enum Prompt {
         forced: bool,
         count: usize,
     },
-    // Also MSG_SELECT_DISFIELD. `blocked` has a bit set per unavailable zone: own monster zones 0-6, own spell zones 8-15,
-    // and the opponent's at +16.
+    // Also MSG_SELECT_DISFIELD. `blocked` bits: own monster zones 0-6, own spell zones 8-15, the opponent's at +16.
     Place {
         player: u8,
         count: u8,

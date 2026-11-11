@@ -85,14 +85,6 @@ pub const LOCATION_SZONE: u8 = 0x08;
 pub const LOCATION_EXTRA: u32 = 0x40;
 pub const POS_FACEDOWN_DEFENSE: u32 = 0x8;
 
-pub const TYPE_MONSTER: u32 = 0x1;
-pub const TYPE_FUSION: u32 = 0x40;
-pub const TYPE_SYNCHRO: u32 = 0x2000;
-pub const TYPE_TOKEN: u32 = 0x4000;
-pub const TYPE_XYZ: u32 = 0x80_0000;
-pub const TYPE_LINK: u32 = 0x400_0000;
-pub const TYPE_EXTRA: u32 = TYPE_FUSION | TYPE_SYNCHRO | TYPE_XYZ | TYPE_LINK;
-
 // DUEL_PZONE | DUEL_EMZONE | DUEL_FSX_MMZONE | DUEL_TRAP_MONSTERS_NOT_USE_ZONE | DUEL_TRIGGER_ONLY_IN_LOCATION
 pub const DUEL_MODE_MR5: u64 = 0x800 | 0x2000 | 0x4000 | 0x8000 | 0x2_0000;
 
@@ -121,34 +113,7 @@ pub const MSG_ANNOUNCE_ATTRIB: u8 = 141;
 pub const MSG_ANNOUNCE_CARD: u8 = 142;
 pub const MSG_ANNOUNCE_NUMBER: u8 = 143;
 
-pub const OPCODE_ADD: u64 = 0x4000_0000_0000_0000;
-pub const OPCODE_SUB: u64 = 0x4000_0001_0000_0000;
-pub const OPCODE_MUL: u64 = 0x4000_0002_0000_0000;
-pub const OPCODE_DIV: u64 = 0x4000_0003_0000_0000;
-pub const OPCODE_AND: u64 = 0x4000_0004_0000_0000;
-pub const OPCODE_OR: u64 = 0x4000_0005_0000_0000;
-pub const OPCODE_NEG: u64 = 0x4000_0006_0000_0000;
-pub const OPCODE_NOT: u64 = 0x4000_0007_0000_0000;
-pub const OPCODE_BAND: u64 = 0x4000_0008_0000_0000;
-pub const OPCODE_BOR: u64 = 0x4000_0009_0000_0000;
-pub const OPCODE_BNOT: u64 = 0x4000_0010_0000_0000;
-pub const OPCODE_BXOR: u64 = 0x4000_0011_0000_0000;
-pub const OPCODE_LSHIFT: u64 = 0x4000_0012_0000_0000;
-pub const OPCODE_RSHIFT: u64 = 0x4000_0013_0000_0000;
-pub const OPCODE_ALLOW_ALIASES: u64 = 0x4000_0014_0000_0000;
-pub const OPCODE_ALLOW_TOKENS: u64 = 0x4000_0015_0000_0000;
-pub const OPCODE_ISCODE: u64 = 0x4000_0100_0000_0000;
-pub const OPCODE_ISSETCARD: u64 = 0x4000_0101_0000_0000;
-pub const OPCODE_ISTYPE: u64 = 0x4000_0102_0000_0000;
-pub const OPCODE_ISRACE: u64 = 0x4000_0103_0000_0000;
-pub const OPCODE_ISATTRIBUTE: u64 = 0x4000_0104_0000_0000;
-pub const OPCODE_GETCODE: u64 = 0x4000_0105_0000_0000;
-pub const OPCODE_GETTYPE: u64 = 0x4000_0107_0000_0000;
-pub const OPCODE_GETRACE: u64 = 0x4000_0108_0000_0000;
-pub const OPCODE_GETATTRIBUTE: u64 = 0x4000_0109_0000_0000;
-
 unsafe extern "C" {
-    pub fn OCG_GetVersion(major: *mut c_int, minor: *mut c_int);
     pub fn OCG_CreateDuel(out_duel: *mut Duel, options: *const DuelOptions) -> c_int;
     pub fn OCG_DestroyDuel(duel: Duel);
     pub fn OCG_DuelNewCard(duel: Duel, info: *const NewCardInfo);
@@ -157,8 +122,5 @@ unsafe extern "C" {
     pub fn OCG_DuelGetMessage(duel: Duel, length: *mut u32) -> *mut c_void;
     pub fn OCG_DuelSetResponse(duel: Duel, buffer: *const c_void, length: u32);
     pub fn OCG_LoadScript(duel: Duel, buffer: *const c_char, length: u32, name: *const c_char) -> c_int;
-    pub fn OCG_DuelQueryCount(duel: Duel, team: u8, loc: u32) -> u32;
-    pub fn OCG_DuelQuery(duel: Duel, length: *mut u32, info: *const QueryInfo) -> *mut c_void;
     pub fn OCG_DuelQueryLocation(duel: Duel, length: *mut u32, info: *const QueryInfo) -> *mut c_void;
-    pub fn OCG_DuelQueryField(duel: Duel, length: *mut u32) -> *mut c_void;
 }

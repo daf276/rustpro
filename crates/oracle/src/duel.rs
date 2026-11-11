@@ -141,24 +141,10 @@ impl<'a> Duel<'a> {
         }
     }
 
-    // Each message is prefixed by its u32 length in native byte order.
     pub fn messages(&mut self) -> impl Iterator<Item = &[u8]> {
         let mut length = 0;
         // SAFETY: the core owns the buffer until the next call on this duel, which needs &mut self.
-        let mut remaining = unsafe {
-            let buffer = ffi::OCG_DuelGetMessage(self.handle, &mut length);
-            if buffer.is_null() {
-                &[][..]
-            } else {
-                std::slice::from_raw_parts(buffer.cast::<u8>(), length as usize)
-            }
-        };
-        std::iter::from_fn(move || {
-            let (size, rest) = remaining.split_first_chunk::<4>()?;
-            let (message, rest) = rest.split_at_checked(u32::from_ne_bytes(*size) as usize)?;
-            remaining = rest;
-            Some(message)
-        })
+        frames(unsafe { core_buffer(ffi::OCG_DuelGetMessage(self.handle, &mut length), length) })
     }
 
     pub fn set_response(&mut self, response: &[u8]) {
@@ -166,8 +152,7 @@ impl<'a> Duel<'a> {
         unsafe { ffi::OCG_DuelSetResponse(self.handle, response.as_ptr().cast(), response.len() as u32) }
     }
 
-    // OCG_DuelQueryLocation of one location for the code, position, ATK, DEF and QUERY_IS_PUBLIC (which the core always
-    // adds): a card per sequence, None for an empty zone.
+    // A card per sequence of one location (None for an empty zone), with QUERY_IS_PUBLIC, which the core always adds.
     pub fn query_location(&mut self, con: u8, loc: u32) -> Vec<Option<QueriedCard>> {
         let info = ffi::QueryInfo {
             flags: QUERY_CODE | QUERY_POSITION | QUERY_ATTACK | QUERY_DEFENSE,
@@ -178,14 +163,7 @@ impl<'a> Duel<'a> {
         };
         let mut length = 0;
         // SAFETY: handle is a live duel; the core owns the buffer until the next call on this duel, which needs &mut self.
-        let buffer = unsafe {
-            let buffer = ffi::OCG_DuelQueryLocation(self.handle, &mut length, &info);
-            if buffer.is_null() {
-                &[][..]
-            } else {
-                std::slice::from_raw_parts(buffer.cast::<u8>(), length as usize)
-            }
-        };
+        let buffer = unsafe { core_buffer(ffi::OCG_DuelQueryLocation(self.handle, &mut length, &info), length) };
         let mut rest = buffer.get(4..).unwrap_or_default();
         let mut cards = Vec::new();
         while let Some((&size, after)) = rest.split_first_chunk::<2>() {
@@ -229,6 +207,25 @@ impl Drop for Duel<'_> {
     fn drop(&mut self) {
         // SAFETY: handle is null or a live duel, and OCG_DestroyDuel accepts both.
         unsafe { ffi::OCG_DestroyDuel(self.handle) }
+    }
+}
+
+// The framing of OCG_DuelGetMessage: each message prefixed by its u32 length in native byte order.
+pub fn frames(mut buffer: &[u8]) -> impl Iterator<Item = &[u8]> {
+    std::iter::from_fn(move || {
+        let (size, rest) = buffer.split_first_chunk::<4>()?;
+        let (message, rest) = rest.split_at_checked(u32::from_ne_bytes(*size) as usize)?;
+        buffer = rest;
+        Some(message)
+    })
+}
+
+// Safety: `buffer` must be null or point at `length` bytes that live for 'a.
+unsafe fn core_buffer<'a>(buffer: *mut c_void, length: u32) -> &'a [u8] {
+    if buffer.is_null() {
+        &[]
+    } else {
+        unsafe { std::slice::from_raw_parts(buffer.cast::<u8>(), length as usize) }
     }
 }
 

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::io::Write;
 use std::sync::OnceLock;
 
-use diff::{DiffError, Vendor, diff_duel, diff_scenario, sampled_cards};
+use diff::{Vendor, diff_scenario, each_state, records, scenario_records};
 use engine::{Action, Duel, DuelRecord, Observation, Prompt, SeenCard};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -12,42 +12,20 @@ use sim::*;
 
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
-fn records(vendor: &'static Vendor, seeds: std::ops::Range<u64>) -> Result<Vec<DuelRecord>> {
-    let duels = seeds.into_par_iter().map(|seed| diff_duel(vendor, seed));
-    Ok(duels
-        .map(|report| Ok(report?.record))
-        .collect::<std::result::Result<_, DiffError>>()?)
-}
-
 // Elfnote mirror records and one scenario per ported card, built once for the tests that share them.
 fn all_records() -> Result<&'static [(&'static Vendor, DuelRecord)]> {
     static RECORDS: OnceLock<std::result::Result<Vec<(&'static Vendor, DuelRecord)>, String>> = OnceLock::new();
     let build = || -> Result<Vec<_>> {
         let (elfnote, scenarios) = (Vendor::leak(Vendor::elfnote)?, Vendor::leak(Vendor::scenarios)?);
-        let scenario_records = sampled_cards()
-            .into_par_iter()
-            .map(|code| Ok((scenarios, diff_scenario(scenarios, code, 0)?.record)));
-        let mut records: Vec<_> = records(elfnote, 0..40)?.into_iter().map(|record| (elfnote, record)).collect();
-        records.extend(scenario_records.collect::<std::result::Result<Vec<_>, DiffError>>()?);
-        Ok(records)
+        let elfnote_records = records(elfnote, 0..40)?.into_iter().map(|record| (elfnote, record));
+        let scenario_records = scenario_records(scenarios)?.into_iter().map(|record| (scenarios, record));
+        Ok(elfnote_records.chain(scenario_records).collect())
     };
     let records = RECORDS.get_or_init(|| build().map_err(|error| error.to_string()));
     Ok(records.as_ref().map_err(String::clone)?)
 }
 
-// Calls `check` at every prompt of the record, before the recorded action.
-fn each_state(vendor: &'static Vendor, record: &DuelRecord, mut check: impl FnMut(&Duel, usize) -> Result) -> Result {
-    let mut duel = Duel::from_position(&record.position, &vendor.cards, &LIBRARY, record.seed)?;
-    duel.process();
-    for (index, &action) in record.actions.iter().enumerate() {
-        check(&duel, index)?;
-        duel.apply(action)?;
-    }
-    Ok(())
-}
-
-// The legal actions get distinct indices below ACTIONS that decode back to them, the mask holds exactly those, and the
-// prompted player's choices line up with them. Returns the longest list seen per section.
+// Legal actions get distinct indices that decode back, the mask holds them and the choices line up; tracks longest lists.
 fn check_encoding(duel: &Duel, index: usize, longest: &mut BTreeMap<Section, usize>) -> Result {
     let legal = duel.policy_actions();
     let indices: Vec<usize> = indices(&legal).collect::<std::result::Result<_, _>>()?;
@@ -83,27 +61,11 @@ fn check_encoding(duel: &Duel, index: usize, longest: &mut BTreeMap<Section, usi
     Ok(())
 }
 
-fn buffers(rows: usize) -> [Vec<i32>; 4] {
-    let sizes = [
-        GLOBAL_FEATURES.len(),
-        MAX_OBS_CARDS * CARD_FEATURES.len(),
-        MAX_CHAIN * CHAIN_FEATURES.len(),
-        ACTIONS * ACTION_FEATURES.len(),
-    ];
-    sizes.map(|size| vec![0; rows * size])
-}
-
-fn tensors(buffers: &mut [Vec<i32>; 4]) -> Result<Tensors<'_>> {
-    let [global, cards, chain, actions] = buffers;
-    Ok(Tensors::new(global, cards, chain, actions)?)
-}
-
-// The tensors hold the observation's cards in order, and per legal action its section and the card it picks. Returns
-// how many cards and chain links it shows.
+// The tensors hold the observation's cards in order and each legal action's section and card; returns the card and link counts.
 fn check_tensors(observation: &Observation) -> Result<[usize; 2]> {
-    let mut buffers = buffers(1);
-    tensors(&mut buffers)?.write(0, Some(observation))?;
-    let [_, cards, _, actions] = &buffers;
+    let mut buffers = Buffers::new(1);
+    buffers.tensors()?.write(0, Some(observation))?;
+    let [_, cards, _, actions] = &buffers.0;
     let (cards, _) = cards.as_chunks::<{ CARD_FEATURES.len() }>();
     let found = cards.iter().filter(|&&[valid, ..]| valid == 1);
     let found = found.map(|&[_, _, location, sequence, position, code, ..]| [location, sequence, position, code]);
@@ -167,9 +129,9 @@ fn should_encode_a_duel_straight_as_its_observation() {
     let checked = all_records().unwrap().par_iter().map(|(vendor, record)| {
         each_state(vendor, record, |duel, _| {
             for player in 0..2 {
-                let (mut observed, mut straight) = (buffers(1), buffers(1));
-                tensors(&mut observed)?.write(0, Some(&duel.observe(player)))?;
-                tensors(&mut straight)?.write_duel(0, duel, player)?;
+                let (mut observed, mut straight) = (Buffers::new(1), Buffers::new(1));
+                observed.tensors()?.write(0, Some(&duel.observe(player)))?;
+                straight.tensors()?.write_duel(0, duel, player)?;
                 if observed != straight {
                     return Err(format!("player {player}: the duel encodes differently from its observation").into());
                 }
@@ -215,8 +177,7 @@ fn should_offer_the_black_goat_laughs_at_most_the_cap_of_declarable_codes() {
     assert!(declarations > 0);
 }
 
-// Auto-advance applies exactly the run of single-option prompts a step-by-step walk sees (only the acting player's
-// under Own) and stops where they end.
+// Auto-advance applies exactly the single-option prompts a step-by-step walk sees (the acting player's under Own).
 fn check_auto_advance(duel: &Duel) -> Result {
     let Some(player) = duel.prompt().map(Prompt::player) else {
         return Ok(());
@@ -323,9 +284,9 @@ fn should_observe_each_slot_for_its_acting_player() {
             .collect();
         batch.step(&actions).unwrap();
     }
-    let (mut batched, mut single) = (buffers(SLOTS), buffers(SLOTS));
-    batch.observe(&mut tensors(&mut batched).unwrap()).unwrap();
-    let mut single_tensors = tensors(&mut single).unwrap();
+    let (mut batched, mut single) = (Buffers::new(SLOTS), Buffers::new(SLOTS));
+    batch.observe(&mut batched.tensors().unwrap()).unwrap();
+    let mut single_tensors = single.tensors().unwrap();
     for slot in 0..SLOTS {
         let observation = batch.duel(slot).and_then(|duel| Some(duel.observe(duel.prompt()?.player())));
         single_tensors.write(slot, observation.as_ref()).unwrap();

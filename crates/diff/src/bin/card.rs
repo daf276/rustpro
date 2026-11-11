@@ -1,12 +1,8 @@
-// Diffs the scenarios of the given cards against the oracle and writes per card whether all pass, the first failing
-// scenario (divergence or unported site), each check's counts and the resolutions per effect; exits with 1 on any
-// failure. With --trace K, also what scenario K places and every message of it, with the codes of the duel's cards
-// it names.
+// Diffs the given cards' scenarios, writing per card its checks and first failure; --trace K writes scenario K's messages.
 // cargo run --release -p diff --bin card -- <code>... [--scenarios K] [--threads N] [--context N] [--trace K]
 use std::collections::BTreeSet;
 use std::error::Error;
 use std::io::Write;
-use std::path::PathBuf;
 use std::process::ExitCode;
 
 use diff::{SCENARIOS_FULL, Vendor, describe, diff_cards, diff_scenario, scenario, summarize};
@@ -27,8 +23,7 @@ fn main() -> Result<ExitCode, Box<dyn Error>> {
         return Err("usage: card <code>... [--scenarios K] [--threads N (0 = all cores)] [--context N (default 5)] [--trace K]".into());
     }
     rayon::ThreadPoolBuilder::new().num_threads(threads).build_global()?;
-    let vendor = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../vendor");
-    let mut vendor = Vendor::scenarios(&vendor)?;
+    let mut vendor = Vendor::scenarios(&carddata::vendor())?;
     vendor.context = context.unwrap_or(vendor.context);
     vendor.keep_stream = trace.is_some();
     let vendor: &'static Vendor = Box::leak(Box::new(vendor));

@@ -92,7 +92,7 @@ fn assert_elfnote_clean(seeds: Range<u64>) -> Result<(), DiffError> {
     let vendor = Vendor::leak(Vendor::elfnote)?;
     let (tally, _) = diff_duels(vendor, seeds)?;
     write_tally(&tally);
-    let cards = vendor.deck.iter().flat_map(|deck| deck.main.iter().chain(&deck.extra));
+    let cards = vendor.decks.deck.iter().flat_map(|deck| deck.main.iter().chain(&deck.extra));
     let unresolved: Vec<u32> = cards.copied().filter(|&code| tally.resolutions(code) == 0).collect();
     assert!(unresolved.is_empty(), "{unresolved:?} {tally:?}");
     Ok(())
@@ -109,8 +109,7 @@ fn should_match_the_oracle_in_5000_elfnote_mirror_matches() {
     assert_elfnote_clean(0..5000).unwrap();
 }
 
-// Writes each card's scenarios out and checks that they diff clean and pass the card's checks, and with every card that
-// Ritual materials are selected by both kinds of sum. `sample` keeps the cards of [sampled_cards].
+// Each card's scenarios diff clean and pass its checks, and with every card both kinds of sum select Ritual materials.
 fn assert_scenarios_clean(count: u32, sample: bool) -> Result<(), DiffError> {
     let vendor = Vendor::leak(Vendor::scenarios)?;
     let cards: Vec<u32> = if sample {

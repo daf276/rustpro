@@ -51,6 +51,8 @@ pub const OPCODE_GETATTRIBUTE: u64 = 0x4000_0109_0000_0000;
 pub enum CardsError {
     #[error("cannot list card databases: {0}")]
     Directory(#[from] std::io::Error),
+    #[error("cannot read the banlist: {0}")]
+    Banlist(std::io::Error),
     #[cfg(feature = "cdb")]
     #[error("cannot read card database: {0}")]
     Sqlite(#[from] rusqlite::Error),
@@ -76,8 +78,7 @@ pub struct Card {
 
 impl Card {
     #[cfg(feature = "cdb")]
-    // cdb packing: setcode holds four u16 archetypes, level holds the pendulum scales in its upper bytes,
-    // and a Link monster's def column holds its link markers.
+    // cdb packing: setcode holds four u16 archetypes, level the scales in its upper bytes, a Link's def its markers.
     fn from_row(row: &Row) -> rusqlite::Result<Self> {
         let card_type = row.get("type")?;
         let level: u32 = row.get("level")?;

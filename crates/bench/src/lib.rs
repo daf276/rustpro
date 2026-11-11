@@ -1,9 +1,8 @@
 use std::error::Error;
-use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::Instant;
 
-use carddata::{CardDatabase, Deck, Pool, TYPE_NORMAL, TYPE_PENDULUM, banlist_limits};
+use carddata::{CardDatabase, Deck, Decks, ELFNOTE_DECK, load_advanced, vendor};
 use engine::{Action, DUEL_MODE_MR5, Duel, DuelError, DuelOptions, PlayerOptions, Status};
 use rand::rngs::StdRng;
 use rand::seq::IndexedRandom;
@@ -15,36 +14,28 @@ pub type BenchResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
 pub const MAX_ACTIONS: u64 = 100_000;
 
-// The pool and the ported cards a deck mixes in, if any, or a fixed deck both players play.
-pub struct Decks {
-    pub pool: Pool,
-    pub effect_cards: Vec<u32>,
-    pub deck: Option<Deck>,
-}
-
-impl Decks {
-    // Random Normal Monster decks from the Advanced pool, with the classic cards mixed in for `effects`, or the Elfnote
-    // deck for `elfnote`.
-    pub fn load(effects: bool, elfnote: bool) -> BenchResult<(&'static CardDatabase, Self)> {
-        let vendor = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../vendor");
-        let cards: &'static CardDatabase = Box::leak(Box::new(CardDatabase::load(&vendor.join("BabelCDB"))?));
-        let mut pool = Pool::advanced(
-            cards,
-            banlist_limits(&std::fs::read_to_string(vendor.join("LFLists/0TCG.lflist.conf"))?),
-        );
-        pool.retain(|code| {
-            cards
-                .get(code)
-                .is_some_and(|card| card.card_type & (TYPE_NORMAL | TYPE_PENDULUM) == TYPE_NORMAL)
-        });
-        let effect_cards = if effects { scripts::CLASSIC_CARDS.to_vec() } else { Vec::new() };
-        let deck = elfnote.then(|| Deck::parse(include_str!("../../diff/elfnote-ycs-montreal-2026.deck"), cards));
-        Ok((cards, Self { pool, effect_cards, deck }))
+pub fn flags<const N: usize>(names: [&str; N], defaults: [u64; N]) -> BenchResult<[u64; N]> {
+    let mut values = defaults;
+    let mut args = std::env::args().skip(1);
+    while let Some(flag) = args.next() {
+        let value = args.next().ok_or("missing value")?.parse()?;
+        let slot = names.iter().position(|&name| name == flag).and_then(|at| values.get_mut(at));
+        *slot.ok_or_else(|| format!("unknown argument {flag}, expected {}", names.join(", ")))? = value;
     }
+    Ok(values)
 }
 
-// A started duel of random Normal Monster decks, with the ported cards mixed in if any, or of the fixed deck shuffled,
-// and the RNG that then picks its actions.
+// Normal Monster decks from the Advanced pool, with the classic cards for `effects`, or the Elfnote deck for `elfnote`.
+pub fn load_decks(effects: bool, elfnote: bool) -> BenchResult<(&'static CardDatabase, Decks)> {
+    let (cards, mut pool) = load_advanced(&vendor())?;
+    let cards: &'static CardDatabase = Box::leak(Box::new(cards));
+    pool.retain_normal_monsters(cards);
+    let effect_cards = if effects { scripts::CLASSIC_CARDS.to_vec() } else { Vec::new() };
+    let deck = elfnote.then(|| Deck::parse(ELFNOTE_DECK, cards));
+    Ok((cards, Decks { pool, effect_cards, deck }))
+}
+
+// A started duel of decks dealt from `decks`, and the RNG that then picks its actions.
 pub fn setup(seed: u64, cards: &'static CardDatabase, decks: &Decks) -> Result<(Duel, StdRng), DuelError> {
     let mut rng = StdRng::seed_from_u64(seed);
     let player = PlayerOptions::default();
@@ -58,18 +49,13 @@ pub fn setup(seed: u64, cards: &'static CardDatabase, decks: &Decks) -> Result<(
         duel.load_library(&scripts::LIBRARY);
     }
     for team in 0..2 {
-        let deck = match &decks.deck {
-            Some(deck) => deck.shuffled(&mut rng),
-            None => decks.pool.random_deck_with(&decks.effect_cards, &mut rng),
-        };
-        duel.add_deck(team, &deck, cards)?;
+        duel.add_deck(team, &decks.deal(&mut rng), cards)?;
     }
     duel.start();
     Ok((duel, rng))
 }
 
-// Plays uniformly random legal actions until the duel ends and returns how many it took; `at_prompt` sees every prompt
-// with its legal actions.
+// Plays uniformly random legal actions until the duel ends and returns how many it took; `at_prompt` sees every prompt.
 pub fn play(duel: &mut Duel, rng: &mut StdRng, mut at_prompt: impl FnMut(&Duel, &[Action], u64)) -> BenchResult<u64> {
     let mut legal = Vec::new();
     let mut status = duel.process();
@@ -84,8 +70,7 @@ pub fn play(duel: &mut Duel, rng: &mut StdRng, mut at_prompt: impl FnMut(&Duel, 
     Ok(actions)
 }
 
-// The duels set up beforehand and stepped in lockstep batches of `size` slots under a uniformly random policy;
-// returns the actions applied, policy decisions among them, and the seconds taken.
+// Duels set up beforehand, stepped in batches of `size` slots at random; the actions, decisions among them and seconds.
 pub fn run_batch(
     threads: usize,
     seeds: std::ops::Range<u64>,

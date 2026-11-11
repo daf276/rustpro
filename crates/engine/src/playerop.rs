@@ -1,5 +1,5 @@
-// Ports of playerop.cpp: write the prompt at step 0, then validate the response at every later step. DUEL_SIMPLE_AI
-// is unsupported.
+// Ports of playerop.cpp; DUEL_SIMPLE_AI is unsupported.
+use crate::buffer::Message;
 use crate::card::{CardId, LocInfo};
 use crate::constants::*;
 use crate::duel::Duel;
@@ -11,22 +11,15 @@ use crate::processor::{
     SelectYesNo, SortCard, SortChain,
 };
 
+type ChainEntry = (u32, LocInfo, u64, u8);
+
 impl Duel {
     pub(crate) fn process_select_battle_cmd(&mut self, arg: &mut SelectBattleCmd) -> bool {
         if arg.step == 0 {
-            self.sort_select_chains();
-            let entries = self.chain_entries();
+            let entries = self.sorted_chain_entries();
             let mut message = self.trace.message(MSG_SELECT_BATTLECMD);
-            message.u8(arg.playerid).u32(self.core.select_chains.len() as u32);
-            for &(code, location, description, mode) in &entries {
-                message
-                    .u32(code)
-                    .u8(location.controler)
-                    .u8(location.location)
-                    .u32(location.sequence)
-                    .u64(description)
-                    .u8(mode);
-            }
+            message.u8(arg.playerid);
+            write_chain_entries(&mut message, &entries);
             message.u32(self.core.attackable_cards.len() as u32);
             for &card in &self.core.attackable_cards {
                 let card = &self.cards[card];
@@ -43,16 +36,12 @@ impl Duel {
         }
         let response = self.returns.at_i32(0);
         let (kind, index) = ((response & 0xffff) as u32, (response >> 16) as u32 as usize);
-        if kind > 3
+        let invalid = kind > 3
             || (kind == 0 && index >= self.core.select_chains.len())
             || (kind == 1 && index >= self.core.attackable_cards.len())
             || (kind == 2 && !self.core.to_m2)
-            || (kind == 3 && !self.core.to_ep)
-        {
-            self.trace.message(MSG_RETRY);
-            return false;
-        }
-        true
+            || (kind == 3 && !self.core.to_ep);
+        self.accept(!invalid)
     }
 
     pub(crate) fn process_select_idle_cmd(&mut self, arg: &mut SelectIdleCmd) -> bool {
@@ -60,8 +49,7 @@ impl Duel {
         let can_shuffle = self.infos.can_shuffle && self.player[playerid].list_hand.len() > 1;
         let to_bp = self.infos.phase == PHASE_MAIN1 && self.core.to_bp;
         if arg.step == 0 {
-            self.sort_select_chains();
-            let entries = self.chain_entries();
+            let entries = self.sorted_chain_entries();
             let core = &self.core;
             let mut message = self.trace.message(MSG_SELECT_IDLECMD);
             message.u8(playerid);
@@ -87,23 +75,14 @@ impl Duel {
                     }
                 }
             }
-            message.u32(core.select_chains.len() as u32);
-            for &(code, location, description, mode) in &entries {
-                message
-                    .u32(code)
-                    .u8(location.controler)
-                    .u8(location.location)
-                    .u32(location.sequence)
-                    .u64(description)
-                    .u8(mode);
-            }
+            write_chain_entries(&mut message, &entries);
             message.u8(u8::from(to_bp)).u8(u8::from(self.core.to_ep)).u8(u8::from(can_shuffle));
             return false;
         }
         let response = self.returns.at_i32(0);
         let (kind, index) = ((response & 0xffff) as u32, (response >> 16) as u32 as usize);
         let core = &self.core;
-        if kind > 8
+        let invalid = kind > 8
             || (kind == 0 && index >= core.summonable_cards.len())
             || (kind == 1 && index >= core.spsummonable_cards.len())
             || (kind == 2 && index >= core.repositionable_cards.len())
@@ -112,12 +91,8 @@ impl Duel {
             || (kind == 5 && index >= core.select_chains.len())
             || (kind == 6 && !to_bp)
             || (kind == 7 && !core.to_ep)
-            || (kind == 8 && !can_shuffle)
-        {
-            self.trace.message(MSG_RETRY);
-            return false;
-        }
-        true
+            || (kind == 8 && !can_shuffle);
+        self.accept(!invalid)
     }
 
     pub(crate) fn process_select_chain(&mut self, arg: &mut SelectChain) -> bool {
@@ -125,8 +100,7 @@ impl Duel {
         if arg.step == 0 {
             self.returns.set_i32(0, -1);
             let hint_timing = self.core.hint_timing;
-            self.sort_select_chains();
-            let entries = self.chain_entries();
+            let entries = self.sorted_chain_entries();
             let mut message = self.trace.message(MSG_SELECT_CHAIN);
             message.u8(playerid).u8(arg.spe_count).u8(u8::from(arg.forced));
             message
@@ -139,25 +113,14 @@ impl Duel {
             return false;
         }
         let response = self.returns.at_i32(0);
-        if !arg.forced && response == -1 {
-            return true;
-        }
-        if usize::try_from(response).is_ok_and(|index| index < self.core.select_chains.len()) {
-            return true;
-        }
-        self.trace.message(MSG_RETRY);
-        false
+        let valid = (!arg.forced && response == -1) || usize::try_from(response).is_ok_and(|index| index < self.core.select_chains.len());
+        self.accept(valid)
     }
 
-    // The candidates in the order of their effects' ids (chain::chain_operation_sort), as the prompts list them.
-    fn sort_select_chains(&mut self) {
+    fn sorted_chain_entries(&mut self) -> List<ChainEntry, 8> {
         let mut chains = std::mem::take(&mut self.core.select_chains);
         self.sort_chains(&mut chains);
         self.core.select_chains = chains;
-    }
-
-    // Each candidate's handler code and location, effect description and client mode, as the prompts write them.
-    fn chain_entries(&self) -> List<(u32, LocInfo, u64, u8), 8> {
         self.core
             .select_chains
             .iter()
@@ -174,6 +137,39 @@ impl Duel {
             .collect()
     }
 
+    fn sort_select_cards(&mut self) {
+        let mut cards = std::mem::take(&mut self.core.select_cards);
+        cards.sort_by(|&c1, &c2| self.card_operation_sort(c1, c2));
+        self.core.select_cards = cards;
+    }
+
+    fn write_options(&mut self, id: u8, player: u8) {
+        let mut message = self.trace.message(id);
+        message.u8(player).u8(self.core.select_options.len() as u8);
+        for &option in &self.core.select_options {
+            message.u64(option);
+        }
+    }
+
+    fn retry(&mut self) -> bool {
+        self.trace.message(MSG_RETRY);
+        false
+    }
+
+    fn accept(&mut self, valid: bool) -> bool {
+        valid || self.retry()
+    }
+
+    fn reject_cards(&mut self) -> bool {
+        self.return_cards.clear();
+        self.retry()
+    }
+
+    fn skip_prompt(&mut self, player: u8) -> bool {
+        self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(player).u64(0);
+        true
+    }
+
     pub(crate) fn process_select_effect_yes_no(&mut self, arg: &mut SelectEffectYesNo) -> bool {
         if arg.step == 0 {
             let (code, location) = (self.cards[arg.card].data.code, self.cards.get_info_location(arg.card));
@@ -186,11 +182,7 @@ impl Duel {
             self.returns.set_i32(0, -1);
             return false;
         }
-        if !matches!(self.returns.at_i32(0), 0 | 1) {
-            self.trace.message(MSG_RETRY);
-            return false;
-        }
-        true
+        self.accept(matches!(self.returns.at_i32(0), 0 | 1))
     }
 
     pub(crate) fn process_select_yes_no(&mut self, arg: &mut SelectYesNo) -> bool {
@@ -199,11 +191,7 @@ impl Duel {
             self.returns.set_i32(0, -1);
             return false;
         }
-        if !matches!(self.returns.at_i32(0), 0 | 1) {
-            self.trace.message(MSG_RETRY);
-            return false;
-        }
-        true
+        self.accept(matches!(self.returns.at_i32(0), 0 | 1))
     }
 
     // Skipped without options; a single option is still asked.
@@ -211,38 +199,24 @@ impl Duel {
         if arg.step == 0 {
             self.returns.set_i32(0, -1);
             if self.core.select_options.is_empty() {
-                self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(arg.playerid).u64(0);
-                return true;
+                return self.skip_prompt(arg.playerid);
             }
-            let mut message = self.trace.message(MSG_SELECT_OPTION);
-            message.u8(arg.playerid).u8(self.core.select_options.len() as u8);
-            for &option in &self.core.select_options {
-                message.u64(option);
-            }
+            self.write_options(MSG_SELECT_OPTION, arg.playerid);
             return false;
         }
-        if !usize::try_from(self.returns.at_i32(0)).is_ok_and(|index| index < self.core.select_options.len()) {
-            self.trace.message(MSG_RETRY);
-            return false;
-        }
-        true
+        self.accept(usize::try_from(self.returns.at_i32(0)).is_ok_and(|index| index < self.core.select_options.len()))
     }
 
     pub(crate) fn process_announce_number(&mut self, arg: &mut AnnounceNumber) -> bool {
         if arg.step == 0 {
-            let mut message = self.trace.message(MSG_ANNOUNCE_NUMBER);
-            message.u8(arg.playerid).u8(self.core.select_options.len() as u8);
-            for &option in &self.core.select_options {
-                message.u64(option);
-            }
+            self.write_options(MSG_ANNOUNCE_NUMBER, arg.playerid);
             return false;
         }
         let Some(&number) = usize::try_from(self.returns.at_i32(0))
             .ok()
             .and_then(|index| self.core.select_options.get(index))
         else {
-            self.trace.message(MSG_RETRY);
-            return false;
+            return self.retry();
         };
         self.trace.message(MSG_HINT).u8(HINT_NUMBER).u8(arg.playerid).u64(number);
         true
@@ -251,8 +225,7 @@ impl Duel {
     pub(crate) fn process_announce_race(&mut self, arg: &mut AnnounceRace) -> bool {
         if arg.step == 0 {
             if arg.count == 0 {
-                self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(arg.playerid).u64(0);
-                return true;
+                return self.skip_prompt(arg.playerid);
             }
             self.trace
                 .message(MSG_ANNOUNCE_RACE)
@@ -264,8 +237,7 @@ impl Duel {
         }
         let selected = self.returns.at_u64(0);
         if selected & !arg.available != 0 || selected.count_ones() != u32::from(arg.count) {
-            self.trace.message(MSG_RETRY);
-            return false;
+            return self.retry();
         }
         self.trace.message(MSG_HINT).u8(HINT_RACE).u8(arg.playerid).u64(selected);
         true
@@ -274,8 +246,7 @@ impl Duel {
     pub(crate) fn process_announce_attribute(&mut self, arg: &mut AnnounceAttribute) -> bool {
         if arg.step == 0 {
             if arg.count == 0 {
-                self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(arg.playerid).u64(0);
-                return true;
+                return self.skip_prompt(arg.playerid);
             }
             self.trace
                 .message(MSG_ANNOUNCE_ATTRIB)
@@ -287,8 +258,7 @@ impl Duel {
         }
         let selected = self.returns.at_u32(0);
         if selected & !arg.available != 0 || selected.count_ones() != u32::from(arg.count) {
-            self.trace.message(MSG_RETRY);
-            return false;
+            return self.retry();
         }
         self.trace
             .message(MSG_HINT)
@@ -301,17 +271,12 @@ impl Duel {
     // The options are the opcodes of the filter the declared code must pass.
     pub(crate) fn process_announce_card(&mut self, arg: &mut AnnounceCard) -> bool {
         if arg.step == 0 {
-            let mut message = self.trace.message(MSG_ANNOUNCE_CARD);
-            message.u8(arg.playerid).u8(self.core.select_options.len() as u8);
-            for &option in &self.core.select_options {
-                message.u64(option);
-            }
+            self.write_options(MSG_ANNOUNCE_CARD, arg.playerid);
             return false;
         }
         let code = self.returns.at_i32(0);
         if !self.is_declarable(code as u32) {
-            self.trace.message(MSG_RETRY);
-            return false;
+            return self.retry();
         }
         self.trace.message(MSG_HINT).u8(HINT_CODE).u8(arg.playerid).u64(code as u64);
         true
@@ -328,20 +293,14 @@ impl Duel {
         if arg.step == 0 {
             self.returns.clear();
             if self.core.select_cards.is_empty() {
-                self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(playerid).u64(0);
-                return true;
+                return self.skip_prompt(playerid);
             }
-            let cards: Vec<_> = self
-                .core
-                .select_cards
-                .iter()
-                .map(|&card| (self.cards[card].data.code, self.cards[card].current))
-                .collect();
             let mut message = self.trace.message(if arg.is_chain { MSG_SORT_CHAIN } else { MSG_SORT_CARD });
-            message.u8(playerid).u32(cards.len() as u32);
-            for (code, current) in cards {
+            message.u8(playerid).u32(self.core.select_cards.len() as u32);
+            for &card in &self.core.select_cards {
+                let current = self.cards[card].current;
                 message
-                    .u32(code)
+                    .u32(self.cards[card].data.code)
                     .u8(current.controler)
                     .u32(current.location.into())
                     .u32(current.sequence);
@@ -357,10 +316,7 @@ impl Duel {
             let position = usize::from(self.returns.at_u8(index));
             match seen.get_mut(position) {
                 Some(slot) if !*slot => *slot = true,
-                _ => {
-                    self.trace.message(MSG_RETRY);
-                    return false;
-                }
+                _ => return self.retry(),
             }
         }
         true
@@ -397,14 +353,11 @@ impl Duel {
             self.return_cards.clear();
             self.returns.clear();
             if arg.max == 0 || self.core.select_cards.is_empty() {
-                self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(playerid).u64(0);
-                return true;
+                return self.skip_prompt(playerid);
             }
             arg.max = arg.max.min(self.core.select_cards.len() as u8);
             arg.min = arg.min.min(arg.max);
-            let mut cards = std::mem::take(&mut self.core.select_cards);
-            cards.sort_by(|&c1, &c2| self.card_operation_sort(c1, c2));
-            self.core.select_cards = cards;
+            self.sort_select_cards();
             let mut message = self.trace.message(MSG_SELECT_CARD);
             message.u8(playerid).u8(u8::from(arg.cancelable || arg.min == 0));
             message
@@ -417,20 +370,13 @@ impl Duel {
             return false;
         }
         if !self.parse_response_cards(arg.cancelable || arg.min == 0) {
-            self.return_cards.clear();
-            self.trace.message(MSG_RETRY);
-            return false;
+            return self.reject_cards();
         }
         if self.return_cards.canceled {
             return true;
         }
         let count = self.return_cards.list.len();
-        if count < usize::from(arg.min) || count > usize::from(arg.max) {
-            self.return_cards.clear();
-            self.trace.message(MSG_RETRY);
-            return false;
-        }
-        true
+        (usize::from(arg.min)..=usize::from(arg.max)).contains(&count) || self.reject_cards()
     }
 
     // The answer is the counters to remove from each card, one i16 per card.
@@ -483,11 +429,7 @@ impl Duel {
         };
         let over = answers().any(|(counters, answer)| i32::from(counters) < i32::from(answer));
         let total = answers().fold(0u16, |total, (_, answer)| total.wrapping_add(answer as u16));
-        if over || total != arg.count {
-            self.trace.message(MSG_RETRY);
-            return false;
-        }
-        true
+        self.accept(!over && total == arg.count)
     }
 
     pub(crate) fn process_select_sum(&mut self, arg: &mut SelectSum) -> bool {
@@ -497,12 +439,9 @@ impl Duel {
             self.return_cards.clear();
             self.returns.clear();
             if self.core.select_cards.is_empty() {
-                self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(playerid).u64(0);
-                return true;
+                return self.skip_prompt(playerid);
             }
-            let mut cards = std::mem::take(&mut self.core.select_cards);
-            cards.sort_by(|&c1, &c2| self.card_operation_sort(c1, c2));
-            self.core.select_cards = cards;
+            self.sort_select_cards();
             let entries: List<(u32, LocInfo, u32), 16> = must
                 .iter()
                 .chain(self.core.select_cards.iter().copied())
@@ -521,21 +460,14 @@ impl Duel {
             return false;
         }
         if !self.parse_response_cards(false) {
-            self.return_cards.clear();
-            self.trace.message(MSG_RETRY);
-            return false;
+            return self.reject_cards();
         }
         let params: List<u32, 16> = must
             .iter()
             .chain(self.return_cards.list.iter().copied())
             .map(|card| arg.param(card))
             .collect();
-        if !arg.accepts(&params, self.return_cards.list.len()) {
-            self.return_cards.clear();
-            self.trace.message(MSG_RETRY);
-            return false;
-        }
-        true
+        arg.accepts(&params, self.return_cards.list.len()) || self.reject_cards()
     }
 
     pub(crate) fn process_select_unselect_card(&mut self, arg: &mut SelectUnselectCard) -> bool {
@@ -544,12 +476,9 @@ impl Duel {
             self.return_cards.clear();
             self.returns.clear();
             if self.core.select_cards.is_empty() && self.core.unselect_cards.is_empty() {
-                self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(playerid).u64(0);
-                return true;
+                return self.skip_prompt(playerid);
             }
-            let mut cards = std::mem::take(&mut self.core.select_cards);
-            cards.sort_by(|&c1, &c2| self.card_operation_sort(c1, c2));
-            self.core.select_cards = cards;
+            self.sort_select_cards();
             let mut message = self.trace.message(MSG_SELECT_UNSELECT_CARD);
             message.u8(playerid).u8(u8::from(arg.finishable)).u8(u8::from(arg.cancelable));
             message.u32(u32::from(arg.min)).u32(u32::from(arg.max));
@@ -567,9 +496,7 @@ impl Duel {
             return true;
         }
         if response == -1 || response == 0 || response > 1 {
-            self.return_cards.clear();
-            self.trace.message(MSG_RETRY);
-            return false;
+            return self.reject_cards();
         }
         let index = self.returns.at_i32(1);
         let selected = usize::try_from(index).ok().and_then(|index| {
@@ -581,8 +508,7 @@ impl Duel {
             }
         });
         let Some(&card) = selected else {
-            self.trace.message(MSG_RETRY);
-            return false;
+            return self.retry();
         };
         self.return_cards.list.push(card);
         true
@@ -592,8 +518,7 @@ impl Duel {
         let playerid = arg.playerid;
         if arg.step == 0 {
             if arg.count == 0 {
-                self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(playerid).u64(0);
-                return true;
+                return self.skip_prompt(playerid);
             }
             let message = if arg.disable_field { MSG_SELECT_DISFIELD } else { MSG_SELECT_PLACE };
             self.trace.message(message).u8(playerid).u8(arg.count).u32(arg.flag);
@@ -610,13 +535,11 @@ impl Duel {
             );
             let mzone = location == LOCATION_MZONE;
             if select_player > 1 || (!mzone && location != LOCATION_SZONE) || sequence > 7 - u8::from(mzone) {
-                self.trace.message(MSG_RETRY);
-                return false;
+                return self.retry();
             }
             let to_check = (1u32 << sequence) << (if mzone { 0 } else { 8 } + if select_player == playerid { 0 } else { 16 });
             if to_check & flag != 0 {
-                self.trace.message(MSG_RETRY);
-                return false;
+                return self.retry();
             }
             flag |= to_check;
         }
@@ -640,11 +563,7 @@ impl Duel {
             return false;
         }
         let position = self.returns.at_i32(0);
-        if !u8::try_from(position).is_ok_and(|position| is_single(position) && position & arg.positions != 0) {
-            self.trace.message(MSG_RETRY);
-            return false;
-        }
-        true
+        self.accept(u8::try_from(position).is_ok_and(|position| is_single(position) && position & arg.positions != 0))
     }
 
     pub(crate) fn process_select_tribute_p(&mut self, arg: &mut SelectTributeP) -> bool {
@@ -653,8 +572,7 @@ impl Duel {
             self.returns.clear();
             self.return_cards.clear();
             if arg.max == 0 || self.core.select_cards.is_empty() {
-                self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(playerid).u64(0);
-                return true;
+                return self.skip_prompt(playerid);
             }
             let releases = self
                 .core
@@ -663,9 +581,7 @@ impl Duel {
                 .fold(0u8, |total, &card| total.wrapping_add(self.cards[card].release_param as u8));
             arg.max = arg.max.min(5).min(releases);
             arg.min = arg.min.min(arg.max);
-            let mut cards = std::mem::take(&mut self.core.select_cards);
-            cards.sort_by(|&c1, &c2| self.card_operation_sort(c1, c2));
-            self.core.select_cards = cards;
+            self.sort_select_cards();
             let mut message = self.trace.message(MSG_SELECT_TRIBUTE);
             message.u8(playerid).u8(u8::from(arg.cancelable || arg.min == 0));
             message
@@ -685,20 +601,13 @@ impl Duel {
             return false;
         }
         if !self.parse_response_cards(arg.cancelable || arg.min == 0) {
-            self.return_cards.clear();
-            self.trace.message(MSG_RETRY);
-            return false;
+            return self.reject_cards();
         }
         if self.return_cards.canceled {
             return true;
         }
         let released: u32 = self.return_cards.list.iter().map(|&card| self.cards[card].release_param).sum();
-        if self.return_cards.list.len() > usize::from(arg.max) || released < u32::from(arg.min) {
-            self.return_cards.clear();
-            self.trace.message(MSG_RETRY);
-            return false;
-        }
-        true
+        (self.return_cards.list.len() <= usize::from(arg.max) && released >= u32::from(arg.min)) || self.reject_cards()
     }
 
     // The core then sorts the cards by address; card ids keep the creation order instead.
@@ -737,13 +646,25 @@ impl Duel {
     }
 }
 
+fn write_chain_entries(message: &mut Message, entries: &[ChainEntry]) {
+    message.u32(entries.len() as u32);
+    for &(code, location, description, mode) in entries {
+        message
+            .u32(code)
+            .u8(location.controler)
+            .u8(location.location)
+            .u32(location.sequence)
+            .u64(description)
+            .u8(mode);
+    }
+}
+
 impl SelectSum {
     pub(crate) fn param(&self, card: CardId) -> u32 {
         self.params.iter().find(|&&(other, _)| other == card).map_or(0, |&(_, param)| param)
     }
 
-    // The response check: `params` are the must cards' then the selected cards', `selected` of them. With max 0 the
-    // selection must reach acc with every card at its larger half and fall short without the smallest at its smaller.
+    // `params` are the must cards' then the selected cards'.
     pub(crate) fn accepts(&self, params: &[u32], selected: usize) -> bool {
         if self.max != 0 {
             let selected = selected as i32;

@@ -1,13 +1,21 @@
 // Valkyrie of the Nordic Ascendant
 use crate::prelude::*;
-use crate::testing::{Check, HAND, MZONE};
+use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 40844552;
 
 pub const LISTED_NAMES: &[u32] = &[40844553];
-// Its cost is two other "Nordic" monsters in the hand, and none of them is ported.
-pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, MZONE)];
-pub const CHECKS: &[Check] = &[Check::Report(&Check::Resolves)];
+// Normal Summoned with an empty field against Giant Soldier of Stone, banishing Garmr and Tyr from the hand.
+pub const SUPPORT: &[(u32, u16)] = &[
+    (ID, HAND),
+    (ID, HAND),
+    (88283496, HAND),
+    (88283496, HAND),
+    (2333365, HAND),
+    (2333365, HAND),
+    (13039848, MZONE | OPPONENT),
+];
+pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e1 = duel.create_effect(c);

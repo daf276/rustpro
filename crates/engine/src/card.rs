@@ -3037,6 +3037,36 @@ impl Duel {
         codes.iter().any(|other| summon_codes.contains(other))
     }
 
+    // card::get_summon_set_card as Card.IsSetCard reads it with a summon: whether one of the card's archetypes as a material matches.
+    pub(crate) fn is_summon_set_card(&self, card: CardId, setcode: u16, scard: Option<CardId>, sumtype: u64, playerid: u8) -> bool {
+        let effects = self.filter_effects(card, &[EFFECT_ADD_CODE, EFFECT_REMOVE_CODE, EFFECT_CHANGE_CODE]);
+        let mut codes = Vec::new();
+        let mut changed = self.apply_summon_codes(card, effects, scard, sumtype, playerid, &mut codes);
+        let setcodes_of = |code: u32| {
+            self.database
+                .and_then(|database| database.get(code))
+                .map_or([0; 5], |data| data.setcodes)
+        };
+        let mut setcodes: Vec<u16> = codes.into_iter().flat_map(setcodes_of).filter(|&code| code != 0).collect();
+        for effect in self.filter_effects(card, &[EFFECT_ADD_SETCODE, EFFECT_CHANGE_SETCODE]) {
+            let Some(Operation::CodeCondition(condition)) = self.effects[effect].operation else {
+                continue;
+            };
+            if !condition(self, scard, sumtype, playerid) {
+                continue;
+            }
+            if self.effects[effect].code == EFFECT_CHANGE_SETCODE {
+                setcodes.clear();
+                changed = true;
+            }
+            setcodes.push((self.get_value(effect, card) as u32 & 0xffff) as u16);
+        }
+        if !changed {
+            setcodes.extend(self.get_set_card(card));
+        }
+        setcodes.iter().any(|&code| match_setcode(setcode, code))
+    }
+
     fn apply_summon_codes(
         &self,
         card: CardId,

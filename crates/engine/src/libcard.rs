@@ -498,11 +498,11 @@ impl CardId {
         setcodes.iter().any(|&setcode| duel.is_original_set_card(self, setcode))
     }
 
-    // Card.IsSetCard as material (card::get_summon_set_card); code and archetype effects with an operation come with their cards.
-    pub fn is_set_card_full(self, duel: &Duel, setcodes: &[u16], _scard: Option<CardId>, _sumtype: u64, _player: u8) -> bool {
-        let codes = [EFFECT_REMOVE_CODE, EFFECT_CHANGE_SETCODE];
-        unported!(duel, codes.into_iter().flat_map(|code| duel.filter_effect(self, code, true)));
-        self.is_set_card(duel, setcodes)
+    // Card.IsSetCard as material (card::get_summon_set_card).
+    pub fn is_set_card_full(self, duel: &Duel, setcodes: &[u16], scard: Option<CardId>, sumtype: u64, player: u8) -> bool {
+        setcodes
+            .iter()
+            .any(|&setcode| duel.is_summon_set_card(self, setcode, scard, sumtype, player))
     }
 
     pub fn get_left_scale(self, duel: &Duel) -> u32 {

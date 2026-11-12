@@ -178,7 +178,11 @@ pub enum Operation {
     CodeCondition(CodeConditionFn),
     // op(e, tc, tp, sg) with the Fusion Summon effect as e: EFFECT_EXTRA_FUSION_MATERIAL, read only by Fusion.SummonEffOP.
     FusionMaterial(FusionMaterialFn),
+    // operation(base, extracon, e, tp, ...) of an EFFECT_COST_REPLACE effect, read only by Cost.Replaceable.
+    CostReplace(CostReplaceFn),
 }
+
+pub type CostReplaceFn = fn(&mut Duel, EffectId, CostReplaceCall) -> Script<()>;
 
 pub type CodeConditionFn = fn(&Duel, Option<CardId>, u64, u8) -> bool;
 

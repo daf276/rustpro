@@ -2583,7 +2583,7 @@ impl Duel {
             } else {
                 Some(attacker)
             };
-            let card_codes = [EFFECT_BOTH_BATTLE_DAMAGE, EFFECT_REFLECT_BATTLE_DAMAGE, EFFECT_ALSO_BATTLE_DAMAGE];
+            let card_codes = [EFFECT_BOTH_BATTLE_DAMAGE, EFFECT_ALSO_BATTLE_DAMAGE];
             for card in [Some(reason), dam_card].into_iter().flatten() {
                 unported!(
                     self,
@@ -2594,7 +2594,11 @@ impl Duel {
             for p in [damp, 1 - damp] {
                 unported!(self, self.is_player_affected_by_effect(p, EFFECT_ALSO_BATTLE_DAMAGE));
             }
-            if self.is_player_affected_by_effect(damp, EFFECT_REFLECT_BATTLE_DAMAGE).is_some() {
+            // The core's reflect[1 - damp] only reaches the damage with EFFECT_BOTH_BATTLE_DAMAGE or EFFECT_ALSO_BATTLE_DAMAGE.
+            let reflect = dam_card
+                .and_then(|card| self.is_affected_by_effect_target(card, EFFECT_REFLECT_BATTLE_DAMAGE, reason))
+                .or_else(|| self.is_player_affected_by_effect(damp, EFFECT_REFLECT_BATTLE_DAMAGE));
+            if reflect.is_some() {
                 self.core.battle_damage[1 - damp] += self.core.battle_damage[damp];
                 self.core.battle_damage[damp] = 0;
             }

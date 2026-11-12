@@ -1374,8 +1374,10 @@ impl Cost {
             return base(duel, args, 1);
         };
         duel.hint(HINT_CARD, 0, eff.get_handler(duel).get_original_code(duel).into());
-        if let Some(Operation::Event(operation)) = eff.get_operation(duel) {
-            operation(duel, &Args { e: eff, ..*args })?;
+        match eff.get_operation(duel) {
+            Some(Operation::Event(operation)) => operation(duel, &Args { e: eff, ..*args })?,
+            Some(Operation::CostReplace(operation)) => operation(duel, eff, CostReplaceCall { extracon, args, chk })?,
+            _ => {}
         }
         eff.use_count_limit(duel, args.tp);
         Ok(false)

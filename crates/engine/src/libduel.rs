@@ -2284,7 +2284,19 @@ impl Duel {
     }
 
     pub fn synchro_summon(&mut self, player: u8, card: CardId, must: Option<CardSet>, materials: Option<CardSet>) -> Script<()> {
-        self.spsummon_rule(SUMMON_TYPE_SYNCHRO, player, card, must, materials, 0, 0)
+        self.synchro_summon_full(player, card, must, materials, 0, 0)
+    }
+
+    pub fn synchro_summon_full(
+        &mut self,
+        player: u8,
+        card: CardId,
+        must: Option<CardSet>,
+        materials: Option<CardSet>,
+        min: u16,
+        max: u16,
+    ) -> Script<()> {
+        self.spsummon_rule(SUMMON_TYPE_SYNCHRO, player, card, must, materials, min, max)
     }
 
     pub fn xyz_summon(&mut self, player: u8, card: CardId, must: Option<CardSet>, materials: Option<CardSet>) -> Script<()> {

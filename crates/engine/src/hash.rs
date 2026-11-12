@@ -405,11 +405,13 @@ impl<'a> Refs<'a> {
 
     // A card's fields that a move or an operation in progress leaves for events and units to read; not the reasons in
     // `previous` and `temp.reason_card`, which nothing reads, nor the controller and location of `temp`, which nothing writes.
-    fn words(&self, id: CardId) -> ([u32; 20], [u8; 4]) {
+    fn words(&self, id: CardId) -> ([u32; 22], [u8; 4]) {
         let card = &self.duel.cards[id];
         let (previous, temp, send) = (&card.previous, &card.temp, card.sendto_param);
         let words = [
             card.previous_type,
+            card.previous_level,
+            card.previous_rank,
             card.previous_attribute,
             card.previous_race as u32,
             (card.previous_race >> 32) as u32,
@@ -443,7 +445,7 @@ impl<'a> Refs<'a> {
         let cards = [current.reason_card, card.pre_overlay_target, card.pre_equip_target];
         // A card no operation has touched since add_card set its send position is alike in every order.
         let [playerid, _, location, sequence] = send;
-        let untouched = words == [0; 20] && (playerid, location, sequence) == (0, 0, 0);
+        let untouched = words.iter().all(|&word| word == 0) &&(playerid, location, sequence) == (0, 0, 0);
         if untouched && current.reason_effect.is_none() && saved.is_none() && cards == [None; 3] && card.unique.is_none() {
             return 0;
         }
@@ -965,7 +967,8 @@ keyed! {
     operations::DestroyReplace { step, battle, target }
     operations::OperationReplace { step, replace_effect, target, is_destroy }
     operations::Release { step, reason_player, reason, targets, reason_effect }
-    operations::SendTo { step, reason_player, reason, targets, reason_effect }
+    operations::SendTo { step, reason_player, reason, targets, reason_effect, replacing }
+    operations::SendToReplace { step, target }
     operations::MoveToField { step, enable, pzone, zone, rule, location_reason, confirm, ret, target }
     operations::ChangePos { step, reason_player, enable, oppo_selection, reason_effect, targets, to_grave_set }
     operations::SummonRule { step, sumplayer, min_tribute, ignore_count, zone, target, summon_procedure_effect, extra_summon_effect, tributes, ordinary_first, ordinary_count_first }

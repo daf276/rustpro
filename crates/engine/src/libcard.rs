@@ -1008,6 +1008,17 @@ impl CardId {
             .count()
     }
 
+    pub fn set_flag_effect_label(self, duel: &mut Duel, code: u32, label: u32) -> bool {
+        let effect = duel
+            .field_effects
+            .registry
+            .equal_range(Container::Single, Some(self), flag_code(code))
+            .next();
+        let Some(effect) = effect else { return false };
+        duel.effects[effect].set_labels(&[i64::from(label)]);
+        true
+    }
+
     pub fn reset_flag_effect(self, duel: &mut Duel, code: u32) {
         duel.reset(self, flag_code(code), RESET_CODE);
     }

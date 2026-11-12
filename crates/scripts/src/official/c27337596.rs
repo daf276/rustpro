@@ -33,7 +33,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.register_effect(duel, e1);
 }
 
-fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+pub(super) fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     let c = a.e.get_handler(duel);
     if chk == 0 {
         return Ok(c.get_attack_announced_count(duel) == 0);

@@ -216,6 +216,10 @@ impl CardId {
         duel.cards[self].previous_type
     }
 
+    pub fn get_previous_level_on_field(self, duel: &Duel) -> u32 {
+        duel.cards[self].previous_level
+    }
+
     pub fn get_previous_attribute_on_field(self, duel: &Duel) -> u32 {
         duel.cards[self].previous_attribute
     }

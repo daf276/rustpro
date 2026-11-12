@@ -1917,7 +1917,7 @@ impl Duel {
                 if arg.targets.is_empty() {
                     return self.finish_operated(CardSet::default());
                 }
-                // Phase 2: of the previous stats and set codes, only the code, type, attribute, race and ATK are kept so far.
+                // Phase 2: of the previous stats and set codes, the previous set codes are not kept so far.
                 let mut leave_p = CardSet::default();
                 let targets = arg.targets;
                 for card in targets.iter() {
@@ -1929,11 +1929,15 @@ impl Duel {
                             self.cards[card].data.card_type
                         };
                         if self.cards[card].current.position & POS_FACEUP == 0 {
+                            self.cards[card].previous_level = self.cards[card].data.level;
+                            self.cards[card].previous_rank = self.cards[card].data.level;
                             self.cards[card].previous_attribute = self.cards[card].data.attribute;
                             self.cards[card].previous_race = self.cards[card].data.race;
                             self.cards[card].previous_attack = self.cards[card].data.attack;
                             self.cards[card].previous_defense = self.cards[card].data.defense;
                         } else if self.cards[card].current.location & LOCATION_MZONE != 0 {
+                            self.cards[card].previous_level = self.get_level(card);
+                            self.cards[card].previous_rank = self.get_rank(card);
                             self.cards[card].previous_attribute = self.get_attribute(card);
                             self.cards[card].previous_race = self.get_race(card);
                             self.cards[card].previous_attack = self.get_attack(card);

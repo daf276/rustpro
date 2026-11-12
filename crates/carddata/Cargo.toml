@@ -8,6 +8,8 @@ license.workspace = true
 default = ["cdb"]
 # Reading cards.cdb compiles SQLite; the engine only needs the data types.
 cdb = ["dep:rusqlite"]
+# The pool also holds the OCG-only cards (still under the TCG banlist).
+ocg = []
 
 [dependencies]
 rusqlite = { version = "0.40", default-features = false, features = ["bundled"], optional = true }

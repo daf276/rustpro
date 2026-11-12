@@ -25,5 +25,8 @@ rand = { version = "0.9", default-features = false, features = ["alloc", "std_rn
 scripts = { path = "../scripts" }
 sim = { path = "../sim" }
 
+[features]
+ocg = ["carddata/ocg"]
+
 [lints]
 workspace = true

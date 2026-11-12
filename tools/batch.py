@@ -1,10 +1,11 @@
-"""Prints the next porting batches: unported cards of porting/queue.tsv grouped by archetype, the archetypes with the most
+"""Prints the next porting batches: unported cards of the queue (porting/queue.tsv) grouped by archetype, the archetypes with the most
 weekly views first, each batch with the unported cards its Lua names (listed names, materials, searches) that are in
 the pool. Cards outside any archetype are batched by views. One batch per line: code<TAB>name;code<TAB>name;...
 
-  python tools/batch.py [--top=N] [--type=REGEX] [batches] [size] [skip codes...]
+  python tools/batch.py [--queue=FILE] [--top=N] [--type=REGEX] [batches] [size] [skip codes...]
 
-`skip` takes codes already assigned to running batches; `--top` picks only among the N most viewed cards and `--type` only
+`--queue` plans from another queue file, e.g. porting/queue-ocg.tsv; the cards its Lua names may also come from
+porting/queue.tsv. `skip` takes codes already assigned to running batches; `--top` picks only among the N most viewed cards and `--type` only
 among cards whose queue type matches (the cards their Lua names still come from the whole pool).
 """
 import csv
@@ -17,13 +18,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import ROOT, cdb, lua_script, ported_codes
 
 top = next((int(arg[6:]) for arg in sys.argv[1:] if arg.startswith("--top=")), None)
+queue = next((arg[8:] for arg in sys.argv[1:] if arg.startswith("--queue=")), "porting/queue.tsv")
 kind = next((arg[7:] for arg in sys.argv[1:] if arg.startswith("--type=")), "")
 args = [arg for arg in sys.argv[1:] if not arg.startswith("--")]
 batches, size = (int(arg) for arg in (args[:2] + ["4", "16"][len(args[:2]) :]))
 skip = {int(code) for code in args[2:]}
 ported = ported_codes() | skip
-rows = list(csv.DictReader(open(ROOT / "porting/queue.tsv", encoding="utf-8"), delimiter="\t"))
-pool = {int(row["code"]): row for row in rows if row["ported"] != "no script"}
+read = lambda path: list(csv.DictReader(open(ROOT / path, encoding="utf-8"), delimiter="\t"))
+rows = read(queue)
+pool = {int(row["code"]): row for row in read("porting/queue.tsv") + rows if row["ported"] != "no script"}
 todo = [int(row["code"]) for row in rows[:top] if row["ported"] == "no" and int(row["code"]) not in ported and re.search(kind, row["type"])]
 setcodes = dict(cdb("select id, setcode from datas"))
 

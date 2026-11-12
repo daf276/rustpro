@@ -15,5 +15,8 @@ thiserror = { version = "2", default-features = false }
 [dev-dependencies]
 scripts = { path = "../scripts" }
 
+[features]
+ocg = ["carddata/ocg"]
+
 [lints]
 workspace = true

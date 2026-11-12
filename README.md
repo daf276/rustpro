@@ -52,6 +52,8 @@ cargo run --profile sim -p bench --bin stack
 python tools/pgo.py -p bench --bin stack --bin throughput
 ```
 
+The pool is the TCG cards by default; `--features ocg` (on `diff`, `engine`, `oracle`, `bench`, `py`, or `--workspace --features ocg`) adds the OCG-only cards, still under the TCG banlist. Plan their porting with `python tools/batch.py --queue=porting/queue-ocg.tsv` (see `tools/queue.py`) and check one with `cargo run --profile card -p diff --features ocg --bin card -- <code>`.
+
 The `card` profile is a release build with incremental compilation, so a card edit rebuilds in seconds. The card command and the diff suites cache a hash of the oracle's output per scenario, so a scenario whose setup is unchanged only replays the engine (`ORACLE_CACHE=off` disables it).
 
 ## Status

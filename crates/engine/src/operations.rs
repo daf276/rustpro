@@ -2404,6 +2404,7 @@ impl Duel {
             playerid: player,
             count: 1,
             flag,
+            card: Some(card),
             ..SelectPlace::default()
         });
     }
@@ -3995,11 +3996,10 @@ impl Duel {
                 } else if card_type & TYPE_LINK != 0 && card_type & TYPE_MONSTER != 0 {
                     self.returns.set_i32(0, POS_FACEUP_ATTACK as i32);
                 } else {
-                    let code = self.cards[target].data.code;
                     self.emplace_process(SelectPosition {
                         playerid: move_player,
                         positions,
-                        code,
+                        card: target,
                         ..SelectPosition::default()
                     });
                 }

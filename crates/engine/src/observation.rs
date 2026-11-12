@@ -409,39 +409,53 @@ impl Duel {
     }
 
     fn choices(&self, prompt: Prompt, player: u8, sink: &mut impl ObservationSink) {
-        let core = &self.core;
-        let pick = |cards: &[CardId], index: u16| cards.get(usize::from(index)).map(|&card| self.seen(card, player, true));
-        let activation = |index: u16| {
-            core.select_chains.get(usize::from(index)).map_or((None, 0), |chain| {
-                let effect = chain.triggering_effect;
-                (pick(&[self.get_handler(effect)], 0), self.effects[effect].description)
-            })
-        };
-        let question = match core.units.last() {
-            Some(Unit::SelectYesNo(arg)) => (None, arg.description),
-            Some(Unit::SelectEffectYesNo(arg)) => (pick(&[arg.card], 0), arg.description),
-            _ => (None, 0),
-        };
-        let unselect = |index: u16| {
-            let mut selectable = core.select_cards.iter().chain(&core.unselect_cards);
-            selectable.nth(usize::from(index)).map(|&card| self.seen(card, player, true))
-        };
         let choice = |action: Action| {
-            let (card, description) = match action {
-                Action::IdleCommand(IdleCommand::Activate(index))
-                | Action::BattleCommand(BattleCommand::Activate(index))
-                | Action::Chain(Some(index)) => activation(index),
-                Action::IdleCommand(command) => (self.idle_card(command).map(|card| self.seen(card, player, true)), 0),
-                Action::BattleCommand(BattleCommand::Attack(index)) => (pick(&core.attackable_cards, index), 0),
-                Action::Card(index) if matches!(prompt, Prompt::UnselectCard { .. }) => (unselect(index), 0),
-                Action::Card(index) => (pick(&core.select_cards, index), 0),
-                Action::Option(index) => (None, core.select_options.get(usize::from(index)).copied().unwrap_or(0)),
-                Action::YesNo(_) => question,
-                _ => (None, 0),
-            };
+            let (card, description) = self.choice_card(prompt, action);
+            let card = card.map(|card| self.seen(card, player, true));
             Choice { action, card, description }
         };
         self.extend_policy_actions(prompt, &mut Each(|action| sink.choice(choice(action))));
+    }
+
+    // The card an action picks and the effect or option description, as [Duel::observe]'s choices show them, and the card a
+    // Place or Position prompt is for ([Duel::prompt_card]); without the lookups of an observation.
+    pub fn action_card(&self, action: Action) -> (Option<CardId>, u64) {
+        match (self.prompt(), action) {
+            (Some(_), Action::Place(_) | Action::Position(_)) => (self.prompt_card(), 0),
+            (Some(prompt), _) => self.choice_card(prompt, action),
+            (None, _) => (None, 0),
+        }
+    }
+
+    fn choice_card(&self, prompt: Prompt, action: Action) -> (Option<CardId>, u64) {
+        let core = &self.core;
+        let pick = |cards: &[CardId], index: u16| cards.get(usize::from(index)).copied();
+        match action {
+            Action::IdleCommand(IdleCommand::Activate(index))
+            | Action::BattleCommand(BattleCommand::Activate(index))
+            | Action::Chain(Some(index)) => core.select_chains.get(usize::from(index)).map_or((None, 0), |chain| {
+                let effect = chain.triggering_effect;
+                (Some(self.get_handler(effect)), self.effects[effect].description)
+            }),
+            Action::IdleCommand(command) => (self.idle_card(command), 0),
+            Action::BattleCommand(BattleCommand::Attack(index)) => (pick(&core.attackable_cards, index), 0),
+            Action::Card(index) if matches!(prompt, Prompt::UnselectCard { .. }) => (
+                core.select_cards
+                    .iter()
+                    .chain(&core.unselect_cards)
+                    .nth(usize::from(index))
+                    .copied(),
+                0,
+            ),
+            Action::Card(index) => (pick(&core.select_cards, index), 0),
+            Action::Option(index) => (None, core.select_options.get(usize::from(index)).copied().unwrap_or(0)),
+            Action::YesNo(_) => match core.units.last() {
+                Some(Unit::SelectYesNo(arg)) => (None, arg.description),
+                Some(Unit::SelectEffectYesNo(arg)) => (Some(arg.card), arg.description),
+                _ => (None, 0),
+            },
+            _ => (None, 0),
+        }
     }
 
     pub fn policy_actions(&self) -> Vec<Action> {
@@ -610,6 +624,14 @@ impl Duel {
         for &(card, data) in &changes.recodes {
             self.recode(card, data);
         }
+    }
+
+    // Two cards trade places and fields as [Duel::determinize] trades hidden cards, while everything else that refers to either
+    // keeps its id; for checking that [Duel::state_hash] tells copies of a card apart.
+    pub fn swap_cards(&mut self, card: CardId, other: CardId) {
+        let trace = std::mem::take(&mut self.trace);
+        self.rearrange(&[card, other], &[other, card]);
+        self.trace = trace;
     }
 
     // `assigned[i]` takes over everything `cards[i]`'s place holds, field effects and pending events included.

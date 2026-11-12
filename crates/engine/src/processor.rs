@@ -1,10 +1,15 @@
 // Ports of processor_unit.h, processor_visit.cpp and processor.cpp with the core's step numbers; chain units are in chain.rs.
+use std::hash::Hash;
+
+use rustc_hash::FxHasher;
+
 use crate::card::{Card, CardId, CardSet, LocInfo, SendtoParam};
 use crate::chain::{AddChain, Execute, ExecuteKind, SolveChain, SolveContinuous};
 use crate::constants::*;
 use crate::duel::{Duel, IdleMemo};
 use crate::effect::{Chain, Container, EffectId, Event, Value};
 use crate::field::PerPlayer;
+use crate::hash::{Keyed, Refs};
 use crate::operations::{
     ChangePos, Damage, Destroy, DestroyReplace, DiscardDeck, Draw, Equip, FlipSummon, GetControl, MonsterSet, MoveToField,
     OperationReplace, PayLpCost, Recover, Release, RemoveCounter, RemoveOverlay, SelectTribute, SelfDestroy, SelfDestroyUnique, SendTo,
@@ -119,7 +124,8 @@ pub struct SelectCard {
     pub max: u8,
 }
 
-// SelectDisField is a SelectPlace with `disable_field`; the rest of its callers come with EFFECT_DISABLE_FIELD.
+// SelectDisField is a SelectPlace with `disable_field`; the rest of its callers come with EFFECT_DISABLE_FIELD. `card` is the
+// one the core's hint names before the prompt, None for zones to disable.
 #[derive(Debug, Clone, Default)]
 pub struct SelectPlace {
     pub step: u16,
@@ -127,6 +133,7 @@ pub struct SelectPlace {
     pub count: u8,
     pub flag: u32,
     pub disable_field: bool,
+    pub card: Option<CardId>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -134,7 +141,7 @@ pub struct SelectPosition {
     pub step: u16,
     pub playerid: u8,
     pub positions: u8,
-    pub code: u32,
+    pub card: CardId,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -268,6 +275,15 @@ macro_rules! units {
             pub(crate) fn step(&self) -> u16 {
                 match self {
                     $(Self::$name(arg) => arg.step,)*
+                }
+            }
+        }
+
+        impl Keyed for Unit {
+            fn key(&self, refs: &Refs, state: &mut FxHasher) {
+                std::mem::discriminant(self).hash(state);
+                match self {
+                    $(Self::$name(arg) => arg.key(refs, state),)*
                 }
             }
         }
@@ -1494,10 +1510,9 @@ impl Duel {
                     if self.is_can_be_flip_summoned(target, turn_player) {
                         positions |= POS_FACEUP_ATTACK;
                     }
-                    let code = self.cards[target].data.code;
                     self.emplace_process(SelectPosition {
                         playerid: turn_player,
-                        code,
+                        card: target,
                         positions: positions as u8,
                         ..SelectPosition::default()
                     });

@@ -11,6 +11,10 @@ pub struct CardScript {
     pub initial_effect: InitialEffect,
     pub support: &'static [(u32, u16)],
     pub checks: &'static [Check],
+    // Whether its own source (or a card source it uses) reads or picks zones, or checks or changes battle positions, as
+    // build.rs judges by identifiers; Link arrows and Pendulum Zones are not counted, so callers check those types themselves.
+    pub uses_zones: bool,
+    pub uses_positions: bool,
 }
 
 // The bootstrap cards of phase 2a.
@@ -65,4 +69,17 @@ pub fn assault_mode(code: u32) -> Option<u32> {
 // s.pendulum_level, which Pendulum.Filter reads in place of the card's Level.
 pub fn pendulum_level(code: u32) -> Option<u32> {
     lookup(&PENDULUM_LEVEL, code)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_flag_scripts_that_read_zones_or_positions() {
+        // Junora needs a material in the center Main Monster Zone, Artmage Diactorus changes a battle position.
+        let flags = |code| card(code).map(|card| (card.uses_zones, card.uses_positions));
+        let expected = [Some((true, false)), Some((false, true)), Some((false, false))];
+        assert_eq!([5914858, 27184601, 55144522].map(flags), expected);
+    }
 }

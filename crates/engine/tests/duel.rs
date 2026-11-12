@@ -8,8 +8,8 @@ use engine::constants::{
     LOCATION_MZONE, TYPE_EFFECT, TYPE_QUICKPLAY,
 };
 use engine::{
-    Action, CardId, DUEL_MODE_MR5, Duel, DuelError, DuelOptions, IdleCommand, InitialEffect, Library, PHASE_DAMAGE, PHASE_DAMAGE_CAL,
-    PlayerOptions, Prompt, Status,
+    Action, ActionError, CardId, DUEL_MODE_MR5, Duel, DuelError, DuelOptions, IdleCommand, InitialEffect, Library, PHASE_DAMAGE,
+    PHASE_DAMAGE_CAL, PlayerOptions, Prompt, Status,
 };
 
 const CODES: std::ops::RangeInclusive<u32> = 1..=40;
@@ -167,12 +167,12 @@ fn should_hash_a_state_alike_whatever_order_reached_it() {
     let set = |sets: [(u16, u8); 2]| {
         let mut duel = start.clone();
         for (index, zone) in sets {
-            duel.apply(Action::IdleCommand(IdleCommand::SpellSet(index))).unwrap();
-            assert_eq!(duel.state_hash(), None);
+            let action = Action::IdleCommand(IdleCommand::SpellSet(index));
+            let (card, _) = duel.action_card(action);
+            duel.apply(action).unwrap();
+            assert!(card.is_some() && duel.prompt_card() == card);
             duel.apply(Action::Place(zone)).unwrap();
-            while matches!(duel.prompt(), Some(Prompt::Chain { .. })) {
-                duel.apply(Action::Chain(None)).unwrap();
-            }
+            pass_chains(&mut duel).unwrap();
         }
         duel.state_hash()
     };
@@ -181,6 +181,66 @@ fn should_hash_a_state_alike_whatever_order_reached_it() {
     assert_eq!(set([(1, 9), (0, 8)]), first);
     assert_ne!(set([(1, 8), (0, 9)]), first);
     assert_ne!(start.state_hash(), first);
+}
+
+fn pass_chains(duel: &mut Duel) -> Result<(), ActionError> {
+    while matches!(duel.prompt(), Some(Prompt::Chain { .. })) {
+        duel.apply(Action::Chain(None))?;
+    }
+    Ok(())
+}
+
+#[test]
+fn should_hash_a_chain_window_alike_whatever_order_reached_it_and_apart_by_its_chain() {
+    let typhoon = 5318639;
+    let (pot, keto) = (55144522, 84257639);
+    let mut start = started_duel(&[typhoon, pot, keto, 12580477, 53129443], &scripts::LIBRARY).unwrap();
+    start.process();
+    let kind_on = |duel: &Duel, code: u32, kind: fn(Action) -> bool| {
+        let picks = |action: Action| duel.action_card(action).0.is_some_and(|card| card.get_code(duel) == code);
+        duel.legal_actions()
+            .into_iter()
+            .find(|&action| kind(action) && picks(action))
+            .unwrap()
+    };
+    // Sets two spells into these Spell & Trap Zones in order, then activates Mystical Space Typhoon on the one in `target`.
+    let chain_window = |sets: [(u32, u8); 2], target: u32| {
+        let mut duel = start.clone();
+        for (code, zone) in sets {
+            duel.apply(kind_on(&duel, code, |action| {
+                matches!(action, Action::IdleCommand(IdleCommand::SpellSet(_)))
+            }))
+            .unwrap();
+            duel.apply(Action::Place(zone)).unwrap();
+            pass_chains(&mut duel).unwrap();
+        }
+        duel.apply(kind_on(&duel, typhoon, |action| {
+            matches!(action, Action::IdleCommand(IdleCommand::Activate(_)))
+        }))
+        .unwrap();
+        loop {
+            let legal = duel.legal_actions();
+            let action = match duel.prompt() {
+                Some(Prompt::Chain { .. }) => return duel.state_hash(),
+                Some(Prompt::Place { .. }) => legal.first().copied(),
+                // The target function waits at this prompt.
+                _ => {
+                    assert_eq!(duel.state_hash(), None);
+                    let at_target = |action: &Action| {
+                        duel.action_card(*action)
+                            .0
+                            .is_some_and(|card| card.get_sequence(&duel) == target - 8)
+                    };
+                    legal.into_iter().find(at_target)
+                }
+            };
+            duel.apply(action.unwrap()).unwrap();
+        }
+    };
+    let first = chain_window([(pot, 8), (keto, 9)], 8);
+    assert!(first.is_some());
+    assert_eq!(chain_window([(keto, 9), (pot, 8)], 8), first);
+    assert_ne!(chain_window([(pot, 8), (keto, 9)], 9), first);
 }
 
 #[test]

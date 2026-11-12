@@ -2312,10 +2312,9 @@ impl Duel {
     }
 
     pub fn select_position(&mut self, player: u8, card: CardId, positions: u8) -> Script<u32> {
-        let code = self.cards[card].data.code;
         self.emplace_process(SelectPosition {
             playerid: player,
-            code,
+            card,
             positions,
             ..SelectPosition::default()
         });

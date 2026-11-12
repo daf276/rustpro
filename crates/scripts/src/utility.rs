@@ -114,6 +114,10 @@ pub mod aux {
         sum_type & SUMMON_TYPE_SYNCHRO == SUMMON_TYPE_SYNCHRO
     }
 
+    pub fn xyzlimit(_: &Duel, _: EffectId, _: Option<EffectId>, _: u8, sum_type: u32, _: u8, _: u8) -> bool {
+        sum_type & SUMMON_TYPE_XYZ == SUMMON_TYPE_XYZ
+    }
+
     // Auxiliary.EvilHeroLimit; a nil se fails the Lua's `se:GetHandler()`.
     pub fn evil_hero_limit(duel: &Duel, e: EffectId, se: Option<EffectId>, _: u8, sum_type: u32, _: u8, _: u8) -> bool {
         let Some(handler) = se.map(|se| se.get_handler(duel)) else {
@@ -1536,6 +1540,17 @@ impl Cost {
         Ok(false)
     }
 
+    // Cost.PayLP(LP, true) applied: the LP above the given amount are paid, which must leave at least 1 to pay.
+    pub fn pay_lp_until<const LP: i32>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        let paid = duel.get_lp(args.tp) - LP;
+        if chk == 0 {
+            return Ok(paid > 0 && duel.check_lp_cost(args.tp, paid as u32));
+        }
+        duel.pay_lp_cost(args.tp, paid as u32)?;
+        args.e.set_chain_data(duel, COST_LP_PAID, i64::from(paid));
+        Ok(false)
+    }
+
     // Cost.PayLP(1/2) applied: half of the LP, rounded down, is paid.
     pub fn pay_lp_half(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         if chk == 0 {
@@ -1714,6 +1729,7 @@ pub trait CardUtility: Copy {
     fn add_must_be_special_summoned_by_card_effect(self, duel: &mut Duel) -> EffectId;
     fn add_must_be_fusion_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_be_synchro_summoned(self, duel: &mut Duel) -> EffectId;
+    fn add_must_be_xyz_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_first_be_fusion_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_be_special_summoned_by_dark_fusion(self, duel: &mut Duel) -> EffectId;
 
@@ -2203,6 +2219,13 @@ impl CardUtility for CardId {
     fn add_must_be_synchro_summoned(self, duel: &mut Duel) -> EffectId {
         let e0 = single_uncopyable(duel, self, EFFECT_SPSUMMON_CONDITION);
         e0.set_value(duel, Value::SpSummonCondition(aux::synlimit));
+        self.register_effect(duel, e0);
+        e0
+    }
+
+    fn add_must_be_xyz_summoned(self, duel: &mut Duel) -> EffectId {
+        let e0 = single_uncopyable(duel, self, EFFECT_SPSUMMON_CONDITION);
+        e0.set_value(duel, Value::SpSummonCondition(aux::xyzlimit));
         self.register_effect(duel, e0);
         e0
     }

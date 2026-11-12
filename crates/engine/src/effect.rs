@@ -230,6 +230,8 @@ pub enum Value {
     ReasonMut(fn(&mut Duel, EffectId, Option<EffectId>, u32, u8) -> bool),
     // value(e, re), called for what it does when the card is activated: EFFECT_TRAP_ACT_IN_SET_TURN.
     Activation(fn(&mut Duel, EffectId, EffectId)),
+    // value(e, re, tp): EFFECT_LEFT_SPSUMMON_COUNT.
+    SpSummonCount(fn(&Duel, EffectId, Option<EffectId>, u8) -> i32),
     // value(e, damp, rc): EFFECT_CHANGE_BATTLE_DAMAGE.
     BattleDamage(fn(&Duel, EffectId, u8, CardId) -> i64),
     // value(e, re, val, r, rp, rc), which may reset the effect or add hints: EFFECT_CHANGE_DAMAGE.
@@ -1471,6 +1473,7 @@ impl Duel {
             | Value::EffectCard(_)
             | Value::Effect(_)
             | Value::Chain(_)
+            | Value::SpSummonCount(_)
             | Value::BattleDamage(_)
             | Value::ChangeDamage(_)
             | Value::ReflectDamage(_)
@@ -1705,6 +1708,15 @@ impl Duel {
             Value::Int(value) => value != 0,
             Value::EffectPlayer(value) => value(self, effect, activated, playerid),
             _ => misread("an activation limit"),
+        }
+    }
+
+    // effect::get_value(2) with the parameters of EFFECT_LEFT_SPSUMMON_COUNT: value(e, re, tp).
+    pub(crate) fn get_value_spsummon_count(&self, effect: EffectId, reason_effect: Option<EffectId>, playerid: u8) -> i32 {
+        match self.effects[effect].value {
+            Value::Int(value) => value,
+            Value::SpSummonCount(value) => value(self, effect, reason_effect, playerid),
+            _ => misread("a spsummon count"),
         }
     }
 

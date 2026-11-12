@@ -2583,24 +2583,44 @@ impl Duel {
             } else {
                 Some(attacker)
             };
-            let card_codes = [EFFECT_BOTH_BATTLE_DAMAGE, EFFECT_ALSO_BATTLE_DAMAGE];
-            for card in [Some(reason), dam_card].into_iter().flatten() {
-                unported!(
-                    self,
-                    card_codes.into_iter().filter_map(|code| self.is_affected_by_effect(card, code))
-                );
+            let both = self.is_affected_by_effect(reason, EFFECT_BOTH_BATTLE_DAMAGE).is_some()
+                || dam_card.is_some_and(|card| self.is_affected_by_effect(card, EFFECT_BOTH_BATTLE_DAMAGE).is_some());
+            if both {
+                self.core.battle_damage[1 - damp] = self.core.battle_damage[damp];
             }
-            // Player effects of EFFECT_ALSO_BATTLE_DAMAGE come with the cards that have them.
-            for p in [damp, 1 - damp] {
-                unported!(self, self.is_player_affected_by_effect(p, EFFECT_ALSO_BATTLE_DAMAGE));
-            }
-            // The core's reflect[1 - damp] only reaches the damage with EFFECT_BOTH_BATTLE_DAMAGE or EFFECT_ALSO_BATTLE_DAMAGE.
-            let reflect = dam_card
+            let mut reflect = PerPlayer::<Option<EffectId>>::default();
+            reflect[damp] = dam_card
                 .and_then(|card| self.is_affected_by_effect_target(card, EFFECT_REFLECT_BATTLE_DAMAGE, reason))
                 .or_else(|| self.is_player_affected_by_effect(damp, EFFECT_REFLECT_BATTLE_DAMAGE));
-            if reflect.is_some() {
-                self.core.battle_damage[1 - damp] += self.core.battle_damage[damp];
-                self.core.battle_damage[damp] = 0;
+            reflect[1 - damp] = self
+                .affected_by_effect_against(reason, EFFECT_REFLECT_BATTLE_DAMAGE, dam_card)
+                .or_else(|| self.is_player_affected_by_effect(1 - damp, EFFECT_REFLECT_BATTLE_DAMAGE));
+            let mut also = PerPlayer::<bool>::default();
+            also[damp] = !both
+                && (dam_card.is_some_and(|card| self.is_affected_by_effect(card, EFFECT_ALSO_BATTLE_DAMAGE).is_some())
+                    || self.is_player_affected_by_effect(damp, EFFECT_ALSO_BATTLE_DAMAGE).is_some());
+            also[1 - damp] = !both
+                && (self.is_affected_by_effect(reason, EFFECT_ALSO_BATTLE_DAMAGE).is_some()
+                    || self.is_player_affected_by_effect(1 - damp, EFFECT_ALSO_BATTLE_DAMAGE).is_some());
+            let handler = |effect: Option<EffectId>| effect.map(|effect| self.get_handler_player(effect));
+            let reflecting = PerPlayer([handler(reflect[0]), handler(reflect[1])]);
+            let damage = &mut self.core.battle_damage;
+            if both {
+                // The turn player's effect applies first.
+                let candidates = [(pa, pa), (1 - pa, pa), (pa, 1 - pa), (1 - pa, 1 - pa)];
+                if let Some(&(reflected, _)) = candidates.iter().find(|&&(player, owner)| reflecting[player] == Some(owner)) {
+                    damage[1 - reflected] += damage[reflected];
+                    damage[reflected] = 0;
+                }
+            } else if reflect[damp].is_some() {
+                damage[1 - damp] += damage[damp];
+                damage[damp] = if also[1 - damp] { damage[1 - damp] } else { 0 };
+            } else if also[damp] {
+                damage[1 - damp] += damage[damp];
+                if reflect[1 - damp].is_some() {
+                    damage[damp] += damage[1 - damp];
+                    damage[1 - damp] = 0;
+                }
             }
             self.change_battle_damage(reason, dam_card, damp);
             if self.is_affected_by_effect(reason, EFFECT_NO_BATTLE_DAMAGE).is_some()
@@ -2625,14 +2645,19 @@ impl Duel {
         (reason_card, destroyed)
     }
 
-    // card.is_affected_by_effect(EFFECT_AVOID_BATTLE_DAMAGE, dam_card) with a nil dam_card, ported for integer values only.
-    fn is_avoiding_battle_damage(&self, reason_card: CardId, dam_card: Option<CardId>) -> bool {
-        let found = self.is_affected_by_effect_target(reason_card, EFFECT_AVOID_BATTLE_DAMAGE, dam_card.unwrap_or(reason_card));
+    // card.is_affected_by_effect(code, other) with a nil `other`, ported for integer values only.
+    fn affected_by_effect_against(&self, card: CardId, code: u32, other: Option<CardId>) -> Option<EffectId> {
+        let found = self.is_affected_by_effect_target(card, code, other.unwrap_or(card));
         unported!(
             self,
-            found.filter(|&e| dam_card.is_none() && !matches!(self.effects[e].value, Value::Int(_)))
+            found.filter(|&e| other.is_none() && !matches!(self.effects[e].value, Value::Int(_)))
         );
-        found.is_some()
+        found
+    }
+
+    fn is_avoiding_battle_damage(&self, reason_card: CardId, dam_card: Option<CardId>) -> bool {
+        self.affected_by_effect_against(reason_card, EFFECT_AVOID_BATTLE_DAMAGE, dam_card)
+            .is_some()
     }
 
     // The EFFECT_CHANGE_BATTLE_DAMAGE effects of the cards and players, in id order, double, halve or set the damage.

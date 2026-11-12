@@ -65,7 +65,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.register_effect(duel, e3);
 }
 
-fn atchtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+pub fn atchtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
     let (e, tp) = (a.e, a.tp);
     let c = e.get_handler(duel);
     let bc = c.get_battle_target(duel);
@@ -84,7 +84,7 @@ fn atchtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool
     Ok(false)
 }
 
-fn atchop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn atchop(duel: &mut Duel, a: &Args) -> Script<()> {
     let c = a.e.get_handler(duel);
     let Some(bc) = duel.get_first_target() else { return Ok(()) };
     if c.is_relate_to_effect(duel, a.e)
@@ -129,7 +129,7 @@ fn spcostfilter(c: CardId, duel: &Duel, tp: u8) -> bool {
     c.is_race(duel, RACE_MACHINE) && c.is_link_monster(duel) && duel.get_mzone_count(tp, Some(c.into())) > 0
 }
 
-fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+pub fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     let tp = a.tp;
     let filter = |c, duel: &Duel| spcostfilter(c, duel, tp);
     if chk == 0 {
@@ -140,7 +140,7 @@ fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     Ok(false)
 }
 
-fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+pub fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
     let (e, tp) = (a.e, a.tp);
     let c = e.get_handler(duel);
     if chk == 0 {

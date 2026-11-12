@@ -45,7 +45,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e2.set_code(duel, EVENT_SUMMON_SUCCESS);
     e2.set_property(duel, EFFECT_FLAG_CARD_TARGET + EFFECT_FLAG_DAMAGE_STEP);
     e2.set_target(duel, sptg);
-    e2.set_operation(duel, spop);
+    e2.set_operation(duel, stock::special_summon_first_target::<POS_FACEUP_DEFENSE>);
     c.register_effect(duel, e2);
     let e3 = e2.clone_effect(duel);
     e3.set_code(duel, EVENT_SPSUMMON_SUCCESS);
@@ -125,14 +125,4 @@ fn sptg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<boo
     let g = duel.select_target(tp, |c, duel| spfilter(c, duel, e, tp), tp, LOCATION_REMOVED, 0, 1, 1, None)?;
     duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, g, 1, 0, 0);
     Ok(false)
-}
-
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (e, tp) = (a.e, a.tp);
-    if let Some(tc) = duel.get_first_target()
-        && tc.is_relate_to_effect(duel, e)
-    {
-        duel.special_summon(tc, 0, tp, tp, false, false, POS_FACEUP_DEFENSE)?;
-    }
-    Ok(())
 }

@@ -2227,8 +2227,12 @@ impl Duel {
                     if value == 0 || i32::from(self.find_announced_card(card, Some(target))) >= value {
                         continue;
                     }
-                    if atype >= 2 {
-                        unported!(self, self.is_affected_by_effect_target(target, EFFECT_IGNORE_BATTLE_TARGET, card));
+                    if atype >= 2
+                        && self
+                            .is_affected_by_effect_target(target, EFFECT_IGNORE_BATTLE_TARGET, card)
+                            .is_some()
+                    {
+                        continue;
                     }
                     if choosable
                         && (self
@@ -2248,8 +2252,12 @@ impl Duel {
         let mut mcount = 0;
         let mut targets = Cards16::default();
         for target in attack_tg {
-            if atype >= 2 {
-                unported!(self, self.is_affected_by_effect_target(target, EFFECT_IGNORE_BATTLE_TARGET, card));
+            if atype >= 2
+                && self
+                    .is_affected_by_effect_target(target, EFFECT_IGNORE_BATTLE_TARGET, card)
+                    .is_some()
+            {
+                continue;
             }
             if self.cards[target].current.controler != p {
                 mcount += 1;

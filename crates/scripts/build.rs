@@ -37,13 +37,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
     }
     writeln!(out, "];")?;
-    let tables: [(&str, &[&str], &str); 6] = [
+    let tables: [(&str, &[&str], &str); 7] = [
         ("LISTED_NAMES", &["LISTED_NAMES", "FIT_MONSTER"], "&[u32]"),
         ("MATERIAL_SETCODE", &["MATERIAL_SETCODE"], "&[u16]"),
         ("MATERIAL", &["MATERIAL"], "&[u32]"),
         ("DARK_CALLING", &["DARK_CALLING"], "bool"),
         ("XYZ_NUMBER", &["XYZ_NUMBER"], "u32"),
         ("ASSAULT_MODE", &["ASSAULT_MODE"], "u32"),
+        ("PENDULUM_LEVEL", &["PENDULUM_LEVEL"], "u32"),
     ];
     for (table, names, value) in tables {
         let rows: Vec<String> = cards

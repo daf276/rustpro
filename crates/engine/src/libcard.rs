@@ -228,6 +228,10 @@ impl CardId {
         duel.cards[self].previous_attack
     }
 
+    pub fn get_previous_defense_on_field(self, duel: &Duel) -> i32 {
+        duel.cards[self].previous_defense
+    }
+
     pub fn reset_effect(self, duel: &mut Duel, code: u32, reset_type: u32) {
         duel.reset(self, code, reset_type);
     }
@@ -836,6 +840,11 @@ impl CardId {
 
     pub fn enable_revive_limit(self, duel: &mut Duel) {
         self.enable_limits(duel, &[EFFECT_UNSUMMONABLE_CARD, EFFECT_REVIVE_LIMIT]);
+    }
+
+    // Card.EnableGeminiState, under the name proc_gemini.lua gives it.
+    pub fn enable_gemini_status(self, duel: &mut Duel) {
+        duel.add_status_effect(self, EFFECT_GEMINI_STATUS, 64, RESET_EVENT + 0x1fe_0000);
     }
 
     fn enable_limits(self, duel: &mut Duel, codes: &[u32]) {

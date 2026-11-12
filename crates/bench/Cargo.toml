@@ -17,6 +17,7 @@ scripts = { path = "../scripts" }
 sim = { path = "../sim" }
 
 [features]
+ocg = ["carddata/ocg"]
 # The benches on the system heap instead of mimalloc.
 system-allocator = []
 

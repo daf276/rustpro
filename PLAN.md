@@ -4,7 +4,7 @@ A pure-Rust reimplementation of the EDOPro duel engine (edo9300/ygopro-core + Pr
 
 ## Decisions
 
-- **Scope:** current TCG Advanced format only. Pool = cards with the TCG flag in BabelCDB minus Forbidden in the current TCG lflist. One Master Rule (current), no Speed/Rush/Goat, no skills, no anime/unofficial/pre-release cards.
+- **Scope:** current TCG Advanced format only. Pool = cards with the TCG flag in BabelCDB minus Forbidden in the current TCG lflist; the `ocg` cargo feature (off by default) adds the OCG-only cards, still under the TCG banlist and Master Rule. One Master Rule (current), no Speed/Rush/Goat, no skills, no anime/unofficial/pre-release cards.
 - **Fidelity:** match EDOPro exactly, including misrulings. The core is a near line-by-line port of ocgcore (processor step order, message order, group iteration order). Cleverness goes into data layout only.
 - **Card porting:** a Rust API mirroring the Lua `Duel`/`Card`/`Effect`/`Group`/`aux` surface; cards ported by LLM agents in batches, each card gated by differential fuzzing against the oracle.
 - **Use cases:** game-tree search AI, RL training, deck statistics.

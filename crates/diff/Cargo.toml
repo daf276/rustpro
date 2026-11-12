@@ -14,5 +14,8 @@ rand = { version = "0.9", default-features = false, features = ["alloc", "std_rn
 rayon = { version = "1", default-features = false }
 thiserror = { version = "2", default-features = false }
 
+[features]
+ocg = ["carddata/ocg"]
+
 [lints]
 workspace = true

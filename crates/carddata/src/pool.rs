@@ -5,7 +5,9 @@ use rand::seq::{IndexedRandom, SliceRandom};
 
 use crate::cards::{Card, CardDatabase, TYPE_EXTRA, TYPE_NORMAL, TYPE_PENDULUM, TYPE_TOKEN};
 
+const OT_OCG: u32 = 0x1;
 const OT_TCG: u32 = 0x2;
+const POOL_OT: u32 = if cfg!(feature = "ocg") { OT_OCG | OT_TCG } else { OT_TCG };
 const MAIN_SIZE: usize = 40;
 const EXTRA_MAX: usize = 15;
 const COPIES_MAX: u8 = 3;
@@ -80,10 +82,15 @@ pub struct Pool {
 }
 
 impl Pool {
+    // TCG cards, plus the OCG-only ones with the `ocg` feature; the banlist is always the TCG's.
     pub fn advanced(cards: &CardDatabase, limits: HashMap<u32, u8>) -> Self {
+        Self::with_ot(cards, limits, POOL_OT)
+    }
+
+    fn with_ot(cards: &CardDatabase, limits: HashMap<u32, u8>, ot: u32) -> Self {
         let (extra, main): (Vec<&Card>, Vec<&Card>) = cards
             .cards()
-            .filter(|card| card.ot & OT_TCG != 0 && card.card_type & TYPE_TOKEN == 0 && !card.is_alternate_art())
+            .filter(|card| card.ot & ot != 0 && card.card_type & TYPE_TOKEN == 0 && !card.is_alternate_art())
             .filter(|card| limits.get(&card.code) != Some(&0))
             .partition(|card| card.card_type & TYPE_EXTRA != 0);
         let codes = |cards: Vec<&Card>| cards.iter().map(|card| card.code).collect();
@@ -176,6 +183,16 @@ pub fn load_advanced(vendor: &std::path::Path) -> Result<(CardDatabase, Pool), c
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn should_add_only_ocg_cards_and_keep_the_banlist_with_the_ocg_pool() {
+        let card = |code, ot| Card { code, ot, ..Card::default() };
+        let cards: CardDatabase = [card(1, OT_TCG), card(2, OT_OCG), card(3, OT_OCG | OT_TCG), card(4, OT_OCG)].into_iter().collect();
+        let limits = HashMap::from([(4, 0)]);
+        let main = |ot| Pool::with_ot(&cards, limits.clone(), ot).main;
+        assert_eq!(main(OT_TCG), [1, 3]);
+        assert_eq!(main(OT_TCG | OT_OCG), [1, 2, 3]);
+    }
 
     #[test]
     fn should_read_the_main_and_extra_deck_of_a_ydk() {

@@ -13,5 +13,8 @@ thiserror = { version = "2", default-features = false }
 [dev-dependencies]
 rayon = { version = "1", default-features = false }
 
+[features]
+ocg = ["carddata/ocg"]
+
 [lints]
 workspace = true

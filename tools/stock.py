@@ -2,7 +2,9 @@
 A function matches when it equals the shape after its constants, numbers and filter are taken out and those satisfy
 the shape's rule; anything else is left alone. Without --write it only counts.
 
-  python tools/stock.py [--write]
+  python tools/stock.py [--write] [--all | <code> ...]
+
+Only the card files changed in the working tree (or the given codes) are read; --all reads every card.
 """
 import re
 import subprocess
@@ -156,8 +158,20 @@ def shape(function, body):
     return SLOT.sub(slot, text), values
 
 
+def card_files():
+    codes = [arg for arg in sys.argv[1:] if arg.isdigit()]
+    if "--all" in sys.argv:
+        return sorted(OFFICIAL.glob("c*.rs"))
+    if codes:
+        return [OFFICIAL / f"c{code}.rs" for code in codes]
+    status = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all", "--", str(OFFICIAL)],
+                            capture_output=True, text=True, check=True, cwd=OFFICIAL).stdout
+    paths = (OFFICIAL.parent.parent.parent.parent / line[3:].strip() for line in status.splitlines())
+    return sorted(path for path in paths if path.name.startswith("c") and path.suffix == ".rs" and path.exists())
+
+
 folded, changed = Counter(), []
-for path in sorted(OFFICIAL.glob("c*.rs")):
+for path in card_files():
     lines = path.read_text(encoding="utf-8").split("\n")
     text = "\n".join(lines)
     edits, renames = [], {}

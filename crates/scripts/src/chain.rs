@@ -47,6 +47,24 @@ pub fn is_setcode(duel: &Duel, ch: u8, setcodes: &[u16]) -> bool {
     is_triggering_setcode(duel, ch, setcodes)
 }
 
+// Chain.IsType, false for nil; falls back like is_setcode.
+pub fn is_type(duel: &Duel, ch: u8, card_type: u32) -> bool {
+    if duel.get_current_chain() == 0 {
+        return false;
+    }
+    let Some(eff) = duel.get_chain_info::<Option<EffectId>>(ch, CHAININFO_TRIGGERING_EFFECT) else {
+        return false;
+    };
+    if eff.is_has_property(duel, EFFECT_FLAG_FIELD_ONLY) {
+        return properties_card(duel, eff).is_some_and(|card| card.is_type(duel, card_type));
+    }
+    let ec = eff.get_handler(duel);
+    if ec.is_relate_to_effect(duel, eff) && ec.is_faceup(duel) {
+        return ec.is_type(duel, card_type);
+    }
+    is_triggering_type(duel, ch, card_type)
+}
+
 // Chain.IsCode, false for nil; falls back like is_setcode, to the triggering code and its alias.
 pub fn is_code(duel: &Duel, ch: u8, codes: &[u32]) -> bool {
     if duel.get_current_chain() == 0 {

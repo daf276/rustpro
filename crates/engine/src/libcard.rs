@@ -356,6 +356,13 @@ impl CardId {
         duel.cards[self].data = crate::card::StaticData::interned(data);
     }
 
+    // Card.Attribute called with a value: sets the attribute of the card's data.
+    pub fn set_attribute(self, duel: &mut Duel, attribute: u32) {
+        let mut data = *duel.cards[self].data;
+        data.attribute = attribute;
+        duel.cards[self].data = crate::card::StaticData::interned(data);
+    }
+
     pub fn is_level(self, duel: &Duel, levels: &[u32]) -> bool {
         levels.contains(&duel.get_level(self))
     }

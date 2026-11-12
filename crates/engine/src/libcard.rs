@@ -746,6 +746,10 @@ impl CardId {
         duel.core.pre_field.contains(&fieldid)
     }
 
+    pub fn get_attacked_group_count(self, duel: &Duel) -> usize {
+        duel.attacked_cards.iter().filter(|entry| entry.0 == self).count()
+    }
+
     pub fn get_battled_group_count(self, duel: &Duel) -> usize {
         duel.battled_cards.iter().filter(|entry| entry.0 == self).count()
     }

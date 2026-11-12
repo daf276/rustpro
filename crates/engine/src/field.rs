@@ -2314,6 +2314,13 @@ impl Duel {
         }
     }
 
+    pub(crate) fn add_attacked_card(&mut self, attacker: CardId, target: Option<CardId>) {
+        let fieldid = target.map_or(0, |target| self.cards[target].fieldid_r);
+        if !self.attacked_cards.contains(&(attacker, fieldid)) {
+            self.attacked_cards.push((attacker, fieldid));
+        }
+    }
+
     pub(crate) fn add_battled_card(&mut self, card: CardId, battled: Option<CardId>) {
         let fieldid = battled.map_or(0, |battled| self.cards[battled].fieldid_r);
         if !self.battled_cards.contains(&(card, fieldid)) {

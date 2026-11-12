@@ -340,7 +340,7 @@ impl Duel {
             clone: player, infos, relations, returns, return_cards, nil_event, random, result, library, database, script_state,
                 script_groups, values_reset, fusion_check_additional, synchro_check_additional, ritual_summoning_level, assumes,
                 pending_resets, material_cards, overlay_cards, counters, card_targets, card_relations, announced_cards,
-                indestructable_effects, battled_cards, immune_effects, equip_cards, unported, core;
+                attacked_cards, indestructable_effects, battled_cards, immune_effects, equip_cards, unported, core;
             rest: trace: _, replay: _, destination_probe: _, idle_memo: _);
     }
 

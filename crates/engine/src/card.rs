@@ -1365,6 +1365,7 @@ impl Duel {
             }
             if id & (moved | RESET_LEAVE | RESET_TOFIELD) != 0 {
                 self.announced_cards.retain(|entry| entry.0 != card);
+                self.attacked_cards.retain(|entry| entry.0 != card);
                 self.indestructable_effects.retain(|entry| entry.0 != card);
                 let card = &mut self.cards[card];
                 card.attack_announce_count = 0;

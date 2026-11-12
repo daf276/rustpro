@@ -161,6 +161,8 @@ pub struct Duel {
     pub(crate) card_relations: Vec<(CardId, CardId, u32)>,
     // Card.announced_cards: per attacker, the fieldid_r of each target it announced an attack on (0 for a direct attack) and how often.
     pub(crate) announced_cards: Vec<(CardId, u32, u8)>,
+    // Card.attacked_cards: per attacker, the fieldid_r of each target it attacked (0 for a direct attack).
+    pub(crate) attacked_cards: Vec<(CardId, u32)>,
     // Card.indestructable_effects: one entry per time an EFFECT_INDESTRUCTABLE_COUNT effect without a count limit was spent on a card.
     pub(crate) indestructable_effects: Vec<(CardId, EffectId)>,
     // Card.battled_cards: per card, the fieldid_r of each card it battled (0 for a direct attack).
@@ -207,6 +209,7 @@ clone_by_field!(Duel {
     card_targets,
     card_relations,
     announced_cards,
+    attacked_cards,
     indestructable_effects,
     battled_cards,
     equip_cards,
@@ -265,6 +268,7 @@ impl Duel {
             card_targets: Vec::new(),
             card_relations: Vec::new(),
             announced_cards: Vec::new(),
+            attacked_cards: Vec::new(),
             indestructable_effects: Vec::new(),
             battled_cards: Vec::new(),
             immune_effects: List::default(),

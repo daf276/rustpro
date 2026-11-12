@@ -773,6 +773,7 @@ impl Duel {
         let singles = singles
             .chain(counted)
             .chain(self.announced_cards.iter().map(|&(card, ..)| card))
+            .chain(self.attacked_cards.iter().map(|&(card, _)| card))
             .chain(self.indestructable_effects.iter().map(|&(card, ..)| card))
             .chain(self.battled_cards.iter().map(|&(card, _)| card));
         let pairs = self.card_relations.iter().map(|&(card, other, _)| [card, other]);

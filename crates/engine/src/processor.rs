@@ -1977,6 +1977,7 @@ impl Duel {
                 card.attack_controler = card.current.controler;
                 card.attacked_count += 1;
                 self.core.pre_field = [card.fieldid_r, 0];
+                self.add_attacked_card(attacker, attack_target);
                 if let Some(target) = attack_target {
                     let card = &mut self.cards[target];
                     card.attack_controler = card.current.controler;
@@ -2676,6 +2677,7 @@ impl Duel {
         match arg.step {
             0 => {
                 self.announced_cards.clear();
+                self.attacked_cards.clear();
                 self.battled_cards.clear();
                 let cards = &self.cards;
                 self.indestructable_effects
@@ -2893,6 +2895,7 @@ impl Duel {
                         }
                     }
                     self.announced_cards.clear();
+                    self.attacked_cards.clear();
                     self.battled_cards.clear();
                     return false;
                 }

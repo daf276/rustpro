@@ -1,12 +1,9 @@
 // Iron Core of Koa'ki Meiru
+use crate::keys::{REPLACE_COUNT, REPLACE_MAX};
 use crate::prelude::*;
 use crate::testing::{Check, GRAVE, HAND};
 
 const ID: u32 = 36623431;
-
-// The Lua globals _replace_count and _replace_max, shared by the draw-replacing cards.
-pub const REPLACE_COUNT: u64 = 1 << 59;
-pub const REPLACE_MAX: u64 = (1 << 59) | 1;
 
 // In the Graveyard, with Koa'ki Meiru Guardian in the hand as the Koa'ki Meiru monster to discard.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, GRAVE), (ID, GRAVE), (45041488, HAND), (45041488, HAND)];

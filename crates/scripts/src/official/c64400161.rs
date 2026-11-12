@@ -1,5 +1,5 @@
 // Fandora, the Flying Furtress
-use super::c36623431::{REPLACE_COUNT, REPLACE_MAX};
+use crate::keys::{REPLACE_COUNT, REPLACE_MAX};
 use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 

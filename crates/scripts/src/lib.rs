@@ -13,6 +13,7 @@ macro_rules! unported {
 
 pub mod chain;
 mod constant;
+mod keys;
 pub mod lua;
 mod official;
 mod proc_equip;

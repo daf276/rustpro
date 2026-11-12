@@ -4,12 +4,12 @@ use std::hash::{BuildHasher, Hash, Hasher};
 use rustc_hash::{FxBuildHasher, FxHasher};
 
 use crate::action::Prompt;
-use crate::card::{CardId, CardSet, MAX_CARDS};
+use crate::card::{Card, CardId, CardSet, CardState, MAX_CARDS, SummonState};
 use crate::chain::{Continuous, ExecuteKind};
 use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{Chain, Effect, EffectId, Event, OpInfos, Operation, Value};
-use crate::field::Processor;
+use crate::field::{PerPlayer, Processor};
 use crate::list::List;
 use crate::{chain, operations, processor, script};
 
@@ -152,78 +152,206 @@ impl Duel {
 
     // The fields as one array of words, which the hasher reads 16 bytes at a time instead of one multiply per field.
     fn card_hash(&self, id: CardId) -> u64 {
-        let card = &self.cards[id];
-        let (current, summon, previous) = (&card.current, &card.summon, &card.previous);
-        let ([spsummons, other_spsummons], [resets, other_resets]) = (card.spsummon_counter.0, card.spsummon_counter_rst.0);
+        let Card {
+            current:
+                CardState {
+                    pzone,
+                    reason,
+                    reason_player,
+                    // In place_key.
+                    controler: _,
+                    location: _,
+                    sequence: _,
+                    position: _,
+                    // In [Refs::card_flow].
+                    reason_effect: _,
+                    reason_card: _,
+                },
+            summon:
+                SummonState {
+                    summon_type,
+                    location: summon_location,
+                    pzone: summon_pzone,
+                    player: summon_player,
+                    // In [Refs::words].
+                    sequence: _,
+                },
+            previous:
+                CardState {
+                    controler: previous_controler,
+                    location: previous_location,
+                    position: previous_position,
+                    // In [Refs::words].
+                    sequence: _,
+                    pzone: _,
+                    // Nothing reads them.
+                    reason: _,
+                    reason_player: _,
+                    reason_effect: _,
+                    reason_card: _,
+                },
+            owner,
+            status,
+            turnid,
+            turn_counter,
+            attack_announce_count,
+            announce_count,
+            attacked_count,
+            attack_all_target,
+            direct_attackable,
+            spsummon_counter: PerPlayer([spsummons, other_spsummons]),
+            spsummon_counter_rst: PerPlayer([resets, other_resets]),
+            spsummon_code,
+            equiping_target,
+            unique_fieldid,
+            // In place_key: the code, and a material placed by its monster.
+            data: _,
+            overlay_target: _,
+            // In [Refs::words] and [Refs::card_flow].
+            previous_type: _,
+            previous_level: _,
+            previous_rank: _,
+            previous_attribute: _,
+            previous_race: _,
+            previous_attack: _,
+            previous_defense: _,
+            previous_code: _,
+            previous_code2: _,
+            previous_setcodes: _,
+            temp: _,
+            sendto_param: _,
+            to_field_param: _,
+            position_param: _,
+            release_param: _,
+            spsummon_param: _,
+            attack_controler: _,
+            pre_overlay_target: _,
+            pre_equip_target: _,
+            unique: _,
+            // Ids, which the hash leaves out.
+            fieldid: _,
+            fieldid_r: _,
+        } = self.cards[id];
         let [code, controler, location, sequence, position] = self.place_key(id);
+        // The core only asks whether it is 0 or UINT_MAX; any other value is a field id.
+        let unique = match unique_fieldid {
+            0 => 0,
+            u32::MAX => 2,
+            _ => 1,
+        };
         let words = [
             code,
             controler,
             location,
             sequence,
             position,
-            card.owner.into(),
-            current.pzone.into(),
-            card.status,
-            current.reason,
-            current.reason_player.into(),
-            card.turnid.into(),
-            card.turn_counter.into(),
-            summon.summon_type,
-            summon.location.into(),
-            summon.pzone.into(),
-            summon.player.into(),
-            previous.controler.into(),
-            previous.location.into(),
-            previous.position,
-            card.attack_announce_count.into(),
-            card.announce_count.into(),
-            card.attacked_count.into(),
-            card.attack_all_target.into(),
-            card.direct_attackable.into(),
+            owner.into(),
+            pzone.into(),
+            status,
+            reason,
+            reason_player.into(),
+            turnid.into(),
+            turn_counter.into(),
+            summon_type,
+            summon_location.into(),
+            summon_pzone.into(),
+            summon_player.into(),
+            previous_controler.into(),
+            previous_location.into(),
+            previous_position,
+            attack_announce_count.into(),
+            announce_count.into(),
+            attacked_count.into(),
+            attack_all_target.into(),
+            direct_attackable.into(),
             spsummons.into(),
             other_spsummons.into(),
             resets.into(),
             other_resets.into(),
-            card.spsummon_code,
+            spsummon_code,
+            unique,
         ];
-        mix((words, card.equiping_target.map(|target| self.place_key(target))))
+        mix((words, equiping_target.map(|target| self.place_key(target))))
     }
 
     fn effect_hash(&self, effect: &Effect) -> u64 {
-        let (is_int, value) = match effect.value {
+        let Effect {
+            count_limit,
+            count_limit_max,
+            count_flag,
+            count_hopt_index,
+            effect_owner,
+            effect_type,
+            copy_id,
+            range,
+            s_range,
+            o_range,
+            reset_count,
+            active_location,
+            code,
+            flag: [flag, flag2],
+            reset_flag,
+            count_code,
+            hint_timing: [timing, other_timing],
+            card_type,
+            active_type,
+            value,
+            category,
+            owner,
+            handler,
+            active_handler,
+            description,
+            label_object,
+            // By labels().
+            label: _,
+            label_len: _,
+            // Functions, which [Refs::effect] adds where they are compared.
+            condition: _,
+            cost: _,
+            cost_condition: _,
+            target: _,
+            operation: _,
+            // Only Effect.GetActivateSequence reads it, which neither the scripts nor the port call.
+            active_sequence: _,
+            // Ids and the registration keys made of them.
+            initial_id: _,
+            card_key: _,
+            field_key: _,
+        } = *effect;
+        let (is_int, value) = match value {
             Value::Int(value) => (1, value as u32),
             _ => (0, 0),
         };
-        let ([flag, flag2], [timing, other_timing]) = (effect.flag, effect.hint_timing);
         let words = [
-            self.cards[effect.owner].data.code,
-            effect.effect_owner.into(),
-            effect.code,
-            effect.effect_type.into(),
+            self.cards[owner].data.code,
+            effect_owner.into(),
+            code,
+            effect_type.into(),
             flag,
             flag2,
-            effect.range.into(),
-            effect.s_range.into(),
-            effect.o_range.into(),
-            effect.card_type,
-            effect.active_type,
-            effect.active_location.into(),
+            range.into(),
+            s_range.into(),
+            o_range.into(),
+            card_type,
+            active_type,
+            active_location.into(),
             timing,
             other_timing,
-            effect.reset_flag,
-            effect.reset_count.into(),
-            effect.count_code,
-            effect.count_flag.into(),
-            effect.count_hopt_index.into(),
-            effect.count_limit.into(),
-            effect.count_limit_max.into(),
-            effect.label_object.is_some().into(),
+            reset_flag,
+            reset_count.into(),
+            count_code,
+            count_flag.into(),
+            count_hopt_index.into(),
+            count_limit.into(),
+            count_limit_max.into(),
+            label_object.is_some().into(),
             is_int,
             value,
+            // An id, compared only with RESET_COPY's level, which comes from the same counter.
+            (copy_id != 0).into(),
         ];
-        let handler = effect.handler.map(|handler| self.place_key(handler));
-        mix((words, effect.description, effect.category, effect.labels(), handler))
+        let handlers = [handler, active_handler].map(|handler| handler.map(|handler| self.place_key(handler)));
+        mix((words, description, category, effect.labels(), handlers))
     }
 }
 
@@ -405,10 +533,12 @@ impl<'a> Refs<'a> {
 
     // A card's fields that a move or an operation in progress leaves for events and units to read; not the reasons in
     // `previous` and `temp.reason_card`, which nothing reads, nor the controller and location of `temp`, which nothing writes.
-    fn words(&self, id: CardId) -> ([u32; 22], [u8; 4]) {
+    fn words(&self, id: CardId) -> ([u32; 23], [u8; 4]) {
         let card = &self.duel.cards[id];
         let (previous, temp, send) = (&card.previous, &card.temp, card.sendto_param);
+        let [setcode, other_setcode] = card.previous_setcodes;
         let words = [
+            u32::from(setcode) << 16 | u32::from(other_setcode),
             card.previous_type,
             card.previous_level,
             card.previous_rank,
@@ -493,37 +623,10 @@ impl<'a> Refs<'a> {
             release_cards,
             release_cards_ex,
             release_cards_ex_oneof,
-            point_event,
-            instant_event,
-            queue_event,
-            delayed_activate_event,
-            full_event,
-            single_event,
-            solving_event,
-            sub_solving_event,
-            select_chains,
             tpchain,
-            current_chain,
             real_chain_count,
-            ignition_priority_chains,
-            continuous_chain,
             readjust_map,
-            desrep_chain,
             replace_targets,
-            solving_continuous,
-            sub_solving_continuous,
-            delayed_continuous_tp,
-            delayed_continuous_ntp,
-            continuous_tp,
-            continuous_ntp,
-            new_fchain,
-            new_fchain_s,
-            new_ochain,
-            new_ochain_s,
-            new_fchain_b,
-            new_ochain_b,
-            new_ochain_h,
-            new_chains,
             delayed_quick_tmp,
             delayed_quick,
             quick_f_chain,
@@ -589,6 +692,34 @@ impl<'a> Refs<'a> {
             copy_reset,
             copy_reset_count,
             must_select_cards,
+            // In [Processor::chain_lists], [Processor::event_lists] and [Processor::continuous_lists].
+            point_event: _,
+            instant_event: _,
+            queue_event: _,
+            delayed_activate_event: _,
+            full_event: _,
+            single_event: _,
+            solving_event: _,
+            sub_solving_event: _,
+            select_chains: _,
+            current_chain: _,
+            ignition_priority_chains: _,
+            continuous_chain: _,
+            desrep_chain: _,
+            solving_continuous: _,
+            sub_solving_continuous: _,
+            delayed_continuous_tp: _,
+            delayed_continuous_ntp: _,
+            continuous_tp: _,
+            continuous_ntp: _,
+            new_fchain: _,
+            new_fchain_s: _,
+            new_ochain: _,
+            new_ochain_s: _,
+            new_fchain_b: _,
+            new_ochain_b: _,
+            new_ochain_h: _,
+            new_chains: _,
             // In the board's part.
             custom_counters: _,
             effect_count_code: _,
@@ -652,35 +783,11 @@ impl<'a> Refs<'a> {
         let sets = chained(sets.map(|cards| self.cards(cards)));
         let lists: [&[CardId]; 3] = [select_cards, unselect_cards, &duel.return_cards.list];
         let lists = chained(lists.map(|cards| self.list(cards)));
-        let events: [&[Event]; 9] = [
-            point_event,
-            instant_event,
-            queue_event,
-            delayed_activate_event,
-            full_event,
-            single_event,
-            solving_event,
-            sub_solving_event,
-            &[duel.nil_event],
-        ];
+        let events = (duel.core.event_lists().into_iter()).chain([std::slice::from_ref(&duel.nil_event)]);
         let events = chained(events.map(|events| chained(events.iter().map(|event| self.event(event)))));
         let delayed = [delayed_quick_tmp, delayed_quick]
             .map(|quick| chained(quick.iter().map(|(effect, event)| mix((self.effect(*effect), self.event(event))))));
-        let chain_lists: [&[Chain]; 13] = [
-            current_chain,
-            new_chains,
-            select_chains,
-            ignition_priority_chains,
-            continuous_chain,
-            desrep_chain,
-            new_fchain,
-            new_fchain_s,
-            new_ochain,
-            new_ochain_s,
-            new_fchain_b,
-            new_ochain_b,
-            new_ochain_h,
-        ];
+        let chain_lists = duel.core.chain_lists();
         let quick = chained(
             quick_f_chain
                 .iter()
@@ -702,15 +809,7 @@ impl<'a> Refs<'a> {
         });
         let oaths =
             (duel.field_effects.oath.iter()).map(|&(effect, reason)| mix((self.effect(effect), reason.map(|reason| self.effect(reason)))));
-        let continuous = [
-            solving_continuous,
-            sub_solving_continuous,
-            delayed_continuous_tp,
-            delayed_continuous_ntp,
-            continuous_tp,
-            continuous_ntp,
-        ];
-        let continuous = continuous.map(|list| chained(list.iter().map(|continuous| self.continuous(continuous))));
+        let continuous = (duel.core.continuous_lists()).map(|list| chained(list.iter().map(|continuous| self.continuous(continuous))));
         let limits = [chain_limit, chain_limit_p]
             .map(|limits| chained(limits.iter().map(|limit| mix((limit.function, limit.capture, limit.player)))));
         let send_to = send_to_args.iter().map(|args| {

@@ -3,6 +3,7 @@ use engine::{Args, CardId, CardSet, Duel, EffectId, Script};
 
 use crate::chain::DuelChain;
 use crate::constant::*;
+use crate::keys;
 use crate::utility::{CardUtility, global_continuous};
 
 pub trait CardWorkaround: Copy {
@@ -315,9 +316,6 @@ fn release_cost_filter(c: CardId, duel: &Duel, tp: u8) -> bool {
         && c.is_has_effect(duel, EFFECT_EXTRA_RELEASE).is_none()
 }
 
-// player_table: whether a player's hand was already shuffled in the current chain, as script state per player.
-const HAND_SHUFFLED: u64 = 1;
-
 pub fn load(duel: &mut Duel) {
     let hand_adjust_eff = global_continuous(duel, EVENT_DISCARD);
     hand_adjust_eff.set_count_limit(duel, 1, 0);
@@ -353,7 +351,7 @@ pub fn load(duel: &mut Duel) {
 
     let tracking_eff = global_continuous(duel, EVENT_CHAIN_END);
     tracking_eff.set_promptless_operation(duel, |duel, _| {
-        (0..2).for_each(|player| duel.set_script_state(HAND_SHUFFLED + player, 0));
+        (0..2).for_each(|player| duel.set_script_state(keys::hand_shuffled(player), 0));
         Ok(())
     });
     duel.register_effect(tracking_eff, 0);
@@ -413,7 +411,7 @@ fn shuffle_on_resolution(duel: &mut Duel, a: &Args) -> Script<()> {
     let Some(re) = a.re else { return Ok(()) };
     let rc = re.get_handler(duel);
     let player = rc.get_controler(duel);
-    if duel.get_script_state(HAND_SHUFFLED + u64::from(player)) != 0 {
+    if duel.get_script_state(keys::hand_shuffled(player)) != 0 {
         return Ok(());
     }
     if !(rc.is_relate_to_effect(duel, re) && rc.is_location(duel, LOCATION_HAND)) {
@@ -458,6 +456,6 @@ fn shuffle_on_resolution(duel: &mut Duel, a: &Args) -> Script<()> {
     });
     move_eff.set_reset(duel, RESET_CHAIN);
     rc.register_effect(duel, move_eff);
-    duel.set_script_state(HAND_SHUFFLED + u64::from(player), 1);
+    duel.set_script_state(keys::hand_shuffled(player), 1);
     Ok(())
 }

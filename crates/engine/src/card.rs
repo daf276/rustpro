@@ -7,7 +7,7 @@ use carddata::Card as CardData;
 
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{Container, EffectId, EffectSet, Event, Operation, Target, Value, container_key, misread};
+use crate::effect::{Container, EffectId, EffectSet, Event, Operation, Target, Value, container_key};
 use crate::field::{Cards8, PerPlayer};
 use crate::list::{List, Marks};
 use crate::script::{Args, Procedure};
@@ -383,6 +383,8 @@ pub struct Card {
     pub previous_defense: i32,
     pub previous_code: u32,
     pub previous_code2: u32,
+    // previous.setcodes: the EFFECT_ADD_SETCODE values SendTo recorded, sorted like the core's std::set, 0 in unused slots.
+    pub previous_setcodes: [u16; 2],
     pub temp: CardState,
     pub current: CardState,
     pub owner: u8,
@@ -783,6 +785,21 @@ impl Duel {
     // card::get_set_card with match_setcode: whether one of the card's archetypes matches `setcode`.
     pub(crate) fn is_set_card(&self, card: CardId, setcode: u16) -> bool {
         self.get_set_card(card).iter().any(|&code| match_setcode(setcode, code))
+    }
+
+    // card::get_pre_set_card with match_setcode, which reads only what SendTo recorded.
+    pub(crate) fn is_previous_set_card(&self, card: CardId, setcode: u16) -> bool {
+        let target = &self.cards[card];
+        let setcodes = |code: u32| (self.database.and_then(|database| database.get(code))).map_or([0; 5], |data| data.setcodes);
+        let own = if target.previous_code == target.data.code {
+            target.data.setcodes
+        } else {
+            setcodes(target.previous_code)
+        };
+        let recorded = own.into_iter().chain(target.previous_setcodes);
+        recorded
+            .chain(setcodes(target.previous_code2))
+            .any(|code| match_setcode(setcode, code))
     }
 
     // Card.IsOriginalSetCard for one archetype: card::get_origin_set_card is the database's setcodes.
@@ -2377,7 +2394,7 @@ impl Duel {
             .any(|limit| match self.effects[limit].value {
                 Value::Int(value) => value != 0,
                 Value::EffectCard(value) => value(self, limit, effect, card),
-                _ => misread("a target selection limit"),
+                _ => misread!(self, "a target selection limit"),
             })
     }
 
@@ -2495,7 +2512,7 @@ impl Duel {
             match self.effects[effect].value {
                 Value::MaterialCheck(value) => value(self, effect, card),
                 Value::Int(_) => {}
-                _ => misread("a material check"),
+                _ => misread!(self, "a material check"),
             }
         }
     }
@@ -2827,7 +2844,7 @@ impl Duel {
                 .any(|effect| match self.effects[effect].value {
                     Value::Int(value) => value != 0,
                     Value::Material(value) => value(self, effect, scard, sumtype, playerid),
-                    _ => misread("a material limit"),
+                    _ => misread!(self, "a material limit"),
                 })
     }
 

@@ -4,6 +4,7 @@ use std::cell::Cell;
 use engine::{Args, CardId, CardSet, ConditionFn, Duel, EffectId, FusionCheck, FusionMaterialFn, Operation, OperationFn, Script, Value};
 
 use crate::constant::*;
+use crate::keys;
 use crate::proc_workaround::CardWorkaround;
 use crate::utility::{CardUtility, aux};
 
@@ -111,18 +112,8 @@ const EFFECT_ANY_MATERIAL: u32 = 511002961;
 const EFFECT_NOT_MATERIAL: u32 = 6205579;
 const EFFECT_OPPONENT_SELECTS: u32 = 511004008;
 
-// Fusion.CheckExact, CheckMin and CheckMax as script state, 0 for nil; keys 1-3 are taken.
-const CHECK_EXACT: u64 = 4;
-const CHECK_MIN: u64 = 5;
-const CHECK_MAX: u64 = 6;
-// The field id of proc_fusion_spell's global EFFECT_EXTRA_FUSION_MATERIAL, and Fusion.ExtraGroup as a script group.
-const GEFF: u64 = 8;
-const EXTRA_GROUP: u64 = 9;
-// The chkf upvalue of a SummonEffTG or SummonEffOP closure, per card that created it; SET marks a value.
-const UPVALUE_CHKF: u64 = 1 << 62;
+// Marks a chkf upvalue ([keys::fusion_chkf]) as set.
 const SET: i64 = 1 << 40;
-// mt.material as script state: material codes of the card with this original code, one per key.
-const MATERIAL: u64 = 1 << 61;
 
 fn check(duel: &Duel, key: u64) -> Option<usize> {
     usize::try_from(duel.get_script_state(key)).ok().filter(|&count| count != 0)
@@ -133,7 +124,7 @@ fn set_check(duel: &mut Duel, key: u64, count: Option<usize>) {
 }
 
 fn set_checks(duel: &mut Duel, counts: [Option<usize>; 3]) {
-    [CHECK_EXACT, CHECK_MIN, CHECK_MAX]
+    [keys::FUSION_CHECK_EXACT, keys::FUSION_CHECK_MIN, keys::FUSION_CHECK_MAX]
         .into_iter()
         .zip(counts)
         .for_each(|(key, count)| set_check(duel, key, count));
@@ -326,15 +317,18 @@ impl Fusion {
 
     // mt.material of a Fusion Monster: the distinct codes its Fusion.AddProcMix* call named, empty for nil.
     pub fn material(duel: &Duel, code: u32) -> Vec<u32> {
-        let key = MATERIAL | u64::from(code) << 8;
         (0..)
-            .map_while(|i| u32::try_from(duel.get_script_state(key | i)).ok().filter(|&code| code != 0))
+            .map_while(|i| {
+                u32::try_from(duel.get_script_state(keys::fusion_material(code, i)))
+                    .ok()
+                    .filter(|&code| code != 0)
+            })
             .collect()
     }
 
     fn set_material(duel: &mut Duel, c: CardId, materials: impl Iterator<Item = FusionMaterial>) {
-        let key = MATERIAL | u64::from(c.get_original_code(duel)) << 8;
-        if duel.get_script_state(key) != 0 {
+        let original = c.get_original_code(duel);
+        if duel.get_script_state(keys::fusion_material(original, 0)) != 0 {
             return;
         }
         let mut codes = Vec::new();
@@ -344,7 +338,7 @@ impl Fusion {
             }
         }
         for (i, code) in codes.into_iter().enumerate() {
-            duel.set_script_state(key | i as u64, i64::from(code));
+            duel.set_script_state(keys::fusion_material(original, i as u64), i64::from(code));
         }
     }
 
@@ -489,9 +483,9 @@ impl Fusion {
     ) -> bool {
         let (totalcount, mustgcount) = (funs.len(), mustg.len());
         if mustgcount > totalcount
-            || check(duel, CHECK_EXACT).is_some_and(|exact| exact != totalcount || mustgcount > exact)
-            || check(duel, CHECK_MAX).is_some_and(|max| max < totalcount || mustgcount > max)
-            || check(duel, CHECK_MIN).is_some_and(|min| min > totalcount)
+            || check(duel, keys::FUSION_CHECK_EXACT).is_some_and(|exact| exact != totalcount || mustgcount > exact)
+            || check(duel, keys::FUSION_CHECK_MAX).is_some_and(|max| max < totalcount || mustgcount > max)
+            || check(duel, keys::FUSION_CHECK_MIN).is_some_and(|min| min > totalcount)
         {
             return false;
         }
@@ -641,8 +635,8 @@ impl Fusion {
                 break;
             }
             let finish = Fusion::check_mix_rep_goal::<M>(duel, sg, s, rep)
-                && check(duel, CHECK_EXACT).is_none()
-                && !check(duel, CHECK_MIN).is_some_and(|min| sg.len() < min);
+                && check(duel, keys::FUSION_CHECK_EXACT).is_none()
+                && !check(duel, keys::FUSION_CHECK_MIN).is_some_and(|min| sg.len() < min);
             let cancel = s.cancelable && sg.is_empty();
             duel.hint(HINT_SELECTMSG, tp, HINTMSG_FMATERIAL);
             let Some(tc) = cg.select_unselect(duel, Some(sg), p, finish, cancel, 1, 1)? else {
@@ -739,19 +733,19 @@ impl Fusion {
     fn select_mix_rep<M: FusionMixRep>(duel: &Duel, c: CardId, search: Search, rep: Rep) -> bool {
         let (s, mustgcount) = (search.proc, search.mustg.len() as i32);
         let (totalcount, mut rep) = (rep.fixed(), rep);
-        if let Some(exact) = check(duel, CHECK_EXACT).map(|exact| exact as i32) {
+        if let Some(exact) = check(duel, keys::FUSION_CHECK_EXACT).map(|exact| exact as i32) {
             if exact < rep.minc + totalcount || mustgcount > exact {
                 return false;
             }
             (rep.minc, rep.maxc) = (exact - totalcount, exact - totalcount);
         }
-        if let Some(max) = check(duel, CHECK_MAX).map(|max| max as i32) {
+        if let Some(max) = check(duel, keys::FUSION_CHECK_MAX).map(|max| max as i32) {
             if max < rep.minc + totalcount || mustgcount > max {
                 return false;
             }
             rep.maxc = rep.maxc.min(max - totalcount);
         }
-        if let Some(min) = check(duel, CHECK_MIN).map(|min| min as i32) {
+        if let Some(min) = check(duel, keys::FUSION_CHECK_MIN).map(|min| min as i32) {
             if min > rep.maxc + totalcount {
                 return false;
             }
@@ -868,21 +862,21 @@ pub fn load(duel: &mut Duel) {
     geff.set_property(duel, EFFECT_FLAG_SET_AVAILABLE + EFFECT_FLAG_IGNORE_IMMUNE);
     geff.set_target_range(duel, 0xff, 0xff);
     geff.set_target_card(duel, |duel, _, c| {
-        duel.get_script_group(EXTRA_GROUP).is_some_and(|g| g.is_contains(c))
+        duel.get_script_group(keys::FUSION_EXTRA_GROUP).is_some_and(|g| g.is_contains(c))
     });
     geff.set_value(duel, true);
     duel.register_effect_core(geff, 0);
     let id = geff.get_field_id(duel);
-    duel.set_script_state(GEFF, id.into());
+    duel.set_script_state(keys::FUSION_GLOBAL_EFFECT, id.into());
 }
 
 fn set_extra_group(duel: &mut Duel, group: Option<CardSet>) {
-    duel.set_script_group(EXTRA_GROUP, group);
+    duel.set_script_group(keys::FUSION_EXTRA_GROUP, group);
 }
 
 // GetExtraMatEff: the first EFFECT_EXTRA_FUSION_MATERIAL effect on c but the global one whose value accepts summon_card.
 fn get_extra_mat_eff(duel: &Duel, c: CardId, summon_card: Option<CardId>) -> Option<EffectId> {
-    let geff = duel.get_script_state(GEFF);
+    let geff = duel.get_script_state(keys::FUSION_GLOBAL_EFFECT);
     c.is_has_effects(duel, EFFECT_EXTRA_FUSION_MATERIAL).into_iter().find(|&eff| {
         i64::from(eff.get_field_id(duel)) != geff
             && summon_card.is_none_or(|sc| match eff.get_value(duel) {
@@ -938,10 +932,6 @@ impl Fusion {
         e1
     }
 
-    fn upvalue_key(duel: &Duel, e: EffectId, op: bool) -> u64 {
-        UPVALUE_CHKF | ((e.get_owner(duel).index() as u64) << 1) | u64::from(op)
-    }
-
     // Fusion.OnFieldMat as a matfilter: the library calls it with the card first, which takes its `type(filter) == "Card"` branch.
     pub fn on_field_mat(c: CardId, duel: &Duel) -> bool {
         c.is_on_field(duel) && c.is_able_to_grave(duel)
@@ -949,13 +939,13 @@ impl Fusion {
 
     // A card that calls Fusion.SummonEffTG or SummonEffOP itself builds a new closure each time, whose chkf starts as nil.
     pub fn new_summon_eff_closure(duel: &mut Duel, e: EffectId, op: bool) {
-        let key = Fusion::upvalue_key(duel, e, op);
+        let key = keys::fusion_chkf(e.get_owner(duel), op);
         duel.set_script_state(key, 0);
     }
 
     // The SummonEffTG/OP closures keep chkf|tp of every caller; Effect.Clone shares the closure, so it is kept per creator.
     fn upvalue_chkf<P: FusionSummonParams>(duel: &mut Duel, e: EffectId, tp: u8, op: bool, add: u64) -> u64 {
-        let key = Fusion::upvalue_key(duel, e, op);
+        let key = keys::fusion_chkf(e.get_owner(duel), op);
         let stored = duel.get_script_state(key);
         let chkf = match stored & SET {
             0 => P::CHKF,
@@ -1175,9 +1165,9 @@ impl Fusion {
             P::stage2(duel, e, Some(tc), tp, Some(backupmat), 1)?;
         }
         P::stage2(duel, e, None, tp, None, 2)?;
-        set_check(duel, CHECK_MIN, None);
-        set_check(duel, CHECK_MAX, None);
-        set_check(duel, CHECK_EXACT, None);
+        set_check(duel, keys::FUSION_CHECK_MIN, None);
+        set_check(duel, keys::FUSION_CHECK_MAX, None);
+        set_check(duel, keys::FUSION_CHECK_EXACT, None);
         duel.set_fusion_check_additional(None);
         Ok(())
     }

@@ -2,7 +2,7 @@
 use crate::card::{CardId, CardSet};
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{Chain, Container, CounterFilter, EffectId, EffectSet, Event, Operation, Target, TriggeringState, Value, misread};
+use crate::effect::{Chain, Container, CounterFilter, EffectId, EffectSet, Event, Operation, Target, TriggeringState, Value};
 use crate::processor::{PointEvent, RESTART, SelectEffectYesNo, SelectOption};
 use crate::script::{Args, Procedure};
 
@@ -941,7 +941,7 @@ impl Duel {
                     self.dec_count(effect, self.cards[handler].current.controler);
                     match self.effects[effect].value {
                         Value::Activation(value) => value(self, effect, chain.triggering_effect),
-                        _ => misread("an activation condition"),
+                        _ => misread!(self, "an activation condition"),
                     }
                 }
                 arg.step = 0;

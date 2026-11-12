@@ -38,22 +38,22 @@ Small and independent of the refactor; worth doing during porting rather than af
 
 - [x] `tools/stock.py` folded cards outside the batch (it globbed every card file; c18865703 was folded in two
   parallel batches). Now it reads only changed files or the given codes, `--all` for everything (committed).
-- [ ] `observation.rs` `remap_events`/`referenced_cards` skip `desrep_chain`, which `hash.rs` hashes: a determinize at a
+- [x] `observation.rs` `remap_events`/`referenced_cards` skip `desrep_chain`, which `hash.rs` hashes: a determinize at a
   prompt between Destroy steps 11/13 and 15 would not remap those events (unverified impact). One list accessor per kind
   of processor list fixes this and removes the three hand-kept copies (engine API item A1).
-- [ ] `card_hash` and `effect_hash` list fields by hand without an exhaustive destructure, so a new field goes unhashed
+- [x] `card_hash` and `effect_hash` list fields by hand without an exhaustive destructure, so a new field goes unhashed
   silently; `effect_hash` omits `active_sequence` and `active_handler` (on purpose or not: unverified).
-- [ ] `libcard.rs:204` says previous set codes equal current ones "until a card that changes a code is ported": 59
+- [x] `libcard.rs:204` says previous set codes equal current ones "until a card that changes a code is ported": 59
   ported cards use EFFECT_CHANGE_CODE and 14 read `is_previous_set_card`, so this may be a reachable fidelity gap.
-- [ ] `field.rs:1649` `list_extra.len() - extra_p_count as usize` can underflow; use `saturating_sub` as `add_card` does.
-- [ ] `misread` (`effect.rs:888`) returns a default silently in release; record it like `unported!` so the harness sees it.
-- [ ] `build.rs` finds `SUPPORT`/`CHECKS`/tables by substring and silently falls back when a declaration is misspelled
+- [x] `field.rs:1649` `list_extra.len() - extra_p_count as usize` can underflow; use `saturating_sub` as `add_card` does.
+- [x] `misread` (`effect.rs:888`) returns a default silently in release; record it like `unported!` so the harness sees it.
+- [x] `build.rs` finds `SUPPORT`/`CHECKS`/tables by substring and silently falls back when a declaration is misspelled
   or not `pub`; fail the build instead (about 5 lines).
-- [ ] `build.rs` `uses_zones`/`uses_positions` scan the whole file including comments (a SUPPORT comment "zone effect"
+- [x] `build.rs` `uses_zones`/`uses_positions` scan the whole file including comments (a SUPPORT comment "zone effect"
   flips the flag). ygo-search reads these flags: strip comments before the scan and match words, not substrings.
-- [ ] Script-state keys are allocated by hand across files; `aux::global_check` (`(1<<61)|id`) and Fusion MATERIAL
+- [x] Script-state keys are allocated by hand across files; `aux::global_check` (`(1<<61)|id`) and Fusion MATERIAL
   (`(1<<61)|code<<8|i`) share a range and could collide for low Fusion codes (none collide today). One key enum.
-- [ ] `list.rs` `insert` panics past `len` while `remove` returns `None`; make them consistent.
+- [x] `list.rs` `insert` panics past `len` while `remove` returns `None`; make them consistent.
 
 ## 1. Card files
 

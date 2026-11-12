@@ -201,9 +201,8 @@ impl CardId {
         u32::from(duel.cards[self].previous.location)
     }
 
-    // The previous archetypes are the current ones until a card that changes a code or adds an archetype is ported.
     pub fn is_previous_set_card(self, duel: &Duel, setcodes: &[u16]) -> bool {
-        self.is_set_card(duel, setcodes)
+        setcodes.iter().any(|&setcode| duel.is_previous_set_card(self, setcode))
     }
 
     // The first of the codes Card.GetPreviousCodeOnField returns.

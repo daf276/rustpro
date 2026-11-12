@@ -35,6 +35,19 @@ const COUNT_ONLY: [&str; 4] = [
 ];
 // Identifiers that check or change battle positions, besides those ending in `_pos`.
 const POSITION_WORDS: [&str; 4] = ["position", "POSITION", "POSCHANGE", "CHANGE_POS"];
+// The consts the registry reads from a card file, found only as `pub const NAME:` at a line's start, and their types.
+const METADATA: [(&str, &str); 10] = [
+    ("SUPPORT", "&[(u32,u16)]"),
+    ("CHECKS", "&[Check]"),
+    ("LISTED_NAMES", "&[u32]"),
+    ("FIT_MONSTER", "&[u32]"),
+    ("MATERIAL_SETCODE", "&[u16]"),
+    ("MATERIAL", "&[u32]"),
+    ("DARK_CALLING", "bool"),
+    ("XYZ_NUMBER", "u32"),
+    ("ASSAULT_MODE", "u32"),
+    ("PENDULUM_LEVEL", "u32"),
+];
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let official = Path::new(&std::env::var("CARGO_MANIFEST_DIR")?).join("src/official");
@@ -46,7 +59,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .file_stem()
             .and_then(|stem| stem.to_str()?.strip_prefix('c')?.parse::<u32>().ok());
         if let Some(code) = code {
-            cards.push((code, std::fs::read_to_string(&path)?, path));
+            let text = std::fs::read_to_string(&path)?;
+            let code_only: String = text
+                .lines()
+                .map(|line| line.split("//").next().unwrap_or(line))
+                .collect::<Vec<_>>()
+                .join("\n");
+            check_metadata(&path, &code_only)?;
+            cards.push((code, code_only, path));
         }
     }
     // File-name order: with the sim profile's single codegen unit, code order measured 1-4% slower on the throughput bench.
@@ -57,7 +77,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     cards.sort_by_key(|&(code, ..)| code);
     let field = |code: u32, text: &str, names: &[&str]| {
-        let name = names.iter().find(|name| text.contains(&format!("pub const {name}:")))?;
+        let name = names
+            .iter()
+            .find(|name| text.lines().any(|line| line.starts_with(&format!("pub const {name}:"))))?;
         Some(format!("c{code}::{name}"))
     };
     let zones = sensitive(&cards, |word| {
@@ -95,6 +117,50 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     std::fs::write(Path::new(&std::env::var("OUT_DIR")?).join("official.rs"), out)?;
     Ok(())
+}
+
+// A metadata const declared in a form `field` misses, or a top-level const of a metadata type named a typo away from it.
+fn check_metadata(path: &Path, text: &str) -> Result<(), String> {
+    for (number, line) in text.lines().enumerate() {
+        let Some((before, rest)) = line.split_once("const ") else {
+            continue;
+        };
+        let name: String = rest.chars().take_while(|&c| c.is_alphanumeric() || c == '_').collect();
+        let declared = METADATA.iter().any(|&(known, _)| known == name);
+        let declaration = rest.strip_prefix(name.as_str()).and_then(|rest| rest.split_once('='));
+        let kind: String = declaration
+            .map_or("", |(kind, _)| kind)
+            .chars()
+            .filter(|&c| c != ':' && !c.is_whitespace())
+            .collect();
+        let misspelled = !declared
+            && !before.starts_with(char::is_whitespace)
+            && METADATA
+                .iter()
+                .any(|&(known, known_kind)| known_kind == kind && edit_distance(known, &name) <= 2);
+        if (declared && !line.starts_with(&format!("pub const {name}:"))) || misspelled {
+            return Err(format!(
+                "{}:{}: `{name}` is not read as card metadata; declare it as `pub const NAME:` at the line's start with NAME one of {:?}",
+                path.display(),
+                number + 1,
+                METADATA.map(|(known, _)| known)
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn edit_distance(a: &str, b: &str) -> usize {
+    let first: Vec<usize> = (0..=b.len()).collect();
+    let last = a.bytes().enumerate().fold(first, |row, (index, from)| {
+        let mut next = vec![index + 1];
+        for ((to, &diagonal), &above) in b.bytes().zip(&row).zip(row.iter().skip(1)) {
+            let left = next.last().copied().unwrap_or_default();
+            next.push((diagonal + usize::from(from != to)).min(above + 1).min(left + 1));
+        }
+        next
+    });
+    last.last().copied().unwrap_or_default()
 }
 
 // Per card (sorted by code), whether an identifier in its source, or in the source of a card it uses (`super::c<code>`), matches.

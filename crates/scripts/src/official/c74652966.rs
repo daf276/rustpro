@@ -70,9 +70,9 @@ fn effop(duel: &mut Duel, a: &Args) -> Script<()> {
     e1.set_property(duel, EFFECT_FLAG_UNCOPYABLE + EFFECT_FLAG_IGNORE_IMMUNE);
     e1.set_code(duel, EFFECT_SPSUMMON_PROC);
     e1.set_range(duel, LOCATION_EXTRA);
-    e1.set_condition(duel, reinclinkcon);
+    e1.set_condition(duel, reinclinkcon::<ID>);
     e1.set_target(duel, reinclinktg);
-    e1.set_operation(duel, reinclinkop);
+    e1.set_operation(duel, reinclinkop::<ID>);
     e1.set_value(duel, SUMMON_TYPE_LINK as i32);
     let e2 = duel.create_effect(c);
     e2.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_GRANT);
@@ -87,7 +87,7 @@ fn effop(duel: &mut Duel, a: &Args) -> Script<()> {
     Ok(())
 }
 
-fn reincmatfilter(c: CardId, duel: &Duel, lc: CardId, tp: u8) -> bool {
+pub(crate) fn reincmatfilter(c: CardId, duel: &Duel, lc: CardId, tp: u8) -> bool {
     c.is_faceup(duel)
         && c.is_link_monster(duel)
         && c.is_summon_code(duel, Some(lc), SUMMON_TYPE_LINK.into(), tp, &[lc.get_code(duel)])
@@ -95,7 +95,7 @@ fn reincmatfilter(c: CardId, duel: &Duel, lc: CardId, tp: u8) -> bool {
         && duel.get_location_count_from_ex(tp, tp, Some(c.into()), lc) > 0
 }
 
-fn reinc_materials(duel: &Duel, a: &Args, c: CardId, tp: u8) -> (CardSet, CardSet) {
+pub(crate) fn reinc_materials(duel: &Duel, a: &Args, c: CardId, tp: u8) -> (CardSet, CardSet) {
     let g = duel.get_matching_group(|mc, duel| reincmatfilter(mc, duel, c, tp), tp, LOCATION_MZONE, 0, None);
     let mut mustg = aux::get_must_be_material_group(duel, tp, Some(g), tp, Some(c), Some(g), REASON_LINK);
     if let Some(must) = a.must {
@@ -104,7 +104,7 @@ fn reinc_materials(duel: &Duel, a: &Args, c: CardId, tp: u8) -> (CardSet, CardSe
     (g, mustg)
 }
 
-fn reinclinkcon(duel: &Duel, a: &Args) -> bool {
+pub(crate) fn reinclinkcon<const CODE: u32>(duel: &Duel, a: &Args) -> bool {
     let Some(c) = a.c else { return true };
     let tp = c.get_controler(duel);
     let (g, mustg) = reinc_materials(duel, a, c, tp);
@@ -113,10 +113,10 @@ fn reinclinkcon(duel: &Duel, a: &Args) -> bool {
         1 => mustg.get_first().is_some_and(|mc| reincmatfilter(mc, duel, c, tp)),
         _ => false,
     };
-    valid && !duel.has_flag_effect(tp, ID)
+    valid && !duel.has_flag_effect(tp, CODE)
 }
 
-fn reinclinktg(duel: &mut Duel, a: &Args, _: i32, _: Option<CardId>) -> Script<bool> {
+pub(crate) fn reinclinktg(duel: &mut Duel, a: &Args, _: i32, _: Option<CardId>) -> Script<bool> {
     let (e, tp) = (a.e, a.tp);
     let Some(c) = a.c else { return Ok(false) };
     let (g, mustg) = reinc_materials(duel, a, c, tp);
@@ -135,15 +135,15 @@ fn reinclinktg(duel: &mut Duel, a: &Args, _: i32, _: Option<CardId>) -> Script<b
     Ok(true)
 }
 
-fn reinclinkop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub(crate) fn reinclinkop<const CODE: u32>(duel: &mut Duel, a: &Args) -> Script<()> {
     let (e, tp) = (a.e, a.tp);
-    duel.hint(HINT_CARD, 0, ID.into());
+    duel.hint(HINT_CARD, 0, CODE.into());
     let (Some(c), Some(mg)) = (a.c, e.get_label_object_group(duel)) else {
         return Ok(());
     };
     c.set_material(duel, Some(mg));
     duel.send_to_grave(mg, REASON_MATERIAL | REASON_LINK)?;
-    duel.register_flag_effect(tp, ID, RESET_PHASE | PHASE_END, 0, 1);
+    duel.register_flag_effect(tp, CODE, RESET_PHASE | PHASE_END, 0, 1);
     Ok(())
 }
 

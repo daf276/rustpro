@@ -445,7 +445,7 @@ impl<'a> Refs<'a> {
         let cards = [current.reason_card, card.pre_overlay_target, card.pre_equip_target];
         // A card no operation has touched since add_card set its send position is alike in every order.
         let [playerid, _, location, sequence] = send;
-        let untouched = words.iter().all(|&word| word == 0) &&(playerid, location, sequence) == (0, 0, 0);
+        let untouched = words.iter().all(|&word| word == 0) && (playerid, location, sequence) == (0, 0, 0);
         if untouched && current.reason_effect.is_none() && saved.is_none() && cards == [None; 3] && card.unique.is_none() {
             return 0;
         }

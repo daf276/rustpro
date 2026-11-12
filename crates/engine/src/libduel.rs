@@ -1473,6 +1473,13 @@ impl Duel {
         self.filter_field_card(player, location1, location2).len()
     }
 
+    pub fn get_counter(&self, player: u8, own: u8, oppo: u8, counter_type: u16) -> u32 {
+        if player > 1 {
+            return 0;
+        }
+        self.get_field_counter(player, own, oppo, counter_type)
+    }
+
     pub fn get_card_from_card_id(&self, id: u32) -> Option<CardId> {
         self.cards.find_by_card_id(id)
     }

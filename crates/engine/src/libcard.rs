@@ -1419,7 +1419,7 @@ impl CardId {
     }
 
     pub fn get_counter(self, duel: &Duel, counter_type: u16) -> u16 {
-        duel.get_counter(self, counter_type)
+        duel.field_get_counter(self, counter_type)
     }
 
     pub fn add_counter(self, duel: &mut Duel, counter_type: u16, count: u16) -> bool {

@@ -1813,6 +1813,8 @@ pub trait CardUtility: Copy {
     fn announce_another_attribute(self, duel: &mut Duel, tp: u8) -> Script<u32>;
     fn announce_another_race(self, duel: &mut Duel, tp: u8) -> Script<u64>;
     fn is_race_except(self, duel: &Duel, race: u64) -> bool;
+    fn get_to_be_linked_zone(self, duel: &Duel, c: CardId, tp: u8) -> u32;
+    fn get_to_be_linked_zone_full(self, duel: &Duel, c: CardId, tp: u8, clink: bool, emz: bool) -> u32;
     fn update_level(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>) -> i32;
     fn update_attack(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>, reset_count: Option<u16>) -> i32;
     fn update_defense(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>, reset_count: Option<u16>) -> i32;
@@ -1920,6 +1922,53 @@ impl CardUtility for CardId {
     fn is_race_except(self, duel: &Duel, race: u64) -> bool {
         let own = self.get_race(duel);
         own & race != own
+    }
+
+    // Card.GetToBeLinkedZone with the default clink and emz.
+    fn get_to_be_linked_zone(self, duel: &Duel, c: CardId, tp: u8) -> u32 {
+        self.get_to_be_linked_zone_full(duel, c, tp, false, false)
+    }
+
+    // Card.GetToBeLinkedZone(tc, c, tp, clink, emz); only the branch for a monster of `tp` in a Main Monster Zone is ported.
+    fn get_to_be_linked_zone_full(self, duel: &Duel, c: CardId, tp: u8, clink: bool, emz: bool) -> u32 {
+        let seq = self.get_sequence(duel);
+        let in_mzone = self.is_location(duel, LOCATION_MZONE);
+        let own_mzone = in_mzone && self.is_controler(duel, tp);
+        unported!(
+            duel,
+            !own_mzone && (in_mzone || (self.is_location(duel, LOCATION_SZONE) && self.is_controler(duel, tp)))
+        );
+        if !own_mzone {
+            return 0;
+        }
+        let marker = |marker| c.is_link_marker(duel, marker);
+        let linked_back = |marker| !clink || self.is_link_marker(duel, marker);
+        let mut zone = 0;
+        if marker(LINK_MARKER_LEFT) && seq < 4 && linked_back(LINK_MARKER_RIGHT) {
+            zone |= 1 << (seq + 1);
+        }
+        if marker(LINK_MARKER_RIGHT) && (1..=4).contains(&seq) && linked_back(LINK_MARKER_LEFT) {
+            zone |= 1 << (seq - 1);
+        }
+        if (seq == 5 || seq == 6) && marker(LINK_MARKER_TOP_RIGHT) && linked_back(LINK_MARKER_BOTTOM_LEFT) {
+            zone |= 1 << (2 * (seq - 5));
+        }
+        if (seq == 5 || seq == 6) && marker(LINK_MARKER_TOP) && linked_back(LINK_MARKER_BOTTOM) {
+            zone |= 1 << (2 * (seq - 5) + 1);
+        }
+        if (seq == 5 || seq == 6) && marker(LINK_MARKER_TOP_LEFT) && linked_back(LINK_MARKER_BOTTOM_RIGHT) {
+            zone |= 1 << (2 * (seq - 5) + 2);
+        }
+        if emz && (seq == 0 || seq == 2) && marker(LINK_MARKER_BOTTOM_LEFT) && linked_back(LINK_MARKER_TOP_RIGHT) {
+            zone |= 1 << (5 + seq / 2);
+        }
+        if emz && (seq == 1 || seq == 3) && marker(LINK_MARKER_BOTTOM) && linked_back(LINK_MARKER_TOP) {
+            zone |= 1 << (5 + (seq - 1) / 2);
+        }
+        if emz && (seq == 2 || seq == 4) && marker(LINK_MARKER_BOTTOM_RIGHT) && linked_back(LINK_MARKER_TOP_LEFT) {
+            zone |= 1 << (5 + (seq - 2) / 2);
+        }
+        zone
     }
 
     // `reset` None is RESET_EVENT with the standard resets, and RESET_DISABLE when `rc` is the card itself (its default).

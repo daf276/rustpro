@@ -398,6 +398,32 @@ impl Duel {
         result
     }
 
+    // Duel.CheckReleaseGroupEx: the hand is usable.
+    pub fn check_release_group_ex(&self, player: u8, f: impl Fn(CardId, &Duel) -> bool, min: usize, exception: Option<CardId>) -> bool {
+        let options = ReleaseOptions {
+            use_hand: true,
+            exception,
+            ..ReleaseOptions::new(player)
+        };
+        self.check_release_group_full(player, f, min, options)
+    }
+
+    // Duel.SelectReleaseGroupEx: the hand is usable and the selection is not cancelable.
+    pub fn select_release_group_ex(
+        &mut self,
+        player: u8,
+        f: impl Fn(CardId, &Duel) -> bool,
+        (min, max): (u8, u8),
+        exception: Option<CardId>,
+    ) -> Script<CardSet> {
+        let options = ReleaseOptions {
+            use_hand: true,
+            exception,
+            ..ReleaseOptions::new(player)
+        };
+        self.select_release_group_full(player, f, (min, max), false, options)
+    }
+
     // Duel.SelectReleaseGroup in its long form; nil (canceled) is the empty group. EFFECT_EXTRA_RELEASE* comes with its cards.
     pub fn select_release_group_full(
         &mut self,

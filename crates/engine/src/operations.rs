@@ -3160,7 +3160,16 @@ impl Duel {
     }
 
     // Step 2 of SummonRule and MonsterSet without a procedure: the tribute selection, if the card needs one.
-    fn select_summon_tributes(&mut self, target: CardId, player: u8, required: i32, min_tribute: u8, advance: bool, zone: u32, pos: u32) {
+    fn select_summon_tributes(
+        &mut self,
+        target: CardId,
+        player: u8,
+        required: i32,
+        min_tribute: u8,
+        advance: bool,
+        (zone, releasable): (u32, u32),
+        pos: u32,
+    ) {
         self.core.select_cards.clear();
         let (min, max) = ((required & 0xffff).max(i32::from(min_tribute)), required >> 16);
         if max == 0 || !advance {
@@ -3168,7 +3177,7 @@ impl Duel {
             return;
         }
         let (mut release_cards, mut release_cards_ex) = (CardSet::default(), CardSet::default());
-        let rcount = self.get_summon_release_list(target, &mut release_cards, &mut release_cards_ex, None, false, 0xff00ff, pos);
+        let rcount = self.get_summon_release_list(target, &mut release_cards, &mut release_cards_ex, None, false, releasable, pos);
         self.core.release_cards = release_cards;
         self.core.release_cards_ex = release_cards_ex;
         self.core.release_cards_ex_oneof.clear();
@@ -3333,7 +3342,7 @@ impl Duel {
                 if use_extra {
                     unported!(self, procedure_effect.filter(|_| !extras.is_empty()));
                     for extra in extras {
-                        let (new_min, new_zone, _) = self.extra_summon_values(extra, 0x1f_001f);
+                        let (new_min, new_zone, releasable) = self.extra_summon_values(extra, target, 0x1f_001f);
                         let rcount = self.get_summon_tribute_count(target);
                         let (mut min, mut max) = ((rcount & 0xffff) as u8, ((rcount >> 16) & 0xffff) as u8);
                         if !self.field_is_player_can_summon(SUMMON_TYPE_ADVANCE, sumplayer, target, sumplayer) {
@@ -3344,7 +3353,6 @@ impl Duel {
                             continue;
                         }
                         let controler = self.cards[target].current.controler;
-                        let releasable = 0xff00ff;
                         if !self.field_check_tribute(
                             target,
                             i32::from(min.max(new_min)),
@@ -3372,10 +3380,14 @@ impl Duel {
             }
             2 => {
                 arg.extra_summon_effect = self.chosen_effect(arg.ordinary_count_first);
+                // The core keeps selecting with the Tributes and zones the step started with.
+                let (min_tribute, zone) = (arg.min_tribute, arg.zone);
+                let mut releasable = 0xff00ff;
                 if let Some(extra) = arg.extra_summon_effect {
-                    let (new_min, new_zone, _) = self.extra_summon_values(extra, 0x1f_001f);
+                    let (new_min, new_zone, new_releasable) = self.extra_summon_values(extra, target, 0x1f_001f);
                     arg.min_tribute = arg.min_tribute.max(new_min);
                     arg.zone &= new_zone;
+                    releasable = new_releasable;
                 }
                 if procedure_effect.is_some() {
                     arg.step = 3;
@@ -3383,12 +3395,22 @@ impl Duel {
                 }
                 let required = self.get_summon_tribute_count(target);
                 let advance = self.field_is_player_can_summon(SUMMON_TYPE_ADVANCE, sumplayer, target, sumplayer);
-                self.select_summon_tributes(target, sumplayer, required, arg.min_tribute, advance, arg.zone, POS_FACEUP);
+                self.select_summon_tributes(target, sumplayer, required, min_tribute, advance, (zone, releasable), POS_FACEUP);
                 arg.step = 4;
                 false
             }
             4 => {
-                self.run_procedure_target(procedure_effect, sumplayer, procedure_args);
+                let releasable = arg
+                    .extra_summon_effect
+                    .map_or(0xff00ff, |extra| self.extra_summon_values(extra, target, 0x1f_001f).2);
+                self.run_procedure_target(
+                    procedure_effect,
+                    sumplayer,
+                    Procedure {
+                        releasable,
+                        ..procedure_args
+                    },
+                );
                 false
             }
             5 => {
@@ -3728,7 +3750,7 @@ impl Duel {
                     required,
                     arg.min_tribute,
                     advance,
-                    arg.zone,
+                    (arg.zone, 0xff00ff),
                     POS_FACEDOWN_DEFENSE,
                 );
                 arg.step = 3;

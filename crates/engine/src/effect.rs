@@ -205,6 +205,8 @@ pub enum Value {
     Values(&'static [i32]),
     // value(e, c) -> (sumtype, zone) of an EFFECT_SPSUMMON_PROC whose zone depends on the card.
     SpSummonProcedure(fn(&Duel, EffectId, CardId) -> (i32, i32)),
+    // value(e, c) -> (minimum Tributes, zones, releasable mask): EFFECT_EXTRA_SUMMON_COUNT.
+    ExtraSummon(fn(&Duel, EffectId, CardId) -> (i32, i32, i32)),
     // value(e, re, tp): EFFECT_CANNOT_ACTIVATE.
     EffectPlayer(fn(&Duel, EffectId, EffectId, u8) -> bool),
     // value(e, re, rp, c) that reads the card: EFFECT_INDESTRUCTABLE_EFFECT.
@@ -1484,6 +1486,7 @@ impl Duel {
         match peffect.value {
             Value::Int(_) | Value::Values(_) => peffect.int_value(),
             Value::SpSummonProcedure(value) => value(self, effect, card).0,
+            Value::ExtraSummon(value) => value(self, effect, card).0,
             Value::Card(value) => value(self, effect, card),
             Value::EffectPlayer(_)
             | Value::EffectPlayerCard(_)
@@ -1591,6 +1594,10 @@ impl Duel {
             Value::SpSummonProcedure(value) => {
                 let (sumtype, zone) = value(self, effect, card);
                 List::from_iter([sumtype, zone])
+            }
+            Value::ExtraSummon(value) => {
+                let (min, zone, releasable) = value(self, effect, card);
+                List::from_iter([min, zone, releasable])
             }
             _ => List::from_iter([self.get_value(effect, card)]),
         }

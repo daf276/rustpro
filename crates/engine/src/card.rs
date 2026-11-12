@@ -1832,7 +1832,7 @@ impl Duel {
         if !ignore_count && self.summon_count_reached(playerid) {
             let controler = self.cards[card].current.controler;
             let found = self.filter_effect(card, EFFECT_EXTRA_SUMMON_COUNT, true).into_iter().any(|effect| {
-                let (new_min, new_zone, releasable) = self.extra_summon_values(effect, 0x1f);
+                let (new_min, new_zone, releasable) = self.extra_summon_values(effect, card, 0x1f);
                 self.field_check_tribute(
                     card,
                     i32::from(min.max(new_min)),
@@ -1853,13 +1853,24 @@ impl Duel {
         )
     }
 
-    // What an EFFECT_EXTRA_SUMMON_COUNT value returns: the minimum Tributes, the zones and the releasable mask.
-    pub(crate) fn extra_summon_values(&self, effect: EffectId, default_zone: u32) -> (u8, u32, u32) {
-        let Value::Int(min) = self.effects[effect].value else {
+    // What an EFFECT_EXTRA_SUMMON_COUNT value returns for the card: the minimum Tributes, the zones and the releasable mask.
+    pub(crate) fn extra_summon_values(&self, effect: EffectId, card: CardId, default_zone: u32) -> (u8, u32, u32) {
+        if !matches!(self.effects[effect].value, Value::Int(_) | Value::ExtraSummon(_)) {
             unported!(self);
             return (0, default_zone, 0xff00ff);
-        };
-        (min as u8, default_zone, 0xff00ff)
+        }
+        let mut values = self.get_values(effect, card).into_iter();
+        let min = values.next().unwrap_or(0) as u8;
+        let zone = values.next().map_or(default_zone, |zone| zone as u32);
+        // A negative mask is subtracted from the default, so it leaves out the zones it names.
+        let releasable = values.next().map_or(0xff00ff, |mask| {
+            if mask < 0 {
+                0xff00ff_u32.wrapping_add(mask as u32)
+            } else {
+                mask as u32
+            }
+        });
+        (min, zone, releasable)
     }
 
     // card::check_summon_procedure and card::check_set_procedure; the script checks min_tribute with Duel.CheckTribute.

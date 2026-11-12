@@ -762,7 +762,7 @@ impl Duel {
         sequence: u8,
         position: u8,
     ) -> Script<i32> {
-        self.send_to(
+        self.field_send_to(
             targets,
             self.core.reason_effect.get(),
             reason,
@@ -1010,6 +1010,38 @@ impl Duel {
         }
         let reason_player = self.core.reason_player.get();
         self.send_cards(targets.into(), reason, reason_player, player, LOCATION_EXTRA, 0, POS_FACEUP as u8)
+    }
+
+    pub fn send_to(&mut self, targets: impl Into<CardSet>, location: u32, reason: u32, position: u32) -> Script<i32> {
+        self.send_to_full(targets, location, reason, position, PLAYER_NONE, 0, self.core.reason_player.get())
+    }
+
+    pub fn send_to_full(
+        &mut self,
+        targets: impl Into<CardSet>,
+        location: u32,
+        reason: u32,
+        position: u32,
+        player: u8,
+        sequence: u32,
+        reason_player: u8,
+    ) -> Script<i32> {
+        if player > PLAYER_NONE {
+            return Ok(0);
+        }
+        let reason_effect = self.core.reason_effect.get();
+        self.field_send_to(
+            targets.into(),
+            reason_effect,
+            reason,
+            reason_player,
+            player,
+            location as u8,
+            sequence as u8,
+            position as u8,
+            true,
+        );
+        self.yield_count()
     }
 
     pub fn send_to_hand(&mut self, targets: impl Into<CardSet>, player: u8, reason: u32) -> Script<i32> {
@@ -2531,7 +2563,7 @@ impl Duel {
         let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
         let reason = REASON_RITUAL + REASON_EFFECT + REASON_MATERIAL;
         let send = |duel: &mut Duel, targets, destination| {
-            duel.send_to(
+            duel.field_send_to(
                 targets,
                 reason_effect,
                 reason,

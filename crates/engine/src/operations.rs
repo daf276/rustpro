@@ -353,7 +353,7 @@ impl Duel {
         });
     }
 
-    pub(crate) fn send_to(
+    pub(crate) fn field_send_to(
         &mut self,
         targets: CardSet,
         reason_effect: Option<EffectId>,
@@ -418,7 +418,7 @@ impl Duel {
         reason_player: u8,
         playerid: u8,
     ) {
-        self.send_to(
+        self.field_send_to(
             targets,
             reason_effect,
             reason,

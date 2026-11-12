@@ -1760,6 +1760,9 @@ pub trait CardUtility: Copy {
     fn is_xyz_monster(self, duel: &Duel) -> bool;
     fn is_base_attack(self, duel: &Duel, atk: i32) -> bool;
     fn is_base_defense(self, duel: &Duel, def: i32) -> bool;
+    fn get_scale(self, duel: &Duel) -> u32;
+    fn is_odd_scale(self, duel: &Duel) -> bool;
+    fn is_even_scale(self, duel: &Duel) -> bool;
     fn is_effect_monster(self, duel: &Duel) -> bool;
     fn is_non_effect_monster(self, duel: &Duel) -> bool;
     fn is_in_main_mzone(self, duel: &Duel, tp: Option<u8>) -> bool;
@@ -2151,6 +2154,24 @@ impl CardUtility for CardId {
 
     fn is_base_defense(self, duel: &Duel, def: i32) -> bool {
         self.has_defense(duel) && self.get_base_defense(duel) == def
+    }
+
+    fn get_scale(self, duel: &Duel) -> u32 {
+        if !self.is_type(duel, TYPE_PENDULUM) {
+            return 0;
+        }
+        if self.is_location(duel, LOCATION_PZONE) && !matches!(self.get_sequence(duel), 0 | 1 | 6) {
+            return self.get_right_scale(duel);
+        }
+        self.get_left_scale(duel)
+    }
+
+    fn is_odd_scale(self, duel: &Duel) -> bool {
+        self.is_type(duel, TYPE_PENDULUM) && !self.get_scale(duel).is_multiple_of(2)
+    }
+
+    fn is_even_scale(self, duel: &Duel) -> bool {
+        self.is_type(duel, TYPE_PENDULUM) && self.get_scale(duel).is_multiple_of(2)
     }
 
     fn is_effect_monster(self, duel: &Duel) -> bool {

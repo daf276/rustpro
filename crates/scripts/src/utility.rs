@@ -2571,6 +2571,61 @@ impl DragonRuler {
     }
 }
 
+// The Ursarctic functions of cards_specific_functions.lua; ID is the card the effect is created for.
+pub struct Ursarctic;
+
+impl Ursarctic {
+    fn spcostfilter(c: CardId, duel: &Duel) -> bool {
+        c.is_level_above(duel, 7) && c.is_location(duel, LOCATION_HAND)
+    }
+
+    fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+        let (c, tp) = (a.e.get_handler(duel), a.tp);
+        if chk == 0 {
+            return Ok(duel.check_release_group_cost(tp, Ursarctic::spcostfilter, (1, 1), true, None, Some(c.into())));
+        }
+        let g = duel.select_release_group_cost(tp, Ursarctic::spcostfilter, (1, 1), true, None, Some(c.into()))?;
+        duel.release(g, REASON_COST)?;
+        Ok(false)
+    }
+
+    fn spop<const ID: u32>(duel: &mut Duel, a: &Args) -> Script<()> {
+        let (c, tp) = (a.e.get_handler(duel), a.tp);
+        crate::stock::special_summon_self::<POS_FACEUP>(duel, a)?;
+        let e1 = duel.create_effect(c);
+        e1.set_description(duel, aux::stringid(ID, 1));
+        e1.set_type(duel, EFFECT_TYPE_FIELD);
+        e1.set_property(duel, EFFECT_FLAG_PLAYER_TARGET + EFFECT_FLAG_CLIENT_HINT);
+        e1.set_code(duel, EFFECT_CANNOT_SPECIAL_SUMMON);
+        e1.set_target_range(duel, 1, 0);
+        e1.set_target_spsummon(duel, |duel, _, c, _, _, _, _, _| !c.is_level_above(duel, 0));
+        e1.set_reset(duel, RESET_PHASE | PHASE_END);
+        duel.register_effect(e1, tp);
+        Ok(())
+    }
+
+    pub fn create_sp_summon_quick_effect<const ID: u32>(duel: &mut Duel, c: CardId) -> EffectId {
+        let e1 = duel.create_effect(c);
+        e1.set_description(duel, aux::stringid(ID, 0));
+        e1.set_category(duel, CATEGORY_SPECIAL_SUMMON);
+        e1.set_type(duel, EFFECT_TYPE_QUICK_O);
+        e1.set_code(duel, EVENT_FREE_CHAIN);
+        e1.set_range(duel, LOCATION_HAND);
+        e1.set_count_limit(duel, 1, ID);
+        e1.set_condition(duel, |duel, _| duel.is_main_phase());
+        e1.set_cost(duel, |duel, a, chk| Cost::replaceable(duel, a, chk, Ursarctic::spcost));
+        e1.set_target(duel, crate::stock::special_summon_self_target);
+        e1.set_operation(duel, Ursarctic::spop::<ID>);
+        e1.set_hint_timing(duel, 0, TIMING_MAIN_END | TIMINGS_CHECK_MONSTER);
+        e1
+    }
+
+    pub fn add_sp_summon_quick_effect<const ID: u32>(duel: &mut Duel, c: CardId) {
+        let e1 = Ursarctic::create_sp_summon_quick_effect::<ID>(duel, c);
+        c.register_effect(duel, e1);
+    }
+}
+
 // Effect.CreateMysteruneQPEffect's parameters (`uniqueop` returns whether to banish); uniquecode and a rmcount function have no caller.
 pub trait MysteruneQuickPlay {
     const ID: u32;

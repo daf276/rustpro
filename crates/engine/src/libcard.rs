@@ -1444,6 +1444,11 @@ impl CardId {
         ranks.contains(&duel.get_rank(self))
     }
 
+    pub fn is_rank_above(self, duel: &Duel, rank: u32) -> bool {
+        let current = duel.get_rank(self);
+        current > 0 && current >= rank
+    }
+
     pub fn is_rank_below(self, duel: &Duel, rank: u32) -> bool {
         let current = duel.get_rank(self);
         current > 0 && current <= rank

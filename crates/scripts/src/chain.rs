@@ -20,6 +20,10 @@ pub fn is_triggering_type(duel: &Duel, ch: u8, card_type: u32) -> bool {
         .is_some_and(|triggering| triggering & card_type > 0)
 }
 
+pub fn is_triggering_exact_type(duel: &Duel, ch: u8, card_type: u32) -> bool {
+    duel.get_chain_info::<Option<u32>>(ch, CHAININFO_TRIGGERING_TYPE) == Some(card_type)
+}
+
 pub fn is_triggering_setcode(duel: &Duel, ch: u8, setcodes: &[u16]) -> bool {
     duel.get_chain_info::<Option<[u16; 5]>>(ch, CHAININFO_TRIGGERING_SETCODES)
         .is_some_and(|triggering| {

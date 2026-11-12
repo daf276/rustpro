@@ -38,7 +38,7 @@ pub const SUPPORT: &[(u32, u16)] = &[
 ];
 pub const CHECKS: &[Check] = &[
     Check::SpecialSummoned,
-    Check::ResolvesEffect(aux::stringid(ID, 0)),
+    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 0))),
     Check::ResolvesEffect(aux::stringid(ID, 1)),
 ];
 

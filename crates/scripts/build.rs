@@ -77,8 +77,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
     }
     writeln!(out, "];")?;
-    let tables: [(&str, &[&str], &str); 7] = [
+    let tables: [(&str, &[&str], &str); 8] = [
         ("LISTED_NAMES", &["LISTED_NAMES", "FIT_MONSTER"], "&[u32]"),
+        ("COUNTER_PLACE_LIST", &["COUNTER_PLACE_LIST"], "&[u16]"),
         ("MATERIAL_SETCODE", &["MATERIAL_SETCODE"], "&[u16]"),
         ("MATERIAL", &["MATERIAL"], "&[u32]"),
         ("DARK_CALLING", &["DARK_CALLING"], "bool"),

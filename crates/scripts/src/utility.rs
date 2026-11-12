@@ -1670,6 +1670,7 @@ pub trait CardUtility: Copy {
     fn is_in_main_mzone(self, duel: &Duel, tp: Option<u8>) -> bool;
     fn is_sequence(self, duel: &Duel, sequence: u32) -> bool;
     fn has_counter(self, duel: &Duel, counter: u16) -> bool;
+    fn has_equip_card(self, duel: &Duel) -> bool;
     fn has_level(self, duel: &Duel) -> bool;
     fn has_defense(self, duel: &Duel) -> bool;
     fn is_original_level(self, duel: &Duel, level: u32) -> bool;
@@ -2015,6 +2016,10 @@ impl CardUtility for CardId {
 
     fn has_counter(self, duel: &Duel, counter: u16) -> bool {
         self.get_counter(duel, counter) > 0
+    }
+
+    fn has_equip_card(self, duel: &Duel) -> bool {
+        self.get_equip_count(duel) > 0
     }
 
     fn is_sequence(self, duel: &Duel, sequence: u32) -> bool {

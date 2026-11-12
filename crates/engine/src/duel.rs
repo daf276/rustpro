@@ -446,6 +446,15 @@ impl Duel {
         self.infos.phase
     }
 
+    // 1 in the first turn, 0 before it.
+    pub fn turn(&self) -> u16 {
+        self.infos.turn_id as u16
+    }
+
+    pub fn turn_player(&self) -> u8 {
+        self.infos.turn_player
+    }
+
     // The winner (PLAYER_NONE for a draw) and the reason of MSG_WIN.
     pub fn result(&self) -> Option<(u8, u8)> {
         self.result

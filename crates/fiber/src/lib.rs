@@ -182,6 +182,11 @@ impl Clone for Fiber {
     fn clone(&self) -> Self {
         Self::new(Duel::clone(self))
     }
+
+    // Into this fiber's duel and its buffers, after interrupting a function waiting here.
+    fn clone_from(&mut self, source: &Self) {
+        self.duel_mut().clone_from(source);
+    }
 }
 
 impl Drop for Fiber {

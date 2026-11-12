@@ -64,7 +64,7 @@ fn should_play_as_the_plain_duel_when_cloned_dropped_or_interrupted_while_a_func
             decision += 1;
         }
         let expected = (plain.take_trace(), plain.result());
-        let mut waits = 0;
+        let (mut waits, mut pooled) = (0, Fiber::new(started(seed, cards, &deck).unwrap()));
         let played = finish(&mut Fiber::new(started(seed, cards, &deck).unwrap()), 0, |fiber, decision| {
             waits += 1;
             match waits % 16 {
@@ -79,6 +79,13 @@ fn should_play_as_the_plain_duel_when_cloned_dropped_or_interrupted_while_a_func
                 }
                 9 => {
                     fiber.duel_mut();
+                }
+                13 => {
+                    // Cloned into again once its own answer may have left a function waiting in it.
+                    pooled.clone_from(fiber);
+                    pooled.apply(pick(fiber, decision)?)?;
+                    pooled.clone_from(fiber);
+                    assert_eq!(finish(&mut pooled, decision, |_, _| Ok(()))?, expected, "cloned into at {decision}");
                 }
                 _ => {}
             }

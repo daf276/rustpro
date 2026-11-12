@@ -141,6 +141,7 @@ version = "0.1.0"
 dependencies = [
  "carddata",
  "postcard",
+ "rustc-hash",
  "scripts",
  "serde",
  "thiserror",

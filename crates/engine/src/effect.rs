@@ -523,6 +523,10 @@ impl Effects {
     pub fn is_deleted(&self, id: EffectId) -> bool {
         id == EffectId::DELETED || self.free.contains(&id)
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Effect> {
+        self.list.iter()
+    }
 }
 
 #[cfg(test)]

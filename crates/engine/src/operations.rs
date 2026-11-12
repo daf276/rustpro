@@ -1925,10 +1925,12 @@ impl Duel {
                             self.cards[card].previous_attribute = self.cards[card].data.attribute;
                             self.cards[card].previous_race = self.cards[card].data.race;
                             self.cards[card].previous_attack = self.cards[card].data.attack;
+                            self.cards[card].previous_defense = self.cards[card].data.defense;
                         } else if self.cards[card].current.location & LOCATION_MZONE != 0 {
                             self.cards[card].previous_attribute = self.get_attribute(card);
                             self.cards[card].previous_race = self.get_race(card);
                             self.cards[card].previous_attack = self.get_attack(card);
+                            self.cards[card].previous_defense = self.get_defense(card);
                         }
                     }
                     if !self.is_leaving_field(card) {

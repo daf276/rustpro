@@ -195,10 +195,9 @@ impl Pendulum {
         Ok(())
     }
 
-    // No ported card sets pendulum_level.
     pub fn filter(c: CardId, duel: &Duel, e: EffectId, tp: u8, lscale: u32, rscale: u32, lvchk: bool) -> bool {
         let (lscale, rscale) = if lscale > rscale { (rscale, lscale) } else { (lscale, rscale) };
-        let lv = c.get_level(duel);
+        let lv = crate::official::pendulum_level(c.get_original_code(duel)).unwrap_or_else(|| c.get_level(duel));
         (c.is_location(duel, LOCATION_HAND) || (c.is_faceup(duel) && c.is_type(duel, TYPE_PENDULUM)))
             && (lvchk || (lv > lscale && lv < rscale) || c.is_has_effect(duel, 511004423).is_some())
             && c.is_can_be_special_summoned(duel, e, SUMMON_TYPE_PENDULUM, tp, false, false)

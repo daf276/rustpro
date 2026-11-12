@@ -61,3 +61,8 @@ pub fn xyz_number(code: u32) -> Option<u32> {
 pub fn assault_mode(code: u32) -> Option<u32> {
     lookup(&ASSAULT_MODE, code)
 }
+
+// s.pendulum_level, which Pendulum.Filter reads in place of the card's Level.
+pub fn pendulum_level(code: u32) -> Option<u32> {
+    lookup(&PENDULUM_LEVEL, code)
+}

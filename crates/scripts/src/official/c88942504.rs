@@ -51,7 +51,7 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<b
     Ok(false)
 }
 
-fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
     if let Some(tc) = duel.get_first_target()
         && tc.is_relate_to_effect(duel, a.e)
     {

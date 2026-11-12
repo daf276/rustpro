@@ -1704,6 +1704,7 @@ pub trait CardUtility: Copy {
     fn is_xyz_summoned(self, duel: &Duel) -> bool;
     fn is_pendulum_summoned(self, duel: &Duel) -> bool;
     fn is_in_extra_mzone(self, duel: &Duel) -> bool;
+    fn is_in_extra_mzone_full(self, duel: &Duel, tp: u8) -> bool;
     fn is_ritual_summoned(self, duel: &Duel) -> bool;
     fn is_special_summoned(self, duel: &Duel) -> bool;
     fn is_reincarnation_summoned(self, duel: &Duel) -> bool;
@@ -1773,6 +1774,11 @@ impl CardUtility for CardId {
     // Card.IsInExtraMZone called without a player.
     fn is_in_extra_mzone(self, duel: &Duel) -> bool {
         self.is_location(duel, LOCATION_EMZONE)
+    }
+
+    // Card.IsInExtraMZone called with a player.
+    fn is_in_extra_mzone_full(self, duel: &Duel, tp: u8) -> bool {
+        self.is_in_extra_mzone(duel) && self.is_controler(duel, tp)
     }
 
     fn is_ritual_summoned(self, duel: &Duel) -> bool {
@@ -2623,6 +2629,109 @@ impl Ursarctic {
     pub fn add_sp_summon_quick_effect<const ID: u32>(duel: &mut Duel, c: CardId) {
         let e1 = Ursarctic::create_sp_summon_quick_effect::<ID>(duel, c);
         c.register_effect(duel, e1);
+    }
+}
+
+pub struct Infernoid;
+
+impl Infernoid {
+    fn spfilter(c: CardId, duel: &Duel) -> bool {
+        c.is_set_card(duel, &[SET_INFERNOID]) && c.is_monster(duel) && c.is_able_to_remove_as_cost(duel)
+    }
+
+    fn get_locations(duel: &Duel, c: CardId, tp: u8) -> u32 {
+        if duel.is_player_affected_by_effect(tp, 69832741).is_some() {
+            LOCATION_HAND | LOCATION_MZONE
+        } else if c.is_has_effect(duel, 34822850).is_some() {
+            LOCATION_HAND | LOCATION_GRAVE | LOCATION_MZONE
+        } else {
+            LOCATION_HAND | LOCATION_GRAVE
+        }
+    }
+
+    fn summon_condition<const MONSTERS_TO_BANISH: usize>(duel: &Duel, a: &Args) -> bool {
+        let Some(c) = a.c else { return true };
+        let tp = c.get_controler(duel);
+        let effects = duel.get_matching_group(
+            aux::faceup_filter(|c, duel| c.is_type(duel, TYPE_EFFECT)),
+            tp,
+            LOCATION_MZONE,
+            0,
+            None,
+        );
+        let sum = effects.get_sum(duel, |c, duel| {
+            i64::from(if c.is_type(duel, TYPE_XYZ) {
+                c.get_rank(duel)
+            } else {
+                c.get_level(duel)
+            })
+        });
+        if sum > 8 {
+            return false;
+        }
+        let locations = Infernoid::get_locations(duel, c, tp);
+        if locations & LOCATION_MZONE == 0 {
+            return duel.get_location_count(tp, LOCATION_MZONE) > 0
+                && duel.is_existing_matching_card(Infernoid::spfilter, tp, locations, 0, MONSTERS_TO_BANISH, Some(c.into()));
+        }
+        let g = duel.get_matching_group(Infernoid::spfilter, tp, locations, 0, Some(c.into()));
+        aux::select_unselect_group_check(duel, g, MONSTERS_TO_BANISH, MONSTERS_TO_BANISH, &aux::chkf_mmz(tp, 1))
+    }
+
+    fn summon_target<const MONSTERS_TO_BANISH: usize>(duel: &mut Duel, a: &Args, _: i32, _: Option<CardId>) -> Script<bool> {
+        let (e, tp) = (a.e, a.tp);
+        let c = e.get_handler(duel);
+        let locations = Infernoid::get_locations(duel, c, tp);
+        let mg = duel.get_matching_group(Infernoid::spfilter, tp, locations, 0, Some(c.into()));
+        let g = aux::select_unselect_group_full(
+            duel,
+            mg,
+            MONSTERS_TO_BANISH,
+            MONSTERS_TO_BANISH,
+            &aux::chkf_mmz(tp, 1),
+            tp,
+            HINTMSG_REMOVE,
+            None,
+            true,
+        )?;
+        if g.is_empty() {
+            return Ok(false);
+        }
+        e.set_label_object_group(duel, Some(g));
+        Ok(true)
+    }
+
+    fn summon_operation(duel: &mut Duel, a: &Args) -> Script<()> {
+        if let Some(g) = a.e.get_label_object_group(duel) {
+            duel.remove(g, POS_FACEUP, REASON_COST)?;
+        }
+        Ok(())
+    }
+
+    // Infernoid.RegisterSummonProcedure(c, monstersToBanish).
+    pub fn register_summon_procedure<const MONSTERS_TO_BANISH: usize>(duel: &mut Duel, c: CardId) {
+        let e1 = duel.create_effect(c);
+        e1.set_type(duel, EFFECT_TYPE_SINGLE);
+        e1.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
+        e1.set_code(duel, EFFECT_SPSUMMON_CONDITION);
+        e1.set_value(duel, Value::SpSummonCondition(|_, _, _, _, _, _, _| false));
+        c.register_effect(duel, e1);
+        let e2 = duel.create_effect(c);
+        e2.set_type(duel, EFFECT_TYPE_FIELD);
+        e2.set_code(duel, EFFECT_SPSUMMON_PROC);
+        e2.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
+        e2.set_range(
+            duel,
+            if MONSTERS_TO_BANISH > 1 {
+                LOCATION_HAND | LOCATION_GRAVE
+            } else {
+                LOCATION_HAND
+            },
+        );
+        e2.set_condition(duel, Infernoid::summon_condition::<MONSTERS_TO_BANISH>);
+        e2.set_target(duel, Infernoid::summon_target::<MONSTERS_TO_BANISH>);
+        e2.set_operation(duel, Infernoid::summon_operation);
+        c.register_effect(duel, e2);
     }
 }
 

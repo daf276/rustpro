@@ -2650,9 +2650,9 @@ impl Duel {
                 } else {
                     -1
                 };
-                if val == i64::from(DOUBLE_DAMAGE) {
+                if val as i32 as u32 == DOUBLE_DAMAGE {
                     double_dam = true;
-                } else if val == i64::from(HALF_DAMAGE) {
+                } else if val as i32 as u32 == HALF_DAMAGE {
                     half_dam = true;
                 } else if val > 0 {
                     dam_value = val as i32;

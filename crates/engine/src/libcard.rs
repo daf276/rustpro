@@ -914,7 +914,11 @@ impl CardId {
     }
 
     pub fn is_synchro_summonable(self, duel: &Duel, must: Option<CardSet>, materials: Option<CardSet>) -> bool {
-        duel.spsummonable_rule(self, TYPE_SYNCHRO, SUMMON_TYPE_SYNCHRO, must, materials, 0, 0)
+        self.is_synchro_summonable_full(duel, must, materials, 0, 0)
+    }
+
+    pub fn is_synchro_summonable_full(self, duel: &Duel, must: Option<CardSet>, materials: Option<CardSet>, min: u16, max: u16) -> bool {
+        duel.spsummonable_rule(self, TYPE_SYNCHRO, SUMMON_TYPE_SYNCHRO, must, materials, min, max)
     }
 
     pub fn is_xyz_summonable(self, duel: &Duel, must: Option<CardSet>, materials: Option<CardSet>) -> bool {

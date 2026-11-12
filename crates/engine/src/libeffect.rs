@@ -3,8 +3,9 @@ use crate::card::{CardId, CardSet};
 use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{
-    CodeConditionFn, Condition, ConditionFn, CostConditionFn, CostFn, EffectId, ExtraMaterialFn, FusionMaterialFn, GroupOperationFn,
-    Operation, OperationFn, ReturningOperationFn, SpSummonTargetFn, SynchroCheckFn, SynchroMaterialFn, Target, TargetFn, Value,
+    CodeConditionFn, Condition, ConditionFn, CostConditionFn, CostFn, CostReplaceFn, EffectId, ExtraMaterialFn, FusionMaterialFn,
+    GroupOperationFn, Operation, OperationFn, ReturningOperationFn, SpSummonTargetFn, SynchroCheckFn, SynchroMaterialFn, Target, TargetFn,
+    Value,
 };
 use crate::script::Args;
 
@@ -292,6 +293,11 @@ impl EffectId {
     // Effect.SetOperation for EFFECT_EXTRA_FUSION_MATERIAL, whose function Fusion.SummonEffOP calls with its own parameters.
     pub fn set_fusion_material_operation(self, duel: &mut Duel, operation: FusionMaterialFn) {
         duel.effects[self].operation = Some(Operation::FusionMaterial(operation));
+    }
+
+    // Effect.SetOperation for EFFECT_COST_REPLACE, whose function Cost.Replaceable calls with its own parameters.
+    pub fn set_cost_replace_operation(self, duel: &mut Duel, operation: CostReplaceFn) {
+        duel.effects[self].operation = Some(Operation::CostReplace(operation));
     }
 
     // Effect.SetOperation for the code effects that apply only to summons, whose function is a condition.

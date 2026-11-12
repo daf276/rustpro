@@ -503,7 +503,8 @@ impl Duel {
                         Operation::SynchroMaterial(_)
                         | Operation::ExtraMaterial(_)
                         | Operation::CodeCondition(_)
-                        | Operation::FusionMaterial(_),
+                        | Operation::FusionMaterial(_)
+                        | Operation::CostReplace(_),
                     )
                     | None => 0,
                 },

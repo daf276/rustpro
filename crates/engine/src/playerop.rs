@@ -564,7 +564,8 @@ impl Duel {
                 self.returns.set_i32(0, i32::from(positions));
                 return true;
             }
-            self.trace.message(MSG_SELECT_POSITION).u8(arg.playerid).u32(arg.code).u8(positions);
+            let code = self.cards[arg.card].data.code;
+            self.trace.message(MSG_SELECT_POSITION).u8(arg.playerid).u32(code).u8(positions);
             self.returns.set_i32(0, 0);
             return false;
         }

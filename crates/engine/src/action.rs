@@ -300,6 +300,16 @@ impl Duel {
         })
     }
 
+    // The card a Place prompt places (None for zones to disable), a Position prompt positions or an EffectYesNo prompt asks about.
+    pub fn prompt_card(&self) -> Option<CardId> {
+        match self.core.units.last().filter(|unit| unit.step() > 0)? {
+            Unit::SelectPlace(arg) => arg.card,
+            Unit::SelectPosition(arg) => Some(arg.card),
+            Unit::SelectEffectYesNo(arg) => Some(arg.card),
+            _ => None,
+        }
+    }
+
     pub fn legal_actions(&self) -> Vec<Action> {
         let mut actions = Vec::new();
         self.legal_actions_into(&mut actions);

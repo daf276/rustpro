@@ -114,7 +114,7 @@ impl IntoIterator for EffectSet {
 pub type ConditionFn = fn(&Duel, &Args) -> bool;
 
 // effect::condition; one whose Lua writes persistent state (labels, script state, flag effects) is `Mut`.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash)]
 pub enum Condition {
     Check(ConditionFn),
     Mut(fn(&mut Duel, &Args) -> bool),
@@ -141,7 +141,7 @@ pub struct ChainLimit {
 pub type GroupOperationFn = fn(&mut Duel, &Args, &mut CardSet) -> Script<()>;
 
 // effect::target: the activation target of actions, or the card filter (e, c) of field effects, by the parameters the code passes.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, Hash)]
 pub enum Target {
     #[default]
     None,
@@ -164,7 +164,7 @@ pub type ChangeDamageFn = fn(&mut Duel, EffectId, Option<EffectId>, u32, u32, u8
 
 pub type SynchroCheckFn = fn(&Duel, EffectId, Option<CardId>, CardSet, CardSet, CardSet, CardSet, CardSet) -> (bool, CardSet, CardSet);
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash)]
 pub enum Operation {
     Event(OperationFn),
     // A library function that never reaches a prompt, so it runs without the snapshot a rerun would need.
@@ -198,7 +198,7 @@ pub type ExtraMaterialFn = fn(&Duel, CardId, EffectId, u8, CardSet, CardSet, Car
 pub type SynchroMaterialFn = fn(&Duel, EffectId, CardSet, CardSet, CardSet, u32, CardId, u8) -> (bool, bool);
 
 // effect::value: an integer, or a Lua function whose parameters depend on the effect code reading it.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash)]
 pub enum Value {
     Int(i32),
     // The values a Lua function returns regardless of its parameters (a summon procedure's type and zone).
@@ -947,7 +947,7 @@ pub struct OpTarget {
 
 // chain::opmap, keyed by category; only looked up, so its order does not matter. Scripts set a few categories at most.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct OpInfos([Option<(u64, OpTarget)>; 4]);
+pub struct OpInfos(pub(crate) [Option<(u64, OpTarget)>; 4]);
 
 impl OpInfos {
     pub fn get(&self, category: u64) -> Option<&OpTarget> {
@@ -971,7 +971,7 @@ impl OpInfos {
 }
 
 // The card_state the chain snapshots in set_triggering_state, reduced to what CHAININFO reads.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct TriggeringState {
     pub code: u32,
     pub code2: u32,

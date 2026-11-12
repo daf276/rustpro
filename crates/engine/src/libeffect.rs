@@ -90,6 +90,11 @@ impl EffectId {
         duel.effects[self].count_code
     }
 
+    // The index of SetCountLimit(1, {code, index}), which keeps a card's effects under one code apart; 0 without a code.
+    pub fn get_count_hopt_index(self, duel: &Duel) -> u8 {
+        duel.effects[self].count_hopt_index
+    }
+
     pub fn set_absolute_range(self, duel: &mut Duel, player: u8, s_range: u32, o_range: u32) {
         let peffect = &mut duel.effects[self];
         let (s_range, o_range) = (s_range as u16, o_range as u16);

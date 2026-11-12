@@ -88,7 +88,8 @@ pub struct DiscardDeck {
     pub discarded_set: CardSet,
 }
 
-// The core shares `targets` as a group with SendToReplace; here the replace checks run inline in step 1.
+// The core shares `targets` as a group with SendToReplace; here the replace checks run inline in step 1 unless a card has a
+// single EFFECT_SEND_REPLACE effect, which puts `targets` out on core.replace_targets for the SendToReplace units.
 #[derive(Debug, Clone, Default)]
 pub struct SendTo {
     pub step: u16,
@@ -96,6 +97,13 @@ pub struct SendTo {
     pub reason: u32,
     pub targets: CardSet,
     pub reason_effect: Option<EffectId>,
+    pub replacing: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct SendToReplace {
+    pub step: u16,
+    pub target: CardId,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -1547,6 +1555,7 @@ impl Duel {
                     reason_effect,
                     reason,
                     reason_player,
+                    ..SendTo::default()
                 });
                 false
             }
@@ -1666,6 +1675,35 @@ impl Duel {
                 target: Some(target),
                 is_destroy: true,
             });
+        }
+        true
+    }
+
+    pub(crate) fn process_send_to_replace(&mut self, arg: &mut SendToReplace) -> bool {
+        let target = arg.target;
+        let Some(&targets) = self.core.replace_targets.last() else {
+            return true;
+        };
+        if !targets.contains(target) {
+            return true;
+        }
+        let param = self.cards[target].sendto_param;
+        let current = self.cards[target].current;
+        if current.location == param.location && current.controler == param.playerid {
+            self.restore_reason(target);
+            self.remove_replace_target(target);
+            return true;
+        }
+        if current.reason & REASON_RULE == 0 {
+            self.returns.set_i32(0, 0);
+            for effect in self.filter_single_continuous_effect(target, EFFECT_SEND_REPLACE) {
+                self.emplace_process(OperationReplace {
+                    step: 0,
+                    replace_effect: Some(effect),
+                    target: Some(target),
+                    is_destroy: false,
+                });
+            }
         }
         true
     }
@@ -1893,6 +1931,17 @@ impl Duel {
             }
             1 => {
                 let targets = arg.targets;
+                if targets
+                    .iter()
+                    .any(|card| !self.filter_single_continuous_effect(card, EFFECT_SEND_REPLACE).is_empty())
+                {
+                    self.core.replace_targets.push(targets);
+                    arg.replacing = true;
+                    for card in targets {
+                        self.emplace_process(SendToReplace { step: 0, target: card });
+                    }
+                    return false;
+                }
                 for card in targets.iter() {
                     let target = &self.cards[card];
                     let (playerid, destination) = (target.sendto_param.playerid, target.sendto_param.location);
@@ -1903,17 +1952,14 @@ impl Duel {
                     }
                     if target.current.reason & REASON_RULE == 0 {
                         self.returns.set_i32(0, 0);
-                        unported!(
-                            self,
-                            self.field_effects
-                                .registry
-                                .equal_range(Container::Single, Some(card), EFFECT_SEND_REPLACE)
-                        );
                     }
                 }
                 false
             }
             2 => {
+                if std::mem::take(&mut arg.replacing) {
+                    arg.targets = self.core.replace_targets.pop().unwrap_or_default();
+                }
                 if arg.targets.is_empty() {
                     return self.finish_operated(CardSet::default());
                 }
@@ -3843,6 +3889,7 @@ impl Duel {
                     reason_effect,
                     reason,
                     reason_player,
+                    ..SendTo::default()
                 });
                 false
             }

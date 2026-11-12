@@ -193,6 +193,10 @@ impl CardId {
         }
     }
 
+    pub fn get_leave_field_dest(self, duel: &Duel) -> u32 {
+        duel.leave_field_redirect(self)
+    }
+
     pub fn get_previous_location(self, duel: &Duel) -> u32 {
         u32::from(duel.cards[self].previous.location)
     }
@@ -1110,6 +1114,10 @@ impl CardId {
             }
         }
         zone
+    }
+
+    pub fn is_link_marker(self, duel: &Duel, marker: u32) -> bool {
+        duel.get_link_marker(&duel.zones(), self) & marker != 0
     }
 
     // Card.GetLinkedZone without a player.

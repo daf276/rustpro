@@ -8,8 +8,8 @@ use crate::field::PerPlayer;
 use crate::operations::{
     ChangePos, Damage, Destroy, DestroyReplace, DiscardDeck, Draw, Equip, FlipSummon, GetControl, MonsterSet, MoveToField,
     OperationReplace, PayLpCost, Recover, Release, RemoveCounter, RemoveOverlay, SelectTribute, SelfDestroy, SelfDestroyUnique, SendTo,
-    SpSummon, SpSummonRule, SpSummonStep, SpellSet, SpellSetGroup, SummonRule, SwapControl, TossCoin, TossDice, TrapMonsterAdjust,
-    XyzOverlay,
+    SendToReplace, SpSummon, SpSummonRule, SpSummonStep, SpellSet, SpellSetGroup, SummonRule, SwapControl, TossCoin, TossDice,
+    TrapMonsterAdjust, XyzOverlay,
 };
 use crate::script::Procedure;
 
@@ -332,6 +332,7 @@ units! {
     OperationReplace => process_operation_replace,
     Release => process_release,
     SendTo => process_send_to,
+    SendToReplace => process_send_to_replace,
     MoveToField => process_move_to_field,
     ChangePos => process_change_pos,
     SummonRule => process_summon_rule,

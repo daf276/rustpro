@@ -79,6 +79,8 @@ pub trait EffectChain: Copy {
     fn set_chain_data_group(self, duel: &mut Duel, slot: u8, group: CardSet);
     fn is_card_setcode(self, duel: &Duel, setcode: u16) -> bool;
     fn is_card_attribute(self, duel: &Duel, attribute: u32) -> bool;
+    fn is_card_summon_location(self, duel: &Duel, location: u32) -> bool;
+    fn is_card_summon_type(self, duel: &Duel, summon_type: u32) -> bool;
     fn get_card_level(self, duel: &Duel) -> u32;
 }
 
@@ -109,6 +111,14 @@ impl EffectChain for EffectId {
 
     fn is_card_attribute(self, duel: &Duel, attribute: u32) -> bool {
         properties_card(duel, self).is_some_and(|card| card.is_attribute(duel, attribute))
+    }
+
+    fn is_card_summon_location(self, duel: &Duel, location: u32) -> bool {
+        properties_card(duel, self).is_some_and(|card| card.is_summon_location(duel, location))
+    }
+
+    fn is_card_summon_type(self, duel: &Duel, summon_type: u32) -> bool {
+        properties_card(duel, self).is_some_and(|card| card.is_summon_type(duel, &[summon_type]))
     }
 
     fn get_card_level(self, duel: &Duel) -> u32 {

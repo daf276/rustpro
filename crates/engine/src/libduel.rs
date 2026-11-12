@@ -2291,6 +2291,34 @@ impl Duel {
         if count == 0 {
             return Ok(None);
         }
+        self.select_disfield(player, count, flag).map(Some)
+    }
+
+    // Duel.SelectFieldZone with its filter: the zones as a mask of the chosen places, nil when no zone is left to choose.
+    pub fn select_field_zone_full(&mut self, player: u8, count: u8, location1: u16, location2: u16, filter: u32) -> Script<Option<u32>> {
+        if player > 1 {
+            return Ok(None);
+        }
+        let mut flag = u32::MAX;
+        for (mask, location, wanted) in [
+            (0xffff_ff00, LOCATION_MZONE, location1),
+            (0xffff_00ff, LOCATION_SZONE, location1),
+            (0xff00_ffff, LOCATION_MZONE, location2),
+            (0x00ff_ffff, LOCATION_SZONE, location2),
+        ] {
+            if wanted & u16::from(location) != 0 {
+                flag &= mask;
+            }
+        }
+        let pzone_flag = if self.is_flag(DUEL_SEPARATE_PZONE) { 0 } else { 0xC000_C000 };
+        flag |= filter | if self.is_flag(DUEL_EMZONE) { 0x0080_0080 } else { 0x00E0_00E0 } | pzone_flag;
+        if flag == u32::MAX {
+            return Ok(None);
+        }
+        self.select_disfield(player, count, flag).map(Some)
+    }
+
+    fn select_disfield(&mut self, player: u8, count: u8, flag: u32) -> Script<u32> {
         self.emplace_process(SelectPlace {
             playerid: player,
             count,
@@ -2299,7 +2327,7 @@ impl Duel {
             ..SelectPlace::default()
         });
         self.yield_script()?;
-        let picked = (0..usize::from(count)).fold(0, |picked, pick| {
+        Ok((0..usize::from(count)).fold(0, |picked, pick| {
             let (select_player, location, sequence) = (
                 self.returns.at_u8(3 * pick),
                 self.returns.at_u8(3 * pick + 1),
@@ -2307,8 +2335,7 @@ impl Duel {
             );
             let shift = u32::from(sequence) + if select_player == player { 0 } else { 16 } + if location == LOCATION_MZONE { 0 } else { 8 };
             picked | 1u32.wrapping_shl(shift)
-        });
-        Ok(Some(picked))
+        }))
     }
 
     pub fn select_position(&mut self, player: u8, card: CardId, positions: u8) -> Script<u32> {

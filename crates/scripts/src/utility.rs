@@ -1738,6 +1738,7 @@ pub trait CardUtility: Copy {
     fn has_non_zero_attack(self, duel: &Duel) -> bool;
     fn has_non_zero_defense(self, duel: &Duel) -> bool;
     fn is_owner(self, duel: &Duel, player: u8) -> bool;
+    fn is_reason_player(self, duel: &Duel, player: u8) -> bool;
     fn is_equip_spell(self, duel: &Duel) -> bool;
     fn is_previous_attribute_on_field(self, duel: &Duel, attribute: u32) -> bool;
     fn is_previous_type_on_field(self, duel: &Duel, card_type: u32) -> bool;
@@ -2012,6 +2013,10 @@ impl CardUtility for CardId {
 
     fn is_owner(self, duel: &Duel, player: u8) -> bool {
         self.get_owner(duel) == player
+    }
+
+    fn is_reason_player(self, duel: &Duel, player: u8) -> bool {
+        self.get_reason_player(duel) == player
     }
 
     fn is_previous_attribute_on_field(self, duel: &Duel, attribute: u32) -> bool {

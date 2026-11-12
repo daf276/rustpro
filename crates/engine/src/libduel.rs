@@ -2844,12 +2844,19 @@ impl Duel {
     }
 
     pub fn chain_attack(&mut self) {
+        self.chain_attack_full(None);
+    }
+
+    pub fn chain_attack_full(&mut self, target: Option<CardId>) {
         let Some(attacker) = self.core.attacker else { return };
         if !self.is_affect_by_effect(attacker, self.core.reason_effect.get()) {
             return;
         }
         self.core.chain_attack = true;
         self.core.chain_attacker_id = self.cards[attacker].fieldid;
+        if target.is_some() {
+            self.core.chain_attack_target = target;
+        }
     }
 
     pub fn get_attack_target(&self) -> Option<CardId> {

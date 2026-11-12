@@ -63,7 +63,7 @@ pub mod prelude {
     pub use crate::stock;
     pub use crate::utility::{
         COST_DETACHED_MATERIALS, CardUtility, Cost, CostChoice, Cyberdark, CyberdarkEquip, DragonRuler, DuelUtility, EffectUtility,
-        Mysterune, MysteruneQuickPlay, Witchcrafter, aux,
+        Infernoid, Mysterune, MysteruneQuickPlay, Witchcrafter, aux,
     };
 }
 

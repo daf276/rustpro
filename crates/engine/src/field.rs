@@ -2968,7 +2968,12 @@ impl Duel {
     }
 
     pub(crate) fn is_player_can_spsummon_count(&self, playerid: u8, count: u32) -> bool {
-        unported!(self, self.filter_player_effect(playerid, EFFECT_LEFT_SPSUMMON_COUNT, true));
+        let reason_effect = self.core.reason_effect.get();
+        for effect in self.filter_player_effect(playerid, EFFECT_LEFT_SPSUMMON_COUNT, true) {
+            if self.get_value_spsummon_count(effect, reason_effect, playerid) < count as i32 {
+                return false;
+            }
+        }
         self.check_spsummon_counter(playerid, count as u8 as u16)
     }
 

@@ -2125,7 +2125,7 @@ impl Duel {
                 for p in 0..2 {
                     let amount = self.core.battle_damage[p] as u32;
                     if amount != 0 {
-                        self.field_damage(None, REASON_BATTLE, arg.reason_player, arg.reason_card, p, amount);
+                        self.field_damage(None, REASON_BATTLE, arg.reason_player, arg.reason_card, p, amount, false);
                     }
                 }
                 self.reset_phase(PHASE_DAMAGE_CAL);

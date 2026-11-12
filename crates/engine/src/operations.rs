@@ -135,7 +135,6 @@ pub struct OperationReplace {
     pub is_destroy: bool,
 }
 
-// `is_step` comes with the effects that damage in steps.
 #[derive(Debug, Clone)]
 pub struct Damage {
     pub step: u16,
@@ -146,6 +145,7 @@ pub struct Damage {
     pub reason_card: Option<CardId>,
     pub reason_effect: Option<EffectId>,
     pub is_reflected: bool,
+    pub is_step: bool,
 }
 
 // `is_step` comes with the effects that recover in steps.
@@ -439,6 +439,7 @@ impl Duel {
         reason_card: Option<CardId>,
         playerid: u8,
         amount: u32,
+        is_step: bool,
     ) {
         let (reason_effect, reason_card) = if reason & REASON_BATTLE != 0 {
             (None, reason_card)
@@ -454,6 +455,7 @@ impl Duel {
             reason_card,
             reason_effect,
             is_reflected: false,
+            is_step,
         });
     }
 
@@ -1186,6 +1188,11 @@ impl Duel {
                     }
                 }
                 arg.amount = val;
+                if arg.is_step {
+                    arg.step = 1;
+                    self.core.recover_damage_reserve.push(arg.clone().into());
+                    return true;
+                }
                 false
             }
             1 => {

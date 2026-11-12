@@ -247,8 +247,9 @@ PLAN.md is 201 KB (its Findings section is about 190 KB), PORTING.md 27 KB, this
 
 ## Decisions for the owner
 
-- **C7:** one-line `check!`/`chkc!` macros hide an early return in a macro (-11,000 lines). Yes or no.
-- **Section 1.1:** test metadata as a table in the diff crate (recommended) or packed in the card files.
+- **C7:** one-line `check!`/`chkc!` macros. Decided 2026-11-13: yes.
+- **Section 1.1:** test metadata. Decided 2026-11-13: option A, the table in the diff crate.
+- **Correctness items:** decided 2026-11-13: fix them now, during porting.
 - **Comment target:** under 1% is not reachable while the Lua-signature comments on the `Value`/`Target`/`Operation`
   variants stay (effect.rs, script.rs); they document an external contract, so the plan keeps them.
 - **Names:** card files keep the Lua's abbreviations (`tc`, `sg`, `thtg`) for comparability with the Lua, against the

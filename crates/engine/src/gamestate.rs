@@ -180,6 +180,10 @@ impl Duel {
         let pcard = &self.cards[card];
         let (current, pos) = match pcard.overlay_target {
             Some(xyz) => (self.cards[xyz].current, 0),
+            // Debug.AddCard puts it face-down in Defense Position, so a position cannot carry Duel.Sendto's POS_FACEDOWN there.
+            None if pcard.current.location == LOCATION_EXTRA && pcard.data.card_type & TYPE_PENDULUM == 0 => {
+                (pcard.current, POS_FACEDOWN_DEFENSE)
+            }
             None => (pcard.current, pcard.current.position),
         };
         let (loc, seq) = if current.location & LOCATION_ONFIELD == 0 {

@@ -16,7 +16,7 @@ use crate::processor::{Adjust, Unit};
 pub(crate) type ReleaseFilter<'a> = &'a dyn Fn(CardId, &Duel) -> bool;
 
 // Per-player arrays indexed by player id like the core's `x[playerid]`; any id but 0 reads player 1.
-#[derive(Debug, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Copy, Default, PartialEq, Eq, Hash)]
 pub struct PerPlayer<T>(pub [T; 2]);
 
 impl<T: Clone> Clone for PerPlayer<T> {

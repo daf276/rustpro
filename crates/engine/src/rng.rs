@@ -1,5 +1,5 @@
 // Port of RNG/Xoshiro256.hpp.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Xoshiro256StarStar {
     s: [u64; 4],
 }

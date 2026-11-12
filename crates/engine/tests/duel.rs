@@ -8,8 +8,8 @@ use engine::constants::{
     LOCATION_MZONE, TYPE_EFFECT, TYPE_QUICKPLAY,
 };
 use engine::{
-    Action, CardId, DUEL_MODE_MR5, Duel, DuelError, DuelOptions, InitialEffect, Library, PHASE_DAMAGE, PHASE_DAMAGE_CAL, PlayerOptions,
-    Prompt, Status,
+    Action, CardId, DUEL_MODE_MR5, Duel, DuelError, DuelOptions, IdleCommand, InitialEffect, Library, PHASE_DAMAGE, PHASE_DAMAGE_CAL,
+    PlayerOptions, Prompt, Status,
 };
 
 const CODES: std::ops::RangeInclusive<u32> = 1..=40;
@@ -152,6 +152,35 @@ fn should_finish_identically_when_cloned_at_a_prompt() {
             }
         }
     }
+}
+
+#[test]
+fn should_hash_a_state_alike_whatever_order_reached_it() {
+    let spells: Vec<u32> = EFFECT_CARDS
+        .iter()
+        .filter(|card| card.1 & TYPE_SPELL != 0)
+        .map(|card| card.0)
+        .collect();
+    let mut start = started_duel(&spells, &scripts::LIBRARY).unwrap();
+    start.process();
+    // Sets the cards at these indices of the hand's settable spells into these Spell & Trap Zones, in order, chaining nothing.
+    let set = |sets: [(u16, u8); 2]| {
+        let mut duel = start.clone();
+        for (index, zone) in sets {
+            duel.apply(Action::IdleCommand(IdleCommand::SpellSet(index))).unwrap();
+            assert_eq!(duel.state_hash(), None);
+            duel.apply(Action::Place(zone)).unwrap();
+            while matches!(duel.prompt(), Some(Prompt::Chain { .. })) {
+                duel.apply(Action::Chain(None)).unwrap();
+            }
+        }
+        duel.state_hash()
+    };
+    let first = set([(0, 8), (0, 9)]);
+    assert!(first.is_some());
+    assert_eq!(set([(1, 9), (0, 8)]), first);
+    assert_ne!(set([(1, 8), (0, 9)]), first);
+    assert_ne!(start.state_hash(), first);
 }
 
 #[test]

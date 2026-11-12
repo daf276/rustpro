@@ -82,6 +82,14 @@ impl EffectId {
         (peffect.s_range.into(), peffect.o_range.into())
     }
 
+    pub fn get_range(self, duel: &Duel) -> u32 {
+        duel.effects[self].range.into()
+    }
+
+    pub fn get_count_code(self, duel: &Duel) -> u32 {
+        duel.effects[self].count_code
+    }
+
     pub fn set_absolute_range(self, duel: &mut Duel, player: u8, s_range: u32, o_range: u32) {
         let peffect = &mut duel.effects[self];
         let (s_range, o_range) = (s_range as u16, o_range as u16);

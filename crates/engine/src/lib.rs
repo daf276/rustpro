@@ -39,6 +39,7 @@ mod duel;
 mod effect;
 mod field;
 mod gamestate;
+mod hash;
 mod libcard;
 mod libduel;
 mod libeffect;

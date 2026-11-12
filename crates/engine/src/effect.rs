@@ -180,7 +180,11 @@ pub enum Operation {
     FusionMaterial(FusionMaterialFn),
     // operation(base, extracon, e, tp, ...) of an EFFECT_COST_REPLACE effect, read only by Cost.Replaceable.
     CostReplace(CostReplaceFn),
+    // operation(c, e, tp, tc) of the effect aux.AddZWEquipLimit registers, read only by the Utopia Ray monsters that equip a ZW card.
+    ZwEquip(ZwEquipFn),
 }
+
+pub type ZwEquipFn = fn(&mut Duel, CardId, EffectId, u8, CardId) -> Script<()>;
 
 pub type CostReplaceFn = fn(&mut Duel, EffectId, CostReplaceCall) -> Script<()>;
 
@@ -248,6 +252,8 @@ pub enum Value {
     ExtraMaterial(fn(&mut Duel, EffectId, ExtraMaterialCall) -> CardSet),
     // value(base, extracon, e, tp, eg, ep, ev, re, r, rp, chk): EFFECT_COST_REPLACE, read only by Cost.Replaceable.
     CostReplace(fn(&Duel, EffectId, CostReplaceCall) -> bool),
+    // value(tc, c, tp) of the effect aux.AddZWEquipLimit registers, read only by the Utopia Ray monsters that equip a ZW card.
+    ZwEquip(fn(&Duel, CardId, CardId, u8) -> bool),
 }
 
 // What Cost.Replaceable passes an EFFECT_COST_REPLACE value besides the replacing effect.
@@ -1494,6 +1500,7 @@ impl Duel {
             | Value::HandSynchro(_)
             | Value::ExtraMaterial(_)
             | Value::CostReplace(_)
+            | Value::ZwEquip(_)
             | Value::Own(_) => misread("a value"),
         }
     }

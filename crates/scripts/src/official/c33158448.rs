@@ -57,11 +57,11 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.register_effect(duel, e5);
 }
 
-fn lvcon(duel: &Duel, a: &Args) -> bool {
+pub fn lvcon(duel: &Duel, a: &Args) -> bool {
     a.re.is_some_and(|re| re.is_spell_trap_effect(duel) && re.get_handler(duel).is_set_card(duel, &[SET_FA]))
 }
 
-fn lvop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn lvop(duel: &mut Duel, a: &Args) -> Script<()> {
     let c = a.e.get_handler(duel);
     if c.is_relate_to_effect(duel, a.e) && c.is_faceup(duel) {
         let e1 = duel.create_effect(c);

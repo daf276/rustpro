@@ -56,7 +56,7 @@ fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
     stock::search(duel, a, thfilter, LOCATION_DECK)
 }
 
-fn spcon(duel: &Duel, a: &Args) -> bool {
+pub fn spcon(duel: &Duel, a: &Args) -> bool {
     let c = a.e.get_handler(duel);
     c.is_reason(duel, REASON_EFFECT) && c.is_previous_location(duel, LOCATION_ONFIELD) && c.is_previous_position(duel, POS_FACEDOWN)
 }
@@ -65,10 +65,10 @@ fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
     c.is_set_card(duel, &[SET_UNCHAINED]) && c.is_can_be_special_summoned(duel, e, 0, tp, false, false)
 }
 
-fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+pub fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
     stock::special_summon_target(duel, a, chk, |c, duel| spfilter(c, duel, a.e, a.tp), LOCATION_DECK)
 }
 
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
     stock::special_summon(duel, a, |c, duel| spfilter(c, duel, a.e, a.tp), LOCATION_DECK, POS_FACEUP)
 }

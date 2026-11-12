@@ -23,7 +23,7 @@ pub(crate) fn global_continuous(duel: &mut Duel, code: u32) -> EffectId {
 }
 
 pub mod aux {
-    use engine::{Args, CardId, CardSet, Duel, EffectId, ExtraMaterialCall, Operation, Script, Value};
+    use engine::{Args, CardId, CardSet, ConditionFn, Duel, EffectId, ExtraMaterialCall, Operation, Script, Value, ZwEquipFn};
 
     use crate::chain::DuelChain;
     use crate::constant::*;
@@ -485,6 +485,62 @@ pub mod aux {
         eff.set_reset_full(duel, (RESET_PHASE + PHASE_END) | reset, reset_count);
         duel.register_effect(eff, tp);
         eff
+    }
+
+    // The code of the effects aux.AddZWEquipLimit registers on a ZW card; Ultimate Leo Utopia Ray and Ultimate Dragonic Utopia Ray look them up.
+    pub const ZW_EQUIP: u32 = 75402014;
+
+    // aux.AddZWEquipLimit with no prop, resetflag or resetcount.
+    pub fn add_zw_equip_limit(
+        duel: &mut Duel,
+        c: CardId,
+        con: Option<ConditionFn>,
+        equipval: fn(&Duel, CardId, CardId, u8) -> bool,
+        equipop: ZwEquipFn,
+        linkedeff: EffectId,
+    ) {
+        let e1 = duel.create_effect(c);
+        if let Some(con) = con {
+            e1.set_condition(duel, con);
+        }
+        e1.set_type(duel, EFFECT_TYPE_SINGLE);
+        e1.set_property_full(duel, EFFECT_FLAG_CANNOT_DISABLE, EFFECT_FLAG2_MAJESTIC_MUST_COPY);
+        e1.set_code(duel, ZW_EQUIP);
+        e1.set_label_object(duel, Some(linkedeff));
+        e1.set_value(duel, Value::ZwEquip(equipval));
+        e1.set_zw_equip_operation(duel, equipop);
+        c.register_effect(duel, e1);
+        let e2 = duel.create_effect(c);
+        e2.set_type(duel, EFFECT_TYPE_SINGLE);
+        e2.set_property_full(duel, 0, EFFECT_FLAG2_MAJESTIC_MUST_COPY);
+        e2.set_code(duel, ZW_EQUIP + EFFECT_EQUIP_LIMIT);
+        c.register_effect(duel, e2);
+        linkedeff.set_label_object(duel, Some(e2));
+    }
+
+    // aux.EquipAndLimitRegister with no code and a previousPos of nil.
+    pub fn equip_and_limit_register(duel: &mut Duel, c: CardId, e: EffectId, tp: u8, tc: CardId) -> Script<bool> {
+        if !duel.equip(tp, c, tc)? {
+            return Ok(false);
+        }
+        let e1 = duel.create_effect(c);
+        e1.set_type(duel, EFFECT_TYPE_SINGLE);
+        e1.set_code(duel, EFFECT_EQUIP_LIMIT);
+        e1.set_reset(duel, RESET_EVENT + RESETS_STANDARD);
+        e1.set_value(duel, Value::Card(|duel, e, c| zw_equip_limit(duel, e, c).into()));
+        e1.set_label_object(duel, e.get_label_object(duel));
+        e1.set_label_object_group(duel, Some(tc.into()));
+        c.register_effect(duel, e1);
+        Ok(true)
+    }
+
+    // aux.ZWEquipLimit(tc, te) with tc the label object group and te the label object.
+    fn zw_equip_limit(duel: &Duel, e: EffectId, c: CardId) -> bool {
+        e.get_label_object_group(duel).and_then(|g| g.get_first()) == Some(c)
+            && e.get_handler(duel)
+                .get_card_effect(duel, ZW_EQUIP + EFFECT_EQUIP_LIMIT)
+                .into_iter()
+                .any(|eff| Some(eff) == e.get_label_object(duel))
     }
 
     // Auxiliary.chainreg: the flag effect Spell Counter cards read to count a Spell activated in the chain.

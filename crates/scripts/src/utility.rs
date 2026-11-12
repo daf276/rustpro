@@ -1787,6 +1787,7 @@ pub trait CardUtility: Copy {
     fn add_must_be_fusion_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_be_synchro_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_be_xyz_summoned(self, duel: &mut Duel) -> EffectId;
+    fn add_must_be_link_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_first_be_fusion_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_be_special_summoned_by_dark_fusion(self, duel: &mut Duel) -> EffectId;
 
@@ -2336,6 +2337,13 @@ impl CardUtility for CardId {
     fn add_must_be_xyz_summoned(self, duel: &mut Duel) -> EffectId {
         let e0 = single_uncopyable(duel, self, EFFECT_SPSUMMON_CONDITION);
         e0.set_value(duel, Value::SpSummonCondition(aux::xyzlimit));
+        self.register_effect(duel, e0);
+        e0
+    }
+
+    fn add_must_be_link_summoned(self, duel: &mut Duel) -> EffectId {
+        let e0 = single_uncopyable(duel, self, EFFECT_SPSUMMON_CONDITION);
+        e0.set_value(duel, Value::SpSummonCondition(aux::lnklimit));
         self.register_effect(duel, e0);
         e0
     }

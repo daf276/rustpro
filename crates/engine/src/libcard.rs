@@ -1150,6 +1150,16 @@ impl CardId {
         }
     }
 
+    // Card.GetColumnZone with the player the zones are seen from.
+    pub fn get_column_zone_full(self, duel: &Duel, location: u32, left: u8, right: u8, player: u8) -> u32 {
+        let zone = duel.get_column_zone(self, location, i32::from(left), i32::from(right));
+        if player == 1u8.wrapping_sub(duel.cards[self].current.controler) {
+            ((zone & 0xffff) << 16) | (zone >> 16)
+        } else {
+            zone
+        }
+    }
+
     pub fn get_reason_effect(self, duel: &Duel) -> Option<EffectId> {
         duel.cards[self].current.reason_effect
     }

@@ -82,6 +82,18 @@ pub mod aux {
         duel.get_turn_count() != c.get_turn_id(duel) || c.is_reason(duel, REASON_RETURN)
     }
 
+    pub fn seqmovcon(duel: &Duel, a: &Args) -> bool {
+        a.e.get_handler(duel).check_adjacent(duel)
+    }
+
+    pub fn seqmovop(duel: &mut Duel, a: &Args) -> Script<()> {
+        let c = a.e.get_handler(duel);
+        if !c.is_relate_to_effect(duel, a.e) || c.is_controler(duel, 1 - a.tp) {
+            return Ok(());
+        }
+        c.move_adjacent(duel, None)
+    }
+
     pub fn faceup_filter(filter: impl Fn(CardId, &Duel) -> bool) -> impl Fn(CardId, &Duel) -> bool {
         move |c, duel| c.is_faceup(duel) && filter(c, duel)
     }
@@ -935,7 +947,7 @@ pub mod aux {
         None
     }
 
-    // EFFECT_MUST_BE_MATERIAL comes with the cards that register it.
+    // The handlers of the player's EFFECT_MUST_BE_MATERIAL effects whose reasons include `r`; a function value is not ported.
     pub fn get_must_be_material_group(
         duel: &Duel,
         tp: u8,
@@ -943,13 +955,22 @@ pub mod aux {
         _sump: u8,
         _sc: Option<CardId>,
         _g: Option<CardSet>,
-        _r: u32,
+        r: u32,
     ) -> CardSet {
-        unported!(
-            duel,
-            duel.may_have_effect(EFFECT_MUST_BE_MATERIAL) && !duel.get_player_effect(tp, EFFECT_MUST_BE_MATERIAL).is_empty()
-        );
-        CardSet::default()
+        let mut sg = CardSet::default();
+        if !duel.may_have_effect(EFFECT_MUST_BE_MATERIAL) {
+            return sg;
+        }
+        for te in duel.get_player_effect(tp, EFFECT_MUST_BE_MATERIAL) {
+            let Value::Int(val) = te.get_value(duel) else {
+                unported!(duel, true);
+                continue;
+            };
+            if val as u32 & r > 0 {
+                sg.insert(te.get_handler(duel));
+            }
+        }
+        sg
     }
 
     // Per usable EFFECT_EXTRA_MATERIAL effect the materials its value offers (chk 0, which may register effects), and all.
@@ -1669,6 +1690,8 @@ pub trait CardUtility: Copy {
     fn is_non_effect_monster(self, duel: &Duel) -> bool;
     fn is_in_main_mzone(self, duel: &Duel, tp: Option<u8>) -> bool;
     fn is_sequence(self, duel: &Duel, sequence: u32) -> bool;
+    fn check_adjacent(self, duel: &Duel) -> bool;
+    fn move_adjacent(self, duel: &mut Duel, sel_player: Option<u8>) -> Script<()>;
     fn has_counter(self, duel: &Duel, counter: u16) -> bool;
     fn has_equip_card(self, duel: &Duel) -> bool;
     fn has_level(self, duel: &Duel) -> bool;
@@ -2012,6 +2035,40 @@ impl CardUtility for CardId {
 
     fn is_in_main_mzone(self, duel: &Duel, tp: Option<u8>) -> bool {
         self.is_location(duel, LOCATION_MMZONE) && tp.is_none_or(|tp| self.is_controler(duel, tp))
+    }
+
+    fn check_adjacent(self, duel: &Duel) -> bool {
+        let (p, seq) = (self.get_controler(duel), self.get_sequence(duel));
+        seq <= 4
+            && ((seq > 0 && duel.check_location(p, LOCATION_MZONE, seq - 1))
+                || (seq < 4 && duel.check_location(p, LOCATION_MZONE, seq + 1)))
+    }
+
+    fn move_adjacent(self, duel: &mut Duel, sel_player: Option<u8>) -> Script<()> {
+        let (seq, targ_player) = (self.get_sequence(duel), self.get_controler(duel));
+        if seq > 4 {
+            return Ok(());
+        }
+        let free = |sequence: u32| duel.check_location(targ_player, LOCATION_MZONE, sequence);
+        let flag = [seq.checked_sub(1), Some(seq + 1).filter(|&next| next <= 4)]
+            .into_iter()
+            .flatten()
+            .filter(|&sequence| free(sequence))
+            .fold(0, |flag, sequence| flag | 1 << sequence);
+        if flag == 0 {
+            return Ok(());
+        }
+        let sel_player = sel_player.unwrap_or(targ_player);
+        let (loc1, loc2, shift) = if targ_player == sel_player {
+            (LOCATION_MZONE as u16, 0, 0)
+        } else {
+            (0, LOCATION_MZONE as u16, 16)
+        };
+        duel.hint(HINT_SELECTMSG, sel_player, HINTMSG_TOZONE);
+        if let Some(zone) = duel.select_disable_field(sel_player, 1, loc1, loc2, !(flag << shift))? {
+            duel.move_sequence(self, (zone >> shift).trailing_zeros() as u8)?;
+        }
+        Ok(())
     }
 
     fn has_counter(self, duel: &Duel, counter: u16) -> bool {

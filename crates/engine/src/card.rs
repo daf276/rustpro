@@ -3102,7 +3102,7 @@ impl Duel {
             .binary_search_by_key(&(card, counter_type), |&(other, other_type, _)| (other, other_type))
     }
 
-    pub(crate) fn get_counter(&self, card: CardId, counter_type: u16) -> u16 {
+    pub(crate) fn field_get_counter(&self, card: CardId, counter_type: u16) -> u16 {
         self.counter_slot(card, counter_type)
             .ok()
             .and_then(|slot| self.counters.get(slot))
@@ -3196,7 +3196,7 @@ impl Duel {
         let counter_type = counter_type & !COUNTER_NEED_ENABLE;
         let count = if singly { 1 } else { count };
         self.counter_limit(card, counter_type)
-            .is_none_or(|limit| u32::from(self.get_counter(card, counter_type)) + u32::from(count) <= limit)
+            .is_none_or(|limit| u32::from(self.field_get_counter(card, counter_type)) + u32::from(count) <= limit)
     }
 
     // The lowest EFFECT_COUNTER_LIMIT value of the card for this counter, None where no effect limits it.
@@ -3214,7 +3214,7 @@ impl Duel {
         let cttype = counter_type & !COUNTER_NEED_ENABLE;
         let mut count = count;
         if singly && let Some(limit) = self.counter_limit(card, cttype) {
-            count = count.min((limit as u16).wrapping_sub(self.get_counter(card, cttype)));
+            count = count.min((limit as u16).wrapping_sub(self.field_get_counter(card, cttype)));
         }
         self.debug_pre_add_counter(card, counter_type, count);
         let current = self.cards[card].current;
@@ -3287,7 +3287,7 @@ impl Duel {
             }
             let info = &self.player[player];
             for card in info.list_mzone.into_iter().chain(info.list_szone).flatten() {
-                count += u32::from(self.get_counter(card, counter_type));
+                count += u32::from(self.field_get_counter(card, counter_type));
             }
         }
         count
@@ -3303,7 +3303,7 @@ impl Duel {
         count: u16,
     ) -> bool {
         let enough = match card {
-            Some(card) => self.get_counter(card, counter_type) >= count,
+            Some(card) => self.field_get_counter(card, counter_type) >= count,
             None => self.get_field_counter(playerid, self_side, oppo, counter_type) >= u32::from(count),
         };
         if enough {

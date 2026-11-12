@@ -509,7 +509,7 @@ impl Duel {
             return false;
         };
         self.removed_counters() < i32::from(count)
-            && i32::from(self.returns.at_i16(usize::from(index))) < i32::from(self.get_counter(card, counter_type))
+            && i32::from(self.returns.at_i16(usize::from(index))) < i32::from(self.field_get_counter(card, counter_type))
     }
 
     fn removed_counters(&self) -> i32 {

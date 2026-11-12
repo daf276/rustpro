@@ -1,0 +1,125 @@
+// Archfiend's Ascent
+use crate::prelude::*;
+use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
+use engine::constants::MSG_SELECT_EFFECTYN;
+
+const ID: u32 = 61248471;
+
+pub const LISTED_NAMES: &[u32] = &[CARD_SUMMONED_SKULL];
+// In the Extra Deck, Xyz Summoned with two Level 6 Summoned Skulls, with Summoned Skulls in the Deck and the opponent's Raigeki.
+pub const SUPPORT: &[(u32, u16)] = &[
+    (ID, EXTRA),
+    (ID, EXTRA),
+    (CARD_SUMMONED_SKULL, MZONE),
+    (CARD_SUMMONED_SKULL, MZONE),
+    (CARD_SUMMONED_SKULL, MZONE),
+    (CARD_SUMMONED_SKULL, DECK),
+    (CARD_SUMMONED_SKULL, DECK),
+    (12580477, HAND | OPPONENT),
+];
+// The replacement is a continuous effect that forms no chain link.
+pub const CHECKS: &[Check] = &[Check::Resolves, Check::Message(MSG_SELECT_EFFECTYN)];
+
+struct Procedure;
+
+impl XyzProcedure for Procedure {
+    const LV: Option<u32> = Some(6);
+    const CT: usize = 2;
+}
+
+pub fn initial_effect(duel: &mut Duel, c: CardId) {
+    c.enable_revive_limit(duel);
+    Xyz::add_procedure::<Procedure>(duel, c);
+    let e1 = duel.create_effect(c);
+    e1.set_type(duel, EFFECT_TYPE_SINGLE);
+    e1.set_property(duel, EFFECT_FLAG_SINGLE_RANGE);
+    e1.set_code(duel, EFFECT_CHANGE_CODE);
+    e1.set_range(duel, LOCATION_MZONE);
+    e1.set_value(duel, CARD_SUMMONED_SKULL as i32);
+    c.register_effect(duel, e1);
+    let e2 = duel.create_effect(c);
+    e2.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
+    e2.set_code(duel, EFFECT_DESTROY_REPLACE);
+    e2.set_range(duel, LOCATION_MZONE);
+    e2.set_target(duel, reptg);
+    e2.set_value(
+        duel,
+        Value::Card(|duel, e, c| i32::from(repfilter(c, duel, e.get_handler_player(duel)))),
+    );
+    e2.set_operation(duel, repop);
+    c.register_effect(duel, e2);
+    let e3 = duel.create_effect(c);
+    e3.set_category(duel, CATEGORY_SPECIAL_SUMMON);
+    e3.set_type(duel, EFFECT_TYPE_SINGLE + EFFECT_TYPE_TRIGGER_O);
+    e3.set_code(duel, EVENT_TO_GRAVE);
+    e3.set_property(duel, EFFECT_FLAG_DELAY + EFFECT_FLAG_DAMAGE_STEP);
+    e3.set_condition(duel, spcon);
+    e3.set_target(duel, sptg);
+    e3.set_operation(duel, spop);
+    c.register_effect(duel, e3);
+}
+
+fn repfilter(c: CardId, duel: &Duel, tp: u8) -> bool {
+    c.is_faceup(duel)
+        && c.is_code(duel, CARD_SUMMONED_SKULL)
+        && c.is_location(duel, LOCATION_MZONE)
+        && c.is_controler(duel, tp)
+        && c.is_reason(duel, REASON_BATTLE | REASON_EFFECT)
+        && !c.is_reason(duel, REASON_REPLACE)
+}
+
+fn reptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+    let tp = a.tp;
+    let c = a.e.get_handler(duel);
+    if chk == 0 {
+        return Ok(a.eg.is_some_and(|eg| eg.is_exists(duel, |c, duel| repfilter(c, duel, tp), 1, None))
+            && c.check_remove_overlay_card(duel, tp, 1, REASON_EFFECT));
+    }
+    duel.select_effect_yes_no_full(tp, c, 96)
+}
+
+fn repop(duel: &mut Duel, a: &Args) -> Script<()> {
+    a.e.get_handler(duel).remove_overlay_card(duel, a.tp, 1, 1, REASON_EFFECT)?;
+    Ok(())
+}
+
+fn spcon(duel: &Duel, a: &Args) -> bool {
+    let (tp, c) = (a.tp, a.e.get_handler(duel));
+    c.is_previous_location(duel, LOCATION_MZONE) && c.is_xyz_summoned(duel) && a.rp == 1 - tp && c.is_previous_controler(duel, tp)
+}
+
+fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
+    c.is_code(duel, CARD_SUMMONED_SKULL) && c.is_can_be_special_summoned(duel, e, 0, tp, false, false)
+}
+
+fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+    stock::special_summon_target(
+        duel,
+        a,
+        chk,
+        |c, duel| spfilter(c, duel, a.e, a.tp),
+        LOCATION_HAND | LOCATION_DECK | LOCATION_GRAVE,
+    )
+}
+
+fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
+    let (e, tp) = (a.e, a.tp);
+    if duel.get_location_count(tp, LOCATION_MZONE) <= 0 {
+        return Ok(());
+    }
+    duel.hint(HINT_SELECTMSG, tp, HINTMSG_SPSUMMON);
+    let g = duel.select_matching_card(
+        tp,
+        aux::necro_valley_filter(|c, duel| spfilter(c, duel, e, tp)),
+        tp,
+        LOCATION_HAND | LOCATION_DECK | LOCATION_GRAVE,
+        0,
+        1,
+        1,
+        None,
+    )?;
+    if let Some(tc) = g.get_first() {
+        duel.special_summon(tc, 0, tp, tp, false, false, POS_FACEUP)?;
+    }
+    Ok(())
+}

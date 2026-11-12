@@ -4933,7 +4933,7 @@ impl Duel {
         match arg.step {
             0 => {
                 let available = match card {
-                    Some(card) => self.get_counter(card, counter_type) >= count,
+                    Some(card) => self.field_get_counter(card, counter_type) >= count,
                     None => self.get_field_counter(arg.rplayer, arg.self_side, arg.oppo, counter_type) != 0,
                 };
                 unported!(

@@ -391,10 +391,13 @@ impl Duel {
                 if included != 0 {
                     let info = &self.player[player];
                     let zones = info.list_mzone.into_iter().chain(info.list_szone).flatten();
-                    cards.extend(zones.filter(|&card| self.get_counter(card, counter_type) != 0));
+                    cards.extend(zones.filter(|&card| self.field_get_counter(card, counter_type) != 0));
                 }
             }
-            let total: u32 = cards.iter().map(|&card| u32::from(self.get_counter(card, counter_type))).sum();
+            let total: u32 = cards
+                .iter()
+                .map(|&card| u32::from(self.field_get_counter(card, counter_type)))
+                .sum();
             arg.capped = u32::from(arg.count).min(total) as u16;
             if cards.len() == 1 {
                 self.core.select_cards = cards;
@@ -402,7 +405,10 @@ impl Duel {
                 return true;
             }
             cards.sort_by(|&c1, &c2| self.card_operation_sort(c1, c2));
-            let counters: List<(CardId, u16), 16> = cards.iter().map(|&card| (card, self.get_counter(card, counter_type))).collect();
+            let counters: List<(CardId, u16), 16> = cards
+                .iter()
+                .map(|&card| (card, self.field_get_counter(card, counter_type)))
+                .collect();
             self.core.select_cards = cards;
             let mut message = self.trace.message(MSG_SELECT_COUNTER);
             message
@@ -425,7 +431,7 @@ impl Duel {
         }
         let answers = || {
             let cards = self.core.select_cards.iter().enumerate();
-            cards.map(|(index, &card)| (self.get_counter(card, counter_type), self.returns.at_i16(index)))
+            cards.map(|(index, &card)| (self.field_get_counter(card, counter_type), self.returns.at_i16(index)))
         };
         let over = answers().any(|(counters, answer)| i32::from(counters) < i32::from(answer));
         let total = answers().fold(0u16, |total, (_, answer)| total.wrapping_add(answer as u16));

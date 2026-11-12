@@ -1521,8 +1521,8 @@ impl CardId {
         duel.xyz_materials(self).len()
     }
 
-    pub fn check_remove_overlay_card(self, duel: &Duel, player: u8, count: u16, _reason: u32) -> bool {
-        player <= 1 && duel.is_player_can_remove_overlay_card(player, Some(self.into()), 0, 0, count)
+    pub fn check_remove_overlay_card(self, duel: &Duel, player: u8, count: u16, reason: u32) -> bool {
+        player <= 1 && duel.is_player_can_remove_overlay_card(player, Some(self.into()), 0, 0, count, reason)
     }
 
     pub fn remove_overlay_card(self, duel: &mut Duel, player: u8, min: u16, max: u16, reason: u32) -> Script<i32> {

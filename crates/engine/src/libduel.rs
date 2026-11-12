@@ -2468,10 +2468,10 @@ impl Duel {
         self_side: u8,
         oppo: u8,
         count: u16,
-        _reason: u32,
+        reason: u32,
         group: Option<CardSet>,
     ) -> bool {
-        player <= 1 && self.is_player_can_remove_overlay_card(player, group, self_side, oppo, count)
+        player <= 1 && self.is_player_can_remove_overlay_card(player, group, self_side, oppo, count, reason)
     }
 
     pub fn remove_overlay_card(&mut self, player: u8, self_side: u8, oppo: u8, min: u16, max: u16, reason: u32) -> Script<i32> {

@@ -229,7 +229,7 @@ impl Synchro {
     }
 
     // synchktg of Synchro.CreateHandMaterialEffect.
-    fn hand_material_check<H: HandMaterial>(
+    pub fn hand_material_check<H: HandMaterial>(
         duel: &Duel,
         _e: EffectId,
         c: Option<CardId>,
@@ -1189,8 +1189,15 @@ impl Synchro {
                 handmatfilter.use_count_limit(duel, a.tp);
             }
         }
-        unported!(duel, g.is_exists(duel, |mc, duel| mc.get_flag_effect(duel, 3096468) != 0, 1, None));
-        duel.send_to_grave(g, REASON_MATERIAL + REASON_SYNCHRO)?;
+        let tatsunecro_materials = g.filter(duel, |mc, duel| mc.get_flag_effect(duel, 3096468) != 0, None);
+        for tc in tatsunecro_materials {
+            tc.reset_flag_effect(duel, 3096468);
+        }
+        if tatsunecro_materials.is_empty() {
+            duel.send_to_grave(g, REASON_MATERIAL + REASON_SYNCHRO)?;
+        } else {
+            duel.remove(g, POS_FACEUP, REASON_MATERIAL + REASON_SYNCHRO)?;
+        }
         duel.set_synchro_check_additional(None);
         Ok(())
     }

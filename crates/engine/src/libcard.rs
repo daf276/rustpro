@@ -761,6 +761,10 @@ impl CardId {
         duel.attacked_cards.iter().filter(|entry| entry.0 == self).count()
     }
 
+    pub fn is_direct_attacked(self, duel: &Duel) -> bool {
+        duel.attacked_cards.contains(&(self, 0))
+    }
+
     pub fn get_battled_group_count(self, duel: &Duel) -> usize {
         duel.battled_cards.iter().filter(|entry| entry.0 == self).count()
     }

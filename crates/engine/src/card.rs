@@ -7,7 +7,7 @@ use carddata::Card as CardData;
 
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{Container, EffectId, EffectSet, Operation, Target, Value, container_key, misread};
+use crate::effect::{Container, EffectId, EffectSet, Event, Operation, Target, Value, container_key, misread};
 use crate::field::{Cards8, PerPlayer};
 use crate::list::{List, Marks};
 use crate::script::{Args, Procedure};
@@ -3308,12 +3308,25 @@ impl Duel {
         self_side: u8,
         oppo: u8,
         min: u16,
+        reason: u32,
     ) -> bool {
         if self.field_overlay_group(playerid, self_side, oppo, group).len() >= usize::from(min) {
             return true;
         }
-        unported!(self, self.field_effect_range(Container::Continuous, EFFECT_OVERLAY_REMOVE_REPLACE));
-        false
+        let event = Event {
+            event_player: playerid,
+            event_value: u32::from(min),
+            reason,
+            reason_effect: self.core.reason_effect.get(),
+            reason_player: playerid,
+            ..Event::default()
+        };
+        self.field_effect_range(Container::Continuous, EFFECT_OVERLAY_REMOVE_REPLACE)
+            .into_iter()
+            .any(|effect| {
+                let handler_player = self.get_handler_player(effect);
+                self.check_mut(|duel| duel.is_activateable(effect, handler_player, &event, false, false, false, false, false))
+            })
     }
 }
 

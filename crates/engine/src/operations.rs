@@ -4988,6 +4988,8 @@ pub struct RemoveOverlay {
     pub oppo: u8,
     pub min: u16,
     pub max: u16,
+    pub has_used_overlay_remove_replace_effect: bool,
+    pub replaced_amount: i32,
 }
 
 // Duel.Overlay: the materials' own materials go along unless `send_materials_to_grave` sends them to the GY.
@@ -5019,6 +5021,7 @@ impl Duel {
             oppo,
             min,
             max,
+            ..RemoveOverlay::default()
         });
     }
 
@@ -5035,16 +5038,90 @@ impl Duel {
         let (rplayer, reason) = (arg.rplayer, arg.reason);
         match arg.step {
             0 => {
-                let available = self.field_overlay_group(rplayer, arg.self_side, arg.oppo, arg.group).len() >= usize::from(arg.min);
-                unported!(self, self.field_effect_range(Container::Continuous, EFFECT_OVERLAY_REMOVE_REPLACE));
+                self.core.select_options.clear();
+                self.core.select_effects.clear();
+                if self.field_overlay_group(rplayer, arg.self_side, arg.oppo, arg.group).len() >= usize::from(arg.min) {
+                    self.core.select_options.push(12);
+                }
+                let event = Event {
+                    event_player: rplayer,
+                    event_value: u32::from(arg.min),
+                    reason,
+                    reason_effect: self.core.reason_effect.get(),
+                    reason_player: rplayer,
+                    ..Event::default()
+                };
+                for effect in self.field_effect_range(Container::Continuous, EFFECT_OVERLAY_REMOVE_REPLACE) {
+                    let handler_player = self.get_handler_player(effect);
+                    if self.is_activateable(effect, handler_player, &event, false, false, false, false, false) {
+                        self.core.select_options.push(self.effects[effect].description);
+                        self.core.select_effects.push(effect);
+                    }
+                }
                 self.returns.set_i32(0, 0);
-                !available
+                let options = self.core.select_options.len();
+                if options == 0 {
+                    return true;
+                }
+                if options == 1 {
+                    return false;
+                }
+                if options == 2 && self.core.select_effects.len() == 1 {
+                    let effect = self.core.select_effects.first().copied().unwrap_or_default();
+                    let handler = self.get_handler(effect);
+                    self.field_select_effect_yes_no(rplayer, 219, handler);
+                } else {
+                    self.emplace_process(SelectOption {
+                        playerid: rplayer,
+                        ..SelectOption::default()
+                    });
+                }
+                false
             }
-            1 => false,
+            1 => {
+                let offset = self.core.select_options.len().saturating_sub(self.core.select_effects.len());
+                let selected = usize::try_from(self.returns.at_i32(0))
+                    .ok()
+                    .and_then(|index| index.checked_sub(offset));
+                if let Some(&effect) = selected.and_then(|index| self.core.select_effects.get(index)) {
+                    let event = Event {
+                        event_player: rplayer,
+                        event_value: u32::from(arg.min) + (u32::from(arg.max) << 16),
+                        reason,
+                        reason_effect: self.core.reason_effect.get(),
+                        reason_player: rplayer,
+                        ..Event::default()
+                    };
+                    self.solve_continuous(rplayer, effect, event);
+                    arg.has_used_overlay_remove_replace_effect = true;
+                }
+                false
+            }
             2 => {
+                let (mut min, mut max) = (arg.min, arg.max);
+                let mut cancelable = false;
+                if arg.has_used_overlay_remove_replace_effect {
+                    let replace_count = self.returns.at_i32(0);
+                    if replace_count >= i32::from(max) {
+                        return true;
+                    }
+                    min = min.wrapping_sub(replace_count as u16);
+                    max = max.wrapping_sub(replace_count as u16);
+                    if min == 0 {
+                        cancelable = true;
+                    }
+                    arg.replaced_amount = replace_count;
+                }
                 let cards = self.field_overlay_group(rplayer, arg.self_side, arg.oppo, arg.group);
                 self.core.select_cards = cards.iter().collect();
-                self.prompt_select_card(rplayer, HINTMSG_REMOVEXYZ, arg.min as u8, arg.max as u8);
+                self.trace.message(MSG_HINT).u8(HINT_SELECTMSG).u8(rplayer).u64(HINTMSG_REMOVEXYZ);
+                self.emplace_process(SelectCard {
+                    playerid: rplayer,
+                    cancelable,
+                    min: min as u8,
+                    max: max as u8,
+                    ..SelectCard::default()
+                });
                 false
             }
             3 => {
@@ -5052,6 +5129,10 @@ impl Duel {
                 let reason_effect = self.core.reason_effect.get();
                 self.field_send_to_grave(cards, reason_effect, reason, rplayer, PLAYER_NONE);
                 false
+            }
+            4 => {
+                self.returns.set_i32(0, self.returns.at_i32(0) + arg.replaced_amount);
+                true
             }
             _ => true,
         }

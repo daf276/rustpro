@@ -10,9 +10,13 @@ pub fn is_triggering_location(duel: &Duel, ch: u8, location: u32) -> bool {
         || duel.get_chain_info::<u32>(ch, CHAININFO_TRIGGERING_LOCATION_SYMBOLIC) & location != 0
 }
 
-// Chain.IsTriggeringControler, IsTriggeringType and IsTriggeringSetcode, false where they return nil (no such link).
+// Chain.IsTriggeringControler, IsTriggeringPlayer, IsTriggeringType and IsTriggeringSetcode, false where they return nil (no such link).
 pub fn is_triggering_controler(duel: &Duel, ch: u8, player: u8) -> bool {
     duel.get_chain_info::<Option<u8>>(ch, CHAININFO_TRIGGERING_CONTROLER) == Some(player)
+}
+
+pub fn is_triggering_player(duel: &Duel, ch: u8, player: u8) -> bool {
+    duel.get_chain_info::<Option<u8>>(ch, CHAININFO_TRIGGERING_PLAYER) == Some(player)
 }
 
 pub fn is_triggering_type(duel: &Duel, ch: u8, card_type: u32) -> bool {

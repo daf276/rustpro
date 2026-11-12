@@ -1128,13 +1128,27 @@ impl Duel {
     }
 
     pub fn damage(&mut self, player: u8, amount: u32, reason: u32) -> Script<u32> {
+        self.damage_full(player, amount, reason, false, None)
+    }
+
+    // Duel.Damage with its step flag and reason player (None for the effect's player); a damage in steps waits for Duel.RDComplete.
+    pub fn damage_full(&mut self, player: u8, amount: u32, reason: u32, is_step: bool, reason_player: Option<u8>) -> Script<u32> {
         if player > 1 {
             return Ok(0);
         }
-        let (reason_effect, reason_player) = (self.core.reason_effect.get(), self.core.reason_player.get());
-        self.field_damage(reason_effect, reason, reason_player, None, player, amount);
+        let reason_effect = self.core.reason_effect.get();
+        let reason_player = reason_player
+            .filter(|&rp| rp <= PLAYER_NONE)
+            .unwrap_or_else(|| self.core.reason_player.get());
+        self.field_damage(reason_effect, reason, reason_player, None, player, amount, is_step);
         self.yield_script()?;
         Ok(self.returns.at_u32(0))
+    }
+
+    pub fn rd_complete(&mut self) -> Script<()> {
+        let reserve = std::mem::take(&mut self.core.recover_damage_reserve);
+        self.core.subunits.extend(reserve);
+        self.yield_script()
     }
 
     pub fn recover(&mut self, player: u8, amount: u32, reason: u32) -> Script<u32> {

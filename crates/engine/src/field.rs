@@ -239,6 +239,8 @@ impl ReturnCards {
 pub struct Processor {
     pub units: Vec<Unit>,
     pub subunits: Vec<Unit>,
+    // The damage of Duel.Damage in steps, run by Duel.RDComplete.
+    pub recover_damage_reserve: Vec<Unit>,
     pub just_sent_cards: CardSet,
     pub select_cards: Cards16,
     pub unselect_cards: Cards16,
@@ -406,6 +408,7 @@ pub struct Processor {
 clone_by_field!(Processor {
     units,
     subunits,
+    recover_damage_reserve,
     just_sent_cards,
     select_cards,
     unselect_cards,

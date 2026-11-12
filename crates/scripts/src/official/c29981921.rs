@@ -26,7 +26,7 @@ pub const CHECKS: &[Check] = &[
     Check::CardHint(aux::stringid(16968936, 2)),
 ];
 
-struct Procedure;
+pub struct Procedure;
 
 impl SynchroProcedure for Procedure {
     const MAX2: usize = 99;

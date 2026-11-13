@@ -299,7 +299,7 @@ impl Duel {
         }
     }
 
-    // A check whose Lua registers and resets effects, run on a copy; brings back what later lookups tell apart (ids, resets, messages).
+    // A check whose Lua registers and resets effects, run on a copy; brings back what later lookups see (ids, resets, messages, assumes).
     pub fn check_mut<T>(&self, check: impl FnOnce(&mut Duel) -> T) -> T {
         let mut copy = self.clone();
         copy.reset_pending();
@@ -308,6 +308,7 @@ impl Duel {
         self.trace.count.swap(&copy.trace.count);
         self.trace.mute.swap(&copy.trace.mute);
         self.script_state.swap(&copy.script_state);
+        self.assumes.swap(&copy.assumes);
         debug_assert!(
             copy.effects.added_since(&self.effects).next().is_none(),
             "a check kept an effect it registered"

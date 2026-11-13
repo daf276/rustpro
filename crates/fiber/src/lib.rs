@@ -77,6 +77,16 @@ impl Fiber {
         })
     }
 
+    // [Duel::pass_turn]; a function prompting in the next turn waits there as after [Fiber::apply].
+    pub fn pass_turn(&mut self, actions: &mut Vec<Action>) -> Status {
+        let status = match self.current_mut().begin_pass(actions) {
+            Some(status) => status,
+            None => self.run(Resumed::Answered),
+        };
+        self.current_mut().end_pass(actions);
+        status
+    }
+
     // A script function waits at the prompt, which a clone reruns from its snapshot.
     pub fn is_waiting(&self) -> bool {
         self.waiting.is_some()

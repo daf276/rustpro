@@ -192,6 +192,15 @@ fn bits(mask: u64) -> impl Iterator<Item = u8> {
     (0..64).filter(move |&bit| has_bit(mask, bit))
 }
 
+// What a player who passes answers, in this order of preference ([Duel::pass_action]).
+const PASSES: [Action; 5] = [
+    Action::Chain(None),
+    Action::IdleCommand(IdleCommand::ToEnd),
+    Action::BattleCommand(BattleCommand::ToEnd),
+    Action::YesNo(false),
+    Action::Finish,
+];
+
 // Monster zone 7 does not exist; see SelectPlace in playerop.cpp.
 const ZONES: u32 = 0xff7f_ff7f;
 const POSITIONS: [u32; 4] = [POS_FACEUP_ATTACK, POS_FACEDOWN_ATTACK, POS_FACEUP_DEFENSE, POS_FACEDOWN_DEFENSE];
@@ -633,6 +642,82 @@ impl Duel {
             _ => return Err(ActionError::Illegal(action)),
         }
         Ok(true)
+    }
+
+    // Cancel, the hand shuffle and putting a card back at an UnselectCard prompt, which only undo or repeat a step.
+    pub fn is_redundant(&self, action: Action) -> bool {
+        match action {
+            Action::Cancel | Action::IdleCommand(IdleCommand::Shuffle) => true,
+            Action::Card(index) => {
+                matches!(self.prompt(), Some(Prompt::UnselectCard { .. })) && usize::from(index) >= self.selectable_count()
+            }
+            _ => false,
+        }
+    }
+
+    // A passing player's answer: of the policy actions the first of [PASSES], else the first not redundant, else the first
+    // (the first cards of a mandatory selection, say).
+    pub fn pass_action(&self) -> Option<Action> {
+        let pass = match self.prompt()? {
+            Prompt::Chain { forced: false, .. } => Some(Action::Chain(None)),
+            Prompt::IdleCommand { .. } if self.core.to_ep => Some(Action::IdleCommand(IdleCommand::ToEnd)),
+            Prompt::BattleCommand { .. } if self.core.to_ep => Some(Action::BattleCommand(BattleCommand::ToEnd)),
+            Prompt::YesNo { .. } | Prompt::EffectYesNo { .. } => Some(Action::YesNo(false)),
+            _ => None,
+        };
+        pass.or_else(|| {
+            let actions = self.policy_actions();
+            let pass = PASSES.into_iter().find(|action| actions.contains(action));
+            let kept = || actions.iter().copied().find(|&action| !self.is_redundant(action));
+            pass.or_else(kept).or_else(|| actions.first().copied())
+        })
+    }
+
+    // Answers every prompt of both players with [Duel::pass_action], pushing each answer to `actions`, up to the first prompt
+    // of the next turn (once its turn start reset the turn's counts and recharged the count limits), the end of the duel, or a
+    // prompt without a pass action.
+    pub fn pass_turn(&mut self, actions: &mut Vec<Action>) -> Status {
+        let status = self.begin_pass(actions).unwrap_or_else(|| self.run());
+        self.end_pass(actions);
+        status
+    }
+
+    // [Duel::pass_turn] for a runner of its own: answers the prompt that waits, then None for the runner to run the duel, or
+    // the status if it does not run; [Duel::end_pass] gives back `actions`.
+    pub fn begin_pass(&mut self, actions: &mut Vec<Action>) -> Option<Status> {
+        self.replay.passing.0 = Some((self.infos.turn_id, std::mem::take(actions)));
+        if self.result.is_some() {
+            return Some(Status::End);
+        }
+        (self.prompt().is_some() && !self.answer_passing()).then_some(Status::Awaiting)
+    }
+
+    pub fn end_pass(&mut self, actions: &mut Vec<Action>) {
+        if let Some((_, passed)) = self.replay.passing.0.take() {
+            *actions = passed;
+        }
+    }
+
+    pub(crate) fn is_passing(&self) -> bool {
+        self.replay.passing.0.as_ref().is_some_and(|&(turn, _)| turn == self.infos.turn_id)
+    }
+
+    // True once the prompt is answered, while passing.
+    pub(crate) fn answer_passing(&mut self) -> bool {
+        if !self.is_passing() {
+            return false;
+        }
+        while let Some(action) = self.pass_action()
+            && let Ok(complete) = self.answer(action)
+        {
+            if let Some((_, actions)) = &mut self.replay.passing.0 {
+                actions.push(action);
+            }
+            if complete {
+                return true;
+            }
+        }
+        false
     }
 
     // Decodes ocgcore response bytes for the current prompt into the actions that give the same response.

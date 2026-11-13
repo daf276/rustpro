@@ -108,7 +108,7 @@ fn rmop(duel: &mut Duel, a: &Args) -> Script<()> {
     };
     duel.hint_selection(sc);
     let temp_banish_eff =
-        aux::remove_until_reset::<aux::DefaultFieldReturnOp>(duel, sc, 0, REASON_EFFECT, (PHASE_END, RESET_CHAIN), ID, e, tp, 0)?;
+        aux::remove_until_full::<aux::DefaultFieldReturnOp>(duel, sc, 0, REASON_EFFECT, (PHASE_END, RESET_CHAIN), ID, e, tp, 1, 0)?;
     // Lua errors on a nil effect
     unported!(duel, temp_banish_eff.is_none());
     let Some(temp_banish_eff) = temp_banish_eff else {

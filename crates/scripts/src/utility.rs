@@ -1761,6 +1761,7 @@ pub trait CardUtility: Copy {
     fn get_scale(self, duel: &Duel) -> u32;
     fn is_odd_scale(self, duel: &Duel) -> bool;
     fn is_even_scale(self, duel: &Duel) -> bool;
+    fn is_scale(self, duel: &Duel, scales: &[u32]) -> bool;
     fn is_effect_monster(self, duel: &Duel) -> bool;
     fn is_non_effect_monster(self, duel: &Duel) -> bool;
     fn is_in_main_mzone(self, duel: &Duel, tp: Option<u8>) -> bool;
@@ -2180,6 +2181,10 @@ impl CardUtility for CardId {
 
     fn is_even_scale(self, duel: &Duel) -> bool {
         self.is_type(duel, TYPE_PENDULUM) && self.get_scale(duel).is_multiple_of(2)
+    }
+
+    fn is_scale(self, duel: &Duel, scales: &[u32]) -> bool {
+        scales.contains(&self.get_scale(duel))
     }
 
     fn is_effect_monster(self, duel: &Duel) -> bool {

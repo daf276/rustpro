@@ -106,8 +106,9 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   (`Message(MSG_DAMAGE)` and the like), as `Report` if other cards do the same. `aux.SpElimFilter(c, true)` with a nil
   third argument accepts only Graveyard monsters.
 - The card under test is placed besides its own `SUPPORT` copies: a `SetUniqueOnField` card gets none there.
-- A Link Monster `SUPPORT` places never sits in an Extra Monster Zone, so effects on the zones it points to need a
-  real Link Summon.
+- A Link Monster `SUPPORT` places can land in an Extra Monster Zone or a Main Monster Zone; one with only bottom arrows
+  points at nothing from a Main Monster Zone, so its pointing effects may need a real Link Summon.
+- A card's own `SPSUMMON_PROC` target gets the summoning card in `a.c`, not in `chkc`.
 - A 2-material Link Summon in `SUPPORT` needs about 4 materials in `MZONE` (placed monsters are often face-down) and 2
   Extra Deck copies. A Flip effect needs 3-5 face-down copies in `MZONE`, an attacker such as Elfnote Lucina (13597785)
   in `MZONE | OPPONENT`, and no Dark Hole in hand (put it in `DECK`). An optional trigger on being discarded needs

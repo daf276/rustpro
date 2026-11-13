@@ -505,7 +505,8 @@ impl Duel {
                         | Operation::CodeCondition(_)
                         | Operation::FusionMaterial(_)
                         | Operation::CostReplace(_)
-                        | Operation::ZwEquip(_),
+                        | Operation::ZwEquip(_)
+                        | Operation::XyzMaterial(_),
                     )
                     | None => 0,
                 },

@@ -4,6 +4,8 @@ use crate::testing::{DECK, HAND, MZONE};
 
 const ID: u32 = 75014062;
 
+pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_SPELL];
+
 pub const LISTED_NAMES: &[u32] = &[ID];
 // Skilled White Magician to place a Spell Counter on and a second copy in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (46363422, MZONE), (ID, DECK), (ID, DECK)];

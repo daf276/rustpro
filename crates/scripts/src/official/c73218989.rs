@@ -5,6 +5,8 @@ use engine::constants::MSG_ADD_COUNTER;
 
 const ID: u32 = 73218989;
 
+pub const COUNTER_LIST: &[u16] = &[COUNTER_FEATHER];
+
 struct Procedure;
 
 impl SynchroProcedure for Procedure {

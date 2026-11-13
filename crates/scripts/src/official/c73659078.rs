@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 73659078;
+
+pub const COUNTER_LIST: &[u16] = &[COUNTER_ICE];
 const COUNTER_ICE: u16 = 0x1015;
 
 // Twice in the Extra Deck, Xyz Summoned with Level 4 WATER Normal Monsters, with more in the hand to reveal.

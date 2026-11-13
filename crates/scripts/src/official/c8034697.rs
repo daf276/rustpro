@@ -4,6 +4,8 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 8034697;
 
+pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_SPELL];
+
 // On the field, with Spellbook Organization in the hand to activate for Spell Counters.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (96677818, HAND), (96677818, HAND), (96677818, HAND), (96677818, HAND)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 1))];

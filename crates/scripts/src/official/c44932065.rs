@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 44932065;
 
+pub const COUNTER_LIST: &[u16] = &[COUNTER_PREDATOR];
+
 pub const LISTED_NAMES: &[u32] = &[ID];
 // In the Graveyard and on the field (Dark Hole sends it there), Predaplants to search, and Predaplant Longinephila in the
 // Graveyard and Elfnote Lucina in the opponent's monster zone to get a Predator Counter placed.

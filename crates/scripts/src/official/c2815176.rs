@@ -5,6 +5,8 @@ use engine::{Operation, Target};
 
 const ID: u32 = 2815176;
 
+pub const COUNTER_LIST: &[u16] = &[COUNTER_RESONANCE];
+
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // A Link Monster's Link Summon procedure, shared with Duralume: `RACE` is the Race of the Pendulum Monster that needs 3 Resonance Counters.

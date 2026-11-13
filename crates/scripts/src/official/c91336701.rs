@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 91336701;
+
+pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_SPELL];
 const SPELL_POWER_GRASP: u32 = 75014062;
 
 struct Procedure;

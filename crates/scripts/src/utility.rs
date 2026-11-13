@@ -1850,6 +1850,7 @@ pub trait CardUtility: Copy {
     fn announce_another_attribute(self, duel: &mut Duel, tp: u8) -> Script<u32>;
     fn announce_another_race(self, duel: &mut Duel, tp: u8) -> Script<u64>;
     fn is_race_except(self, duel: &Duel, race: u64) -> bool;
+    fn is_level_between(self, duel: &Duel, first_lv: u32, second_lv: u32) -> bool;
     fn get_to_be_linked_zone(self, duel: &Duel, c: CardId, tp: u8) -> u32;
     fn get_to_be_linked_zone_full(self, duel: &Duel, c: CardId, tp: u8, clink: bool, emz: bool) -> u32;
     fn update_level(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>) -> i32;
@@ -1959,6 +1960,10 @@ impl CardUtility for CardId {
     fn is_race_except(self, duel: &Duel, race: u64) -> bool {
         let own = self.get_race(duel);
         own & race != own
+    }
+
+    fn is_level_between(self, duel: &Duel, first_lv: u32, second_lv: u32) -> bool {
+        self.is_level_above(duel, first_lv.min(second_lv)) && self.is_level_below(duel, first_lv.max(second_lv))
     }
 
     // Card.GetToBeLinkedZone with the default clink and emz.

@@ -2,6 +2,7 @@
 // under a runner with its own stack (crate fiber) it waits at the prompt instead, and only copies of the duel rerun.
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
 
+use crate::action::Action;
 use crate::buffer::ProgressiveBuffer;
 use crate::card::{CardId, CardSet};
 use crate::duel::Duel;
@@ -133,6 +134,7 @@ pub struct Replay {
     pub interrupted: bool,
     // The running functions' effects and players, innermost last, restored as the reason after an action's units ran.
     pub stack: List<(EffectId, u8), 4>,
+    pub passing: Passing,
 }
 
 clone_by_field!(Replay {
@@ -145,8 +147,19 @@ clone_by_field!(Replay {
     units,
     apart,
     interrupted,
-    stack
+    stack,
+    passing
 });
+
+// The turn [Duel::pass_turn] passes and the answers it gave so far; a copy is not inside that call.
+#[derive(Debug, Default)]
+pub struct Passing(pub Option<(i16, Vec<Action>)>);
+
+impl Clone for Passing {
+    fn clone(&self) -> Self {
+        Self::default()
+    }
+}
 
 pub type Snapshot = Arc<Mutex<Duel>>;
 
@@ -359,17 +372,22 @@ impl Duel {
         Ok(())
     }
 
-    // A function's prompt waits here, shown on the outer units as an interrupted function's is, until the runner resumes it.
+    // A function's prompt waits here, shown on the outer units as an interrupted function's is, until the runner resumes it
+    // or [Duel::pass_turn] answers it.
     fn wait_for_answer(&mut self, units: &mut Vec<Unit>) -> bool {
-        let Some(suspend) = SUSPEND.get().filter(|_| self.replay.snapshot.is_some() && !self.replay.interrupted) else {
+        if self.replay.interrupted {
             return false;
-        };
+        }
+        let suspend = SUSPEND.get().filter(|_| self.replay.snapshot.is_some());
+        if suspend.is_none() && !self.is_passing() {
+            return false;
+        }
         let stack = std::mem::take(&mut self.replay.stack);
         self.core.units.extend(units.pop());
-        let resumed = suspend(self);
+        let answered = self.answer_passing() || suspend.is_some_and(|suspend| suspend(self) == Some(Resumed::Answered));
         units.extend(self.core.units.pop());
         self.replay.stack = stack;
-        if resumed != Some(Resumed::Answered) {
+        if !answered {
             return false;
         }
         self.replay.log.push(self.returns.data.clone());

@@ -420,6 +420,15 @@ impl Duel {
     }
 
     fn run_units(&mut self, to_script: bool) -> Option<Status> {
+        loop {
+            let status = self.run_to_prompt(to_script)?;
+            if status == Status::End || !self.answer_passing() {
+                return Some(status);
+            }
+        }
+    }
+
+    fn run_to_prompt(&mut self, to_script: bool) -> Option<Status> {
         // While units run, only emplace_process touches the unit stacks, and it pushes to core.subunits.
         let mut units = std::mem::take(&mut self.core.units);
         let status = loop {

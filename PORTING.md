@@ -224,6 +224,7 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   `s.dark_calling` is `pub const DARK_CALLING: bool = true` (read through `official::dark_calling(code)`),
   `s.xyz_number` is `pub const XYZ_NUMBER: u32` (`official::xyz_number(code)`), and a Synchro, Xyz or Link
   Monster's `s.material` is `pub const MATERIAL: &[u32]` (`official::material(code)`).
+  Run `python -I tools/check_metadata.py` after porting: it compares these consts with the Lua's values.
   `aux.Stringid(id, n)` is `aux::stringid(ID, n)`. A helper another card's file already has is reused through
   `super::c<code>::name`.
 - Every name of `constant.lua`, `card_counter_constants.lua` and `archetype_setcode_constants.lua` is in the prelude

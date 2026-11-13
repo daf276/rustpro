@@ -6,29 +6,17 @@ python tools/constants.py
 """
 import collections
 import re
+import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-SOURCES = ["constant.lua", "card_counter_constants.lua", "archetype_setcode_constants.lua"]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from common import ROOT, lua_constants
+
 TARGET = ROOT / "crates/scripts/src/constant.rs"
 # Families no existing name types: opcodes are u64 like Duel.AnnounceCard's stack, option strings u64 like HINTMSG,
 # races u64 like RACE, card hints u8 like HINT, win reasons u8 like MSG_WIN's byte.
 FAMILIES = {"OPCODE_": "u64", "DECLTYPE_": "u64", "SELECT_": "u64", "RACES_": "u64", "CHINT_": "u8", "PHINT_": "u8", "WIN_": "u8"}
 RANGES = {"u8": (0, 2**8), "u16": (0, 2**16), "u32": (0, 2**32), "u64": (0, 2**64), "i32": (-2**31, 2**31)}
-
-
-def lua_constants():
-    for source in SOURCES:
-        text = (ROOT / "vendor/CardScripts" / source).read_text(encoding="utf-8")
-        for line in re.sub(r"--\[\[.*?\]\]", "", text, flags=re.S).splitlines():
-            match = re.match(r"^(\w+)\s*=\s*(.+?)\s*$", line.split("--")[0])
-            if match:
-                yield match[1], strip_parentheses(match[2].replace("0X", "0x"))
-
-
-def strip_parentheses(expression):
-    depths = [expression[:end].count("(") - expression[:end].count(")") for end in range(1, len(expression))]
-    return expression[1:-1] if expression.startswith("(") and all(depths) else expression
 
 
 def infer(name, types):

@@ -602,7 +602,15 @@ impl Duel {
         if player > 1 {
             return 0;
         }
-        self.get_useable_count(None, player, location as u8, uplayer, reason, zone).0
+        self.get_location_count_flag(player, location, uplayer, reason, zone).0
+    }
+
+    // Duel.GetLocationCount with its second result: the zones that cannot be used.
+    pub fn get_location_count_flag(&self, player: u8, location: u32, uplayer: u8, reason: u32, zone: u32) -> (i32, u32) {
+        if player > 1 {
+            return (0, 0);
+        }
+        self.get_useable_count(None, player, location as u8, uplayer, reason, zone)
     }
 
     fn matching_cards(

@@ -4,6 +4,8 @@ use crate::testing::{GRAVE, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 42138622;
 
+pub const TOSS_COIN: bool = true;
+
 pub const LISTED_NAMES: &[u32] = &[CARD_CALL_OF_THE_HAUNTED];
 
 // Set, with a Zombie on the field and Call of the Haunted in the hand to bring one back, against the opponent's Spells.

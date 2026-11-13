@@ -6,11 +6,12 @@ use crate::testing::{Check, MZONE, OPPONENT};
 
 const ID: u32 = 25551951;
 
+pub const TOSS_COIN: bool = true;
+
 // On the field, with the opponent's Sangan to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (26202165, MZONE | OPPONENT)];
 pub const CHECKS: &[Check] = &[Check::Resolves, Check::Message(MSG_TOSS_COIN)];
 
-// s.toss_coin, which only cards that are not ported read, is left out.
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e1 = duel.create_effect(c);
     e1.set_description(duel, aux::stringid(ID, 0));

@@ -21,6 +21,11 @@ impl Duel {
         self.effects[effect].effect_owner = 0;
         effect
     }
+
+    // The effect whose `index` a script kept as a number (chain data, as Witchcrafter Pupils keeps its `te`).
+    pub fn effect_at(&self, index: usize) -> Option<EffectId> {
+        self.effects.at(index)
+    }
 }
 
 impl EffectId {

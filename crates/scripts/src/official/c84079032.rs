@@ -1,9 +1,10 @@
 // Bettan Bat
-// s.toss_coin, which only cards that are not ported read, is left out.
 use crate::prelude::*;
 use crate::testing::{Check, MZONE, OPPONENT};
 
 const ID: u32 = 84079032;
+
+pub const TOSS_COIN: bool = true;
 
 // On the field, with the opponent's Sangan Summoned, flipped and attacked into.
 pub const SUPPORT: &[(u32, u16)] = &[

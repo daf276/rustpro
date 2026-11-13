@@ -1,9 +1,10 @@
 // Time Wizard
-// s.toss_coin, which only cards that are not ported read, is left out.
 use crate::prelude::*;
 use crate::testing::{MZONE, OPPONENT};
 
 const ID: u32 = 71625222;
+
+pub const TOSS_COIN: bool = true;
 
 // Monsters on both sides to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[

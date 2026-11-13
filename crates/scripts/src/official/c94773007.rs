@@ -1,9 +1,10 @@
 // Jirai Gumo
-// s.toss_coin, which only cards that are not ported read, is left out.
 use crate::prelude::*;
 use crate::testing::{MZONE, OPPONENT};
 
 const ID: u32 = 94773007;
+
+pub const TOSS_COIN: bool = true;
 
 // Attacks into the opponent's Sangan.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE), (26202165, MZONE | OPPONENT), (26202165, MZONE | OPPONENT)];

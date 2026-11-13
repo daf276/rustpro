@@ -987,6 +987,21 @@ pub mod aux {
         tp: u8,
         effect_desc: u64,
     ) -> Script<Option<EffectId>> {
+        remove_until_reset::<O>(duel, g, position, reason, (phase, RESET_PHASE | phase), flag, e, tp, effect_desc)
+    }
+
+    // `phase` is the Lua's phase and reset (the delayed effect's reset, default RESET_PHASE | phase).
+    pub fn remove_until_reset<O: DelayedOperation>(
+        duel: &mut Duel,
+        g: impl Into<CardSet>,
+        position: u32,
+        reason: u32,
+        (phase, reset): (u32, u32),
+        flag: u32,
+        e: EffectId,
+        tp: u8,
+        effect_desc: u64,
+    ) -> Script<Option<EffectId>> {
         let g = g.into();
         if g.is_empty() || duel.remove(g, position, reason | REASON_TEMPORARY)? == 0 {
             return Ok(None);
@@ -995,7 +1010,7 @@ pub mod aux {
         Ok(if g.is_empty() {
             None
         } else {
-            delayed_operation_desc::<O>(duel, g, phase, RESET_PHASE | phase, flag, e, tp, 0, 1, effect_desc)
+            delayed_operation_desc::<O>(duel, g, phase, reset, flag, e, tp, 0, 1, effect_desc)
         })
     }
 
@@ -2780,10 +2795,33 @@ impl Cyberdark {
     }
 }
 
-// The Witchcrafter functions of cards_specific_functions.lua; CreateCostReplaceEffect comes with the cards that call it.
+// The Witchcrafter functions of cards_specific_functions.lua.
 pub struct Witchcrafter;
 
 impl Witchcrafter {
+    // Witchcrafter.CreateCostReplaceEffect: the caller sets the range, condition and operation.
+    pub fn create_cost_replace_effect(duel: &mut Duel, c: CardId) -> EffectId {
+        let e = duel.create_effect(c);
+        e.set_type(duel, EFFECT_TYPE_FIELD);
+        e.set_property(duel, EFFECT_FLAG_PLAYER_TARGET);
+        e.set_code(duel, EFFECT_COST_REPLACE);
+        e.set_target_range(duel, 1, 0);
+        e.set_value(
+            duel,
+            Value::CostReplace(|duel, _, call| {
+                let tp = call.args.tp;
+                if call.chk == 0 {
+                    let c = call.args.e.get_handler(duel);
+                    return c.is_set_card(duel, &[SET_WITCHCRAFTER]) && c.is_controler(duel, tp) && c.is_location(duel, LOCATION_MZONE);
+                }
+                crate::chain::is_triggering_setcode(duel, 0, &[SET_WITCHCRAFTER])
+                    && crate::chain::is_triggering_player(duel, 0, tp)
+                    && crate::chain::is_triggering_location(duel, 0, LOCATION_MZONE)
+            }),
+        );
+        e
+    }
+
     // Witchcrafter.DiscardCost: Cost.Replaceable(Cost.Discard(Card.IsSpell)).
     pub fn discard_cost(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
         Cost::replaceable(duel, args, chk, |duel, args, chk| {

@@ -1,9 +1,10 @@
 // Fairy Box
-// s.toss_coin, which only cards that are not ported read, is left out.
 use crate::prelude::*;
 use crate::testing::{Check, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 21598948;
+
+pub const TOSS_COIN: bool = true;
 
 // In the hand and Set, against the opponent's Terra the Terribles attacking.
 pub const SUPPORT: &[(u32, u16)] = &[

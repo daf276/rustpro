@@ -4,6 +4,8 @@ use crate::testing::{Check, MZONE, OPPONENT};
 
 const ID: u32 = 81480460;
 
+pub const TOSS_COIN: bool = true;
+
 // Two copies on the field, with the opponent's Sangan to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE), (26202165, MZONE | OPPONENT)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

@@ -208,7 +208,14 @@ impl Link {
         Some((mg, mustg, min, max))
     }
 
+    // The core ends the Lua call here, which drops what spcon assumed.
     fn condition<P: LinkProcedure>(duel: &Duel, a: &Args) -> bool {
+        let res = Link::check_condition::<P>(duel, a);
+        duel.assume_reset();
+        res
+    }
+
+    fn check_condition<P: LinkProcedure>(duel: &Duel, a: &Args) -> bool {
         let Some(c) = a.c else { return true };
         if c.is_type(duel, TYPE_PENDULUM) && c.is_faceup(duel) {
             return false;
@@ -253,6 +260,12 @@ impl Link {
     }
 
     fn target<P: LinkProcedure>(duel: &mut Duel, a: &Args, _: i32, _: Option<CardId>) -> Script<bool> {
+        let res = Link::select_materials::<P>(duel, a)?;
+        duel.assume_reset();
+        Ok(res)
+    }
+
+    fn select_materials<P: LinkProcedure>(duel: &mut Duel, a: &Args) -> Script<bool> {
         let (e, tp) = (a.e, a.tp);
         let Some(c) = a.c else { return Ok(false) };
         if !P::spcon(duel, e, tp) {

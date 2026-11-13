@@ -1046,6 +1046,7 @@ impl CardId {
             ASSUME_RACE,
             ASSUME_ATTACK,
             ASSUME_DEFENSE,
+            ASSUME_LINK,
         ]
         .contains(&assume)
         {

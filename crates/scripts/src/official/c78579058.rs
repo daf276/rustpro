@@ -1,13 +1,14 @@
 // Levia-Dragoon - Daedalus
 use super::c41570943::splimit;
 use crate::prelude::*;
-use crate::testing::{Check, DECK, EXTRA, MZONE};
+use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 78579058;
 
 pub const LISTED_NAMES: &[u32] = &[CARD_UMI, CARD_ATLANTIS_CITY_OF_THE_SEA_DRAGON];
 
-// Link Summoned from WATER Normal Monsters (Island Turtle), with Levia-Dragon of Atlantis - Daedalus in the Deck to summon.
+// Link Summoned from WATER Normal Monsters (Island Turtle), two with Atlantis, City of the Sea Dragon in the hand, with Levia-Dragon
+// of Atlantis - Daedalus in the Deck to summon.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),
     (ID, EXTRA),
@@ -17,6 +18,8 @@ pub const SUPPORT: &[(u32, u16)] = &[
     (4042268, MZONE),
     (64603351, DECK),
     (64603351, DECK),
+    (38391684, HAND),
+    (38391684, HAND),
 ];
 pub const CHECKS: &[Check] = &[
     Check::ResolvesEffect(aux::stringid(ID, 0)),
@@ -44,8 +47,8 @@ impl LinkProcedure for AtlantisProcedure {
         Procedure::f(c, duel, lc, sumtype, tp)
     }
 
-    fn spcon(duel: &Duel, _: EffectId, tp: u8) -> bool {
-        splimit(duel, tp)
+    fn spcon(duel: &Duel, e: EffectId, tp: u8) -> bool {
+        splimit(duel, e, tp)
     }
 }
 

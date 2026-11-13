@@ -99,7 +99,7 @@ impl aux::DelayedOperation for Banish {
 
 // The turn the monster was summoned in, per delayed effect (its first label is the fid).
 fn turn_summoned_key(fid: i64) -> u64 {
-    u64::from(ID) << 32 | fid as u64
+    crate::keys::delayed_turn(ID, fid)
 }
 
 fn spop(duel: &mut Duel, a: &Args) -> Script<()> {

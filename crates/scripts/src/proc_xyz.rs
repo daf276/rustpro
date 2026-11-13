@@ -2,6 +2,7 @@
 use engine::{Args, CardId, CardSet, Duel, EffectId, Script};
 
 use crate::constant::*;
+use crate::keys;
 use crate::proc_workaround::DuelWorkaround;
 use crate::utility::aux;
 
@@ -57,14 +58,11 @@ pub(crate) fn must_group(duel: &Duel, tp: u8, g: Option<CardSet>, c: CardId, mg:
     mustg.union(must.unwrap_or_default())
 }
 
-// Xyz.ProcCancellable as script state, set by the target of the alternative procedure; keys 1-6 are taken.
-const PROC_CANCELLABLE: u64 = 7;
-
 impl Xyz {
     pub const INFINITE_MATS: usize = usize::MAX;
 
     pub fn proc_cancellable(duel: &Duel) -> bool {
-        duel.get_script_state(PROC_CANCELLABLE) != 0
+        duel.get_script_state(keys::XYZ_PROC_CANCELLABLE) != 0
     }
 
     pub fn add_procedure<P: XyzProcedure>(duel: &mut Duel, c: CardId) {
@@ -327,7 +325,7 @@ impl Xyz {
             return Ok(false);
         };
         let cancelable = og.is_none() && duel.is_summon_cancelable();
-        duel.set_script_state(PROC_CANCELLABLE, i64::from(cancelable));
+        duel.set_script_state(keys::XYZ_PROC_CANCELLABLE, i64::from(cancelable));
         let mg = og.unwrap_or_else(|| duel.get_field_group(tp, LOCATION_MZONE, LOCATION_MZONE));
         let mustg = must_group(duel, tp, og, c, mg, REASON_XYZ, must);
         let (min, max) = (usize::from(a.min), usize::from(a.max));

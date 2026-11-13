@@ -27,6 +27,7 @@ pub mod aux {
 
     use crate::chain::DuelChain;
     use crate::constant::*;
+    use crate::keys;
     use crate::proc_workaround::CardWorkaround;
     use crate::utility::{CardUtility, Cost, global_continuous};
 
@@ -42,9 +43,9 @@ pub mod aux {
         (id & 0xfffff) | ((code as u64) << 20)
     }
 
-    // s.global_check per script, as script state keyed by the script's id.
+    // s.global_check per script.
     pub fn global_check(duel: &mut Duel, id: u32, func: impl FnOnce(&mut Duel)) {
-        let key = (1 << 61) | u64::from(id);
+        let key = keys::global_check(id);
         if duel.get_script_state(key) == 0 {
             duel.set_script_state(key, 1);
             func(duel);
@@ -845,9 +846,6 @@ pub mod aux {
         }
     }
 
-    // delayed_operation_id, the global counter of utility.lua.
-    const DELAYED_OPERATION_ID: u64 = 3;
-
     // The delayed effect keeps the flag beside the fid in its label, where the Lua closures capture it.
     fn affected_group(duel: &Duel, e: EffectId) -> CardSet {
         let &[fid, flag] = e.get_labels(duel) else {
@@ -925,8 +923,8 @@ pub mod aux {
         if g.is_empty() {
             return None;
         }
-        let fid = duel.get_script_state(DELAYED_OPERATION_ID) + 1;
-        duel.set_script_state(DELAYED_OPERATION_ID, fid);
+        let fid = duel.get_script_state(keys::DELAYED_OPERATION_ID) + 1;
+        duel.set_script_state(keys::DELAYED_OPERATION_ID, fid);
         let e1 = duel.create_effect(e.get_handler(duel));
         if effect_desc != 0 {
             e1.set_description(duel, effect_desc);
@@ -1096,27 +1094,28 @@ pub mod aux {
         }
     }
 
-    const KEPT_EXTRA_MATERIALS: u64 = 1 << 60;
-
     // Link.Target's label object {sg, filters, emt}: up to 15 emt indices packed in script state, the groups in script groups.
     pub fn keep_extra_materials(duel: &mut Duel, e: EffectId, emt: &ExtraMaterials, filt: &[usize]) {
-        let key = KEPT_EXTRA_MATERIALS | (e.index() as u64) << 16;
         for (index, &(eg, _)) in emt.iter().enumerate() {
-            duel.set_script_group(key | index as u64, Some(eg));
+            duel.set_script_group(keys::kept_extra_materials(e, index), Some(eg));
         }
-        duel.set_script_state(key, filt.iter().rev().fold(0, |packed, &index| packed << 4 | (index as i64 + 1)));
+        duel.set_script_state(
+            keys::kept_extra_materials(e, 0),
+            filt.iter().rev().fold(0, |packed, &index| packed << 4 | (index as i64 + 1)),
+        );
     }
 
     // What keep_extra_materials kept. The effects are looked up again, in the state the target left.
     pub fn kept_extra_materials(duel: &Duel, e: EffectId, tp: u8) -> (ExtraMaterials, Vec<usize>) {
-        let key = KEPT_EXTRA_MATERIALS | (e.index() as u64) << 16;
         let effects = duel.get_player_effect(tp, EFFECT_EXTRA_MATERIAL);
         let usable = effects.iter().filter(|te| te.check_count_limit(duel, tp));
         let emt = usable
             .enumerate()
-            .map(|(index, &te)| (duel.get_script_group(key | index as u64).unwrap_or_default(), te))
+            .map(|(index, &te)| (duel.get_script_group(keys::kept_extra_materials(e, index)).unwrap_or_default(), te))
             .collect();
-        let packed = std::iter::successors(Some(duel.get_script_state(key)), |packed| Some(packed >> 4));
+        let packed = std::iter::successors(Some(duel.get_script_state(keys::kept_extra_materials(e, 0))), |packed| {
+            Some(packed >> 4)
+        });
         (
             emt,
             packed
@@ -1285,15 +1284,12 @@ pub mod aux {
         }
     }
 
-    // ReincarnationChecked, the upvalue guarding the global effect.
-    const REINCARNATION_CHECKED: u64 = 1 << 59;
-
     // Auxiliary.EnableCheckReincarnation: the first call registers the granting effect for every Extra Deck monster.
     pub fn enable_check_reincarnation(duel: &mut Duel) {
-        if duel.get_script_state(REINCARNATION_CHECKED) != 0 {
+        if duel.get_script_state(keys::REINCARNATION_CHECKED) != 0 {
             return;
         }
-        duel.set_script_state(REINCARNATION_CHECKED, 1);
+        duel.set_script_state(keys::REINCARNATION_CHECKED, 1);
         let e1 = duel.global_effect();
         e1.set_type(duel, EFFECT_TYPE_SINGLE);
         e1.set_code(duel, EFFECT_MATERIAL_CHECK);

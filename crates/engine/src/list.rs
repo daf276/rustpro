@@ -63,9 +63,13 @@ impl<T: Copy + Default, const N: usize> List<T, N> {
         }
     }
 
-    pub fn insert(&mut self, index: usize, item: T) {
-        let len = usize::from(self.len);
-        if self.spilled.is_empty() && len < N && index <= len {
+    // An index past the end leaves the list unchanged and returns false.
+    pub fn insert(&mut self, index: usize, item: T) -> bool {
+        let len = self.len();
+        if index > len {
+            return false;
+        }
+        if self.spilled.is_empty() && len < N {
             self.inline.copy_within(index..len, index + 1);
             if let Some(slot) = self.inline.get_mut(index) {
                 *slot = item;
@@ -74,6 +78,7 @@ impl<T: Copy + Default, const N: usize> List<T, N> {
         } else {
             self.spill().insert(index, item);
         }
+        true
     }
 
     pub fn remove(&mut self, index: usize) -> Option<T> {
@@ -369,10 +374,12 @@ mod tests {
             Op::Insert(0, 2),
             Op::Insert(1, 3),
             Op::Insert(3, 4),
+            Op::Insert(5, 7),
             Op::Remove(1),
             Op::Pop,
             Op::Clear,
             Op::Push(5),
+            Op::Insert(2, 8),
             Op::Push(6),
             Op::Remove(0),
             Op::Remove(5),
@@ -382,7 +389,10 @@ mod tests {
         for op in ops {
             match op {
                 Op::Push(item) => (list.push(item), vec.push(item)).0,
-                Op::Insert(index, item) => (list.insert(index, item), vec.insert(index, item)).0,
+                Op::Insert(index, item) => assert_eq!(
+                    list.insert(index, item),
+                    (index <= vec.len()).then(|| vec.insert(index, item)).is_some()
+                ),
                 Op::Remove(index) => assert_eq!(list.remove(index), (index < vec.len()).then(|| vec.remove(index))),
                 Op::Pop => assert_eq!(list.pop(), vec.pop()),
                 Op::Clear => (list.clear(), vec.clear()).0,

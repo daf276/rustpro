@@ -211,8 +211,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 - Lua state kept across calls (`s.x = ...`, tables) is per-duel script state (`get_script_state`/
   `set_script_state`); never a Rust `static`. `pairs(t)` over a table keyed by card codes, where the order shows (a
   filter or message built from it), visits `lua::pairs(codes in insertion order)`.
-  A key is unique per card (`ID << 16 | slot`); a Lua global shared by many scripts gets one `pub const` key in
-  the first card that uses it (`_replace_count` is `c36623431::REPLACE_COUNT`).
+  A key is unique per card (`ID << 16 | slot`); a Lua global shared by many scripts gets its key in
+  `crates/scripts/src/keys.rs` with the library's (`_replace_count` is `keys::REPLACE_COUNT`).
 - `Duel.IsPlayerCanSpecialSummonMonster(p, code, setcode, type, atk, def, lv, race, att)` is
   `is_player_can_special_summon_monster(p, code, MonsterStats::new(...))`, with the struct's fields for nil arguments.
   It takes `&mut Duel` (the core's temp card takes the stats), so a condition calls it through `check_mut`.

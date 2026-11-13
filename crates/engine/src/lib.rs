@@ -12,6 +12,14 @@ macro_rules! unported {
     };
 }
 
+// An effect's value read with a signature its code does not give it: the default, marking the duel like [unported].
+macro_rules! misread {
+    ($duel:expr, $value:literal) => {{
+        $duel.reach_unported(concat!(file!(), ":", line!(), " (", $value, " read with the wrong parameters)"));
+        Default::default()
+    }};
+}
+
 // Clone whose clone_from goes field by field, so that copying into an existing value keeps its buffers.
 macro_rules! clone_by_field {
     ([$($generics:tt)*] $type:ty { $($field:ident),* $(,)? }) => {

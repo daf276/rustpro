@@ -46,7 +46,7 @@ impl aux::DelayedOperation for SendToGrave {
 
 // The turn the control changed in, per delayed effect (its first label is the fid).
 fn turn_key(fid: i64) -> u64 {
-    u64::from(ID) << 32 | fid as u64
+    crate::keys::delayed_turn(ID, fid)
 }
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {

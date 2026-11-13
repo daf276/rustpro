@@ -683,46 +683,14 @@ impl Duel {
             }
         };
         let core = &mut self.core;
-        let events: [&mut [Event]; 8] = [
-            &mut core.point_event,
-            &mut core.instant_event,
-            &mut core.queue_event,
-            &mut core.delayed_activate_event,
-            &mut core.full_event,
-            &mut core.single_event,
-            &mut core.solving_event,
-            &mut core.sub_solving_event,
-        ];
-        events.into_iter().flatten().for_each(remap);
+        core.event_lists_mut().into_iter().flatten().for_each(remap);
         let quick = core.delayed_quick.iter_mut().chain(&mut core.delayed_quick_tmp);
         quick.for_each(|(_, event)| remap(event));
-        let chains = [
-            &mut core.select_chains,
-            &mut core.current_chain,
-            &mut core.ignition_priority_chains,
-            &mut core.continuous_chain,
-            &mut core.new_fchain,
-            &mut core.new_fchain_s,
-            &mut core.new_ochain,
-            &mut core.new_ochain_s,
-            &mut core.new_fchain_b,
-            &mut core.new_ochain_b,
-            &mut core.new_ochain_h,
-            &mut core.new_chains,
-        ];
-        let chains = chains.into_iter().flatten();
-        chains
-            .chain(core.quick_f_chain.iter_mut().map(|(_, chain)| chain))
-            .for_each(|chain| remap(&mut chain.evt));
-        let continuous = [
-            &mut core.solving_continuous,
-            &mut core.sub_solving_continuous,
-            &mut core.delayed_continuous_tp,
-            &mut core.delayed_continuous_ntp,
-            &mut core.continuous_tp,
-            &mut core.continuous_ntp,
-        ];
-        continuous.into_iter().flatten().for_each(|continuous| remap(&mut continuous.event));
+        let chains = core.chain_lists_mut().into_iter().flatten();
+        chains.for_each(|chain| remap(&mut chain.evt));
+        core.quick_f_chain.iter_mut().for_each(|(_, chain)| remap(&mut chain.evt));
+        let continuous = core.continuous_lists_mut().into_iter().flatten();
+        continuous.for_each(|continuous| remap(&mut continuous.event));
     }
 
     // card::replace_effect for Card.Recreate, without its messages.
@@ -744,29 +712,12 @@ impl Duel {
             prompt,
             Some(Prompt::IdleCommand { .. } | Prompt::BattleCommand { .. } | Prompt::Chain { .. })
         );
-        let chains = [
-            &core.current_chain,
-            &core.ignition_priority_chains,
-            &core.continuous_chain,
-            &core.new_fchain,
-            &core.new_fchain_s,
-            &core.new_ochain,
-            &core.new_ochain_s,
-            &core.new_fchain_b,
-            &core.new_ochain_b,
-            &core.new_ochain_h,
-            &core.new_chains,
-        ];
-        let offered_chains = offered.then_some(&core.select_chains);
-        let chains = chains.into_iter().chain(offered_chains).flatten();
+        let [select_chains, others @ ..] = core.chain_lists();
+        let offered_chains = offered.then_some(select_chains);
+        let chains = others.into_iter().chain(offered_chains).flatten();
         let chains = chains.chain(core.quick_f_chain.iter().map(|(_, chain)| chain));
-        let waiting = [
-            &core.solving_continuous,
-            &core.sub_solving_continuous,
-            &core.delayed_continuous_tp,
-            &core.delayed_continuous_ntp,
-        ];
-        let waiting = waiting.into_iter().flatten().map(|continuous| self.get_handler(continuous.effect));
+        let waiting = core.continuous_lists().into_iter().flatten();
+        let waiting = waiting.map(|continuous| self.get_handler(continuous.effect));
         let mut cards = chains.fold(waiting.collect(), |cards: CardSet, chain| {
             let handler = CardSet::from(self.get_handler(chain.triggering_effect));
             cards.union(handler).union(chain.target_cards.unwrap_or_default())

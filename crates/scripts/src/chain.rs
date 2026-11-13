@@ -2,6 +2,7 @@
 use engine::{CardId, CardSet, Duel, EffectId};
 
 use crate::constant::*;
+use crate::keys;
 use crate::proc_workaround::CardWorkaround;
 
 // Chain.IsTriggeringLocation: the real or the symbolic triggering location of the chain link has common bits.
@@ -94,8 +95,8 @@ pub fn is_code(duel: &Duel, ch: u8, codes: &[u32]) -> bool {
 
 // e:GetChainData() of the current chain link, keyed by its chain id and the effect; a `slot` per field of the table.
 fn chain_data_key(duel: &Duel, e: EffectId, slot: u8) -> u64 {
-    let chain_id = u64::from(duel.get_chain_info::<u32>(duel.get_current_chain(), CHAININFO_CHAIN_ID));
-    (chain_id << 32) | ((e.index() as u64) << 8) | u64::from(slot) | (1 << 63)
+    let chain_id = duel.get_chain_info::<u32>(duel.get_current_chain(), CHAININFO_CHAIN_ID);
+    keys::chain_data(chain_id, e, slot)
 }
 
 pub trait EffectChain: Copy {
@@ -166,7 +167,7 @@ impl EffectChain for EffectId {
 // chain.lua's effect_card_prop; the handler also stands for its resolving and triggering properties (the same card data).
 fn properties_card(duel: &Duel, e: EffectId) -> Option<CardId> {
     if e.is_has_property(duel, EFFECT_FLAG_FIELD_ONLY) {
-        let registering = duel.get_script_group(registering_key(e)).and_then(|card| card.get_first());
+        let registering = duel.get_script_group(keys::registering(e)).and_then(|card| card.get_first());
         return registering.filter(|_| e.get_owner(duel) != CardId::default());
     }
     let triggering = duel.get_current_chain() > 0 && duel.get_chain_info::<Option<EffectId>>(0, CHAININFO_TRIGGERING_EFFECT) == Some(e);
@@ -175,10 +176,6 @@ fn properties_card(duel: &Duel, e: EffectId) -> Option<CardId> {
     } else {
         e.get_owner(duel)
     })
-}
-
-fn registering_key(e: EffectId) -> u64 {
-    (1 << 61) | e.index() as u64
 }
 
 pub trait DuelChain {
@@ -192,7 +189,7 @@ impl DuelChain for Duel {
             Some(re) if e.get_owner(self) != CardId::default() => properties_card(self, re),
             _ => None,
         };
-        self.set_script_group(registering_key(e), recorded.map(CardSet::from));
+        self.set_script_group(keys::registering(e), recorded.map(CardSet::from));
         self.register_effect_core(e, player);
     }
 }

@@ -887,11 +887,6 @@ impl FieldEffect {
     }
 }
 
-pub fn misread<T: Default>(value: &str) -> T {
-    debug_assert!(false, "{value} read with the wrong parameters");
-    T::default()
-}
-
 pub fn remove_item<T: Copy + Default + PartialEq, const N: usize>(list: &mut List<T, N>, item: &T) {
     if let Some(at) = list.iter().position(|other| other == item) {
         list.remove(at);
@@ -1515,7 +1510,7 @@ impl Duel {
             | Value::ExtraMaterial(_)
             | Value::CostReplace(_)
             | Value::ZwEquip(_)
-            | Value::Own(_) => misread("a value"),
+            | Value::Own(_) => misread!(self, "a value"),
         }
     }
 
@@ -1537,7 +1532,7 @@ impl Duel {
         match peffect.value {
             Value::Int(_) | Value::Values(_) => peffect.int_value(),
             Value::Own(value) => value(self, effect),
-            _ => misread("a value"),
+            _ => misread!(self, "a value"),
         }
     }
 
@@ -1546,7 +1541,7 @@ impl Duel {
         match self.effects[effect].value {
             Value::Int(value) => value as u32,
             Value::Zones(value) => value(self, effect, playerid, uplayer, reason) as u32,
-            _ => misread("a zone limit"),
+            _ => misread!(self, "a zone limit"),
         }
     }
 
@@ -1555,7 +1550,7 @@ impl Duel {
         match self.effects[effect].value {
             Value::Int(value) => i64::from(value),
             Value::BattleDamage(value) => value(self, effect, playerid, reason_card),
-            _ => misread("a battle damage value"),
+            _ => misread!(self, "a battle damage value"),
         }
     }
 
@@ -1563,7 +1558,7 @@ impl Duel {
     pub(crate) fn get_player_battle_damage_value(&self, effect: EffectId) -> i64 {
         match self.effects[effect].value {
             Value::Int(value) => i64::from(value),
-            _ => misread("a battle damage value"),
+            _ => misread!(self, "a battle damage value"),
         }
     }
 
@@ -1580,7 +1575,7 @@ impl Duel {
         match self.effects[effect].value {
             Value::Int(value) => value as u32,
             Value::ChangeDamage(value) => value(self, effect, reason_effect, amount, reason, reason_player, reason_card),
-            _ => misread("a damage value"),
+            _ => misread!(self, "a damage value"),
         }
     }
 
@@ -1598,7 +1593,7 @@ impl Duel {
             Value::Int(value) => value != 0,
             Value::ReflectDamage(value) => value(self, effect, reason_effect, amount, reason, reason_player, reason_card),
             Value::ReflectDamageMut(value) => value(self, effect, reason_effect, amount, reason, reason_player, reason_card),
-            _ => misread("a damage reflection"),
+            _ => misread!(self, "a damage reflection"),
         }
     }
 
@@ -1637,7 +1632,7 @@ impl Duel {
                 && match self.effects[immune].value {
                     Value::Int(value) => value != 0,
                     Value::Effect(value) => value(self, immune, effect),
-                    _ => misread("an immunity value"),
+                    _ => misread!(self, "an immunity value"),
                 }
         };
         self.immune_effects
@@ -1749,7 +1744,7 @@ impl Duel {
         match self.effects[effect].value {
             Value::Int(value) => value != 0,
             Value::EffectPlayer(value) => value(self, effect, activated, playerid),
-            _ => misread("an activation limit"),
+            _ => misread!(self, "an activation limit"),
         }
     }
 
@@ -1758,7 +1753,7 @@ impl Duel {
         match self.effects[effect].value {
             Value::Int(value) => value,
             Value::SpSummonCount(value) => value(self, effect, reason_effect, playerid),
-            _ => misread("a spsummon count"),
+            _ => misread!(self, "a spsummon count"),
         }
     }
 
@@ -1767,7 +1762,7 @@ impl Duel {
         match self.effects[effect].value {
             Value::Int(value) => value != 0,
             Value::Chain(value) => value(self, effect, chaincount),
-            _ => misread("an inactivation limit"),
+            _ => misread!(self, "an inactivation limit"),
         }
     }
 

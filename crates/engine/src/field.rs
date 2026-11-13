@@ -567,6 +567,92 @@ impl Processor {
             ..Self::default()
         }
     }
+
+    // Every list of chain links but `quick_f_chain`, which pairs each with its effect; `select_chains` first.
+    pub(crate) fn chain_lists(&self) -> [&[Chain]; 13] {
+        [
+            &self.select_chains,
+            &self.current_chain,
+            &self.new_chains,
+            &self.ignition_priority_chains,
+            &self.continuous_chain,
+            &self.desrep_chain,
+            &self.new_fchain,
+            &self.new_fchain_s,
+            &self.new_ochain,
+            &self.new_ochain_s,
+            &self.new_fchain_b,
+            &self.new_ochain_b,
+            &self.new_ochain_h,
+        ]
+    }
+
+    pub(crate) fn chain_lists_mut(&mut self) -> [&mut [Chain]; 13] {
+        [
+            &mut self.select_chains,
+            &mut self.current_chain,
+            &mut self.new_chains,
+            &mut self.ignition_priority_chains,
+            &mut self.continuous_chain,
+            &mut self.desrep_chain,
+            &mut self.new_fchain,
+            &mut self.new_fchain_s,
+            &mut self.new_ochain,
+            &mut self.new_ochain_s,
+            &mut self.new_fchain_b,
+            &mut self.new_ochain_b,
+            &mut self.new_ochain_h,
+        ]
+    }
+
+    // Every list of events but the delayed quick effects', which pair each with its effect.
+    pub(crate) fn event_lists(&self) -> [&[Event]; 8] {
+        [
+            &self.point_event,
+            &self.instant_event,
+            &self.queue_event,
+            &self.delayed_activate_event,
+            &self.full_event,
+            &self.single_event,
+            &self.solving_event,
+            &self.sub_solving_event,
+        ]
+    }
+
+    pub(crate) fn event_lists_mut(&mut self) -> [&mut [Event]; 8] {
+        [
+            &mut self.point_event,
+            &mut self.instant_event,
+            &mut self.queue_event,
+            &mut self.delayed_activate_event,
+            &mut self.full_event,
+            &mut self.single_event,
+            &mut self.solving_event,
+            &mut self.sub_solving_event,
+        ]
+    }
+
+    pub(crate) fn continuous_lists(&self) -> [&[Continuous]; 6] {
+        [
+            &self.solving_continuous,
+            &self.sub_solving_continuous,
+            &self.delayed_continuous_tp,
+            &self.delayed_continuous_ntp,
+            &self.continuous_tp,
+            &self.continuous_ntp,
+        ]
+    }
+
+    pub(crate) fn continuous_lists_mut(&mut self) -> [&mut [Continuous]; 6] {
+        [
+            &mut self.solving_continuous,
+            &mut self.sub_solving_continuous,
+            &mut self.delayed_continuous_tp,
+            &mut self.delayed_continuous_ntp,
+            &mut self.continuous_tp,
+            &mut self.continuous_ntp,
+        ]
+    }
 }
 
 fn field_used_count(flag: u32) -> i32 {
@@ -1654,7 +1740,7 @@ impl Duel {
                 }
             }
         }
-        let insert_at = self.player[playerid].list_extra.len() - self.player[playerid].extra_p_count as usize;
+        let insert_at = (self.player[playerid].list_extra.len()).saturating_sub(self.player[playerid].extra_p_count as usize);
         for (offset, &card) in extra.iter().enumerate() {
             self.player[playerid].list_extra.insert(insert_at + offset, card);
         }

@@ -3,7 +3,7 @@ use crate::card::{CardId, CardSet, LocInfo, SendtoParam};
 use crate::chain::ExecuteKind;
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{Chain, Container, EffectId, EffectSet, Event, Target, Value, misread};
+use crate::effect::{Chain, Container, EffectId, EffectSet, Event, Target, Value};
 use crate::field::{Cards16, PerPlayer};
 use crate::processor::{
     PointEvent, RESTART, SelectCard, SelectCounter, SelectOption, SelectPlace, SelectPosition, SelectTributeP, SelectUnselectCard,
@@ -1963,7 +1963,6 @@ impl Duel {
                 if arg.targets.is_empty() {
                     return self.finish_operated(CardSet::default());
                 }
-                // Phase 2: of the previous stats and set codes, the previous set codes are not kept so far.
                 let mut leave_p = CardSet::default();
                 let targets = arg.targets;
                 for card in targets.iter() {
@@ -1989,6 +1988,7 @@ impl Duel {
                             self.cards[card].previous_attack = self.get_attack(card);
                             self.cards[card].previous_defense = self.get_defense(card);
                         }
+                        self.cards[card].previous_setcodes = self.snapshot_setcodes(card);
                     }
                     if !self.is_leaving_field(card) {
                         continue;
@@ -2327,6 +2327,20 @@ impl Duel {
         (code, added.last().map_or(0, |&effect| self.get_value(effect, card) as u32))
     }
 
+    // Unlike get_set_card, the core keeps only the low 16 bits of each value here and does not skip effects with an operation.
+    fn snapshot_setcodes(&self, card: CardId) -> [u16; 2] {
+        let mut setcodes = [0; 2];
+        let values = (self.filter_effect(card, EFFECT_ADD_SETCODE, true).into_iter()).map(|effect| self.get_value(effect, card) as u16);
+        for setcode in values.filter(|&setcode| setcode != 0) {
+            match setcodes.iter_mut().find(|slot| **slot == 0 || **slot == setcode) {
+                Some(slot) => *slot = setcode,
+                None => unported!(self),
+            }
+        }
+        setcodes.sort_unstable();
+        setcodes
+    }
+
     fn is_leaving_field(&self, card: CardId) -> bool {
         let target = &self.cards[card];
         target.current.location & LOCATION_ONFIELD != 0
@@ -2349,7 +2363,7 @@ impl Duel {
         match self.effects[effect].value {
             Value::Int(value) => value,
             Value::Reason(value) => i32::from(value(self, effect, current.reason_effect, current.reason, current.reason_player)),
-            _ => misread("a value"),
+            _ => misread!(self, "a value"),
         }
     }
 

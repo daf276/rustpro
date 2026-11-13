@@ -62,7 +62,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
 }
 
 // The parameters runfn passes: an empty group, no player, no effect and REASON_EFFECT.
-fn runfn_args(eff: EffectId, tp: u8) -> Args {
+pub fn runfn_args(eff: EffectId, tp: u8) -> Args {
     Args {
         e: eff,
         tp,
@@ -74,7 +74,7 @@ fn runfn_args(eff: EffectId, tp: u8) -> Args {
     }
 }
 
-fn runfn(duel: &Duel, eff: EffectId, tp: u8) -> bool {
+pub fn runfn(duel: &Duel, eff: EffectId, tp: u8) -> bool {
     let a = runfn_args(eff, tp);
     let condition = match eff.get_condition(duel) {
         None => true,

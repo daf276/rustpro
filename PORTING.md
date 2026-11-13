@@ -245,6 +245,9 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
 
 - Match EDOPro exactly, misrulings and Lua bugs included (an undefined global is nil, an upvalue the Lua reassigns
   stays reassigned). A mirrored bug gets a one-line comment.
+- `Group.Match` filters the group in place: port it as `g.keep_matching(..)` when anything reads `g` later
+  (`ConfirmCards`, a label object, the caller's group in a library helper such as `aux.RemoveUntil`); `filter` only
+  for a fresh temporary that is not read again.
 - Port line by line: the same checks, selections, hints, messages and random draws in the same order.
 - A boolean argument the Lua passes as nil is false; the core's default (`lua_get<bool, true>`) applies only to an
   absent argument, so a library wrapper forwarding a nil parameter passes false.

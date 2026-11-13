@@ -90,11 +90,12 @@ fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
         !c.is_original_set_card(duel, &[SET_MAJESPECTER, SET_DRACOSLAYER])
     });
     duel.hint(HINT_SELECTMSG, tp, HINTMSG_ATOHAND);
-    let g = duel.select_matching_card(tp, thfilter, tp, LOCATION_EXTRA, 0, 1, 2, None)?;
-    if g.is_empty()
-        || duel.send_to_hand(g, tp, REASON_EFFECT)? == 0
-        || g.filter(duel, |c, duel| c.is_location(duel, LOCATION_HAND), None).is_empty()
-    {
+    let mut g = duel.select_matching_card(tp, thfilter, tp, LOCATION_EXTRA, 0, 1, 2, None)?;
+    if g.is_empty() || duel.send_to_hand(g, tp, REASON_EFFECT)? == 0 {
+        return Ok(());
+    }
+    g.keep_matching(duel, |c, duel| c.is_location(duel, LOCATION_HAND), None);
+    if g.is_empty() {
         return Ok(());
     }
     duel.confirm_cards(1 - tp, g)?;

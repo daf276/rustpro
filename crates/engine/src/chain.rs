@@ -453,7 +453,7 @@ impl Duel {
         let peffect = &self.effects[effect];
         let has_function = match kind {
             ExecuteKind::Cost => peffect.cost.is_some(),
-            ExecuteKind::Target => matches!(peffect.target, Target::Action(_)),
+            ExecuteKind::Target => peffect.target.action().is_some(),
             ExecuteKind::Operation => peffect.operation.is_some(),
         };
         if !has_function {
@@ -483,9 +483,9 @@ impl Duel {
                     Some(cost) => i32::from(cost(duel, &args, 1)?),
                     None => 0,
                 },
-                ExecuteKind::Target => match peffect.target {
-                    Target::Action(target) => i32::from(target(duel, &args, 1, None)?),
-                    _ => 0,
+                ExecuteKind::Target => match peffect.target.action() {
+                    Some(target) => i32::from(target(duel, &args, 1, None)?),
+                    None => 0,
                 },
                 ExecuteKind::Operation => match peffect.operation {
                     Some(Operation::Event(operation) | Operation::Promptless(operation)) => {

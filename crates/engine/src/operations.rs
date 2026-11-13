@@ -3249,7 +3249,7 @@ impl Duel {
     fn run_procedure_target(&mut self, procedure_effect: Option<EffectId>, player: u8, procedure_args: Procedure) {
         self.returns.set_i32(0, 1);
         if let Some(procedure_effect) = procedure_effect
-            && matches!(self.effects[procedure_effect].target, Target::Action(_))
+            && self.effects[procedure_effect].target.action().is_some()
         {
             let nil_event = self.nil_event;
             self.execute_procedure(ExecuteKind::Target, procedure_effect, player, nil_event, Some(procedure_args));

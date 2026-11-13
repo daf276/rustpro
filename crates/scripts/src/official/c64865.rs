@@ -47,7 +47,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.register_effect(duel, e2);
 }
 
-fn extracon(duel: &Duel, _: CardId, e: EffectId, _: u8, sg: CardSet, mg: CardSet, _: CardId, og: CardSet, _: i32) -> bool {
+fn extracon(duel: &mut Duel, _: CardId, e: EffectId, _: u8, sg: CardSet, mg: CardSet, _: CardId, og: CardSet, _: i32) -> bool {
     let player = e.get_handler_player(duel);
     let extrafilter = |c: CardId, duel: &Duel| c.is_location(duel, LOCATION_MZONE) && c.is_controler(duel, player);
     sg.union(mg)

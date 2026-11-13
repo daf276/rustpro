@@ -91,7 +91,7 @@ fn closed_sky_filter(c: CardId, duel: &Duel) -> bool {
     !(c.has_flag_effect(duel, CLOSED_SKY_FLAG) && !c.get_card_target(duel).is_empty())
 }
 
-fn extracon(duel: &Duel, _: CardId, _: EffectId, tp: u8, sg: CardSet, _: CardSet, _: CardId, _: CardSet, _: i32) -> bool {
+fn extracon(duel: &mut Duel, _: CardId, _: EffectId, tp: u8, sg: CardSet, _: CardSet, _: CardId, _: CardSet, _: i32) -> bool {
     let Some(curgroup) = duel.get_script_group(CURGROUP) else {
         return true;
     };

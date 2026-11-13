@@ -982,6 +982,12 @@ impl CardId {
         duel.is_setable_mzone(self, player, ignore_count, procedure, min_tribute as u8, zone)
     }
 
+    // Card.GetTributeRequirement: the (minimum, maximum) Tributes of a Normal Summon.
+    pub fn get_tribute_requirement(self, duel: &Duel) -> (i32, i32) {
+        let rcount = duel.get_summon_tribute_count(self);
+        (rcount & 0xffff, (rcount >> 16) & 0xffff)
+    }
+
     pub fn set_reason_player(self, duel: &mut Duel, player: u8) {
         if player <= PLAYER_ALL {
             duel.cards[self].current.reason_player = player;

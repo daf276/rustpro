@@ -1076,7 +1076,7 @@ pub mod aux {
 
     // efun(c, e, tp, sg, mg, lc, og, chk) of an extra material entry; a missing operation is aux.TRUE.
     pub fn extra_material_filter(
-        duel: &Duel,
+        duel: &mut Duel,
         (eg, te): (CardSet, EffectId),
         c: CardId,
         tp: u8,
@@ -1093,7 +1093,7 @@ pub mod aux {
 
     // Auxiliary.CheckValidExtra: whether an extra material entry takes c, adding every such entry to `filt`.
     pub fn check_valid_extra(
-        duel: &Duel,
+        duel: &mut Duel,
         c: CardId,
         tp: u8,
         sg: CardSet,

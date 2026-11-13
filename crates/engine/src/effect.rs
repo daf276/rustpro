@@ -173,7 +173,7 @@ pub enum Operation {
     Group(GroupOperationFn),
     // op(e, tsg, ntsg, sg, lv, sc, tp) -> (ok, lvchk): EFFECT_SYNCHRO_MATERIAL_CUSTOM, read only by proc_synchro.
     SynchroMaterial(SynchroMaterialFn),
-    // efun(c, e, tp, sg, mg, lc, og, chk): EFFECT_EXTRA_MATERIAL, read only by aux.GetExtraMaterials.
+    // efun(c, e, tp, sg, mg, lc, og, chk): EFFECT_EXTRA_MATERIAL, read only by aux.GetExtraMaterials; `&mut` for the values it calls.
     ExtraMaterial(ExtraMaterialFn),
     // operation(scard, sumtype, tp): when an EFFECT_ADD_CODE, EFFECT_REMOVE_CODE or EFFECT_CHANGE_CODE applies to a summon.
     CodeCondition(CodeConditionFn),
@@ -197,7 +197,7 @@ pub type CodeConditionFn = fn(&Duel, Option<CardId>, u64, u8) -> bool;
 
 pub type FusionMaterialFn = fn(&mut Duel, EffectId, CardId, u8, &mut CardSet) -> Script<()>;
 
-pub type ExtraMaterialFn = fn(&Duel, CardId, EffectId, u8, CardSet, CardSet, CardId, CardSet, i32) -> bool;
+pub type ExtraMaterialFn = fn(&mut Duel, CardId, EffectId, u8, CardSet, CardSet, CardId, CardSet, i32) -> bool;
 
 pub type SynchroMaterialFn = fn(&Duel, EffectId, CardSet, CardSet, CardSet, u32, CardId, u8) -> (bool, bool);
 

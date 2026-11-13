@@ -1241,7 +1241,11 @@ impl CardId {
 
     // `sumtype` is SUMMON_TYPE_FUSION where Lua leaves it out.
     pub fn is_can_be_fusion_material(self, duel: &Duel, fc: Option<CardId>, sumtype: u64) -> bool {
-        duel.is_can_be_fusion_material(self, fc, sumtype, duel.core.reason_player.get())
+        self.is_can_be_fusion_material_full(duel, fc, sumtype, duel.core.reason_player.get())
+    }
+
+    pub fn is_can_be_fusion_material_full(self, duel: &Duel, fc: Option<CardId>, sumtype: u64, player: u8) -> bool {
+        duel.is_can_be_fusion_material(self, fc, sumtype, player)
     }
 
     pub fn check_fusion_material(self, duel: &Duel, g: Option<CardSet>, gc: Option<CardSet>, chkf: u64) -> bool {

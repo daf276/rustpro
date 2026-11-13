@@ -155,6 +155,18 @@ pub enum Target {
     SynchroCheck(SynchroCheckFn),
     // The target (e, re, tp) of EFFECT_ACTIVATE_COST: whether the effect `re` being activated pays its cost.
     ActivateCost(fn(&Duel, EffectId, EffectId, u8) -> bool),
+    // aux.FieldSummonProcTg(fun1, fun2) of a field summon procedure: fun1 is the card filter (e, c), fun2 the procedure's target.
+    FieldProc(fn(&Duel, EffectId, CardId) -> bool, TargetFn),
+}
+
+impl Target {
+    // The function that runs when the effect is activated or its summon procedure is applied.
+    pub(crate) fn action(self) -> Option<TargetFn> {
+        match self {
+            Target::Action(target) | Target::FieldProc(_, target) => Some(target),
+            _ => None,
+        }
+    }
 }
 
 pub type SpSummonTargetFn = fn(&Duel, EffectId, CardId, u8, u32, u8, u8, Option<EffectId>) -> bool;
@@ -1483,7 +1495,7 @@ impl Duel {
     pub(crate) fn is_fit_target_function(&self, effect: EffectId, card: CardId) -> bool {
         match self.effects[effect].target {
             Target::None => true,
-            Target::Card(target) => target(self, effect, card),
+            Target::Card(target) | Target::FieldProc(target, _) => target(self, effect, card),
             // The core passes only (e, c); the rest are nil.
             Target::SpSummon(target) => target(self, effect, card, PLAYER_NONE, 0, 0, PLAYER_NONE, None),
             Target::Action(_) | Target::PlayerCard(_) | Target::SynchroCheck(_) | Target::ActivateCost(_) => {

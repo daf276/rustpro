@@ -1142,6 +1142,12 @@ impl CardId {
         duel.get_link_marker(&duel.zones(), self) & marker != 0
     }
 
+    // Card.GetTributeRequirement: the minimum and maximum Tributes of an ordinary Summon.
+    pub fn get_tribute_requirement(self, duel: &Duel) -> (u32, u32) {
+        let count = duel.get_summon_tribute_count(self) as u32;
+        (count & 0xffff, (count >> 16) & 0xffff)
+    }
+
     // Card.GetLinkedZone without a player.
     pub fn get_linked_zone(self, duel: &Duel) -> u32 {
         self.get_linked_zone_full(duel, duel.cards[self].current.controler)
@@ -1490,13 +1496,18 @@ impl CardId {
         duel.card_add_effect(self, effect);
     }
 
-    // The range and target filter arguments come with the cards that pass them.
+    // The target filter argument comes with the cards that pass it.
     pub fn enable_counter_permit(self, duel: &mut Duel, counter_type: u16) {
         let range = if duel.cards[self].data.card_type & TYPE_MONSTER != 0 {
             u16::from(LOCATION_MZONE)
         } else {
             u16::from(LOCATION_SZONE) | LOCATION_FZONE
         };
+        self.enable_counter_permit_full(duel, counter_type, range);
+    }
+
+    // Card.EnableCounterPermit with the locations the card can hold the counter in.
+    pub fn enable_counter_permit_full(self, duel: &mut Duel, counter_type: u16, range: u16) {
         let effect = duel.new_effect(self);
         let peffect = &mut duel.effects[effect];
         peffect.effect_type = EFFECT_TYPE_SINGLE;

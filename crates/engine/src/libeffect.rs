@@ -219,6 +219,11 @@ impl EffectId {
         duel.effects[self].target = Target::Card(target);
     }
 
+    // Effect.SetTarget(aux.FieldSummonProcTg(fun1, fun2)).
+    pub fn set_target_field_proc(self, duel: &mut Duel, fun1: fn(&Duel, EffectId, CardId) -> bool, fun2: TargetFn) {
+        duel.effects[self].target = Target::FieldProc(fun1, fun2);
+    }
+
     // Effect.SetTarget for EFFECT_ACTIVATE_COST.
     pub fn set_target_activate_cost(self, duel: &mut Duel, target: fn(&Duel, EffectId, EffectId, u8) -> bool) {
         duel.effects[self].target = Target::ActivateCost(target);

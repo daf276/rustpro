@@ -38,6 +38,8 @@ pub struct Args {
     pub chkf: u64,
     pub zone: u32,
     pub releasable: u32,
+    // The ninth parameter of an operation another card's script calls (the Vaalmonica Spells' `angello_or_dimonno`); 0 is nil.
+    pub extra: u8,
 }
 
 impl Args {

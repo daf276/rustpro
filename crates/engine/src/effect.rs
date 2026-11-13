@@ -183,7 +183,11 @@ pub enum Operation {
     CostReplace(CostReplaceFn),
     // operation(c, e, tp, tc) of the effect aux.AddZWEquipLimit registers, read only by the Utopia Ray monsters that equip a ZW card.
     ZwEquip(ZwEquipFn),
+    // op(e, xyz, matg) of an EFFECT_DOUBLE_XYZ_MATERIAL effect, with the Xyz Monster's minimum material count (its `minxyzct`): read only by proc_xyz.
+    XyzMaterial(XyzMaterialFn),
 }
+
+pub type XyzMaterialFn = fn(&Duel, EffectId, CardId, CardSet, usize) -> bool;
 
 pub type ZwEquipFn = fn(&mut Duel, CardId, EffectId, u8, CardId) -> Script<()>;
 
@@ -1734,6 +1738,27 @@ impl Duel {
                 self.add_effect_code(fieldid, count_flag, hopt, PLAYER_NONE);
             } else {
                 self.add_effect_code(count_code, count_flag, hopt, playerid);
+            }
+        }
+    }
+
+    pub(crate) fn inc_count(&mut self, effect: EffectId, playerid: u8) {
+        let peffect = &self.effects[effect];
+        if !peffect.is_flag(EFFECT_FLAG_COUNT_LIMIT) || peffect.count_limit == 0 {
+            return;
+        }
+        let (count_code, count_flag, hopt) = (peffect.count_code, peffect.count_flag, peffect.count_hopt_index);
+        if ((count_code == 0 && count_flag == 0) || peffect.is_flag(EFFECT_FLAG_NO_TURN_RESET))
+            && peffect.count_limit != peffect.count_limit_max
+        {
+            self.effects[effect].count_limit += 1;
+        }
+        if count_code != 0 || count_flag != 0 {
+            if count_flag & EFFECT_COUNT_CODE_SINGLE != 0 {
+                let fieldid = self.cards[self.get_handler(effect)].fieldid;
+                self.dec_effect_code(fieldid, count_flag, hopt, PLAYER_NONE);
+            } else {
+                self.dec_effect_code(count_code, count_flag, hopt, playerid);
             }
         }
     }

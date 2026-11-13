@@ -5,7 +5,7 @@ use crate::duel::Duel;
 use crate::effect::{
     CodeConditionFn, Condition, ConditionFn, CostConditionFn, CostFn, CostReplaceFn, EffectId, ExtraMaterialFn, FusionMaterialFn,
     GroupOperationFn, Operation, OperationFn, ReturningOperationFn, SpSummonTargetFn, SynchroCheckFn, SynchroMaterialFn, Target, TargetFn,
-    Value, ZwEquipFn,
+    Value, XyzMaterialFn, ZwEquipFn,
 };
 use crate::script::Args;
 
@@ -342,6 +342,15 @@ impl EffectId {
                 duel.dec_count(self, player);
             }
         }
+    }
+
+    pub fn restore_count_limit(self, duel: &mut Duel, player: u8) {
+        duel.inc_count(self, player);
+    }
+
+    // Effect.SetOperation for an EFFECT_DOUBLE_XYZ_MATERIAL effect, whose function proc_xyz calls with the Xyz Monster and the materials.
+    pub fn set_xyz_material_operation(self, duel: &mut Duel, operation: XyzMaterialFn) {
+        duel.effects[self].operation = Some(Operation::XyzMaterial(operation));
     }
 
     pub fn is_activatable(self, duel: &Duel, player: u8, neglect_loc: bool, neglect_target: bool) -> bool {

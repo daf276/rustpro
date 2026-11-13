@@ -67,7 +67,7 @@ pub use duel::{Duel, DuelError, DuelOptions, NewCardInfo, PlayerOptions, Status,
 pub use effect::{
     ChainLimitFn, Condition, ConditionFn, CostFn, CostReplaceCall, CostReplaceCondition, CostReplaceFn, CounterFilter, EffectId, EffectSet,
     Event, ExtraMaterialCall, FusionMaterialFn, GroupOperationFn, OpTarget, Operation, OperationFn, SpSummonTargetFn, SynchroCheckFn,
-    SynchroMaterialFn, Target, TargetFn, Value, ZwEquipFn,
+    SynchroMaterialFn, Target, TargetFn, Value, XyzMaterialFn, ZwEquipFn,
 };
 pub use gamestate::{DuelRecord, FormatError, PlacedCard, Position, PositionError, ReplayError};
 pub use libduel::{ChainInfo, ExtraSummon, FromChainInfo, MonsterStats, ReleaseOptions};

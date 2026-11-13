@@ -1,5 +1,5 @@
 // Port of proc_xyz.lua; material effects come with their cards, and only unported cards read the metatable fields.
-use engine::{Args, CardId, CardSet, Duel, EffectId, Script};
+use engine::{Args, CardId, CardSet, Duel, EffectId, Operation, Script, Value};
 
 use crate::constant::*;
 use crate::keys;
@@ -202,28 +202,90 @@ impl Xyz {
         duel.get_mzone_count(s.tp, Some(matg)) > 0
     }
 
-    // Xyz.RecursionChk: whether `c` added to the selection sg (whose materials are matg) leads to a valid set.
-    fn recursion_chk<P: XyzProcedure>(duel: &Duel, c: CardId, mg: CardSet, s: &Search, sg: CardSet, matg: CardSet, ct: usize) -> bool {
+    // Xyz.RecursionChk: whether `c` added to the selection sg (whose materials are matg, ct cards counting matct materials) leads to a valid set.
+    fn recursion_chk<P: XyzProcedure>(
+        duel: &Duel,
+        c: CardId,
+        mg: CardSet,
+        s: &Search,
+        sg: CardSet,
+        matg: CardSet,
+        ct: usize,
+        matct: usize,
+    ) -> bool {
         unported!(duel, c.is_has_effect(duel, EFFECT_ORICHALCUM_CHAIN).is_some());
-        let xct = ct + 1;
-        if (s.max != 0 && xct > s.max) || (P::MAXCT != Xyz::INFINITE_MATS && xct > P::MAXCT) {
+        let (xct, xmatct) = (ct + 1, matct + 1);
+        if (s.max != 0 && xct > s.max) || (P::MAXCT != Xyz::INFINITE_MATS && xmatct > P::MAXCT) {
             return false;
         }
         let restricted = |c: CardId, duel: &Duel| c.is_has_effect(duel, EFFECT_XYZ_MAT_RESTRICTION).is_some();
         unported!(duel, restricted(c, duel) || sg.is_exists(duel, restricted, 1, None));
         let (matg, sg) = (matg.union(c.into()), sg.union(c.into()));
-        (xct >= s.min && xct >= P::CT && Xyz::check_material_set::<P>(duel, matg, s))
+        (xct >= s.min && xmatct >= P::CT && Xyz::check_material_set::<P>(duel, matg, s))
             || mg.is_exists(
                 duel,
-                |tc, duel| Xyz::recursion_chk::<P>(duel, tc, mg, s, sg, matg, xct),
+                |tc, duel| Xyz::recursion_chk::<P>(duel, tc, mg, s, sg, matg, xct, xmatct),
                 1,
                 Some(sg),
             )
-            || (!P::MUSTBEMAT && Xyz::is_double_material(duel, c))
+            || (!P::MUSTBEMAT && Xyz::double_material_chk::<P>(duel, c, mg, s, sg, matg, xct, xmatct))
     }
 
-    fn is_double_material(duel: &Duel, c: CardId) -> bool {
-        unported!(duel, c.is_has_effect(duel, EFFECT_DOUBLE_XYZ_MATERIAL).is_some());
+    // The EFFECT_DOUBLE_XYZ_MATERIAL effects of `c` with a count left for the player and a function that accepts the materials.
+    fn double_effects<P: XyzProcedure>(duel: &Duel, c: CardId, s: &Search, matg: CardSet) -> Vec<(EffectId, usize)> {
+        c.is_has_effects(duel, EFFECT_DOUBLE_XYZ_MATERIAL)
+            .into_iter()
+            .filter(|&te| te.check_count_limit(duel, s.tp))
+            .filter_map(|te| {
+                let Value::Int(val) = te.get_value(duel) else { return None };
+                let accepted = match te.get_operation(duel) {
+                    None => true,
+                    Some(Operation::XyzMaterial(tgf)) => tgf(duel, te, s.xyz, matg, P::CT),
+                    Some(_) => {
+                        unported!(duel, true);
+                        false
+                    }
+                };
+                (val > 0 && accepted).then_some((te, val as usize))
+            })
+            .collect()
+    }
+
+    // The EFFECT_DOUBLE_XYZ_MATERIAL branch of Xyz.RecursionChk: `c` counted as 1 + val materials.
+    fn double_material_chk<P: XyzProcedure>(
+        duel: &Duel,
+        c: CardId,
+        mg: CardSet,
+        s: &Search,
+        sg: CardSet,
+        matg: CardSet,
+        xct: usize,
+        xmatct: usize,
+    ) -> bool {
+        let mut checked = Vec::new();
+        for (te, val) in Xyz::double_effects::<P>(duel, c, s, matg) {
+            if checked.contains(&val) || (P::MAXCT != Xyz::INFINITE_MATS && xmatct + val > P::MAXCT) {
+                continue;
+            }
+            checked.push(val);
+            // inc_count does not restore a count limit without a code, and check_mut would undo the core's lasting use.
+            unported!(duel, te.get_count_code(duel) == 0);
+            let chk = duel.check_mut(|duel| {
+                te.use_count_limit(duel, s.tp);
+                let chk = (xct + val >= s.min && xmatct + val >= P::CT && Xyz::check_material_set::<P>(duel, matg, s))
+                    || mg.is_exists(
+                        duel,
+                        |tc, duel| Xyz::recursion_chk::<P>(duel, tc, mg, s, sg, matg, xct, xmatct + val),
+                        1,
+                        Some(sg),
+                    );
+                te.restore_count_limit(duel, s.tp);
+                chk
+            });
+            if chk {
+                return true;
+            }
+        }
         false
     }
 
@@ -243,7 +305,12 @@ impl Xyz {
         }
         let s = Search::new(a, c, tp, mustg);
         let none = CardSet::default();
-        mg.is_exists(duel, |mc, duel| Xyz::recursion_chk::<P>(duel, mc, mg, &s, none, none, 0), 1, None)
+        mg.is_exists(
+            duel,
+            |mc, duel| Xyz::recursion_chk::<P>(duel, mc, mg, &s, none, none, 0, 0),
+            1,
+            None,
+        )
     }
 
     fn target<P: XyzProcedure>(duel: &mut Duel, a: &Args, _: i32, _: Option<CardId>) -> Script<bool> {
@@ -261,9 +328,17 @@ impl Xyz {
         let s = Search::new(a, c, tp, mustg);
         let (mut matg, mut sg) = (CardSet::default(), CardSet::default());
         let mut finishable = false;
-        while (max == 0 || matg.len() < max) && (P::MAXCT == Xyz::INFINITE_MATS || matg.len() < P::MAXCT) {
+        let mut extra_mats = 0;
+        // The Materials counted as several, with the effect that doubles each and the count.
+        let mut multi_selected: Vec<(CardId, EffectId, usize)> = Vec::new();
+        while (max == 0 || matg.len() < max) && (P::MAXCT == Xyz::INFINITE_MATS || matg.len() + extra_mats < P::MAXCT) {
             let ct = matg.len();
-            let selg = mg.filter(duel, |mc, duel| Xyz::recursion_chk::<P>(duel, mc, mg, &s, sg, matg, ct), Some(sg));
+            let matct = ct + extra_mats;
+            let selg = mg.filter(
+                duel,
+                |mc, duel| Xyz::recursion_chk::<P>(duel, mc, mg, &s, sg, matg, ct, matct),
+                Some(sg),
+            );
             if selg.is_empty() {
                 break;
             }
@@ -277,13 +352,70 @@ impl Xyz {
             };
             if !sg.is_contains(sc) {
                 sg.insert(sc);
-                unported!(duel, sc.is_has_effect(duel, EFFECT_DOUBLE_XYZ_MATERIAL).is_some());
-                matg.insert(sc);
+                if !Xyz::double_effects::<P>(duel, sc, &s, matg).is_empty() && ct < P::CT {
+                    matg.insert(sc);
+                    let mut multi = Vec::new();
+                    if mg.is_exists(
+                        duel,
+                        |tc, duel| Xyz::recursion_chk::<P>(duel, tc, mg, &s, sg, matg, ct + 1, matct + 1),
+                        1,
+                        Some(sg),
+                    ) {
+                        multi.push((1, Vec::new()));
+                    }
+                    for (te, val) in Xyz::double_effects::<P>(duel, sc, &s, matg) {
+                        let new_count = matct + 1 + val;
+                        te.use_count_limit(duel, tp);
+                        let chk = (P::CT <= new_count && (P::MAXCT == Xyz::INFINITE_MATS || new_count <= P::MAXCT) && sg.includes(mustg))
+                            || mg.is_exists(
+                                duel,
+                                |tc, duel| Xyz::recursion_chk::<P>(duel, tc, mg, &s, sg, matg, ct + 1, new_count),
+                                1,
+                                Some(sg),
+                            );
+                        te.restore_count_limit(duel, tp);
+                        if chk {
+                            match multi.iter_mut().find(|(count, _)| *count == 1 + val) {
+                                Some((_, effects)) => effects.push(te),
+                                None => multi.push((1 + val, vec![te])),
+                            }
+                        }
+                    }
+                    let mut available: Vec<usize> = multi.iter().map(|&(count, _)| count).collect();
+                    let chosen = match available.as_slice() {
+                        &[only] => only,
+                        // multi[1] only covers picking further materials, so a last pick can have no count to announce.
+                        [] => 1,
+                        _ => {
+                            available.sort_unstable();
+                            duel.hint(HINT_SELECTMSG, tp, HINTMSG_XMATERIAL);
+                            let numbers: Vec<u64> = available.iter().map(|&count| count as u64).collect();
+                            duel.announce_number(tp, &numbers)? as usize
+                        }
+                    };
+                    if chosen > 1
+                        && let Some(&eff) = multi
+                            .iter()
+                            .find(|(count, _)| *count == chosen)
+                            .and_then(|(_, effects)| effects.first())
+                    {
+                        extra_mats += chosen - 1;
+                        eff.use_count_limit(duel, tp);
+                        multi_selected.push((sc, eff, chosen));
+                    }
+                } else {
+                    matg.insert(sc);
+                }
             } else {
                 sg.remove(sc);
                 matg.remove(sc);
+                if let Some(index) = multi_selected.iter().position(|&(card, ..)| card == sc) {
+                    let (_, eff, chosen) = multi_selected.remove(index);
+                    eff.restore_count_limit(duel, tp);
+                    extra_mats -= chosen - 1;
+                }
             }
-            finishable = matg.len() >= P::CT && Xyz::check_material_set::<P>(duel, matg, &s);
+            finishable = matg.len() + extra_mats >= P::CT && Xyz::check_material_set::<P>(duel, matg, &s);
         }
         e.set_label_object_group(duel, Some(sg));
         Ok(true)

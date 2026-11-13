@@ -813,8 +813,19 @@ pub mod aux {
     }
 
     pub fn add_temp_lizard_check_full(duel: &mut Duel, c: CardId, tp: u8, filter: fn(&Duel, EffectId, CardId) -> bool) -> EffectId {
+        add_temp_lizard_check_count(duel, c, tp, filter, 0)
+    }
+
+    // aux.addTempLizardCheck with a resetcount (0 for nil).
+    pub fn add_temp_lizard_check_count(
+        duel: &mut Duel,
+        c: CardId,
+        tp: u8,
+        filter: fn(&Duel, EffectId, CardId) -> bool,
+        resetcount: u16,
+    ) -> EffectId {
         let e1 = create_lizard_check(duel, c, filter);
-        e1.set_reset(duel, RESET_PHASE | PHASE_END);
+        e1.set_reset_full(duel, RESET_PHASE | PHASE_END, resetcount);
         duel.register_effect(e1, tp);
         e1
     }

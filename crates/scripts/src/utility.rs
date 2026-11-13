@@ -1729,6 +1729,8 @@ pub trait CardUtility: Copy {
     fn is_trap(self, duel: &Duel) -> bool;
     fn is_equip_card(self, duel: &Duel) -> bool;
     fn is_spell_trap(self, duel: &Duel) -> bool;
+    // Card.IsColumn with every argument given.
+    fn is_column(self, duel: &Duel, seq: u32, tp: u8, loc: u32) -> bool;
     fn is_monster_card(self, duel: &Duel) -> bool;
     fn is_spell_card(self, duel: &Duel) -> bool;
     fn is_trap_card(self, duel: &Duel) -> bool;
@@ -2044,6 +2046,21 @@ impl CardUtility for CardId {
 
     fn is_spell_trap(self, duel: &Duel) -> bool {
         self.is_type(duel, TYPE_SPELL | TYPE_TRAP)
+    }
+
+    fn is_column(self, duel: &Duel, seq: u32, tp: u8, loc: u32) -> bool {
+        if !self.is_on_field(duel) {
+            return false;
+        }
+        let in_mzone = self.is_location(duel, LOCATION_MZONE);
+        let normalize = |seq: u32, mzone: bool| match (seq, mzone) {
+            (5, true) => 1,
+            (6, true) => 3,
+            (6, false) => 5,
+            _ => seq,
+        };
+        let (cseq, seq) = (normalize(self.get_sequence(duel), in_mzone), normalize(seq, loc == LOCATION_MZONE));
+        if self.is_controler(duel, tp) { cseq == seq } else { i64::from(cseq) == 4 - i64::from(seq) }
     }
 
     fn is_monster_card(self, duel: &Duel) -> bool {

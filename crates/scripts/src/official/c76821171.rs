@@ -5,6 +5,8 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT, PZONE};
 
 const ID: u32 = 76821171;
 
+pub const COUNTER_LIST: &[u16] = &[COUNTER_RESONANCE];
+
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Extra Deck, Link Summoned from an Effect Monster once Angello in the Pendulum Zone has 3 Resonance Counters (the Vaalmonica Spells place them), and in

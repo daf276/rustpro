@@ -4,6 +4,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 54082269;
+
+pub const COUNTER_PLACE_LIST: &[u16] = &[0x1002];
 const WEDGE_COUNTER: u16 = 0x1002;
 
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, EXTRA)];

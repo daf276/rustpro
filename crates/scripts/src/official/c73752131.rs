@@ -5,6 +5,8 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 73752131;
 
+pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_SPELL];
+
 pub const LISTED_NAMES: &[u32] = &[CARD_DARK_MAGICIAN];
 
 // On the field, with Spellbook Organization in the hand to activate for Spell Counters and Dark Magician in the Deck to summon.

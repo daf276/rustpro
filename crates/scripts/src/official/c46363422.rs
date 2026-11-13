@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 46363422;
 
+pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_SPELL];
+
 pub const LISTED_NAMES: &[u32] = &[CARD_BUSTER_BLADER];
 
 // On the field, with Spellbook Organization in the hand to activate for Spell Counters and Buster Blader in the Deck to summon.

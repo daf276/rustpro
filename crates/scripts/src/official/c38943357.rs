@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{DECK, HAND, MZONE};
 
 const ID: u32 = 38943357;
+
+pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_SPELL];
 const SPELL_POWER_GRASP: u32 = 75014062;
 
 pub const LISTED_NAMES: &[u32] = &[SPELL_POWER_GRASP];

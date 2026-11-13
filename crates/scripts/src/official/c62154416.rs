@@ -4,6 +4,8 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 62154416;
 
+pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_SPELL];
+
 // Copies in the hand to Normal Summon for the Spell Counter, and on the field to spend it.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, HAND), (ID, HAND), (ID, MZONE)];
 pub const CHECKS: &[Check] = &[

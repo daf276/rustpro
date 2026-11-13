@@ -4,6 +4,8 @@ use crate::testing::{EXTRA, GRAVE, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 33413279;
 
+pub const COUNTER_LIST: &[u16] = &[COUNTER_SPELL];
+
 // In the Extra Deck, Synchro Summoned from Lunar Rabbit Omajinai (Level 1 Tuner) and Leo Wizard (Level 5 Spellcaster), with
 // Selene (Link Summoned from Lucky Trinket and Leo Wizard) putting a Spell Counter on herself for each Spell in the Graveyards.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, GRAVE, HAND, PZONE, REMOVED};
 
 const ID: u32 = 65496951;
+
+pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_RESONANCE];
 const AGATHOKAKOLOGICAL_VOICE: u32 = 39210885;
 
 pub const LISTED_NAMES: &[u32] = &[ID];

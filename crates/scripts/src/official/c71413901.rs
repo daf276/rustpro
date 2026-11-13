@@ -4,6 +4,8 @@ use crate::testing::{Check, HAND, SZONE};
 
 const ID: u32 = 71413901;
 
+pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_SPELL];
+
 // In hand to Normal Summon, and Spells on the field to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (5318639, SZONE)];
 pub const CHECKS: &[Check] = &[

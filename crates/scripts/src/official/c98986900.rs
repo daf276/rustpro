@@ -7,6 +7,8 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 98986900;
 
+pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_SPELL];
+
 // The destruction replacement is no chain link and moves no card; its prompt is the MSG_SELECT_EFFECTYN.
 // On the field and Xyz Summoned with Level 8 Normal Monsters (Black Luster Soldier), with Raigeki in hand to send the opponent's
 // Sangans to the Graveyard for their effects to chain, Dark Hole in the opponent's hand to destroy it, and Spellcasters in the Deck to

@@ -5,6 +5,8 @@ use engine::constants::MSG_ADD_COUNTER;
 
 const ID: u32 = 45819647;
 
+pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_SPELL];
+
 // Dark Magician (a Spellcaster) as the Link Materials and to Special Summon, and Spells for the counters.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

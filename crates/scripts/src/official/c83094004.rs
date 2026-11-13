@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{MZONE, OPPONENT};
 
 const ID: u32 = 83094004;
+
+pub const COUNTER_PLACE_LIST: &[u16] = &[0x1207];
 const COUNTER: u16 = 0x1207;
 
 // On the field with Sangan on the opponent's side to move into its column and put a counter on.

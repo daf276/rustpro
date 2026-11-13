@@ -1813,6 +1813,7 @@ pub trait CardUtility: Copy {
     fn lists_code_as_material(self, duel: &Duel, codes: &[u32]) -> bool;
     fn lists_archetype_as_material(self, duel: &Duel, setcodes: &[u16]) -> bool;
     fn places_counter(self, duel: &Duel, counter_type: u16) -> bool;
+    fn lists_counter(self, duel: &Duel, counter_type: u16) -> bool;
     fn lists_code_with_archetype(self, duel: &Duel, setcodes: &[u16]) -> bool;
     fn is_negatable_monster(self, duel: &Duel) -> bool;
     fn is_negatable_spell_trap(self, duel: &Duel) -> bool;
@@ -2367,6 +2368,13 @@ impl CardUtility for CardId {
 
     fn places_counter(self, duel: &Duel, counter_type: u16) -> bool {
         crate::official::counter_place_list(self.get_original_code(duel)).contains(&counter_type)
+    }
+
+    fn lists_counter(self, duel: &Duel, counter_type: u16) -> bool {
+        let code = self.get_original_code(duel);
+        crate::official::counter_list(code)
+            .unwrap_or_else(|| crate::official::counter_place_list(code))
+            .contains(&counter_type)
     }
 
     fn lists_code_with_archetype(self, duel: &Duel, setcodes: &[u16]) -> bool {

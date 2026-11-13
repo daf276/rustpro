@@ -4,6 +4,8 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 36956512;
 
+pub const COUNTER_LIST: &[u16] = &[COUNTER_KAIJU];
+
 // A copy in hand, one on the opponent's field to Tribute, Kyoutou Waterfront for Kaiju Counters, and Raigeki and Dark Hole to fill it.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

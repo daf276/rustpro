@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 89264428;
+
+pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_BIG_DIPPER];
 const COUNTER_BIG_DIPPER: u16 = 0x204;
 
 // In the hand to activate, with Polari on the field to replace its Tribute with Ursarctic Megabilis in the Graveyard, and Sangan on the

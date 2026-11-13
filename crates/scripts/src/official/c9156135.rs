@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 9156135;
+
+pub const COUNTER_LIST: &[u16] = &[COUNTER_SPELL];
 const SPELL_POWER_GRASP: u32 = 75014062;
 
 // Copies in the hand and on the field (destroyed in battle by the opponent's Summoned Skull and Cyber-Tech Alligator), with

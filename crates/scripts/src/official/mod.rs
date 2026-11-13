@@ -46,6 +46,11 @@ pub fn counter_place_list(code: u32) -> &'static [u16] {
     lookup(&COUNTER_PLACE_LIST, code).unwrap_or(&[])
 }
 
+// s.counter_list, which Card.ListsCounter reads in preference to counter_place_list.
+pub fn counter_list(code: u32) -> Option<&'static [u16]> {
+    lookup(&COUNTER_LIST, code)
+}
+
 // s.material_setcode, which Card.ListsArchetypeAsMaterial reads.
 pub fn material_setcode(code: u32) -> &'static [u16] {
     lookup(&MATERIAL_SETCODE, code).unwrap_or(&[])

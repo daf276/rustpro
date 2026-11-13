@@ -5,6 +5,8 @@ use crate::prelude::*;
 use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT, REMOVED};
 
 const ID: u32 = 17465972;
+
+pub const COUNTER_PLACE_LIST: &[u16] = &[0x1002, COUNTER_FEATHER];
 const WEDGE_COUNTER: u16 = 0x1002;
 
 pub const LISTED_NAMES: &[u32] = &[CARD_BLACK_WINGED_DRAGON];

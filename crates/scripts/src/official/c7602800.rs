@@ -5,6 +5,8 @@ use engine::constants::MSG_SELECT_EFFECTYN;
 
 const ID: u32 = 7602800;
 
+pub const COUNTER_LIST: &[u16] = &[COUNTER_FEATHER];
+
 pub const LISTED_NAMES: &[u32] = &[CARD_BLACK_WINGED_DRAGON];
 
 // Blackwing - Blizzard the Far North and Blackwing - Zephyros the Elite on the field to Synchro Summon Blackwing - Boreastorm the Wicked Wind,

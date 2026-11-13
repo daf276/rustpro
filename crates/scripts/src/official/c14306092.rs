@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, MZONE, OPPONENT};
 
 const ID: u32 = 14306092;
+
+pub const COUNTER_PLACE_LIST: &[u16] = &[0x2e];
 const COUNTER_SHARK: u16 = 0x2e;
 
 struct Procedure;

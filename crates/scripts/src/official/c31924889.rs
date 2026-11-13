@@ -3,6 +3,8 @@ use crate::prelude::*;
 
 const ID: u32 = 31924889;
 
+pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_SPELL];
+
 struct Procedure;
 
 impl SynchroProcedure for Procedure {

@@ -41,6 +41,11 @@ pub fn listed_names(code: u32) -> &'static [u32] {
     lookup(&LISTED_NAMES, code).unwrap_or(&[])
 }
 
+// s.counter_place_list, which Card.PlacesCounter reads.
+pub fn counter_place_list(code: u32) -> &'static [u16] {
+    lookup(&COUNTER_PLACE_LIST, code).unwrap_or(&[])
+}
+
 // s.material_setcode, which Card.ListsArchetypeAsMaterial reads.
 pub fn material_setcode(code: u32) -> &'static [u16] {
     lookup(&MATERIAL_SETCODE, code).unwrap_or(&[])

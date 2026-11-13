@@ -1,6 +1,7 @@
 // Port of proc_pendulum.lua; no card passes a pendulum_location, a reset or a pendulum_flag.
 use engine::{Args, CardId, CardSet, ConditionFn, Duel, EffectId, GroupOperationFn, Script};
 
+use crate::chain::DuelChain;
 use crate::constant::*;
 use crate::utility::{CardUtility, DuelUtility, aux};
 
@@ -50,6 +51,31 @@ impl Pendulum {
         let e1 = Pendulum::summon_effect(duel, handler, P::DESC, property, condition, operation);
         e1.set_reset(duel, RESETS_STANDARD_PHASE_END);
         e1
+    }
+
+    // Pendulum.GrantAdditionalPendulumSummon with the hand and the Extra Deck and the default reset, the owner as the flag.
+    pub fn grant_additional_pendulum_summon<P: ExtraPendulum>(duel: &mut Duel, handler: CardId, tp: u8, hint_description: u64) {
+        let can_gain = !(duel.has_flag_effect(tp, CARD_ZEFRAATH) || duel.has_flag_effect(tp, P::OWNER))
+            && duel.is_turn_player(tp)
+            && !duel.is_phase(PHASE_END);
+        if !can_gain {
+            return;
+        }
+        aux::register_client_hint_full(duel, handler, 0, tp, 1, 0, Some(hint_description), RESET_PHASE | PHASE_END, 1);
+        duel.register_flag_effect(tp, P::OWNER, RESET_PHASE | PHASE_END, 0, 1);
+        let extra_pendulum_effect = Pendulum::create_additional_pendulum_summon_effect::<P>(duel, handler);
+        let e1 = duel.create_effect(handler);
+        e1.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_GRANT);
+        e1.set_target_range(duel, LOCATION_SZONE, 0);
+        e1.set_target_card(duel, |duel, _, c| c.is_location(duel, LOCATION_PZONE));
+        e1.set_label_object(duel, Some(extra_pendulum_effect));
+        e1.set_reset_full(duel, RESET_PHASE | PHASE_END, 1);
+        duel.register_effect(e1, tp);
+        let harmonic_effect = Pendulum::create_harmonic_oscillation_effect::<P>(duel, handler);
+        let e2 = e1.clone_effect(duel);
+        e2.set_target_range(duel, 0, LOCATION_SZONE);
+        e2.set_label_object(duel, Some(harmonic_effect));
+        duel.register_effect(e2, tp);
     }
 
     fn summon_effect(

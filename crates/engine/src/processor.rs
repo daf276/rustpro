@@ -1796,8 +1796,9 @@ impl Duel {
             4 => {
                 self.core.attack_player = false;
                 self.return_cards.clear();
-                self.core.select_cards = self.field_get_attack_target(attacker, self.core.chain_attack, true);
-                // EFFECT_PATRICIAN_OF_DARKNESS hands the choices to the opponent.
+                let (targets, info) = self.field_get_attack_target_info(attacker, self.core.chain_attack, true);
+                self.core.select_cards = targets;
+                // EFFECT_PATRICIAN_OF_DARKNESS hands the choices to the opponent, as do several effects of EFFECT_MUST_ATTACK_MONSTER.
                 let patrician = self
                     .is_player_affected_by_effect(turn_player, EFFECT_PATRICIAN_OF_DARKNESS)
                     .is_some();
@@ -1823,13 +1824,15 @@ impl Duel {
                     arg.step = 6;
                     return false;
                 }
-                if !patrician {
+                if !(patrician || (info.atype == 3 && info.must_effects != 1)) {
                     self.select_attack_target(false);
                 } else if let (1, Some(&only)) = (self.core.select_cards.len(), self.core.select_cards.first()) {
                     self.return_cards.list.push(only);
                 } else {
                     self.hint_selection(attacker);
                     self.select_attack_target(true);
+                    // An effect that makes it attack several monsters sends the choice on to step 16.
+                    unported!(self, (!patrician && info.must_pairs != info.must_effects).then_some(attacker));
                 }
                 arg.step = 5;
                 false
@@ -2609,7 +2612,7 @@ impl Duel {
                 .and_then(|card| self.is_affected_by_effect_target(card, EFFECT_REFLECT_BATTLE_DAMAGE, reason))
                 .or_else(|| self.is_player_affected_by_effect(damp, EFFECT_REFLECT_BATTLE_DAMAGE));
             reflect[1 - damp] = self
-                .affected_by_effect_against(reason, EFFECT_REFLECT_BATTLE_DAMAGE, dam_card)
+                .is_affected_by_effect_against(reason, EFFECT_REFLECT_BATTLE_DAMAGE, dam_card)
                 .or_else(|| self.is_player_affected_by_effect(1 - damp, EFFECT_REFLECT_BATTLE_DAMAGE));
             let mut also = PerPlayer::<bool>::default();
             also[damp] = !both
@@ -2661,18 +2664,8 @@ impl Duel {
         (reason_card, destroyed)
     }
 
-    // card.is_affected_by_effect(code, other) with a nil `other`, ported for integer values only.
-    fn affected_by_effect_against(&self, card: CardId, code: u32, other: Option<CardId>) -> Option<EffectId> {
-        let found = self.is_affected_by_effect_target(card, code, other.unwrap_or(card));
-        unported!(
-            self,
-            found.filter(|&e| other.is_none() && !matches!(self.effects[e].value, Value::Int(_)))
-        );
-        found
-    }
-
     fn is_avoiding_battle_damage(&self, reason_card: CardId, dam_card: Option<CardId>) -> bool {
-        self.affected_by_effect_against(reason_card, EFFECT_AVOID_BATTLE_DAMAGE, dam_card)
+        self.is_affected_by_effect_against(reason_card, EFFECT_AVOID_BATTLE_DAMAGE, dam_card)
             .is_some()
     }
 

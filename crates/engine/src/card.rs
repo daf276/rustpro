@@ -1710,34 +1710,39 @@ impl Duel {
     // card::is_affected_by_effect(code, target): an effect that applies and whose value with the target is nonzero.
     #[inline(always)]
     pub(crate) fn is_affected_by_effect_target(&self, card: CardId, code: u32, target: CardId) -> Option<EffectId> {
+        self.is_affected_by_effect_against(card, code, Some(target))
+    }
+
+    // The same with a nil target card.
+    #[inline(always)]
+    pub(crate) fn is_affected_by_effect_against(&self, card: CardId, code: u32, target: Option<CardId>) -> Option<EffectId> {
         if !self.field_effects.registry.has_code(code) {
             return None;
         }
         self.is_affected_by_effect_target_lookup(card, code, target)
     }
 
-    fn is_affected_by_effect_target_lookup(&self, card: CardId, code: u32, target: CardId) -> Option<EffectId> {
+    fn is_affected_by_effect_target_lookup(&self, card: CardId, code: u32, target: Option<CardId>) -> Option<EffectId> {
         let registry = &self.field_effects.registry;
+        let value = |effect| target.map_or_else(|| self.get_value_nil(effect, card), |target| self.get_value(effect, target));
         registry
             .equal_range(Container::Single, Some(card), code)
             .find(|&effect| {
                 self.is_available(effect)
                     && (!self.effects[effect].is_flag(EFFECT_FLAG_SINGLE_RANGE) || self.is_affect_by_effect(card, Some(effect)))
-                    && self.get_value(effect, target) != 0
+                    && value(effect) != 0
             })
             .or_else(|| {
                 if self.equip_cards.is_empty() {
                     return None;
                 }
                 // The core runs this loop a second time skipping field effects, which finds nothing new.
-                self.equip_effects(card, code).find(|&effect| {
-                    self.is_available(effect) && self.is_affect_by_effect(card, Some(effect)) && self.get_value(effect, target) != 0
-                })
+                self.equip_effects(card, code)
+                    .find(|&effect| self.is_available(effect) && self.is_affect_by_effect(card, Some(effect)) && value(effect) != 0)
             })
             .or_else(|| {
-                self.xmaterial_effects(card, code).find(|&effect| {
-                    self.is_available(effect) && self.is_affect_by_effect(card, Some(effect)) && self.get_value(effect, target) != 0
-                })
+                self.xmaterial_effects(card, code)
+                    .find(|&effect| self.is_available(effect) && self.is_affect_by_effect(card, Some(effect)) && value(effect) != 0)
             })
             .or_else(|| {
                 registry.equal_range(Container::Aura, None, code).find(|&effect| {
@@ -1745,7 +1750,7 @@ impl Duel {
                         && self.is_available(effect)
                         && self.effect_is_target(effect, card)
                         && self.is_affect_by_effect(card, Some(effect))
-                        && self.get_value(effect, target) != 0
+                        && value(effect) != 0
                 })
             })
     }

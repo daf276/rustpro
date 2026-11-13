@@ -45,6 +45,14 @@ impl<T> IndexMut<u8> for PerPlayer<T> {
     }
 }
 
+// What get_attack_target reports besides the targets: the type of attack, and the pairs and the effects of must_attack_map.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct AttackInfo {
+    pub atype: u8,
+    pub must_pairs: usize,
+    pub must_effects: usize,
+}
+
 // The monster an Extra Deck zone count is for; without a card, the core's temp card with no type or the type GetLocationCountFromEx names.
 #[derive(Debug, Clone, Copy)]
 pub struct FromEx {
@@ -2153,6 +2161,11 @@ impl Duel {
 
     // Fills direct_attackable and returns the attackable monsters; atype 1: only be attacked, 2: only attack, 3: must attack, 4: any.
     pub(crate) fn field_get_attack_target(&mut self, card: CardId, chain_attack: bool, select_target: bool) -> Cards16 {
+        self.field_get_attack_target_info(card, chain_attack, select_target).0
+    }
+
+    // The same with the type of attack and the number of (effect, monster) pairs and of effects of EFFECT_MUST_ATTACK_MONSTER.
+    pub(crate) fn field_get_attack_target_info(&mut self, card: CardId, chain_attack: bool, select_target: bool) -> (Cards16, AttackInfo) {
         self.cards[card].direct_attackable = 0;
         let p = self.cards[card].current.controler;
         let opponent = self.player[1 - p].list_mzone;
@@ -2175,21 +2188,27 @@ impl Duel {
                 }
             }
         }
+        let mut info = AttackInfo {
+            atype: 0,
+            must_pairs: must_attack.len(),
+            must_effects: must_effects.len(),
+        };
         let (atype, attack_tg) = if !auto_attack.is_empty() {
+            info.atype = 1;
             if auto_attack.len() != 1 {
-                return Cards16::default();
+                return (Cards16::default(), info);
             }
             (1, auto_attack)
         } else if self.is_affected_by_effect(card, EFFECT_ONLY_ATTACK_MONSTER).is_some() {
+            info.atype = 2;
             if only_attack.len() != 1 {
-                return Cards16::default();
+                return (Cards16::default(), info);
             }
             (2, only_attack)
         } else if self.is_affected_by_effect(card, EFFECT_MUST_ATTACK_MONSTER).is_some() {
-            // Several effects that each make it attack its own monsters let the opponent choose (BattleCommand step 4).
-            unported!(self, (must_effects.len() > 1).then_some(card));
+            info.atype = 3;
             if must_attack.is_empty() {
-                return Cards16::default();
+                return (Cards16::default(), info);
             }
             (3, must_attack)
         } else {
@@ -2199,6 +2218,7 @@ impl Duel {
                 .flatten()
                 .filter(|&target| Some(target) != self.core.attacker)
                 .collect();
+            info.atype = 4;
             (4, attack_tg)
         };
         let choosable = select_target && (atype == 2 || atype == 4);
@@ -2247,7 +2267,7 @@ impl Duel {
                     targets.push(target);
                 }
             }
-            return targets;
+            return (targets, info);
         }
         let mut mcount = 0;
         let mut targets = Cards16::default();
@@ -2278,7 +2298,7 @@ impl Duel {
             targets.push(target);
         }
         if atype <= 3 {
-            return targets;
+            return (targets, info);
         }
         if (mcount == 0 || self.is_affected_by_effect(card, EFFECT_DIRECT_ATTACK).is_some() || self.core.attack_player)
             && self.is_affected_by_effect(card, EFFECT_CANNOT_DIRECT_ATTACK).is_none()
@@ -2287,7 +2307,7 @@ impl Duel {
         {
             self.cards[card].direct_attackable = 1;
         }
-        targets
+        (targets, info)
     }
 
     pub(crate) fn confirm_attack_target(&mut self) -> bool {

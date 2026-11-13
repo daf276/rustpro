@@ -304,6 +304,11 @@ impl Duel {
         player <= 1 && self.is_player_can_action(player, EFFECT_CANNOT_SUMMON)
     }
 
+    // Duel.IsPlayerCanSummon(player, sumtype, card).
+    pub fn is_player_can_summon_full(&self, player: u8, sumtype: u32, card: CardId) -> bool {
+        player <= 1 && self.field_is_player_can_summon(sumtype, player, card, player)
+    }
+
     // Duel.CanPlayerSetSpellTrap without a card.
     pub fn can_player_set_spell_trap(&self, player: u8) -> bool {
         player <= 1 && self.is_player_can_action(player, EFFECT_CANNOT_SSET)

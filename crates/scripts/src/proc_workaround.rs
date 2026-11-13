@@ -74,6 +74,7 @@ pub trait DuelWorkaround {
     ) -> CardSet;
     // Duel.IsMainPhase(player), Duel.IsDrawPhase(player) and Duel.IsStandbyPhase(player): also the player's turn.
     fn is_main_phase_full(&self, player: Option<u8>) -> bool;
+    fn is_main_phase2(&self) -> bool;
     fn is_draw_phase_full(&self, player: Option<u8>) -> bool;
     fn is_standby_phase_full(&self, player: Option<u8>) -> bool;
     fn get_release_group(&self, player: u8) -> CardSet;
@@ -164,6 +165,10 @@ impl DuelWorkaround for Duel {
 
     fn is_main_phase_full(&self, player: Option<u8>) -> bool {
         self.is_main_phase() && player.is_none_or(|player| self.is_turn_player(player))
+    }
+
+    fn is_main_phase2(&self) -> bool {
+        self.get_current_phase() == PHASE_MAIN2
     }
 
     fn is_draw_phase_full(&self, player: Option<u8>) -> bool {

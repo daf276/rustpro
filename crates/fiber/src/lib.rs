@@ -15,8 +15,9 @@ use engine::{Action, ActionError, Duel, Resumed, Status};
 
 // Reserved per stack; Windows commits its pages as they are touched.
 const STACK_SIZE: usize = 2 << 20;
-// Per thread: runs often finish on another thread than they started on, so pools drift.
-const POOLED_STACKS: usize = 8;
+// Per thread: runs often finish on another thread than they started on, so pools drift. A depth-first search keeps
+// hundreds of runs waiting; a smaller pool frees and reallocates stacks, about 13% of its time.
+const POOLED_STACKS: usize = 256;
 
 type Run = Coroutine<Resumed, Waiting, Status, DefaultStack>;
 type Resumer = NonNull<Yielder<Resumed, Waiting>>;

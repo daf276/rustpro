@@ -24,7 +24,7 @@ pub const CHECKS: &[Check] = &[
     Check::ResolvesEffect(aux::stringid(ID, 1)),
 ];
 
-struct Procedure;
+pub struct Procedure;
 
 impl SynchroProcedure for Procedure {
     const MIN2: usize = 1;

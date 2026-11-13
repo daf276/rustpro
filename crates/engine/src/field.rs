@@ -1568,7 +1568,13 @@ impl Duel {
                     || (!peffect.is_flag(EFFECT_FLAG_PLAYER_TARGET) && matches!(peffect.value, crate::Value::Zones(_))))
                 .then_some(effect)
             );
-            zones &= self.get_zones_value(effect, playerid, uplayer, reason);
+            zones &= self.get_zones_value(
+                effect,
+                card.filter(|_| !peffect.is_flag(EFFECT_FLAG_PLAYER_TARGET)),
+                playerid,
+                uplayer,
+                reason,
+            );
         }
         if uplayer == playerid || uplayer > 1 {
             zones & 0xff

@@ -4152,7 +4152,8 @@ impl Duel {
                                 || (!peffect.is_flag(EFFECT_FLAG_PLAYER_TARGET) && matches!(peffect.value, Value::Zones(_))))
                             .then_some(effect)
                         );
-                        let mut value = self.get_zones_value(effect, current.controler, move_player, real_reason);
+                        let card = (!peffect.is_flag(EFFECT_FLAG_PLAYER_TARGET)).then_some(target);
+                        let mut value = self.get_zones_value(effect, card, current.controler, move_player, real_reason);
                         if self.get_handler_player(effect) != current.controler {
                             value >>= 16;
                         }

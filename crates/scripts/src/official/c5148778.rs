@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT, PZONE};
 
 const ID: u32 = 5148778;
 
+pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_PREDATOR];
+
 pub const MATERIAL_SETCODE: &[u16] = &[SET_CLEAR_WING];
 
 struct Materials;

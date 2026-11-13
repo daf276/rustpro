@@ -4,6 +4,8 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 22138839;
 
+pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_PREDATOR];
+
 // On the field and in the hand, destroyed in battle by the opponent's Elfnote Lucinas, which then get Predator Counters to release for the copies in the hand.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 32453837;
+
+pub const COUNTER_PLACE_LIST: &[u16] = &[0x1101];
 pub const XYZ_NUMBER: u32 = 2;
 const HALLUCINATION_COUNTER: u16 = 0x1101;
 

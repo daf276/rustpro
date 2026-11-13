@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 75433814;
+
+pub const COUNTER_PLACE_LIST: &[u16] = &[0x1024];
 pub const XYZ_NUMBER: u32 = 40;
 const COUNTER_STRING: u16 = 0x1024;
 

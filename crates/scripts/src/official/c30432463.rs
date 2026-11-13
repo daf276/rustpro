@@ -5,6 +5,8 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 use engine::constants::MSG_ADD_COUNTER;
 
 const ID: u32 = 30432463;
+
+pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_RESONANCE];
 const ANGELLO: u32 = 3048768;
 
 pub const LISTED_NAMES: &[u32] = &[ANGELLO];

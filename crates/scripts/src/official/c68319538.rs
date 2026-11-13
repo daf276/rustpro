@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 68319538;
 
+pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_A];
+
 pub const LISTED_NAMES: &[u32] = &[652362];
 pub const MATERIAL: &[u32] = &[652362];
 

@@ -5,6 +5,8 @@ use engine::Operation;
 use engine::constants::MSG_ADD_COUNTER;
 
 const ID: u32 = 3048768;
+
+pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_RESONANCE];
 const DIMONNO: u32 = 30432463;
 const AGATHOKAKOLOGICAL_VOICE: u32 = 39210885;
 

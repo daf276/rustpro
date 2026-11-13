@@ -4,6 +4,8 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 use engine::constants::{MSG_ADD_COUNTER, MSG_REMOVE_COUNTER};
 
 const ID: u32 = 75304793;
+
+pub const COUNTER_PLACE_LIST: &[u16] = &[0x35];
 const COUNTER_SYMPH: u16 = 0x35;
 
 // Symphonic Warrior Drumss and Piaano on the field to chain their own effects for counters, with Dark Hole for the opponent's side.

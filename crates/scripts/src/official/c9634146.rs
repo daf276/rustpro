@@ -5,6 +5,8 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 9634146;
 
+pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_SIGNAL];
+
 // Three copies on the field and one in the Extra Deck, so that Signal Counters pile up over a few Standby Phases.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, EXTRA), (ID, MZONE), (ID, MZONE), (ID, MZONE)];
 pub const CHECKS: &[Check] = &[

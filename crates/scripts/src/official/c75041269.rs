@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, OPPONENT};
 
 const ID: u32 = 75041269;
+
+pub const COUNTER_PLACE_LIST: &[u16] = &[0x1b];
 const DREADMASTER: u32 = 40591390;
 const COUNTER_CLOCK: u16 = 0x1b;
 

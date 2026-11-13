@@ -4,6 +4,8 @@ use crate::testing::{Check, MZONE, OPPONENT};
 
 const ID: u32 = 69946549;
 
+pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_PREDATOR];
+
 // Elfnote Lucina in the opponent's monster zone to place a counter on, with an effect that can be negated.
 pub const SUPPORT: &[(u32, u16)] = &[(13597785, MZONE | OPPONENT)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

@@ -5,11 +5,12 @@ use std::sync::LazyLock;
 use carddata::{Card, CardDatabase, Deck, TYPE_MONSTER, TYPE_NORMAL, TYPE_SPELL, TYPE_TRAP};
 use engine::constants::{
     EFFECT_CHANGE_BATTLE_STAT, EFFECT_FLAG_SINGLE_RANGE, EFFECT_TYPE_CONTINUOUS, EFFECT_TYPE_FIELD, EFFECT_TYPE_SINGLE, EVENT_DRAW,
-    LOCATION_MZONE, TYPE_EFFECT, TYPE_QUICKPLAY,
+    LOCATION_DECK, LOCATION_GRAVE, LOCATION_HAND, LOCATION_MZONE, PHASE_MAIN1, POS_FACEDOWN_DEFENSE, POS_FACEUP_ATTACK, TYPE_EFFECT,
+    TYPE_QUICKPLAY,
 };
 use engine::{
-    Action, ActionError, CardId, DUEL_MODE_MR5, Duel, DuelError, DuelOptions, IdleCommand, InitialEffect, Library, PHASE_DAMAGE,
-    PHASE_DAMAGE_CAL, PlayerOptions, Prompt, Status,
+    Action, ActionError, BattleCommand, CardId, DUEL_MODE_MR5, Duel, DuelError, DuelOptions, IdleCommand, InitialEffect, Library,
+    NewCardInfo, PHASE_DAMAGE, PHASE_DAMAGE_CAL, PlacedCard, PlayerOptions, Position, Prompt, Status,
 };
 
 const CODES: std::ops::RangeInclusive<u32> = 1..=40;
@@ -241,6 +242,150 @@ fn should_hash_a_chain_window_alike_whatever_order_reached_it_and_apart_by_its_c
     assert!(first.is_some());
     assert_eq!(chain_window([(keto, 9), (pot, 8)], 8), first);
     assert_ne!(chain_window([(pot, 8), (keto, 9)], 9), first);
+}
+
+fn placed(team: u8, code: u32, location: u8, sequence: u32) -> PlacedCard {
+    PlacedCard {
+        info: NewCardInfo {
+            team,
+            duelist: 0,
+            code,
+            con: team,
+            loc: location.into(),
+            seq: sequence,
+            pos: if location == LOCATION_DECK {
+                POS_FACEDOWN_DEFENSE
+            } else {
+                POS_FACEUP_ATTACK
+            },
+        },
+        proc_complete: true,
+        counters: Vec::new(),
+    }
+}
+
+#[test]
+fn should_hash_a_board_alike_whatever_its_deck_and_graveyard_order() {
+    // Player 0's Deck, its Graveyard and its monster's zone, player 1's monster's zone and its Graveyard.
+    let board = |deck: [u32; 3], grave: [u32; 2], zone: u32, other_zone: u32, other_grave: u32| {
+        let no_hand = PlayerOptions {
+            starting_draw_count: 0,
+            ..PlayerOptions::default()
+        };
+        let cards = (deck.map(|code| placed(0, code, LOCATION_DECK, 0)).into_iter())
+            .chain(grave.map(|code| placed(0, code, LOCATION_GRAVE, 0)))
+            .chain([placed(0, 6, LOCATION_MZONE, zone), placed(1, 7, LOCATION_MZONE, other_zone)])
+            .chain([placed(1, other_grave, LOCATION_GRAVE, 0)]);
+        let position = Position {
+            phase: PHASE_MAIN1,
+            cards: cards.collect(),
+            ..Position::new(DUEL_MODE_MR5, [no_hand; 2])
+        };
+        let mut duel = Duel::from_position(&position, &CARDS, &scripts::LIBRARY, [1, 2, 3, 4]).unwrap();
+        duel.process();
+        duel.board_hash(0)
+    };
+    let first = board([1, 2, 3], [4, 5], 0, 2, 8);
+    let cases = [
+        (([3, 1, 2], [5, 4], 0, 2, 9), true),
+        (([1, 2, 3], [4, 10], 0, 2, 8), false),
+        (([1, 2, 3], [4, 5], 1, 2, 8), false),
+        (([1, 2, 3], [4, 5], 0, 3, 8), false),
+    ];
+    for (case @ (deck, grave, zone, other_zone, other_grave), alike) in cases {
+        assert_eq!(board(deck, grave, zone, other_zone, other_grave) == first, alike, "{case:?}");
+    }
+}
+
+#[test]
+fn should_give_the_effect_each_activation_activates() {
+    let main: Vec<u32> = EFFECT_CARDS.iter().flat_map(|card| [card.0; 2]).chain(1..=16).collect();
+    let mut duel = started_duel(&main, &scripts::LIBRARY).unwrap();
+    let mut status = duel.process();
+    // Whether an idle prompt and a chain prompt offered an activation.
+    let mut offered = [false; 2];
+    for decision in 0..DECISIONS {
+        if status == Status::End {
+            break;
+        }
+        let legal = duel.legal_actions();
+        for &action in &legal {
+            let (card, description) = duel.action_card(action);
+            let effect = duel.action_effect(action);
+            let found = effect.map(|effect| (Some(effect.get_handler(&duel)), effect.get_description(&duel)));
+            match action {
+                Action::IdleCommand(IdleCommand::Activate(_))
+                | Action::BattleCommand(BattleCommand::Activate(_))
+                | Action::Chain(Some(_)) => {
+                    assert_eq!(found, Some((card, description)), "{action:?}");
+                }
+                // The description is the prompt's.
+                Action::YesNo(true) => assert!(found.is_none_or(|(handler, _)| handler == card), "{action:?}"),
+                _ => assert_eq!(found, None, "{action:?}"),
+            }
+            offered[0] |= matches!(action, Action::IdleCommand(IdleCommand::Activate(_)));
+            offered[1] |= matches!(action, Action::Chain(Some(_)));
+        }
+        let action = *legal.get((decision.wrapping_mul(0x9e37_79b9) >> 8) % legal.len().max(1)).unwrap();
+        status = duel.apply(action).unwrap();
+    }
+    assert_eq!(offered, [true; 2]);
+}
+
+#[test]
+fn should_list_the_idle_options_again_with_the_cards_added_since() {
+    let pot = 55144522;
+    let mut start = started_duel(&CODES.collect::<Vec<_>>(), &scripts::LIBRARY).unwrap();
+    assert!(!start.reopen_idle());
+    start.process();
+    let reopened = |added: Option<u32>| {
+        let mut duel = start.clone();
+        if let Some(code) = added {
+            let card = NewCardInfo {
+                pos: POS_FACEDOWN_DEFENSE,
+                ..placed(0, code, LOCATION_HAND, 0).info
+            };
+            duel.debug_add_card(card, true, duel.database().unwrap()).unwrap();
+        }
+        assert!(duel.reopen_idle());
+        assert_eq!(duel.process(), Status::Awaiting);
+        duel
+    };
+    let same = reopened(None);
+    assert_eq!(
+        (same.legal_actions(), same.state_hash()),
+        (start.legal_actions(), start.state_hash())
+    );
+    let added = reopened(Some(pot));
+    let on_pot = |&action: &Action| added.action_card(action).0.is_some_and(|card| card.get_code(&added) == pot);
+    let actions: Vec<Action> = added.legal_actions().into_iter().filter(on_pot).collect();
+    assert_eq!(
+        actions,
+        [IdleCommand::SpellSet(0), IdleCommand::Activate(0)].map(Action::IdleCommand)
+    );
+}
+
+#[test]
+fn should_draw_the_starting_hands_a_position_sets() {
+    for draws in [0, 5] {
+        let players = PlayerOptions {
+            starting_draw_count: draws,
+            ..PlayerOptions::default()
+        };
+        let mut position = Position::new(DUEL_MODE_MR5, [players; 2]);
+        for team in 0..2 {
+            position.add_deck(
+                team,
+                &Deck {
+                    main: CODES.collect(),
+                    extra: Vec::new(),
+                },
+            );
+        }
+        let mut duel = Duel::from_position(&position, &CARDS, &scripts::LIBRARY, [1, 2, 3, 4]).unwrap();
+        duel.process();
+        assert_eq!(duel.get_field_group_count(1, LOCATION_HAND.into(), 0), draws as usize);
+    }
 }
 
 #[test]

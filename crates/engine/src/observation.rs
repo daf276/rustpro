@@ -9,7 +9,7 @@ use crate::action::{Action, BattleCommand, IdleCommand, Prompt};
 use crate::card::{Card, CardId, CardSet, CardState, MAX_CARDS};
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{CellChunk, Event};
+use crate::effect::{CellChunk, EffectId, Event};
 use crate::field::Cards8;
 use crate::list::List;
 use crate::processor::Unit;
@@ -425,6 +425,21 @@ impl Duel {
             (Some(prompt), _) => self.choice_card(prompt, action),
             (None, _) => (None, 0),
         }
+    }
+
+    // The effect an activation at an idle, battle or chain prompt would activate, or the lone optional trigger or quick effect an
+    // EffectYesNo prompt of a phase or event asks about.
+    pub fn action_effect(&self, action: Action) -> Option<EffectId> {
+        let units = self.core.units.as_slice();
+        let lone = matches!(units, [.., Unit::PhaseEvent(_) | Unit::PointEvent(_), Unit::SelectEffectYesNo(_)]);
+        let index = match (self.prompt()?, action) {
+            (Prompt::IdleCommand { .. }, Action::IdleCommand(IdleCommand::Activate(index)))
+            | (Prompt::BattleCommand { .. }, Action::BattleCommand(BattleCommand::Activate(index)))
+            | (Prompt::Chain { .. }, Action::Chain(Some(index))) => index,
+            (Prompt::EffectYesNo { .. }, Action::YesNo(true)) if lone => 0,
+            _ => return None,
+        };
+        self.core.select_chains.get(usize::from(index)).map(|chain| chain.triggering_effect)
     }
 
     fn choice_card(&self, prompt: Prompt, action: Action) -> (Option<CardId>, u64) {

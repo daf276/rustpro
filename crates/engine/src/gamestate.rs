@@ -102,7 +102,8 @@ fn is_place(info: &NewCardInfo) -> bool {
 }
 
 impl Duel {
-    // A duel set up at `position`, ready to `process`: its cards' scripts register their effects as they are placed.
+    // A duel set up at `position`, ready to `process`: its cards' scripts register their effects as they are placed, and at
+    // the start each player draws its `starting_draw_count`, as a duel from its decks does (a record's position relies on it).
     pub fn from_position(
         position: &Position,
         database: &'static CardDatabase,
@@ -154,7 +155,8 @@ impl Duel {
         Ok(duel)
     }
 
-    // What a puzzle sets up to start from this duel's cards, LP and turn (see [Position]); no player draws a starting hand.
+    // What a puzzle sets up to start from this duel's cards, LP and turn (see [Position]), with a `starting_draw_count` of 0
+    // so that the hands stay as they are.
     pub fn position(&self) -> Position {
         let infos = &self.infos;
         let (turn, phase) = match infos.phase {

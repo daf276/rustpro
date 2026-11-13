@@ -85,7 +85,7 @@ pub fn splimit(duel: &Duel, e: EffectId, tp: u8) -> bool {
         .is_some()
     {
         let c = e.get_handler(duel);
-        c.assume_property(duel, ASSUME_LINK, u64::from(c.get_link(duel) - 1));
+        c.assume_property(duel, ASSUME_LINK, u64::from(c.get_link(duel)).wrapping_sub(1));
         return true;
     }
     false

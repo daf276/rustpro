@@ -46,6 +46,10 @@ fn is_as_registered(effect: &Effect) -> bool {
         && effect.label_object.is_none()
 }
 
+fn is_hashed(effect: &Effect) -> bool {
+    (effect.card_key.is_some() || effect.field_key.is_some()) && !is_as_registered(effect)
+}
+
 impl Duel {
     // The same for the same state reached by another order of actions, as it hashes cards and effects by content, not by an
     // id, field id or timestamp; Some at every prompt where no script function waits. At prompts other than the idle one it
@@ -125,13 +129,64 @@ impl Duel {
             })
             .fold(0, u64::wrapping_add);
         let effects = (self.effects.iter())
-            .filter(|effect| (effect.card_key.is_some() || effect.field_key.is_some()) && !is_as_registered(effect))
-            .map(|effect| self.effect_hash(effect));
+            .filter(|effect| is_hashed(effect))
+            .map(|effect| self.effect_hash(effect, Self::place_key));
         let parts = (count_codes.chain(once).chain(activities).chain(materials).chain(counters))
             .chain(targets.chain(relations).chain(spent).chain(script_groups).chain(effects))
             .fold(cards.wrapping_add(script_state), u64::wrapping_add);
         let flow = refs.map_or(0, |refs| refs.flow(prompt));
         Some(mix((turn, activity, &self.random)).wrapping_add(parts).wrapping_add(flow))
+    }
+
+    // What decides `player`'s interruptions on the opponent's turn: its cards outside the Deck, the opponent's field, its count
+    // limits and lingering effects; not the Deck, the order off the field, LP, the RNG, turn counts, links or the processor's state.
+    pub fn board_hash(&self, player: u8) -> u64 {
+        let counted = |card: CardId| {
+            let place = self.cards.get_info_location(card);
+            place.location != LOCATION_DECK && (place.controler == player || place.location & LOCATION_ONFIELD != 0)
+        };
+        let cards = (self.located_cards().into_iter()).filter(|&card| counted(card)).map(|card| {
+            let counters = (self.counters.iter())
+                .filter(|&&(other, ..)| other == card)
+                .map(|&(_, kind, counts)| mix((kind, counts)));
+            let pcard = &self.cards[card];
+            mix((self.board_place(card), pcard.status, pcard.summon.summon_type, summed(counters)))
+        });
+        // Duel.RegisterEffect's effects, which linger wherever their card has gone.
+        let lingering = |effect: &Effect| effect.is_flag(EFFECT_FLAG_FIELD_ONLY);
+        let effects = (self.effects.iter())
+            .filter(|effect| is_hashed(effect) && (lingering(effect) || effect.handler.is_some_and(counted)))
+            .map(|effect| self.effect_hash(effect, Self::board_place));
+        let core = &self.core;
+        let count_codes = [&core.effect_count_code, &core.effect_count_code_duel, &core.effect_count_code_chain];
+        let count_codes = (count_codes.into_iter().enumerate()).flat_map(|(map, codes)| {
+            let own = codes.iter().filter(|&&(key, count)| count > 0 && key as u8 == player);
+            own.map(move |entry| mix((map, entry)))
+        });
+        let once = core.spsummon_once_map[player].iter().map(mix);
+        summed(cards.chain(effects).chain(count_codes).chain(once))
+    }
+
+    // [Duel::place_key] with a sequence only on the field, a material's being its monster's.
+    fn board_place(&self, card: CardId) -> [u32; 5] {
+        let place = self.cards.get_info_location(card);
+        let sequence = if place.location & LOCATION_ONFIELD != 0 {
+            place.sequence
+        } else {
+            0
+        };
+        let position = if place.location & LOCATION_OVERLAY != 0 {
+            0
+        } else {
+            place.position
+        };
+        [
+            self.cards[card].data.code,
+            place.controler.into(),
+            place.location.into(),
+            sequence,
+            position,
+        ]
     }
 
     // The code and place of a card, without its order in the hand or the Extra Deck; a material is placed by its monster.
@@ -274,7 +329,7 @@ impl Duel {
         mix((words, equiping_target.map(|target| self.place_key(target))))
     }
 
-    fn effect_hash(&self, effect: &Effect) -> u64 {
+    fn effect_hash(&self, effect: &Effect, place: impl Fn(&Self, CardId) -> [u32; 5]) -> u64 {
         let Effect {
             count_limit,
             count_limit_max,
@@ -350,7 +405,7 @@ impl Duel {
             // An id, compared only with RESET_COPY's level, which comes from the same counter.
             (copy_id != 0).into(),
         ];
-        let handlers = [handler, active_handler].map(|handler| handler.map(|handler| self.place_key(handler)));
+        let handlers = [handler, active_handler].map(|handler| handler.map(|handler| place(self, handler)));
         mix((words, description, category, effect.labels(), handlers))
     }
 }
@@ -389,7 +444,7 @@ impl<'a> Refs<'a> {
         let effects = (duel.field_effects.registry.of_card(card))
             .map(|effect| &duel.effects[effect])
             .filter(|effect| !is_as_registered(effect))
-            .map(|effect| duel.effect_hash(effect));
+            .map(|effect| duel.effect_hash(effect, Duel::place_key));
         let counters = (duel.counters.iter())
             .filter(|&&(other, ..)| other == card)
             .map(|&(_, kind, counts)| mix((kind, counts)));
@@ -418,7 +473,7 @@ impl<'a> Refs<'a> {
             peffect.operation,
         );
         let key = mix((
-            self.duel.effect_hash(peffect),
+            self.duel.effect_hash(peffect, Duel::place_key),
             functions,
             peffect.handler.map(|card| self.card(card)),
         ));

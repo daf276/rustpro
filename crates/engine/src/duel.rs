@@ -451,6 +451,26 @@ impl Duel {
         status
     }
 
+    // Takes the idle prompt back to the step that lists its options, for [Duel::process] to list them again as when the step
+    // opens, say after [Duel::debug_add_card]; the hand shuffle does the same, but shuffles. False at any other prompt.
+    pub fn reopen_idle(&mut self) -> bool {
+        let units = &mut self.core.units;
+        let [.., Unit::IdleCommand(command), Unit::SelectIdleCmd(prompt)] = units.as_mut_slice() else {
+            return false;
+        };
+        if prompt.step == 0 {
+            return false;
+        }
+        command.step = 0;
+        units.pop();
+        true
+    }
+
+    // None before the first card is added.
+    pub fn database(&self) -> Option<&'static CardDatabase> {
+        self.database
+    }
+
     pub fn phase(&self) -> u16 {
         self.infos.phase
     }

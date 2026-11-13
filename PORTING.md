@@ -262,8 +262,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   `AssumeProperty` exists for race, type and level.
 - A condition that writes state the Lua reads later (its effect's label or label object, `s.x`, a flag effect) is
   set with `e.set_condition_mut(duel, f)`, `f` taking `&mut Duel`, and writes as an operation does. This holds for
-  the conditions of activated and continuous effects (`EFFECT_TYPE_ACTIONS`), which the engine reaches with
-  `&mut Duel`. A writing condition of another effect (a field or single effect, a summon procedure) or a value, target
+  the conditions of activated and continuous effects (`EFFECT_TYPE_ACTIONS`) and of `EFFECT_DISABLE_FIELD` effects
+  (c32224143), which the engine reaches with `&mut Duel`. A writing condition of another effect (a field or single effect, a summon procedure) or a value, target
   or filter that writes where its shape takes `&Duel` is not supported yet; stop and report such a card.
 
 ## Code style

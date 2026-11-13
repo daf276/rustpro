@@ -1071,6 +1071,43 @@ impl Duel {
 
     // Whether a single, equip, field or target effect applies now; actions never do.
     pub(crate) fn is_available(&self, effect: EffectId) -> bool {
+        if !self.is_available_besides_condition(effect) {
+            return false;
+        }
+        let Some(condition) = self.effects[effect].condition else {
+            return true;
+        };
+        let result = self.check_condition(condition, &Args::effect(effect));
+        self.set_available(effect, result)
+    }
+
+    // is_available where a condition that writes runs on the duel, as the core's Lua does (EFFECT_DISABLE_FIELD, c32224143).
+    pub(crate) fn is_available_mut(&mut self, effect: EffectId) -> bool {
+        let Some(condition @ Condition::Mut(_)) = self.effects[effect].condition else {
+            return self.is_available(effect);
+        };
+        if !self.is_available_besides_condition(effect) {
+            return false;
+        }
+        let result = self.run_condition(condition, &Args::effect(effect));
+        self.set_available(effect, result)
+    }
+
+    fn set_available(&self, effect: EffectId, available: bool) -> bool {
+        let status = self.effects.status(effect);
+        if available {
+            if status & EFFECT_STATUS_AVAILABLE == 0 {
+                self.effects.set_id(effect, self.next_field_id());
+            }
+            self.effects.set_status(effect, status | EFFECT_STATUS_AVAILABLE);
+        } else {
+            self.effects.set_status(effect, status & !EFFECT_STATUS_AVAILABLE);
+        }
+        available
+    }
+
+    #[inline(always)]
+    fn is_available_besides_condition(&self, effect: EffectId) -> bool {
         let peffect = &self.effects[effect];
         let effect_type = peffect.effect_type;
         if effect_type & EFFECT_TYPE_ACTIONS != 0 {
@@ -1126,20 +1163,7 @@ impl Duel {
                 return false;
             }
         }
-        let Some(condition) = peffect.condition else {
-            return true;
-        };
-        let result = self.check_condition(condition, &Args::effect(effect));
-        let status = self.effects.status(effect);
-        if result {
-            if status & EFFECT_STATUS_AVAILABLE == 0 {
-                self.effects.set_id(effect, self.next_field_id());
-            }
-            self.effects.set_status(effect, status | EFFECT_STATUS_AVAILABLE);
-        } else {
-            self.effects.set_status(effect, status & !EFFECT_STATUS_AVAILABLE);
-        }
-        result
+        true
     }
 
     // count_limit: activations left; count_limit_max: activations allowed.

@@ -61,6 +61,11 @@ pub fn dark_calling(code: u32) -> bool {
     lookup(&DARK_CALLING, code).unwrap_or(false)
 }
 
+// s.toss_coin, which the cards that search for a coin tossing effect read on the cards they check.
+pub fn toss_coin(code: u32) -> bool {
+    lookup(&TOSS_COIN, code).unwrap_or(false)
+}
+
 // s.xyz_number, which Card.xyz_number reads.
 pub fn xyz_number(code: u32) -> Option<u32> {
     lookup(&XYZ_NUMBER, code)

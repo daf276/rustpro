@@ -455,6 +455,13 @@ impl Effects {
         self.free.clone_from(&source.free);
     }
 
+    // The effect at `index`, which a script kept as a number in chain data; only right while that effect lives, as a
+    // deleted effect's slot is reused.
+    pub fn at(&self, index: usize) -> Option<EffectId> {
+        let id = EffectId::new(u16::try_from(index).ok()?);
+        (index < self.list.len() && !self.free.contains(&id)).then_some(id)
+    }
+
     fn cell(&self, effect: EffectId) -> Option<&Cell<(u32, u16)>> {
         let index = effect.index();
         let chunk = self.cells.get(index / CHUNK)?.as_array_of_cells();
@@ -1034,7 +1041,10 @@ impl Duel {
     }
 
     pub(crate) fn new_effect(&mut self, owner: CardId) -> EffectId {
-        self.effects.push(Effect::new(owner))
+        let effect = self.effects.push(Effect::new(owner));
+        // A reused slot would otherwise inherit the deleted effect's group, where Lua has nil.
+        effect.set_label_object_group(self, None);
+        effect
     }
 
     pub(crate) fn next_field_id(&self) -> u32 {
@@ -1813,6 +1823,7 @@ impl Duel {
         let copy = self.effects.push(copy);
         self.effects.set_id(copy, id);
         self.effects.set_status(copy, status);
+        copy.set_label_object_group(self, effect.get_label_object_group(self));
         copy
     }
 

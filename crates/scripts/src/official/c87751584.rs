@@ -6,6 +6,8 @@ use crate::testing::{Check, MZONE};
 
 const ID: u32 = 87751584;
 
+pub const TOSS_COIN: bool = true;
+
 struct Materials;
 
 impl FusionMix for Materials {
@@ -18,7 +20,6 @@ impl FusionMix for Materials {
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE)];
 pub const CHECKS: &[Check] = &[Check::Resolves, Check::Message(MSG_TOSS_COIN)];
 
-// s.toss_coin, which only cards that are not ported read, is left out.
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.enable_revive_limit(duel);
     Fusion::add_proc_mix::<Materials>(duel, c);

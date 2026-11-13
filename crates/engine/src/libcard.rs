@@ -985,6 +985,10 @@ impl CardId {
         }
     }
 
+    pub fn set_reason_effect(self, duel: &mut Duel, effect: EffectId) {
+        duel.cards[self].current.reason_effect = Some(effect);
+    }
+
     // The label of the first flag effect of the code, as the first of the values Lua gets.
     pub fn get_flag_effect_label(self, duel: &Duel, code: u32) -> Option<i64> {
         self.get_flag_effect_labels(duel, code).first().copied()

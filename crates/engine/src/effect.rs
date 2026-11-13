@@ -213,6 +213,8 @@ pub enum Value {
     EffectPlayerCard(fn(&Duel, EffectId, EffectId, u8, CardId) -> bool),
     // value(e, c): get_value(card).
     Card(fn(&Duel, EffectId, CardId) -> i32),
+    // value(e, c) that is also read with a nil card, as card::is_affected_by_effect(code, nullptr) does.
+    OptionalCard(fn(&Duel, EffectId, Option<CardId>) -> i32),
     // value(e), read without a card: EFFECT_DRAW_COUNT.
     Own(fn(&Duel, EffectId) -> i32),
     // value(e, re, c): EFFECT_CANNOT_SELECT_EFFECT_TARGET.
@@ -1488,6 +1490,7 @@ impl Duel {
             Value::SpSummonProcedure(value) => value(self, effect, card).0,
             Value::ExtraSummon(value) => value(self, effect, card).0,
             Value::Card(value) => value(self, effect, card),
+            Value::OptionalCard(value) => value(self, effect, Some(card)),
             Value::EffectPlayer(_)
             | Value::EffectPlayerCard(_)
             | Value::EffectCard(_)
@@ -1513,6 +1516,18 @@ impl Duel {
             | Value::CostReplace(_)
             | Value::ZwEquip(_)
             | Value::Own(_) => misread("a value"),
+        }
+    }
+
+    // effect::get_value(nullptr): the integer, or what the function returns for a nil card.
+    pub(crate) fn get_value_nil(&self, effect: EffectId, card: CardId) -> i32 {
+        match self.effects[effect].value {
+            Value::OptionalCard(value) => value(self, effect, None),
+            Value::Int(_) | Value::Values(_) => self.get_value(effect, card),
+            _ => {
+                unported!(self);
+                self.get_value(effect, card)
+            }
         }
     }
 

@@ -237,6 +237,8 @@ pub enum Value {
     XyzLevels(fn(&Duel, EffectId, CardId, CardId) -> Vec<i32>),
     // value(e, playerid, uplayer, reason): the zones of EFFECT_MUST_USE_MZONE.
     Zones(fn(&Duel, EffectId, u8, u8, u32) -> i32),
+    // value(e, c, playerid, uplayer, reason) of an EFFECT_MUST_USE_MZONE without a player target, which gets the card.
+    CardZones(fn(&Duel, EffectId, CardId, u8, u8, u32) -> i32),
     // value(e, re, r, rp): EFFECT_DESTROY_SUBSTITUTE.
     Reason(fn(&Duel, EffectId, Option<EffectId>, u32, u8) -> bool),
     // value(e, re, r, rp), which may reset the effect: EFFECT_INDESTRUCTABLE_COUNT.
@@ -1504,6 +1506,7 @@ impl Duel {
             | Value::XyzLevel(_)
             | Value::XyzLevels(_)
             | Value::Zones(_)
+            | Value::CardZones(_)
             | Value::Reason(_)
             | Value::ReasonMut(_)
             | Value::HandSynchro(_)
@@ -1536,11 +1539,15 @@ impl Duel {
         }
     }
 
-    // effect::get_value(3) of EFFECT_MUST_USE_MZONE, with or without a card (the card is not passed to the function).
-    pub(crate) fn get_zones_value(&self, effect: EffectId, playerid: u8, uplayer: u8, reason: u32) -> u32 {
+    // effect::get_value(3) of EFFECT_MUST_USE_MZONE; the card is passed only for an effect without a player target.
+    pub(crate) fn get_zones_value(&self, effect: EffectId, card: Option<CardId>, playerid: u8, uplayer: u8, reason: u32) -> u32 {
         match self.effects[effect].value {
             Value::Int(value) => value as u32,
             Value::Zones(value) => value(self, effect, playerid, uplayer, reason) as u32,
+            Value::CardZones(value) => match card {
+                Some(card) => value(self, effect, card, playerid, uplayer, reason) as u32,
+                None => misread!(self, "a zone limit"),
+            },
             _ => misread!(self, "a zone limit"),
         }
     }

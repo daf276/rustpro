@@ -7,7 +7,7 @@ const ID: u32 = 1280391;
 pub const LISTED_NAMES: &[u32] = &[CARD_UMI, CARD_ATLANTIS_CITY_OF_THE_SEA_DRAGON];
 
 // Copies on the field and in the hand, with Umi and Level 7 Sea Serpents (Ignihorse Dragonis) in the Deck, and Mystical Space
-// Typhoon in the hand to send it to the Graveyard. Atlantis, City of the Sea Dragon is not ported.
+// Typhoon in the hand to send it to the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, SZONE),
     (ID, HAND),

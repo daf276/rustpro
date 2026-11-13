@@ -147,6 +147,8 @@ pub struct Duel {
     pub(crate) ritual_summoning_level: std::cell::Cell<Option<u32>>,
     // duel::assumes with each card::assume as (card, ASSUME_ kind, value), until Duel.AssumeReset or the outermost call ends.
     pub(crate) assumes: std::cell::RefCell<List<(CardId, u8, u64), 2>>,
+    // interpreter::call_depth: the script calls running; a coroutine counts until it ends, waiting at a prompt included.
+    pub(crate) call_depth: std::cell::Cell<u32>,
     // Effects a check reset on a copy of this duel (check_mut), reset here at the next processor step.
     pub(crate) pending_resets: std::cell::RefCell<List<EffectId, 2>>,
     // card::material_cards of the cards that have materials.
@@ -202,6 +204,7 @@ clone_by_field!(Duel {
     synchro_check_additional,
     ritual_summoning_level,
     assumes,
+    call_depth,
     pending_resets,
     material_cards,
     overlay_cards,
@@ -261,6 +264,7 @@ impl Duel {
             synchro_check_additional: None,
             ritual_summoning_level: Default::default(),
             assumes: Default::default(),
+            call_depth: Default::default(),
             pending_resets: Default::default(),
             material_cards: Vec::new(),
             overlay_cards: CardSet::default(),

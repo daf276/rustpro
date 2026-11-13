@@ -2830,6 +2830,9 @@ impl Duel {
         if target.data.card_type & TYPE_LINK == 0 || target.status & STATUS_NO_LEVEL != 0 {
             return 0;
         }
+        if let Some(link) = self.get_assumed_property(card, ASSUME_LINK) {
+            return link as u32;
+        }
         if target.current.location & LOCATION_MZONE == 0 {
             return target.data.level;
         }

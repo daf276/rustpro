@@ -727,6 +727,7 @@ pub const ASSUME_ATTRIBUTE: u32 = 5;
 pub const ASSUME_RACE: u32 = 6;
 pub const ASSUME_ATTACK: u32 = 7;
 pub const ASSUME_DEFENSE: u32 = 8;
+pub const ASSUME_LINK: u32 = 9;
 
 pub const MSG_TOSS_COIN: u8 = 130;
 pub const MSG_TOSS_DICE: u8 = 131;

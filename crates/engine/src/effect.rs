@@ -1419,18 +1419,18 @@ impl Duel {
 
     pub(crate) fn run_condition(&mut self, condition: Condition, args: &Args) -> bool {
         match condition {
-            Condition::Check(condition) => condition(self, args),
-            Condition::Mut(condition) => condition(self, args),
+            Condition::Check(condition) => self.call_script(|duel| condition(duel, args)),
+            Condition::Mut(condition) => self.call_script_mut(|duel| condition(duel, args)),
         }
     }
 
     // A condition reached where the duel is only read: one that writes would need its writes carried out of the call.
     pub(crate) fn check_condition(&self, condition: Condition, args: &Args) -> bool {
         match condition {
-            Condition::Check(condition) => condition(self, args),
+            Condition::Check(condition) => self.call_script(|duel| condition(duel, args)),
             Condition::Mut(condition) => {
                 self.reach_unported(concat!(file!(), ":", line!(), " (a condition that writes, reached by a check)"));
-                self.check_mut(|duel| condition(duel, args))
+                self.call_script(|duel| duel.check_mut(|duel| condition(duel, args)))
             }
         }
     }
@@ -1495,9 +1495,9 @@ impl Duel {
     pub(crate) fn is_fit_target_function(&self, effect: EffectId, card: CardId) -> bool {
         match self.effects[effect].target {
             Target::None => true,
-            Target::Card(target) | Target::FieldProc(target, _) => target(self, effect, card),
+            Target::Card(target) | Target::FieldProc(target, _) => self.call_script(|duel| target(duel, effect, card)),
             // The core passes only (e, c); the rest are nil.
-            Target::SpSummon(target) => target(self, effect, card, PLAYER_NONE, 0, 0, PLAYER_NONE, None),
+            Target::SpSummon(target) => self.call_script(|duel| target(duel, effect, card, PLAYER_NONE, 0, 0, PLAYER_NONE, None)),
             Target::Action(_) | Target::PlayerCard(_) | Target::SynchroCheck(_) | Target::ActivateCost(_) => {
                 debug_assert!(false, "a field effect has an activation target");
                 true
@@ -1510,10 +1510,10 @@ impl Duel {
         let peffect = &self.effects[effect];
         match peffect.value {
             Value::Int(_) | Value::Values(_) => peffect.int_value(),
-            Value::SpSummonProcedure(value) => value(self, effect, card).0,
-            Value::ExtraSummon(value) => value(self, effect, card).0,
-            Value::Card(value) => value(self, effect, card),
-            Value::OptionalCard(value) => value(self, effect, Some(card)),
+            Value::SpSummonProcedure(value) => self.call_script(|duel| value(duel, effect, card).0),
+            Value::ExtraSummon(value) => self.call_script(|duel| value(duel, effect, card).0),
+            Value::Card(value) => self.call_script(|duel| value(duel, effect, card)),
+            Value::OptionalCard(value) => self.call_script(|duel| value(duel, effect, Some(card))),
             Value::EffectPlayer(_)
             | Value::EffectPlayerCard(_)
             | Value::EffectCard(_)
@@ -1546,7 +1546,7 @@ impl Duel {
     // effect::get_value(nullptr): the integer, or what the function returns for a nil card.
     pub(crate) fn get_value_nil(&self, effect: EffectId, card: CardId) -> i32 {
         match self.effects[effect].value {
-            Value::OptionalCard(value) => value(self, effect, None),
+            Value::OptionalCard(value) => self.call_script(|duel| value(duel, effect, None)),
             Value::Int(_) | Value::Values(_) => self.get_value(effect, card),
             _ => {
                 unported!(self);
@@ -1635,11 +1635,11 @@ impl Duel {
         match self.effects[effect].value {
             Value::Values(values) => values.iter().copied().collect(),
             Value::SpSummonProcedure(value) => {
-                let (sumtype, zone) = value(self, effect, card);
+                let (sumtype, zone) = self.call_script(|duel| value(duel, effect, card));
                 List::from_iter([sumtype, zone])
             }
             Value::ExtraSummon(value) => {
-                let (min, zone, releasable) = value(self, effect, card);
+                let (min, zone, releasable) = self.call_script(|duel| value(duel, effect, card));
                 List::from_iter([min, zone, releasable])
             }
             _ => List::from_iter([self.get_value(effect, card)]),

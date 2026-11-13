@@ -1,15 +1,27 @@
 // Daedalus Maelstrom
 use crate::prelude::*;
-use crate::testing::{Check, GRAVE, MZONE, OPPONENT};
+use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 64233143;
 
 pub const LISTED_NAMES: &[u32] = &[CARD_ATLANTIS_CITY_OF_THE_SEA_DRAGON, CARD_UMI];
 
-// In the Graveyard with Levia-Dragon of Atlantis - Daedalus (named Umi on the field) and the opponent's Sangan. The Summon negation
-// needs Atlantis, the Dragon City, an OCG-only Field Spell that is not ported.
-pub const SUPPORT: &[(u32, u16)] = &[(ID, GRAVE), (64603351, MZONE), (26202165, MZONE | OPPONENT)];
-pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 1))];
+// In the Graveyard with Levia-Dragon of Atlantis - Daedalus (named Umi on the field) and the opponent's Sangan, and Atlantis, City
+// of the Sea Dragon in the hand for the Summon negation, with the opponent's monsters (Elfnote Lucina) in the hand to Summon.
+pub const SUPPORT: &[(u32, u16)] = &[
+    (ID, GRAVE),
+    (64603351, MZONE),
+    (26202165, MZONE | OPPONENT),
+    (38391684, HAND),
+    (38391684, HAND),
+    (13597785, HAND | OPPONENT),
+    (13597785, HAND | OPPONENT),
+    (13597785, HAND | OPPONENT),
+];
+pub const CHECKS: &[Check] = &[
+    Check::ResolvesEffect(aux::stringid(ID, 0)),
+    Check::ResolvesEffect(aux::stringid(ID, 1)),
+];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e1a = duel.create_effect(c);

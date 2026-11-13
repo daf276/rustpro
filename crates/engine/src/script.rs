@@ -200,9 +200,37 @@ impl Clone for Spare {
 }
 
 impl Duel {
+    // interpreter::call_lua around a script function the engine calls.
+    pub(crate) fn call_script<T>(&self, call: impl FnOnce(&Self) -> T) -> T {
+        self.enter_script();
+        let result = call(self);
+        self.leave_script();
+        result
+    }
+
+    pub(crate) fn call_script_mut<T>(&mut self, call: impl FnOnce(&mut Self) -> T) -> T {
+        self.enter_script();
+        let result = call(self);
+        self.leave_script();
+        result
+    }
+
+    fn enter_script(&self) {
+        self.call_depth.set(self.call_depth.get() + 1);
+    }
+
+    // duel::restore_assumes once the outermost call returns.
+    fn leave_script(&self) {
+        let depth = self.call_depth.get().saturating_sub(1);
+        self.call_depth.set(depth);
+        if depth == 0 {
+            self.assumes.borrow_mut().clear();
+        }
+    }
+
     // A cost or target with chk=0: a check, which cannot reach a prompt.
     pub(crate) fn check_script(&mut self, call: impl FnOnce(&mut Self) -> Script<bool>) -> bool {
-        call(self).unwrap_or(false)
+        self.call_script_mut(|duel| call(duel).unwrap_or(false))
     }
 
     // The body of the Execute units; an outermost call snapshots first unless `promptless`. None if a prompt waits or the duel ended.
@@ -216,11 +244,8 @@ impl Duel {
         let nested = !self.replay.stack.is_empty();
         if nested || promptless {
             self.replay.stack.push((effect, player));
-            let result = call(self);
+            let result = self.call_script_mut(&call);
             self.replay.stack.pop();
-            if !nested {
-                self.assumes.get_mut().clear();
-            }
             if result.is_err() && nested {
                 self.replay.interrupted = true;
             } else if result.is_err() && self.result.is_none() {
@@ -248,23 +273,26 @@ impl Duel {
         self.replay.messages = self.trace.count.get();
         self.replay.snapshot = Some(snapshot);
         self.replay.stack.push((effect, player));
+        self.enter_script();
         let result = call(self);
         self.replay.stack.pop();
         self.replay.interrupted = false;
         let snapshot = self.replay.snapshot.take();
         match result {
             Ok(value) => {
-                // duel::restore_assumes, which the core runs once the outermost Lua call returns.
-                self.assumes.get_mut().clear();
+                self.leave_script();
                 debug_assert_eq!(self.trace.mute.get(), 0, "a rerun wrote fewer messages than its previous attempt");
                 self.replay.log.clear();
                 self.replay.messages = 0;
                 self.replay.spare = Spare { snapshot, synced: true };
                 Some(value)
             }
+            // Still a live coroutine until its rerun, whose copy of the snapshot restores the depth.
             Err(Interrupt) => {
                 if self.result.is_none() {
                     self.replay.snapshot = snapshot;
+                } else {
+                    self.leave_script();
                 }
                 None
             }
@@ -354,7 +382,7 @@ impl Duel {
             sync: cards, effects, field_effects;
             clone: player, infos, relations, returns, return_cards, nil_event, random, result, library, database, script_state,
                 script_groups, values_reset, fusion_check_additional, synchro_check_additional, ritual_summoning_level, assumes,
-                pending_resets, material_cards, overlay_cards, counters, card_targets, card_relations, announced_cards,
+                call_depth, pending_resets, material_cards, overlay_cards, counters, card_targets, card_relations, announced_cards,
                 attacked_cards, indestructable_effects, battled_cards, immune_effects, equip_cards, unported, core;
             rest: trace: _, replay: _, destination_probe: _, idle_memo: _);
     }

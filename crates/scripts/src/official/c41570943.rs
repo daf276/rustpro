@@ -1,12 +1,13 @@
 // Azure Ocean Dragon Lord - Neo-Daedalus Rage
 use crate::prelude::*;
-use crate::testing::{Check, EXTRA, GRAVE, MZONE};
+use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 41570943;
 
 pub const LISTED_NAMES: &[u32] = &[CARD_ATLANTIS_CITY_OF_THE_SEA_DRAGON, CARD_UMI];
 
-// Link Summoned from four Normal Monsters, with Levia-Dragon of Atlantis - Daedalus in the Graveyard to summon.
+// Link Summoned from four Normal Monsters (three with Atlantis, City of the Sea Dragon in the hand), with Levia-Dragon of
+// Atlantis - Daedalus in the Graveyard to summon.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),
     (ID, EXTRA),
@@ -17,6 +18,8 @@ pub const SUPPORT: &[(u32, u16)] = &[
     (549481, MZONE),
     (64603351, GRAVE),
     (64603351, GRAVE),
+    (38391684, HAND),
+    (38391684, HAND),
 ];
 pub const CHECKS: &[Check] = &[
     Check::ResolvesEffect(aux::stringid(ID, 0)),
@@ -36,8 +39,8 @@ impl LinkProcedure for AtlantisProcedure {
     const MIN: usize = 3;
     const MAX: Option<usize> = Some(3);
 
-    fn spcon(duel: &Duel, _: EffectId, tp: u8) -> bool {
-        splimit(duel, tp)
+    fn spcon(duel: &Duel, e: EffectId, tp: u8) -> bool {
+        splimit(duel, e, tp)
     }
 }
 
@@ -76,13 +79,15 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.register_effect(duel, e3);
 }
 
-// Only Atlantis, the Dragon City grants this, and it is not ported: its path assumes a Link Rating.
-pub fn splimit(duel: &Duel, tp: u8) -> bool {
-    unported!(
-        duel,
-        duel.is_player_affected_by_effect(tp, CARD_ATLANTIS_CITY_OF_THE_SEA_DRAGON)
-            .is_some()
-    );
+pub fn splimit(duel: &Duel, e: EffectId, tp: u8) -> bool {
+    if duel
+        .is_player_affected_by_effect(tp, CARD_ATLANTIS_CITY_OF_THE_SEA_DRAGON)
+        .is_some()
+    {
+        let c = e.get_handler(duel);
+        c.assume_property(duel, ASSUME_LINK, u64::from(c.get_link(duel)).wrapping_sub(1));
+        return true;
+    }
     false
 }
 

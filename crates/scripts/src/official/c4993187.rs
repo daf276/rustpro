@@ -15,13 +15,17 @@ impl LinkProcedure for Procedure {
 }
 
 // Copies and Zenna's Deceiving Doll Maidens in the Extra Deck, Sangan as Link Material on the field, and the opponent's Sangan on
-// the field, sent to the Graveyard by Raigeki, whose trigger the Link Summoned copy negates.
+// the field, sent to the Graveyard by Raigeki, whose trigger the Link Summoned copy negates. The opponent's Linkuriboh is the
+// material the second effect offers, for Code Talker with Code Generator in the hand, whose value the extra material check calls.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),
     (ID, EXTRA),
     (ID, EXTRA),
     (7594154, EXTRA),
     (7594154, EXTRA),
+    (53413628, EXTRA),
+    (30114823, HAND),
+    (41999284, MZONE | OPPONENT),
     (26202165, MZONE),
     (26202165, MZONE),
     (26202165, MZONE),
@@ -34,6 +38,7 @@ pub const SUPPORT: &[(u32, u16)] = &[
 pub const CHECKS: &[Check] = &[
     Check::ResolvesEffect(aux::stringid(ID, 0)),
     Check::ResolvesEffect(aux::stringid(ID, 1)),
+    Check::SpecialSummonedCode(53413628),
 ];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
@@ -179,7 +184,7 @@ fn linkop(duel: &mut Duel, a: &Args) -> Script<()> {
     Ok(())
 }
 
-fn extracon(duel: &Duel, _: CardId, e: EffectId, tp: u8, sg: CardSet, _: CardSet, lc: CardId, _: CardSet, _: i32) -> bool {
+fn extracon(duel: &mut Duel, _: CardId, e: EffectId, tp: u8, sg: CardSet, _: CardSet, lc: CardId, _: CardSet, _: i32) -> bool {
     if !sg.is_contains(e.get_handler(duel)) {
         return false;
     }
@@ -197,19 +202,17 @@ fn extracon(duel: &Duel, _: CardId, e: EffectId, tp: u8, sg: CardSet, _: CardSet
             unported!(duel, true);
             continue;
         };
-        // The value can register effects, which a condition cannot, so it runs on a copy of the duel.
-        let offered = duel.check_mut(|duel| {
-            value(
-                duel,
-                eff,
-                ExtraMaterialCall::Get {
-                    summon_type: SUMMON_TYPE_LINK,
-                    tp,
-                    sc: lc,
-                },
-            )
-        });
-        if !offered.is_empty() {
+        if !value(
+            duel,
+            eff,
+            ExtraMaterialCall::Get {
+                summon_type: SUMMON_TYPE_LINK,
+                tp,
+                sc: lc,
+            },
+        )
+        .is_empty()
+        {
             let handler = eff.get_handler(duel);
             must_include.insert(handler);
             if !sg.intersection(must_include).is_empty() || lc == handler {

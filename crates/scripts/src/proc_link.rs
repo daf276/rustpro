@@ -1,6 +1,4 @@
 // Port of proc_link.lua; EFFECT_FORMUD_SKIPPER comes with the card that grants it.
-use std::cell::RefCell;
-
 use engine::{Args, CardId, CardSet, Duel, EffectId, ExtraMaterialCall, Script, Value};
 
 use crate::constant::*;
@@ -55,8 +53,31 @@ impl<'a> Search<'a> {
     }
 }
 
-// The filt table: indices into emt, one copy shared by all the calls of an IsExists or Filter, as the Lua passes it.
-type Filters = RefCell<Vec<usize>>;
+// Writes only when extra material operations can run (W:P Fancy Ball's calls values that register flags).
+enum SearchDuel<'a> {
+    Read(&'a Duel),
+    Write(&'a mut Duel),
+}
+
+impl SearchDuel<'_> {
+    fn read(&self) -> &Duel {
+        match self {
+            SearchDuel::Read(duel) => duel,
+            SearchDuel::Write(duel) => duel,
+        }
+    }
+
+    // Only extra material operations write, and a search that only reads has none.
+    fn write(&mut self) -> Option<&mut Duel> {
+        match self {
+            SearchDuel::Read(duel) => {
+                unported!(duel, true);
+                None
+            }
+            SearchDuel::Write(duel) => Some(duel),
+        }
+    }
+}
 
 impl Link {
     pub fn add_procedure<P: LinkProcedure>(duel: &mut Duel, c: CardId) {
@@ -99,17 +120,18 @@ impl Link {
     }
 
     // c joins sg if the used extra materials' filters take it and, unless it is in og, an extra material does (into filt).
-    fn joins(duel: &Duel, c: CardId, sg: CardSet, s: &Search, filt: &Filters) -> bool {
+    fn joins(duel: &mut SearchDuel, c: CardId, sg: CardSet, s: &Search, filt: &mut Vec<usize>) -> bool {
         let passes = |&index: &usize| {
             s.emt
                 .get(index)
-                .is_none_or(|&ex| aux::extra_material_filter(duel, ex, c, s.tp, sg, s.mg, s.lc, 1))
+                .is_none_or(|&ex| (duel.write()).is_some_and(|duel| aux::extra_material_filter(duel, ex, c, s.tp, sg, s.mg, s.lc, 1)))
         };
-        let passed = filt.borrow().iter().all(passes);
-        passed && (s.og.is_contains(c) || aux::check_valid_extra(duel, c, s.tp, sg, s.mg, s.lc, s.emt, &mut filt.borrow_mut()))
+        filt.iter().all(passes)
+            && (s.og.is_contains(c)
+                || (duel.write()).is_some_and(|duel| aux::check_valid_extra(duel, c, s.tp, sg, s.mg, s.lc, s.emt, filt)))
     }
 
-    fn check_recursive<P: LinkProcedure>(duel: &Duel, c: CardId, sg: CardSet, s: &Search, filt: &Filters) -> bool {
+    fn check_recursive<P: LinkProcedure>(duel: &mut SearchDuel, c: CardId, sg: CardSet, s: &Search, filt: &mut Vec<usize>) -> bool {
         if sg.len() > s.maxc {
             return false;
         }
@@ -117,18 +139,26 @@ impl Link {
         if !Link::joins(duel, c, sg, s, filt) {
             return false;
         }
-        let filt = filt.borrow().clone();
+        let filt = filt.clone();
         Link::check_goal::<P>(duel, sg, s, &filt) || (sg.len() < s.maxc && Link::any_recursive::<P>(duel, s.mg, sg, s, filt))
     }
 
-    // mg:IsExists(Link.CheckRecursive, 1, sg, ..., {table.unpack(filt)}).
-    fn any_recursive<P: LinkProcedure>(duel: &Duel, mg: CardSet, sg: CardSet, s: &Search, filt: Vec<usize>) -> bool {
-        let filt = RefCell::new(filt);
-        mg.is_exists(duel, |tc, duel| Link::check_recursive::<P>(duel, tc, sg, s, &filt), 1, Some(sg))
+    // mg:IsExists(Link.CheckRecursive, 1, sg, ..., {table.unpack(filt)}): one copy of filt, shared by all the calls.
+    fn any_recursive<P: LinkProcedure>(duel: &mut SearchDuel, mg: CardSet, sg: CardSet, s: &Search, mut filt: Vec<usize>) -> bool {
+        mg.difference(sg)
+            .iter()
+            .any(|tc| Link::check_recursive::<P>(duel, tc, sg, s, &mut filt))
     }
 
     // Link.CheckRecursive2 with secondg as mg: walks sg2 into sg, collecting the extra materials it uses in filt.
-    fn check_recursive2<P: LinkProcedure>(duel: &Duel, c: CardId, sg: CardSet, sg2: CardSet, s: &Search, filt: &Filters) -> bool {
+    fn check_recursive2<P: LinkProcedure>(
+        duel: &mut SearchDuel,
+        c: CardId,
+        sg: CardSet,
+        sg2: CardSet,
+        s: &Search,
+        filt: &mut Vec<usize>,
+    ) -> bool {
         if sg.len() > s.maxc {
             return false;
         }
@@ -137,26 +167,25 @@ impl Link {
             return false;
         }
         match sg2.difference(sg).first() {
-            None if !s.mg.is_empty() => Link::any_recursive::<P>(duel, s.mg, sg, s, filt.borrow().clone()),
-            None => Link::check_goal::<P>(duel, sg, s, &filt.borrow()),
+            None if !s.mg.is_empty() => Link::any_recursive::<P>(duel, s.mg, sg, s, filt.clone()),
+            None => Link::check_goal::<P>(duel, sg, s, filt),
             Some(next) => Link::check_recursive2::<P>(duel, next, sg, sg2, s, filt),
         }
     }
 
-    fn check_goal<P: LinkProcedure>(duel: &Duel, sg: CardSet, s: &Search, filt: &[usize]) -> bool {
+    fn check_goal<P: LinkProcedure>(duel: &mut SearchDuel, sg: CardSet, s: &Search, filt: &[usize]) -> bool {
         let none = CardSet::default();
         let taken = |&index: &usize| {
             s.emt.get(index).is_none_or(|&ex| {
-                sg.is_exists(
-                    duel,
-                    |c, duel| aux::extra_material_filter(duel, ex, c, s.tp, sg, none, s.lc, 1),
-                    1,
-                    None,
-                )
+                sg.iter()
+                    .any(|c| (duel.write()).is_some_and(|duel| aux::extra_material_filter(duel, ex, c, s.tp, sg, none, s.lc, 1)))
             })
         };
-        filt.iter().all(taken)
-            && sg.len() >= s.minc
+        if !filt.iter().all(taken) {
+            return false;
+        }
+        let duel = duel.read();
+        sg.len() >= s.minc
             && sg.check_with_sum_equal(duel, Link::get_link_count, s.lc.get_link(duel), sg.len(), sg.len())
             && P::specialchk(duel, sg, s.lc, LINK_MATERIAL, s.tp)
             && duel.get_location_count_from_ex(s.tp, s.tp, Some(sg), s.lc) > 0
@@ -194,30 +223,33 @@ impl Link {
         if mustg.is_exists(duel, |mc, duel| !Link::condition_filter::<P>(mc, duel, c, tp), 1, None) || mustg.len() > max {
             return false;
         }
-        let search = |duel: &Duel, emt: &ExtraMaterials, tg: CardSet| {
-            let tg = tg.filter(duel, |mc, duel| Link::condition_filter::<P>(mc, duel, c, tp), None);
-            let mg_tg = mg.union(tg);
-            if !(mg_tg.includes(mustg) && mustg.len() <= max) {
-                return false;
-            }
-            let s = Search::new(tp, mg_tg, mg, c, min, max, emt);
-            let recursive = |sg: CardSet| move |tc, duel: &Duel| Link::check_recursive::<P>(duel, tc, sg, &s, &Filters::default());
-            if mustg.len() == max {
-                mustg.is_exists(duel, recursive(CardSet::default()), 1, None)
-            } else {
-                mg_tg.is_exists(duel, recursive(mustg), 1, Some(mustg))
-            }
-        };
         // Not in the Lua: the copy of the duel that lets the Lua register effects is made only when an effect may.
         if !duel.may_have_effect(EFFECT_EXTRA_MATERIAL) {
-            return search(duel, &ExtraMaterials::new(), CardSet::default());
+            let emt = ExtraMaterials::new();
+            return Link::search::<P>(&mut SearchDuel::Read(duel), &Search::new(tp, mg, mg, c, min, max, &emt), mustg);
         }
         duel.check_mut(|duel| {
             let (emt, tg) = aux::get_extra_materials(duel, tp, mustg.union(mg), c, SUMMON_TYPE_LINK);
-            let res = search(duel, &emt, tg);
+            let tg = tg.filter(duel, |mc, duel| Link::condition_filter::<P>(mc, duel, c, tp), None);
+            let s = Search::new(tp, mg.union(tg), mg, c, min, max, &emt);
+            let res = Link::search::<P>(&mut SearchDuel::Write(duel), &s, mustg);
             aux::delete_extra_material_groups(duel, &emt);
             res
         })
+    }
+
+    fn search<P: LinkProcedure>(duel: &mut SearchDuel, s: &Search, mustg: CardSet) -> bool {
+        if !(s.mg.includes(mustg) && mustg.len() <= s.maxc) {
+            return false;
+        }
+        let (candidates, sg) = if mustg.len() == s.maxc {
+            (mustg, CardSet::default())
+        } else {
+            (s.mg.difference(mustg), mustg)
+        };
+        candidates
+            .iter()
+            .any(|tc| Link::check_recursive::<P>(duel, tc, sg, s, &mut Vec::new()))
     }
 
     fn target<P: LinkProcedure>(duel: &mut Duel, a: &Args, _: i32, _: Option<CardId>) -> Script<bool> {
@@ -234,21 +266,23 @@ impl Link {
         let mut sg = mustg;
         let mg_tg = mg.union(tg);
         let s = Search::new(tp, mg_tg, mg, c, min, max, &emt);
-        let filters = |duel: &Duel, sg: CardSet| {
-            let filters = Filters::default();
+        let filters = |duel: &mut Duel, sg: CardSet| {
+            let mut filters = Vec::new();
             if let Some(first) = sg.first() {
-                Link::check_recursive2::<P>(duel, first, CardSet::default(), sg, &s, &filters);
+                Link::check_recursive2::<P>(&mut SearchDuel::Write(duel), first, CardSet::default(), sg, &s, &mut filters);
             }
-            filters.into_inner()
+            filters
         };
         while sg.len() < max {
             let filt = filters(duel, sg);
-            let shared = RefCell::new(filt.clone());
-            let cg = mg_tg.filter(duel, |tc, duel| Link::check_recursive::<P>(duel, tc, sg, &s, &shared), Some(sg));
+            let mut shared = filt.clone();
+            let cg: CardSet = (mg_tg.difference(sg).iter())
+                .filter(|&tc| Link::check_recursive::<P>(&mut SearchDuel::Write(duel), tc, sg, &s, &mut shared))
+                .collect();
             if cg.is_empty() {
                 break;
             }
-            let finish = sg.len() >= min && sg.len() <= max && Link::check_goal::<P>(duel, sg, &s, &filt);
+            let finish = sg.len() >= min && sg.len() <= max && Link::check_goal::<P>(&mut SearchDuel::Write(duel), sg, &s, &filt);
             let cancel = duel.is_summon_cancelable() && sg.is_empty();
             duel.hint(HINT_SELECTMSG, tp, HINTMSG_LMATERIAL);
             let Some(tc) = cg.select_unselect(duel, Some(sg), tp, finish, cancel, 1, 1)? else {

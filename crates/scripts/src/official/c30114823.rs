@@ -33,7 +33,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
 }
 
 pub fn extracon<const CODE: u32>(
-    duel: &Duel,
+    duel: &mut Duel,
     _c: CardId,
     e: EffectId,
     _tp: u8,

@@ -859,7 +859,7 @@ pub mod aux {
 
     // The delayed effect keeps the flag beside the fid in its label, where the Lua closures capture it.
     fn affected_group(duel: &Duel, e: EffectId) -> CardSet {
-        let &[fid, flag] = e.get_labels(duel) else {
+        let &[fid, flag, ..] = e.get_labels(duel) else {
             return CardSet::default();
         };
         let g = e.get_label_object_group(duel).unwrap_or_default();
@@ -987,6 +987,22 @@ pub mod aux {
         tp: u8,
         effect_desc: u64,
     ) -> Script<Option<EffectId>> {
+        remove_until_full::<O>(duel, g, position, reason, phase, flag, e, tp, 1, effect_desc)
+    }
+
+    // `reset_count` is the Lua's.
+    pub fn remove_until_full<O: DelayedOperation>(
+        duel: &mut Duel,
+        g: impl Into<CardSet>,
+        position: u32,
+        reason: u32,
+        phase: u32,
+        flag: u32,
+        e: EffectId,
+        tp: u8,
+        reset_count: u16,
+        effect_desc: u64,
+    ) -> Script<Option<EffectId>> {
         let g = g.into();
         if g.is_empty() || duel.remove(g, position, reason | REASON_TEMPORARY)? == 0 {
             return Ok(None);
@@ -995,7 +1011,7 @@ pub mod aux {
         Ok(if g.is_empty() {
             None
         } else {
-            delayed_operation_desc::<O>(duel, g, phase, RESET_PHASE | phase, flag, e, tp, 0, 1, effect_desc)
+            delayed_operation_desc::<O>(duel, g, phase, RESET_PHASE | phase, flag, e, tp, 0, reset_count, effect_desc)
         })
     }
 

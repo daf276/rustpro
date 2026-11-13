@@ -74,6 +74,10 @@ pub mod aux {
         (0..7u64).filter(move |bit| v & 1 << bit != 0).map(|bit| 1010 + bit)
     }
 
+    pub const fn get_coin_effect_hint_string(coin: u32) -> u64 {
+        if coin == COIN_HEADS { 62 } else { 63 }
+    }
+
     pub fn stat_change_damage_step_condition(duel: &Duel, _: &Args) -> bool {
         !(duel.is_phase(PHASE_DAMAGE) && duel.is_damage_calculated())
     }
@@ -2088,7 +2092,11 @@ impl CardUtility for CardId {
             _ => seq,
         };
         let (cseq, seq) = (normalize(self.get_sequence(duel), in_mzone), normalize(seq, loc == LOCATION_MZONE));
-        if self.is_controler(duel, tp) { cseq == seq } else { i64::from(cseq) == 4 - i64::from(seq) }
+        if self.is_controler(duel, tp) {
+            cseq == seq
+        } else {
+            i64::from(cseq) == 4 - i64::from(seq)
+        }
     }
 
     fn is_monster_card(self, duel: &Duel) -> bool {

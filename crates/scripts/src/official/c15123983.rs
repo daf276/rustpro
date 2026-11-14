@@ -96,7 +96,7 @@ fn gyspop(duel: &mut Duel, a: &Args) -> Script<()> {
     Ok(())
 }
 
-fn selfspop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub(super) fn selfspop(duel: &mut Duel, a: &Args) -> Script<()> {
     let (e, tp) = (a.e, a.tp);
     let c = e.get_handler(duel);
     if c.is_relate_to_effect(duel, e) && duel.special_summon(c, 0, tp, tp, false, false, POS_FACEUP)? > 0 {

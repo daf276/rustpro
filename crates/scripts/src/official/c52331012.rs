@@ -15,7 +15,7 @@ impl LinkProcedure for Procedure {
     }
 }
 
-struct ReturnToHand;
+pub struct ReturnToHand;
 
 impl aux::DelayedOperation for ReturnToHand {
     fn operate(duel: &mut Duel, ag: CardSet, _: &Args) -> Script<()> {

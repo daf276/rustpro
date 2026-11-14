@@ -1,7 +1,8 @@
-// Port of proc_synchro.lua; the Dark Synchro procedure and Synchro.Send come with the cards that use them.
+// Port of proc_synchro.lua; the Dark Synchro procedure and the other Synchro.Send values come with the cards that use them.
 use engine::{Args, CardId, CardSet, ConditionFn, Duel, EffectId, Operation, Script, SynchroMaterials, Target, TargetFn, Value};
 
 use crate::constant::*;
+use crate::keys;
 use crate::utility::aux;
 
 pub struct Synchro;
@@ -1193,11 +1194,18 @@ impl Synchro {
         for tc in tatsunecro_materials {
             tc.reset_flag_effect(duel, 3096468);
         }
-        if tatsunecro_materials.is_empty() {
-            duel.send_to_grave(g, REASON_MATERIAL + REASON_SYNCHRO)?;
+        let send = if tatsunecro_materials.is_empty() {
+            duel.get_script_state(keys::SYNCHRO_SEND)
         } else {
-            duel.remove(g, POS_FACEUP, REASON_MATERIAL + REASON_SYNCHRO)?;
-        }
+            2
+        };
+        unported!(duel, !matches!(send, 0 | 2 | 5));
+        match send {
+            2 => duel.remove(g, POS_FACEUP, REASON_MATERIAL + REASON_SYNCHRO)?,
+            5 => duel.send_to_deck(g, PLAYER_NONE, SEQ_DECKSHUFFLE, REASON_MATERIAL + REASON_SYNCHRO)?,
+            _ => duel.send_to_grave(g, REASON_MATERIAL + REASON_SYNCHRO)?,
+        };
+        duel.set_script_state(keys::SYNCHRO_SEND, 0);
         duel.set_synchro_check_additional(None);
         Ok(())
     }

@@ -39,7 +39,7 @@ fn cost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     Ok(false)
 }
 
-fn target1(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+pub fn target1(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
     if chk == 0 {
         return Ok(true);
     }
@@ -49,14 +49,14 @@ fn target1(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<boo
     Ok(false)
 }
 
-fn activate1(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn activate1(duel: &mut Duel, a: &Args) -> Script<()> {
     let eg = a.eg.unwrap_or_default();
     duel.negate_summon(eg);
     duel.destroy(eg, REASON_EFFECT)?;
     Ok(())
 }
 
-fn activate2(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn activate2(duel: &mut Duel, a: &Args) -> Script<()> {
     if duel.negate_activation(a.ev as u8)
         && let Some(re) = a.re
         && re.get_handler(duel).is_relate_to_effect(duel, re)

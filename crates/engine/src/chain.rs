@@ -586,11 +586,13 @@ impl Duel {
                     self.field_change_position(handler, None, current.controler, POS_FACEUP, 0, false);
                 } else {
                     let data_type = self.cards[handler].data.card_type;
-                    unported!(
-                        self,
-                        (self.effects[effect].is_flag(EFFECT_FLAG_LIMIT_ZONE) && data_type & (TYPE_FIELD | TYPE_PENDULUM) == 0)
-                            .then_some(effect)
-                    );
+                    let mut zone: u32 = 0xff;
+                    if self.effects[effect].is_flag(EFFECT_FLAG_LIMIT_ZONE) && data_type & (TYPE_FIELD | TYPE_PENDULUM) == 0 {
+                        zone = self.get_activate_zone(effect, chain.triggering_player, &chain.evt);
+                        if zone == 0 {
+                            return true;
+                        }
+                    }
                     unported!(
                         self,
                         (self.effects[effect].is_flag2(EFFECT_FLAG2_FORCE_ACTIVATE_LOCATION)).then_some(effect)
@@ -616,7 +618,7 @@ impl Duel {
                         location,
                         positions,
                         false,
-                        0xff,
+                        zone as u8,
                         false,
                         LOCATION_REASON_NONE,
                     );

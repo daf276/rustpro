@@ -1446,6 +1446,22 @@ impl Cost {
         Cost::two_phase(duel, chk, |duel| c.is_able_to_extra_as_cost(duel), pay)
     }
 
+    // Cost.SelfChangePosition(position) applied.
+    pub fn self_change_position<const POSITION: u32>(duel: &mut Duel, args: &Args, chk: i32) -> Script<bool> {
+        let c = args.e.get_handler(duel);
+        if chk == 0 {
+            return Ok(c.is_can_change_position(duel)
+                && !c.is_position(duel, POSITION)
+                && (POSITION & POS_FACEDOWN == 0 || c.is_can_turn_set(duel)));
+        }
+        let fd_chk = c.is_position(duel, POS_FACEDOWN) && POSITION & POS_FACEUP > 0;
+        duel.change_position(c, POSITION)?;
+        if fd_chk {
+            c.set_status(duel, STATUS_EFFECT_ENABLED, true);
+        }
+        Ok(false)
+    }
+
     // Cost.Replaceable(base) applied: the base cost, unless one of the player's EFFECT_COST_REPLACE effects stands in.
     pub fn replaceable(duel: &mut Duel, args: &Args, chk: i32, base: CostFn) -> Script<bool> {
         Cost::replaceable_full(duel, args, chk, base, |_, _, _| true)
@@ -2560,9 +2576,10 @@ impl EffectUtility for EffectId {
             .is_some_and(|cost| costs.into_iter().any(|known| std::ptr::fn_addr_eq(cost, known)))
     }
 
-    // Effect.HasSelfChangePositionCost: Cost.SelfChangePosition is not ported, so no ported effect has it.
-    fn has_self_change_position_cost(self, _: &Duel) -> bool {
-        false
+    // Effect.HasSelfChangePositionCost, for the positions ported cards pass Cost.SelfChangePosition.
+    fn has_self_change_position_cost(self, duel: &Duel) -> bool {
+        let known: CostFn = Cost::self_change_position::<POS_FACEUP_DEFENSE>;
+        self.get_cost(duel).is_some_and(|cost| std::ptr::fn_addr_eq(cost, known))
     }
 
     fn is_monster_effect(self, duel: &Duel) -> bool {

@@ -1619,9 +1619,7 @@ impl Duel {
                 if skip_bp.is_some() || self.core.force_turn_end {
                     arg.step = 41;
                     arg.phase_to_change_to = 2;
-                    let bp_twice = self.is_player_affected_by_effect(turn_player, EFFECT_BP_TWICE);
-                    unported!(self, bp_twice);
-                    arg.repeat_battle_phase = bp_twice.is_some();
+                    arg.repeat_battle_phase = self.is_player_affected_by_effect(turn_player, EFFECT_BP_TWICE).is_some();
                     if self.core.force_turn_end || skip_bp.is_some_and(|effect| matches!(self.effects[effect].value, Value::Int(0))) {
                         self.reset_phase(PHASE_BATTLE_STEP);
                         self.adjust_all();
@@ -1754,9 +1752,8 @@ impl Duel {
                 false
             }
             41 => {
-                arg.second_battle_phase_is_optional = true;
                 let bp_twice = self.filter_player_effect(turn_player, EFFECT_BP_TWICE, false);
-                unported!(self, bp_twice.iter().copied());
+                arg.second_battle_phase_is_optional = bp_twice.iter().all(|&effect| self.get_own_value(effect) == 1);
                 arg.repeat_battle_phase = !bp_twice.is_empty();
                 self.infos.phase = PHASE_BATTLE;
                 self.emplace_process(PhaseEvent {
@@ -1769,9 +1766,22 @@ impl Duel {
             42 => {
                 self.core.attacker = None;
                 self.core.attack_target = None;
-                // The optional second Battle Phase prompt (SelectYesNo, then step 43) needs EFFECT_BP_TWICE, phase 2.
+                if arg.repeat_battle_phase && arg.second_battle_phase_is_optional {
+                    self.emplace_process(SelectYesNo {
+                        playerid: turn_player,
+                        description: 32,
+                        ..SelectYesNo::default()
+                    });
+                    return false;
+                }
                 self.returns.set_i32(0, i32::from(arg.phase_to_change_to));
                 self.returns.set_i32(1, i32::from(arg.repeat_battle_phase));
+                true
+            }
+            43 => {
+                let bp_twice = self.returns.at_i32(0);
+                self.returns.set_i32(0, i32::from(arg.phase_to_change_to));
+                self.returns.set_i32(1, bp_twice);
                 true
             }
             _ => true,

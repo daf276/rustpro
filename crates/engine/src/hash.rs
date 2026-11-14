@@ -869,7 +869,8 @@ impl<'a> Refs<'a> {
             .map(|limits| chained(limits.iter().map(|limit| mix((limit.function, limit.capture, limit.player)))));
         let send_to = send_to_args.iter().map(|args| {
             let sets = [args.leave_field, args.leave_grave, args.detach].map(|cards| self.cards(cards));
-            mix((sets, self.list(&args.cv), args.cvit, args.check_decktop_visibility))
+            let predirect = args.predirect.map(|effect| self.effect(effect));
+            mix((sets, self.list(&args.cv), args.cvit, args.check_decktop_visibility, predirect))
         });
         let readjust = summed(readjust_map.iter().map(|(&card, count)| mix((self.card(card), count))));
         let words = [

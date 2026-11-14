@@ -115,6 +115,7 @@ pub struct SendToArgs {
     pub cv: Cards16,
     pub cvit: usize,
     pub detach: CardSet,
+    pub predirect: Option<EffectId>,
 }
 
 // Battle enters at steps 3 and 10.
@@ -1928,7 +1929,6 @@ impl Duel {
         }
     }
 
-    // Steps 7 and 8 redirect Crystal Beasts through EFFECT_TO_GRAVE_REDIRECT_CB (phase 2).
     pub(crate) fn process_send_to(&mut self, arg: &mut SendTo) -> bool {
         let (reason_effect, reason, reason_player) = (arg.reason_effect, arg.reason, arg.reason_player);
         match arg.step {
@@ -2094,8 +2094,11 @@ impl Duel {
                     arg.step = 8;
                     return false;
                 };
-                if self.cards[card].sendto_param.playerid >> 4 != 0 {
-                    unported!(self, self.is_affected_by_effect(card, EFFECT_TO_GRAVE_REDIRECT_CB));
+                let predirect = (self.cards[card].sendto_param.playerid >> 4 != 0)
+                    .then(|| self.is_affected_by_effect(card, EFFECT_TO_GRAVE_REDIRECT_CB))
+                    .flatten();
+                if let Some(param) = self.core.send_to_args.last_mut() {
+                    param.predirect = predirect;
                 }
                 self.enable_field_effect(card, false);
                 if self.cards[card].data.card_type & TYPE_TOKEN != 0 {
@@ -2122,7 +2125,17 @@ impl Duel {
                     self.cards[card].set_status(STATUS_LEAVE_CONFIRMED, false);
                     return false;
                 }
-                self.returns.set_i32(0, 0);
+                let controler = self.cards[card].current.controler;
+                if predirect.is_some()
+                    && self
+                        .get_useable_count(Some(card), controler, LOCATION_SZONE, controler, LOCATION_REASON_TOFIELD, 0xff)
+                        .0
+                        > 0
+                {
+                    self.field_select_effect_yes_no(controler, 97, card);
+                } else {
+                    self.returns.set_i32(0, 0);
+                }
                 false
             }
             6 => {
@@ -2181,6 +2194,57 @@ impl Duel {
                 }
                 if self.cards[card].previous.location == LOCATION_OVERLAY {
                     self.cards[card].previous.controler = control_player;
+                }
+                param.cvit += 1;
+                self.core.send_to_args.push(param);
+                arg.step = 4;
+                false
+            }
+            7 => {
+                let Some(&card) = self.core.send_to_args.last().and_then(|param| param.cv.get(param.cvit)) else {
+                    return true;
+                };
+                let controler = self.cards[card].current.controler;
+                let (_, flag) = self.get_useable_count(Some(card), controler, LOCATION_SZONE, controler, LOCATION_REASON_TOFIELD, 0xff);
+                self.prompt_select_place(controler, card, ((flag << 8) & 0xff00) | 0xffff_e0ff);
+                false
+            }
+            8 => {
+                let Some(mut param) = self.core.send_to_args.pop() else {
+                    return true;
+                };
+                let Some(&card) = param.cv.get(param.cvit) else { return true };
+                let (oloc, controler) = (self.cards[card].current.location, self.cards[card].current.controler);
+                let sequence = self.returns.at_u8(2);
+                let from = self.cards.get_info_location(card);
+                if let Some(overlay_target) = self.cards[card].overlay_target {
+                    param.detach.insert(overlay_target);
+                    self.xyz_remove(overlay_target, card);
+                }
+                self.move_card(controler, card, LOCATION_SZONE, sequence, false);
+                self.cards[card].current.position = POS_FACEUP;
+                self.write_move(card, from);
+                self.cards[card].set_status(STATUS_LEAVE_CONFIRMED, false);
+                if self.cards[card].status & (STATUS_SUMMON_DISABLED | STATUS_ACTIVATE_DISABLED) != 0 {
+                    self.cards[card].set_status(STATUS_SUMMON_DISABLED | STATUS_ACTIVATE_DISABLED, false);
+                    self.cards[card].previous.location = 0;
+                } else if oloc & LOCATION_ONFIELD != 0 {
+                    self.reset(card, RESET_LEAVE + RESET_MSCHANGE, RESET_EVENT);
+                    self.clear_card_target(card);
+                    param.leave_field.insert(card);
+                }
+                if let Some(predirect) = param.predirect
+                    && self.effects[predirect].operation.is_some()
+                {
+                    let event = Event {
+                        event_cards: Some(arg.targets),
+                        event_player: controler,
+                        reason: self.cards[card].current.reason,
+                        reason_effect,
+                        reason_player: controler,
+                        ..Event::default()
+                    };
+                    self.execute(ExecuteKind::Operation, predirect, controler, event);
                 }
                 param.cvit += 1;
                 self.core.send_to_args.push(param);

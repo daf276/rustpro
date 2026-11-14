@@ -1,16 +1,24 @@
 // Tenpai Dragon Paidra
 use crate::prelude::*;
-use crate::testing::{Check, EXTRA, HAND, MZONE};
+use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 39931513;
 
 pub const LISTED_SERIES: &[u16] = &[SET_SANGEN];
-// Tenpai Dragon Chundra, a Level 4 Tuner, on the field to Synchro Summon with Ancient Fairy Dragon in the Battle Phase. No
-// Sangen Spell/Trap is ported, so the search and the no battle damage are not reached.
-pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, HAND), (91810826, MZONE), (25862681, EXTRA), (25862681, EXTRA)];
+// Tenpai Dragon Chundra, a Level 4 Tuner, on the field to Synchro Summon with Ancient Fairy Dragon in the Battle Phase, and
+// Sangen Summoning in the Deck to add or Set.
+pub const SUPPORT: &[(u32, u16)] = &[
+    (ID, MZONE),
+    (ID, HAND),
+    (91810826, MZONE),
+    (25862681, EXTRA),
+    (25862681, EXTRA),
+    (30336082, DECK),
+    (30336082, DECK),
+];
 pub const CHECKS: &[Check] = &[
     Check::ResolvesEffect(aux::stringid(ID, 1)),
-    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 0))),
+    Check::ResolvesEffect(aux::stringid(ID, 0)),
 ];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {

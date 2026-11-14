@@ -2640,7 +2640,8 @@ impl Duel {
         (rcount + ex_oneof_max, params)
     }
 
-    // Puts the cards the player may release for a non-summon reason into the set, matching `fun`.
+    // Puts the cards the player may release for a non-summon reason into the set, matching `fun`; returns the opponent's
+    // cards of which EFFECT_EXTRA_RELEASE_NONSUM allows one (ex_list_oneof).
     pub(crate) fn get_release_list(
         &self,
         playerid: u8,
@@ -2651,7 +2652,8 @@ impl Duel {
         exg: Option<CardSet>,
         use_oppo: bool,
         reason: u32,
-    ) {
+    ) -> CardSet {
+        let mut ex_list_oneof = CardSet::default();
         let usable = |card: CardId| Some(card) != exc && !exg.is_some_and(|exg| exg.contains(card));
         let releasable = |card: CardId| self.is_releasable_by_nonsummon(card, playerid, reason) && fun.is_none_or(|fun| fun(card, self));
         for card in self.player[playerid].list_mzone.into_iter().flatten() {
@@ -2672,14 +2674,23 @@ impl Duel {
             }
             if use_oppo {
                 release_list.insert(card);
-            } else {
-                unported!(
-                    self,
-                    self.is_affected_by_effect(card, EFFECT_EXTRA_RELEASE)
-                        .or_else(|| self.is_affected_by_effect(card, EFFECT_EXTRA_RELEASE_NONSUM))
-                );
+                continue;
+            }
+            if self.is_affected_by_effect(card, EFFECT_EXTRA_RELEASE).is_some() {
+                unported!(self);
+                continue;
+            }
+            let Some(effect) = self.is_affected_by_effect(card, EFFECT_EXTRA_RELEASE_NONSUM) else {
+                continue;
+            };
+            if self.effects[effect].is_flag(EFFECT_FLAG_COUNT_LIMIT) && self.effects[effect].count_limit == 0 {
+                continue;
+            }
+            if self.check_value_reason(effect, self.core.reason_effect.get(), reason, self.core.reason_player.get()) {
+                ex_list_oneof.insert(card);
             }
         }
+        ex_list_oneof
     }
 
     // Whether the player can release at least `min` cards matching `fun` (see get_release_list).
@@ -2692,7 +2703,7 @@ impl Duel {
         reason: u32,
     ) -> bool {
         let mut relcard = CardSet::default();
-        self.get_release_list(
+        let relcard_oneof = self.get_release_list(
             playerid,
             &mut relcard,
             options.use_hand,
@@ -2724,13 +2735,17 @@ impl Duel {
                 return false;
             }
         }
+        let mut has_oneof = false;
         for card in self.core.must_select_cards.get().iter() {
-            if !relcard.contains(card) {
+            if relcard.contains(card) {
+                relcard.remove(card);
+            } else if !has_oneof && relcard_oneof.contains(card) {
+                has_oneof = true;
+            } else {
                 return false;
             }
-            relcard.remove(card);
         }
-        relcard.len() >= min
+        relcard.len() + usize::from(!has_oneof && !relcard_oneof.is_empty()) >= min
     }
 
     // Whether the card is a monster of the player in one of the zones.

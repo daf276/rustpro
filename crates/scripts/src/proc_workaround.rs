@@ -239,7 +239,15 @@ impl DuelWorkaround for Duel {
                 sg.toggle(tc);
             }
         }
-        unported!(self, !sg.intersection(search.exg).is_empty());
+        if let Some(eff) = sg
+            .intersection(search.exg)
+            .get_first()
+            .and_then(|c| c.is_has_effect(self, EFFECT_EXTRA_RELEASE_NONSUM))
+        {
+            eff.use_count_limit(self, tp);
+            let code = eff.get_handler(self).get_code(self);
+            self.hint(HINT_CARD, 0, u64::from(code));
+        }
         Ok(sg)
     }
 }
@@ -275,7 +283,7 @@ impl ReleaseSearch<'_> {
             |c, duel| c.is_has_effect(duel, EFFECT_EXTRA_RELEASE).is_some() && c.is_controler(duel, 1 - tp),
             None,
         );
-        unported!(duel, !(exg.is_empty() && mustg.is_empty()));
+        unported!(duel, !mustg.is_empty());
         ReleaseSearch {
             tp,
             mg,

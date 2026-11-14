@@ -1680,18 +1680,13 @@ impl Duel {
         }
     }
 
-    // check_value_condition(4) of EFFECT_REVERSE_DAMAGE; no ported value reads the damage's card, the fourth parameter.
-    pub(crate) fn check_value_reverse_damage(
-        &self,
-        effect: EffectId,
-        reason_effect: Option<EffectId>,
-        reason: u32,
-        reason_player: u8,
-    ) -> bool {
+    // check_value_condition(re, r, rp) of EFFECT_EXTRA_RELEASE_NONSUM, and of EFFECT_REVERSE_DAMAGE, whose fourth parameter
+    // (the damage's card) no ported value reads.
+    pub(crate) fn check_value_reason(&self, effect: EffectId, reason_effect: Option<EffectId>, reason: u32, reason_player: u8) -> bool {
         match self.effects[effect].value {
             Value::Int(value) => value != 0,
             Value::Reason(value) => value(self, effect, reason_effect, reason, reason_player),
-            _ => misread!(self, "a damage reversal"),
+            _ => misread!(self, "a reason value"),
         }
     }
 

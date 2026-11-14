@@ -388,7 +388,8 @@ impl Duel {
     pub fn get_release_group_core(&self, player: u8, hand: bool, oppo: bool, reason: u32) -> CardSet {
         let mut group = CardSet::default();
         if player <= 1 {
-            self.get_release_list(player, &mut group, hand, None, None, None, oppo, reason);
+            let oneof = self.get_release_list(player, &mut group, hand, None, None, None, oppo, reason);
+            group.merge(oneof);
         }
         group
     }
@@ -442,7 +443,7 @@ impl Duel {
             return Ok(CardSet::default());
         }
         let mut release_cards = CardSet::default();
-        self.get_release_list(
+        let release_cards_ex_oneof = self.get_release_list(
             player,
             &mut release_cards,
             options.use_hand,
@@ -452,6 +453,7 @@ impl Duel {
             options.use_oppo,
             REASON_EFFECT,
         );
+        unported!(self, release_cards_ex_oneof);
         let mut must_choose_one = None;
         if options.check_field {
             let zone = options.zone

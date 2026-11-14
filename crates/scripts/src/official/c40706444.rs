@@ -1,13 +1,13 @@
 // Argostars - Adventurous Arion
 use crate::prelude::*;
-use crate::testing::{Check, EXTRA, MZONE};
+use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 40706444;
 
 pub const LISTED_SERIES: &[u16] = &[SET_ARGOSTARS];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
-// In the Extra Deck, Xyz Summoned from Level 4 Normal Monsters. No Argostars card is ported, so neither the search nor the placement is reached.
+// In the Extra Deck, Xyz Summoned from Level 4 Normal Monsters, with Argostars - Giantslaying to add and Lightning Tydeus to place.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),
     (ID, EXTRA),
@@ -15,11 +15,15 @@ pub const SUPPORT: &[(u32, u16)] = &[
     (9491461, MZONE),
     (23720856, MZONE),
     (23720856, MZONE),
+    (30964246, DECK),
+    (30964246, DECK),
+    (65889305, GRAVE),
+    (65889305, GRAVE),
 ];
 pub const CHECKS: &[Check] = &[
     Check::SpecialSummoned,
-    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 1))),
-    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 2))),
+    Check::ResolvesEffect(aux::stringid(ID, 1)),
+    Check::ResolvesEffect(aux::stringid(ID, 2)),
 ];
 
 struct Procedure;

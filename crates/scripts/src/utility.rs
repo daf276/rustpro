@@ -3066,6 +3066,56 @@ impl Ursarctic {
     }
 }
 
+// The Drytron functions of cards_specific_functions.lua.
+pub struct Drytron;
+
+impl Drytron {
+    fn tribute_cost_filter(c: CardId, duel: &Duel, tp: u8) -> bool {
+        ((c.is_set_card(duel, &[SET_DRYTRON]) && c.is_monster(duel)) || c.is_ritual_monster(duel))
+            && (c.is_controler(duel, tp) || c.is_faceup(duel))
+            && duel.get_mzone_count(tp, Some(c.into())) > 0
+    }
+
+    fn tribute_base_cost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+        let (c, tp) = (a.e.get_handler(duel), a.tp);
+        let filter = |c, duel: &Duel| Drytron::tribute_cost_filter(c, duel, tp);
+        if chk == 0 {
+            return Ok(duel.check_release_group_cost(tp, filter, (1, 1), true, None, Some(c.into())));
+        }
+        let sg = duel.select_release_group_cost(tp, filter, (1, 1), true, None, Some(c.into()))?;
+        duel.release(sg, REASON_COST)?;
+        Ok(false)
+    }
+
+    fn tribute_extra_cost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+        let (c, tp) = (a.e.get_handler(duel), a.tp);
+        let id = c.get_original_code(duel);
+        if chk == 0 {
+            return Ok(duel.get_custom_activity_count(id, tp, ACTIVITY_SPSUMMON) == 0);
+        }
+        let e1 = duel.create_effect(c);
+        e1.set_description(duel, aux::stringid(id, 1));
+        e1.set_type(duel, EFFECT_TYPE_FIELD);
+        e1.set_property(duel, EFFECT_FLAG_PLAYER_TARGET + EFFECT_FLAG_OATH + EFFECT_FLAG_CLIENT_HINT);
+        e1.set_code(duel, EFFECT_CANNOT_SPECIAL_SUMMON);
+        e1.set_target_range(duel, 1, 0);
+        e1.set_target_spsummon(duel, |duel, _, c, _, _, _, _, _| c.is_summonable_card(duel));
+        e1.set_reset(duel, RESET_PHASE | PHASE_END);
+        duel.register_effect(e1, tp);
+        Ok(false)
+    }
+
+    fn tribute_replaceable_cost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+        let extracon = |duel: &Duel, _, a: &Args| duel.get_location_count(a.tp, LOCATION_MZONE) > 0;
+        Cost::replaceable_full(duel, a, chk, Drytron::tribute_base_cost, extracon)
+    }
+
+    // Drytron.TributeCost.
+    pub fn tribute_cost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+        Cost::and(duel, a, chk, &[Drytron::tribute_replaceable_cost, Drytron::tribute_extra_cost])
+    }
+}
+
 pub struct Infernoid;
 
 impl Infernoid {

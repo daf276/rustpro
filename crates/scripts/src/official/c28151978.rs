@@ -44,10 +44,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e3.set_type(duel, EFFECT_TYPE_SINGLE);
     e3.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
     e3.set_code(duel, EFFECT_CANNOT_BE_SYNCHRO_MATERIAL);
-    e3.set_value(
-        duel,
-        Value::Card(|duel, _, c| i32::from(!c.is_attribute(duel, ATTRIBUTE_WIND) || !c.is_race(duel, RACE_DRAGON | RACE_MACHINE))),
-    );
+    e3.set_value(duel, Value::OptionalCard(synlimit));
     c.register_effect(duel, e3);
     let e4 = duel.create_effect(c);
     e4.set_type(duel, EFFECT_TYPE_SINGLE);
@@ -99,6 +96,12 @@ fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
         duel.send_to_hand(tc, PLAYER_NONE, REASON_EFFECT)?;
     }
     Ok(())
+}
+
+fn synlimit(duel: &Duel, _: EffectId, c: Option<CardId>) -> i32 {
+    c.map_or(0, |c| {
+        i32::from(!c.is_attribute(duel, ATTRIBUTE_WIND) || !c.is_race(duel, RACE_DRAGON | RACE_MACHINE))
+    })
 }
 
 fn rmcon(duel: &Duel, a: &Args) -> bool {

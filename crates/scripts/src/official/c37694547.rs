@@ -4,15 +4,16 @@ use crate::testing::{Check, DECK, HAND, OPPONENT};
 
 const ID: u32 = 37694547;
 
-// In the hand to activate, with Ancient Gear Box in the Deck to Special Summon, and Mystical Space Typhoon in the opponent's hand to
-// destroy it.
-// The Tribute reduction is never reached: the other Ancient Gear monsters are unported, so none is Tribute Summoned.
+// In the hand to activate, with Ancient Gear Box in the Deck to Special Summon, Mystical Space Typhoon in the opponent's hand to
+// destroy it, and Ancient Gear Golem in the hand to Tribute Summon with one Tribute fewer.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),
     (60953949, DECK),
     (60953949, DECK),
     (5318639, HAND | OPPONENT),
     (5318639, HAND | OPPONENT),
+    (83104731, HAND),
+    (83104731, HAND),
 ];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(0), Check::ResolvesEffect(aux::stringid(ID, 0))];
 

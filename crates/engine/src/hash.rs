@@ -1125,9 +1125,9 @@ keyed! {
     operations::SendToReplace { step, target }
     operations::MoveToField { step, enable, pzone, zone, rule, location_reason, confirm, ret, target }
     operations::ChangePos { step, reason_player, enable, oppo_selection, reason_effect, targets, to_grave_set }
-    operations::SummonRule { step, sumplayer, min_tribute, ignore_count, zone, target, summon_procedure_effect, extra_summon_effect, tributes, ordinary_first, ordinary_count_first }
+    operations::SummonRule { step, sumplayer, min_tribute, ignore_count, zone, target, summon_procedure_effect, extra_summon_effect, tributes, ordinary_first, ordinary_count_first, max_allowed_tributes }
     operations::FlipSummon { step, sumplayer, target }
-    operations::MonsterSet { step, setplayer, min_tribute, ignore_count, zone, target, summon_procedure_effect, extra_summon_effect, tributes, ordinary_first }
+    operations::MonsterSet { step, setplayer, min_tribute, ignore_count, zone, target, summon_procedure_effect, extra_summon_effect, tributes, ordinary_first, ordinary_count_first, max_allowed_tributes }
     operations::SpellSet { step, setplayer, toplayer, target, reason_effect }
     operations::SpSummon { step, reason_player, zone, reason_effect, targets }
     operations::SpSummonStep { step, zone, in_group, target, spsummon_cost_effects }

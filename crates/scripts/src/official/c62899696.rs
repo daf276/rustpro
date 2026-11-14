@@ -4,13 +4,15 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 62899696;
 
-// Clear Wing Synchro Dragon (Level 7) in the Extra Deck to Synchro Summon with the Level 6 Frostosaurus of the opponent.
+// Clear Wing Synchro Dragon (Level 7) in the Extra Deck to Synchro Summon with the Level 6 Frostosaurus of the opponent, and
+// the opponent's Speedroid Dominobutterfly to check as a material without a Synchro Monster.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),
     (ID, HAND),
     (82044279, EXTRA),
     (6631034, MZONE | OPPONENT),
     (6631034, MZONE | OPPONENT),
+    (28151978, MZONE | OPPONENT),
 ];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 1)), Check::SpecialSummonedCode(82044279)];
 

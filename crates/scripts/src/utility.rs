@@ -145,6 +145,22 @@ pub mod aux {
         c.is_has_effect(duel, EFFECT_NECRO_VALLEY).is_none()
     }
 
+    pub fn damcon1(duel: &Duel, a: &Args) -> bool {
+        let (tp, ev) = (a.tp, a.ev as u8);
+        let e1 = duel.is_player_affected_by_effect(tp, EFFECT_REVERSE_DAMAGE).is_some();
+        let e2 = duel.is_player_affected_by_effect(tp, EFFECT_REVERSE_RECOVER).is_some();
+        let (rd, rr) = (e1 && !e2, !e1 && e2);
+        let affects = |category| {
+            duel.get_operation_info(ev, category)
+                .is_some_and(|info| info.op_player == tp || info.op_player == PLAYER_ALL)
+        };
+        let no_damage = |duel: &Duel| duel.is_player_affected_by_effect(tp, EFFECT_NO_EFFECT_DAMAGE).is_some();
+        if affects(CATEGORY_DAMAGE) && !rd && !no_damage(duel) {
+            return true;
+        }
+        affects(CATEGORY_RECOVER) && rr && !no_damage(duel)
+    }
+
     // aux.ReleaseCheckMMZ, a check of Duel.CheckReleaseGroupCost.
     pub fn release_check_mmz(duel: &Duel, sg: CardSet, tp: u8, _: CardSet) -> (bool, bool) {
         (duel.get_mzone_count(tp, Some(sg)) > 0, false)
@@ -1858,6 +1874,7 @@ pub trait CardUtility: Copy {
     fn update_level(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>) -> i32;
     fn update_attack(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>, reset_count: Option<u16>) -> i32;
     fn update_defense(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>, reset_count: Option<u16>) -> i32;
+    fn update_scale(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>) -> i32;
     fn equip_by_effect_and_limit_register(
         self,
         duel: &mut Duel,
@@ -2036,6 +2053,14 @@ impl CardUtility for CardId {
         let def = self.get_defense(duel);
         update_stat(self, duel, EFFECT_UPDATE_DEFENSE, amt, reset, rc, reset_count);
         self.get_defense(duel) - def
+    }
+
+    fn update_scale(self, duel: &mut Duel, amt: i32, reset: Option<u32>, rc: Option<CardId>) -> i32 {
+        let scl = self.get_left_scale(duel) as i32;
+        let amt = if scl + amt <= 0 { -(scl - 1) } else { amt };
+        update_stat(self, duel, EFFECT_UPDATE_LSCALE, amt, reset, rc, None);
+        update_stat(self, duel, EFFECT_UPDATE_RSCALE, amt, reset, rc, None);
+        self.get_left_scale(duel) as i32 - scl
     }
 
     // Card.EquipByEffectAndLimitRegister; `up` is nil in Lua unless mustbefaceup is given, which Duel.Equip reads as false.

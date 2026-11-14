@@ -937,6 +937,11 @@ impl Fusion {
         c.is_on_field(duel) && c.is_able_to_grave(duel)
     }
 
+    // Fusion.InHandMat as a matfilter, which takes the same `type(filter) == "Card"` branch.
+    pub fn in_hand_mat(c: CardId, duel: &Duel) -> bool {
+        c.is_location(duel, LOCATION_HAND) && c.is_able_to_grave(duel)
+    }
+
     // A card that calls Fusion.SummonEffTG or SummonEffOP itself builds a new closure each time, whose chkf starts as nil.
     pub fn new_summon_eff_closure(duel: &mut Duel, e: EffectId, op: bool) {
         let key = keys::fusion_chkf(e.get_owner(duel), op);

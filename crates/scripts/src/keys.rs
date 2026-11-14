@@ -23,6 +23,7 @@ enum Tag {
     ReplaceCount,
     ReplaceMax,
     DelayedTurn,
+    SynchroSend,
 }
 
 const fn key(tag: Tag, payload: u64) -> u64 {
@@ -48,6 +49,8 @@ pub const FUSION_EXTRA_GROUP: u64 = key(Tag::FusionExtraGroup, 0);
 pub const XYZ_PROC_CANCELLABLE: u64 = key(Tag::XyzProcCancellable, 0);
 // ReincarnationChecked, the upvalue guarding Auxiliary.EnableCheckReincarnation's global effect.
 pub const REINCARNATION_CHECKED: u64 = key(Tag::ReincarnationChecked, 0);
+// Synchro.Send, where Synchro.Operation sends the materials.
+pub const SYNCHRO_SEND: u64 = key(Tag::SynchroSend, 0);
 // _replace_count and _replace_max, the Lua globals of the draw-replacing cards.
 pub const REPLACE_COUNT: u64 = key(Tag::ReplaceCount, 0);
 pub const REPLACE_MAX: u64 = key(Tag::ReplaceMax, 0);

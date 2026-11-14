@@ -2640,7 +2640,7 @@ impl EffectUtility for EffectId {
 
     // A table of the library's costs, compared by address; the Dragon Ruler ones are the only composite costs ported with it.
     fn has_self_discard_cost(self, duel: &Duel) -> bool {
-        let costs: [CostFn; 7] = [
+        let costs: [CostFn; 12] = [
             Cost::self_discard,
             Cost::self_discard_to_grave,
             DragonRuler::self_discard_to_grave_cost::<ATTRIBUTE_EARTH>,
@@ -2648,6 +2648,11 @@ impl EffectUtility for EffectId {
             DragonRuler::self_discard_to_grave_cost::<ATTRIBUTE_FIRE>,
             DragonRuler::self_discard_to_grave_cost::<ATTRIBUTE_WIND>,
             DragonRuler::self_discard_cost::<ATTRIBUTE_LIGHT>,
+            DragonRuler::self_discard_cost::<ATTRIBUTE_EARTH>,
+            DragonRuler::self_discard_cost::<ATTRIBUTE_WATER>,
+            DragonRuler::self_discard_cost::<ATTRIBUTE_FIRE>,
+            DragonRuler::self_discard_cost::<ATTRIBUTE_WIND>,
+            DragonRuler::self_discard_cost::<ATTRIBUTE_DARK>,
         ];
         self.get_cost(duel)
             .is_some_and(|cost| costs.into_iter().any(|known| std::ptr::fn_addr_eq(cost, known)))

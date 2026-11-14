@@ -625,6 +625,34 @@ impl Duel {
         card_type
     }
 
+    // card::get_type while field::check_extra_link has moved the card to a Monster Zone, for effects that apply wherever it is.
+    pub(crate) fn get_type_placed(&self, card: CardId) -> u32 {
+        if let Some(card_type) = self.get_assumed_property(card, ASSUME_TYPE) {
+            return card_type as u32;
+        }
+        let registry = &self.field_effects.registry;
+        let moved = [EFFECT_ADD_TYPE, EFFECT_REMOVE_TYPE, EFFECT_CHANGE_TYPE].into_iter().any(|code| {
+            registry
+                .equal_range(Container::Single, Some(card), code)
+                .any(|effect| !self.applies_anywhere(effect))
+                || registry.equal_range(Container::Aura, None, code).next().is_some()
+                || self.equip_effects(card, code).next().is_some()
+                || self.xmaterial_effects(card, code).next().is_some()
+        });
+        unported!(self, moved.then_some(()));
+        self.get_type_lookup(card, self.cards[card].data.card_type)
+    }
+
+    // Whether a single effect is available or not alike wherever its card is.
+    fn applies_anywhere(&self, effect: EffectId) -> bool {
+        let peffect = &self.effects[effect];
+        if peffect.is_flag(EFFECT_FLAG_SINGLE_RANGE) {
+            return !self.cards[self.get_handler(effect)].get_status(STATUS_EFFECT_ENABLED)
+                && !peffect.is_flag(EFFECT_FLAG_IMMEDIATELY_APPLY);
+        }
+        peffect.range & (LOCATION_MMZONE | LOCATION_EMZONE) == 0 && peffect.condition.is_none() && matches!(peffect.value, Value::Int(_))
+    }
+
     fn changed_bits(&self, card: CardId, base: u64, [add, remove, change]: [u32; 3], each: impl Fn(u64)) -> u64 {
         let mut bits = base;
         for effect in self.filter_effects(card, &[add, remove, change]) {

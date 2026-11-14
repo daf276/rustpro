@@ -1185,14 +1185,10 @@ impl Duel {
         }
     }
 
-    // The type card::get_link_marker reads; a card the core places for a check keeps the type of its location.
+    // The type card::get_link_marker reads, of a card the core may have placed for a check.
     fn link_type(&self, zones: &Zones, card: CardId) -> u32 {
         if zones.placed.is_some_and(|(placed, _, _)| placed == card) {
-            unported!(
-                self,
-                self.filter_effects(card, &[EFFECT_ADD_TYPE, EFFECT_REMOVE_TYPE, EFFECT_CHANGE_TYPE])
-            );
-            return self.cards[card].data.card_type;
+            return self.get_type_placed(card);
         }
         self.get_type(card)
     }

@@ -22,6 +22,11 @@ pub trait RitualParams {
         true
     }
 
+    // filter, for one that reads the handler the Lua closure captures.
+    fn filter_with_effect(c: CardId, duel: &Duel, _e: EffectId) -> bool {
+        Self::filter(c, duel)
+    }
+
     // lv, a level or a function of the Ritual Monster; nil is its level.
     fn lv(c: CardId, duel: &Duel) -> u32 {
         c.get_level(duel)
@@ -169,7 +174,7 @@ impl Ritual {
         forcedselection: Option<ForcedSelection>,
     ) -> bool {
         if !(c.is_original_type(duel, TYPE_RITUAL) && c.is_original_type(duel, TYPE_MONSTER))
-            || !P::filter(c, duel)
+            || !P::filter_with_effect(c, duel, e)
             || !c.is_can_be_special_summoned_full(duel, e, SUMMON_TYPE_RITUAL, tp, false, true, P::SUMPOS, tp, 0xff)
         {
             return false;

@@ -54,11 +54,14 @@ impl Pendulum {
     }
 
     // Pendulum.GrantAdditionalPendulumSummon with the hand and the Extra Deck and the default reset, the owner as the flag.
+    pub fn player_can_gain_additional_pendulum_summon(duel: &Duel, player: u8, effect_flag: u32) -> bool {
+        !(duel.has_flag_effect(player, CARD_ZEFRAATH) || duel.has_flag_effect(player, effect_flag))
+            && duel.is_turn_player(player)
+            && !duel.is_phase(PHASE_END)
+    }
+
     pub fn grant_additional_pendulum_summon<P: ExtraPendulum>(duel: &mut Duel, handler: CardId, tp: u8, hint_description: u64) {
-        let can_gain = !(duel.has_flag_effect(tp, CARD_ZEFRAATH) || duel.has_flag_effect(tp, P::OWNER))
-            && duel.is_turn_player(tp)
-            && !duel.is_phase(PHASE_END);
-        if !can_gain {
+        if !Pendulum::player_can_gain_additional_pendulum_summon(duel, tp, P::OWNER) {
             return;
         }
         aux::register_client_hint_full(duel, handler, 0, tp, 1, 0, Some(hint_description), RESET_PHASE | PHASE_END, 1);

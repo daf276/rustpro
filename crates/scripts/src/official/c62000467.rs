@@ -79,7 +79,7 @@ fn actcon(duel: &Duel, a: &Args) -> bool {
         .is_some_and(|tc| tc.is_controler(duel, tp) && tc.is_set_card(duel, &[SET_GLADIATOR]))
 }
 
-fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+pub fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     let c = a.e.get_handler(duel);
     if chk == 0 {
         return Ok(c.is_able_to_extra_as_cost(duel));

@@ -7,14 +7,15 @@ const ID: u32 = 94977269;
 pub const LISTED_SERIES: &[u16] = &[SET_SHADDOLL];
 pub const MATERIAL_SETCODE: &[u16] = &[SET_SHADDOLL];
 
-struct Materials;
+// The materials of the El Shaddoll Fusion Monsters: a Shaddoll monster and a monster of `ATTRIBUTE` (or Shaddoll Core).
+pub struct Materials<const ATTRIBUTE: u32>;
 
-impl FusionMix for Materials {
+impl<const ATTRIBUTE: u32> FusionMix for Materials<ATTRIBUTE> {
     const SUB: bool = true;
     const INSF: bool = true;
     const MATERIALS: &'static [FusionMaterial] = &[
         FusionMaterial::Filter(|c, duel, fc, sumtype, tp| c.is_set_card_full(duel, &[SET_SHADDOLL], Some(fc), sumtype, tp)),
-        FusionMaterial::Filter(matfilter),
+        FusionMaterial::Filter(super::c32467459::matfilter::<ATTRIBUTE>),
     ];
 }
 
@@ -33,15 +34,7 @@ pub const CHECKS: &[Check] = &[Check::SpecialSummoned, Check::ResolvesEffect(aux
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     duel.enable_global_flag(GLOBALFLAG_SPSUMMON_COUNT);
-    c.enable_revive_limit(duel);
-    Fusion::add_proc_mix::<Materials>(duel, c);
-    let e2 = duel.create_effect(c);
-    e2.set_type(duel, EFFECT_TYPE_SINGLE);
-    e2.set_property(duel, EFFECT_FLAG_SINGLE_RANGE + EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
-    e2.set_code(duel, EFFECT_SPSUMMON_CONDITION);
-    e2.set_range(duel, LOCATION_EXTRA);
-    e2.set_value(duel, Value::SpSummonCondition(aux::fuslimit));
-    c.register_effect(duel, e2);
+    add_procedure::<ATTRIBUTE_DARK>(duel, c);
     let e3 = duel.create_effect(c);
     e3.set_type(duel, EFFECT_TYPE_SINGLE);
     e3.set_property(duel, EFFECT_FLAG_SINGLE_RANGE);
@@ -57,8 +50,26 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e4.set_target_range(duel, 1, 1);
     e4.set_value(duel, 1);
     c.register_effect(duel, e4);
+    register_to_hand(duel, c, aux::stringid(ID, 0));
+}
+
+// The Fusion procedure and Special Summon condition of the El Shaddoll Fusion Monsters.
+pub fn add_procedure<const ATTRIBUTE: u32>(duel: &mut Duel, c: CardId) {
+    c.enable_revive_limit(duel);
+    Fusion::add_proc_mix::<Materials<ATTRIBUTE>>(duel, c);
+    let e2 = duel.create_effect(c);
+    e2.set_type(duel, EFFECT_TYPE_SINGLE);
+    e2.set_property(duel, EFFECT_FLAG_SINGLE_RANGE + EFFECT_FLAG_CANNOT_DISABLE + EFFECT_FLAG_UNCOPYABLE);
+    e2.set_code(duel, EFFECT_SPSUMMON_CONDITION);
+    e2.set_range(duel, LOCATION_EXTRA);
+    e2.set_value(duel, Value::SpSummonCondition(aux::fuslimit));
+    c.register_effect(duel, e2);
+}
+
+// The El Shaddoll Fusion Monsters' effect adding a Shaddoll Spell/Trap from the GY when sent there.
+pub fn register_to_hand(duel: &mut Duel, c: CardId, description: u64) {
     let e5 = duel.create_effect(c);
-    e5.set_description(duel, aux::stringid(ID, 0));
+    e5.set_description(duel, description);
     e5.set_category(duel, CATEGORY_TOHAND);
     e5.set_type(duel, EFFECT_TYPE_SINGLE + EFFECT_TYPE_TRIGGER_O);
     e5.set_code(duel, EVENT_TO_GRAVE);
@@ -66,10 +77,6 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e5.set_target(duel, thtg);
     e5.set_operation(duel, stock::first_target_to_hand);
     c.register_effect(duel, e5);
-}
-
-fn matfilter(c: CardId, duel: &Duel, lc: CardId, sumtype: u64, tp: u8) -> bool {
-    c.is_attribute_full(duel, ATTRIBUTE_DARK, Some(lc), sumtype, tp) || c.is_has_effect(duel, 4904633).is_some()
 }
 
 fn indval(duel: &Duel, e: EffectId, _: EffectId, tp: u8) -> bool {

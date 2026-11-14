@@ -73,7 +73,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.register_effect(duel, e3);
 }
 
-fn matfilter<const ATTRIBUTE: u32>(c: CardId, duel: &Duel, fc: CardId, sumtype: u64, tp: u8) -> bool {
+pub fn matfilter<const ATTRIBUTE: u32>(c: CardId, duel: &Duel, fc: CardId, sumtype: u64, tp: u8) -> bool {
     c.is_attribute_full(duel, ATTRIBUTE, Some(fc), sumtype, tp) || c.is_has_effect(duel, SHADDOLL_CORE).is_some()
 }
 

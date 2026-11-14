@@ -46,7 +46,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.register_effect(duel, e2);
 }
 
-fn cost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+pub fn cost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     if chk == 0 {
         return Ok(true);
     }
@@ -68,7 +68,7 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<b
     Ok(false)
 }
 
-fn descon(duel: &Duel, a: &Args) -> bool {
+pub fn descon(duel: &Duel, a: &Args) -> bool {
     a.e.get_handler(duel).is_reason(duel, REASON_EFFECT)
 }
 

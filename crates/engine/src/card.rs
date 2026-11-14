@@ -3012,6 +3012,7 @@ impl Duel {
             .into_iter()
             .any(|effect| match self.effects[effect].value {
                 Value::Int(value) => value != 0,
+                Value::OptionalCard(value) => self.call_script(|duel| value(duel, effect, fcard)) != 0,
                 _ => {
                     unported!(self);
                     false

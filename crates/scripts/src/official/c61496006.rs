@@ -112,7 +112,7 @@ fn damcon(duel: &Duel, a: &Args) -> bool {
     false
 }
 
-fn xyzlv(duel: &Duel, e: EffectId, _: CardId, rc: CardId) -> Vec<i32> {
+pub fn xyzlv(duel: &Duel, e: EffectId, _: CardId, rc: CardId) -> Vec<i32> {
     let level = e.get_handler(duel).get_level(duel) as i32;
     if rc.is_set_card(duel, &[SET_NUMBER]) {
         vec![4, 3, level]

@@ -116,7 +116,7 @@ fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
     Ok(())
 }
 
-fn token_stats() -> MonsterStats {
+pub fn token_stats() -> MonsterStats {
     MonsterStats::new(SET_CRYSTRON, TYPES_TOKEN, 0, 0, 1, RACE_MACHINE, ATTRIBUTE_WATER)
 }
 

@@ -141,7 +141,7 @@ fn negcon(duel: &Duel, a: &Args) -> bool {
         && !a.e.get_handler(duel).is_status(duel, STATUS_BATTLE_DESTROYED)
 }
 
-fn negtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+pub fn negtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
     let tp = a.tp;
     let Some(re) = a.re else { return Ok(false) };
     let rc = re.get_handler(duel);
@@ -167,7 +167,7 @@ fn negtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool>
     Ok(false)
 }
 
-fn negop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn negop(duel: &mut Duel, a: &Args) -> Script<()> {
     let Some(re) = a.re else { return Ok(()) };
     if duel.negate_activation(a.ev as u8) && re.get_handler(duel).is_relate_to_effect(duel, re) {
         duel.remove(a.eg.unwrap_or_default(), POS_FACEUP, REASON_EFFECT)?;

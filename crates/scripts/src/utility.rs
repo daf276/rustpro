@@ -199,7 +199,7 @@ pub mod aux {
         duel.get_matching_group(|c, duel| c.is_releasable(duel) && P::filter(c, duel), tp, 0, LOCATION_MZONE, None)
     }
 
-    fn lava_condition<P: LavaProcedure>(duel: &Duel, a: &Args) -> bool {
+    pub fn lava_condition<P: LavaProcedure>(duel: &Duel, a: &Args) -> bool {
         let Some(c) = a.c else { return true };
         let tp = c.get_controler(duel);
         let required = P::REQUIRED.max(1);

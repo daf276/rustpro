@@ -1189,10 +1189,10 @@ impl Duel {
 
     // The type card::get_link_marker reads, of a card the core may have placed for a check.
     fn link_type(&self, zones: &Zones, card: CardId) -> u32 {
-        if zones.placed.is_some_and(|(placed, _, _)| placed == card) {
-            return self.get_type_placed(card);
+        match zones.placed {
+            Some((placed, controler, sequence)) if placed == card => self.get_type_placed(zones, card, controler, sequence),
+            _ => self.get_type(card),
         }
-        self.get_type(card)
     }
 
     // card::get_link_marker: rotated a quarter turn in defense position.

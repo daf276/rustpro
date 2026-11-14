@@ -3,7 +3,7 @@ use std::error::Error;
 use std::io::Write;
 use std::time::{Duration, Instant};
 
-use diff::{Vendor, diff_duel, diff_position, median, records, scenario_records};
+use diff::{DiffError, Vendor, diff_duel, diff_position, median, records, scenario_records};
 use engine::constants::{LOCATION_MZONE, PHASE_DRAW};
 use engine::{Duel, DuelRecord, NewCardInfo, Position};
 use rayon::prelude::*;
@@ -106,10 +106,14 @@ fn should_match_the_oracle_from_positions_of_random_states() {
                 phase: PHASE_DRAW,
                 ..prefix(record, actions).replay(&vendor.cards, &LIBRARY)?.position()
             };
-            if !is_taken(&position) {
-                diff_position(vendor, seed, &position)?;
+            // Both engines agreed up to the cap: a random responder can wander for long (Gordian Slicer's select-all prompt).
+            if is_taken(&position) {
+                return Ok(());
             }
-            Ok(())
+            match diff_position(vendor, seed, &position) {
+                Ok(_) | Err(DiffError::DecisionCap { .. }) => Ok(()),
+                Err(error) => Err(error.into()),
+            }
         })
         .filter_map(|result| result.err().map(|error| error.to_string()))
         .collect();

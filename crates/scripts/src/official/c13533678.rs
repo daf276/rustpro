@@ -1,13 +1,13 @@
 // Spright Jet
 use crate::prelude::*;
-use crate::testing::{Check, HAND, MZONE};
+use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 13533678;
 
 pub const LISTED_SERIES: &[u16] = &[SET_SPRIGHT];
-// Psychic Kappa, a Level 2 Normal Monster, to Special Summon it. No Spright Spell/Trap is ported, so the search is not reached.
-pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (7892180, MZONE)];
-pub const CHECKS: &[Check] = &[Check::SpecialSummoned, Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 0)))];
+// Psychic Kappa, a Level 2 Normal Monster, to Special Summon it, with Spright Starter in the Deck to search.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (7892180, MZONE), (15443125, DECK), (15443125, DECK)];
+pub const CHECKS: &[Check] = &[Check::SpecialSummoned, Check::ResolvesEffect(aux::stringid(ID, 0))];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e1 = duel.create_effect(c);

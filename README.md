@@ -28,9 +28,9 @@ The oracle sources and card data are not in the repository. Clone them into `ven
 | Directory | Repository | Commit |
 |---|---|---|
 | `vendor/ygopro-core` | https://github.com/edo9300/ygopro-core (with its Lua submodule) | `baa3881d0bae48e9994f915f5c931be53c1ba8ef` |
-| `vendor/CardScripts` | https://github.com/ProjectIgnis/CardScripts | `3b3a66f685e4c1d0d82214550e56f54c001cc30c` |
-| `vendor/BabelCDB` | https://github.com/ProjectIgnis/BabelCDB | `cf9a274244f2e61dfad12a68ed4517613ac65ba5` |
-| `vendor/LFLists` | https://github.com/ProjectIgnis/LFLists | `73b027287c6123832fca165f5d76204362fa1078` |
+| `vendor/CardScripts` | https://github.com/ProjectIgnis/CardScripts | `195bfa78dcfa848c0dd1d26d6ea8216420e8b8a5` |
+| `vendor/BabelCDB` | https://github.com/ProjectIgnis/BabelCDB | `7411ae10e20aad36042ff95b809f929779b56913` |
+| `vendor/LFLists` | https://github.com/ProjectIgnis/LFLists | `8156b3ed77b1950b3a03083470905708ef36e190` |
 
 ## Usage
 

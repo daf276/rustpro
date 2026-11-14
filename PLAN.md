@@ -4,7 +4,7 @@ A pure-Rust reimplementation of the EDOPro duel engine (edo9300/ygopro-core + Pr
 
 ## Decisions
 
-- **Scope:** current TCG Advanced format only. Pool = cards with the TCG flag in BabelCDB minus Forbidden in the current TCG lflist; the `ocg` cargo feature (off by default) adds the OCG-only cards, still under the TCG banlist and Master Rule. One Master Rule (current), no Speed/Rush/Goat, no skills, no anime/unofficial/pre-release cards.
+- **Scope:** current TCG Advanced format only. Pool = cards with the TCG flag in BabelCDB minus Forbidden in the current TCG lflist; the `ocg` cargo feature (off by default) adds the OCG-only cards, still under the TCG banlist and Master Rule. One Master Rule (current), no Speed/Rush/Goat, no skills, no anime/unofficial/pre-release cards. Exception (2026-11-14): the 16 TCG-only Blazing Eternity cards are in the pool under their BETB-EN pre-release codes (101402082-101402101, `prerelease-betb-en.cdb`, scripts in `pre-release/`, official passcodes mapped in `Deck::parse_ydk`) until upstream migrates them; then the 16 files are renamed to the official codes and revalidated.
 - **Fidelity:** match EDOPro exactly, including misrulings. The core is a near line-by-line port of ocgcore (processor step order, message order, group iteration order). Cleverness goes into data layout only.
 - **Card porting:** a Rust API mirroring the Lua `Duel`/`Card`/`Effect`/`Group`/`aux` surface; cards ported by LLM agents in batches, each card gated by differential fuzzing against the oracle.
 - **Use cases:** game-tree search AI, RL training, deck statistics.
@@ -32,7 +32,7 @@ A pure-Rust reimplementation of the EDOPro duel engine (edo9300/ygopro-core + Pr
 ## Phases
 
 ### 0. Oracle and baseline
-- [x] Vendor edo9300/ygopro-core (+ Lua), ProjectIgnis CardScripts, BabelCDB, LFLists into `vendor/` (shallow clones, 2026-10-17; not in git, pinned at ygopro-core `baa3881d0bae48e9994f915f5c931be53c1ba8ef`, CardScripts `3b3a66f685e4c1d0d82214550e56f54c001cc30c`, BabelCDB `cf9a274244f2e61dfad12a68ed4517613ac65ba5`, LFLists `73b027287c6123832fca165f5d76204362fa1078`; a git worktree links `vendor` to the main checkout's)
+- [x] Vendor edo9300/ygopro-core (+ Lua), ProjectIgnis CardScripts, BabelCDB, LFLists into `vendor/` (shallow clones, 2026-10-17, refreshed 2026-11-14; not in git, pinned at ygopro-core `baa3881d0bae48e9994f915f5c931be53c1ba8ef`, CardScripts `195bfa78dcfa848c0dd1d26d6ea8216420e8b8a5`, BabelCDB `7411ae10e20aad36042ff95b809f929779b56913`, LFLists `8156b3ed77b1950b3a03083470905708ef36e190`; a git worktree links `vendor` to the main checkout's)
 - [x] `ocgcore-sys`: compile ocgcore + Lua with `cc` in `build.rs`, hand-written FFI for `ocgapi.h`
 - [x] `oracle`: safe wrapper (card reader from cdb, script reader from CardScripts, create/start/process/messages/responses)
 - [x] Advanced pool extraction (cdb TCG flag minus Forbidden)
@@ -129,7 +129,7 @@ Goal of 2026-11-11: the phase 0 target of 1M actions/s per thread on the Elfnote
 
 - Sizes: ocgcore ~30k lines of C++; shared Lua library (`CardScripts/*.lua`) ~14k lines; `CardScripts/official` holds ~13.5k card scripts.
 - RNG confirmed: `vendor/ygopro-core/RNG/Xoshiro256.hpp`.
-- BabelCDB ships released-but-unmerged sets as `release-*.cdb` beside `cards.cdb`; the pool must read both. `prerelease-*` files are excluded.
+- BabelCDB ships released-but-unmerged sets as `release-*.cdb` beside `cards.cdb`; the pool must read both. `prerelease-*` files are excluded, except `prerelease-betb-en.cdb` (see Scope).
 - Current TCG banlist is the first list in `LFLists/0TCG.lflist.conf` (2026.09 TCG at vendoring time).
 - ocgcore rejects a Lua that cannot unwind C++ frames (`OCG_CreateDuel` returns 5, `INCOMPATIBLE_LUA_API`): Lua must be compiled as C++ (`/TP`) and with `/EHsc`, which `cc` does not add on its own.
 - The core never loads `constant.lua`/`utility.lua`; the caller loads them via `OCG_LoadScript` after `OCG_CreateDuel`. `utility.lua` then pulls in the `proc_*` libraries through `Duel.LoadScript`, including `unofficial/proc_unofficial.lua`.

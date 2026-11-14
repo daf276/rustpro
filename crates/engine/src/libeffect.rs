@@ -4,8 +4,8 @@ use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{
     CodeConditionFn, Condition, ConditionFn, CostConditionFn, CostFn, CostReplaceFn, EffectId, ExtraMaterialFn, FusionMaterialFn,
-    GroupOperationFn, Operation, OperationFn, ReturningOperationFn, SpSummonTargetFn, SynchroCheckFn, SynchroMaterialFn, Target, TargetFn,
-    Value, XyzMaterialFn, ZwEquipFn,
+    GroupOperationFn, Operation, OperationFn, OppoChoosesZoneFn, ReturningOperationFn, SpSummonTargetFn, SynchroCheckFn, SynchroMaterialFn,
+    Target, TargetFn, Value, XyzMaterialFn, ZwEquipFn,
 };
 use crate::script::Args;
 
@@ -361,6 +361,11 @@ impl EffectId {
     // Effect.SetOperation for an EFFECT_DOUBLE_XYZ_MATERIAL effect, whose function proc_xyz calls with the Xyz Monster and the materials.
     pub fn set_xyz_material_operation(self, duel: &mut Duel, operation: XyzMaterialFn) {
         duel.effects[self].operation = Some(Operation::XyzMaterial(operation));
+    }
+
+    // Effect.SetOperation for EFFECT_OPPO_CHOOSES_SPSUMMON_ZONE, whose function the core calls as a condition.
+    pub fn set_oppo_chooses_zone_operation(self, duel: &mut Duel, operation: OppoChoosesZoneFn) {
+        duel.effects[self].operation = Some(Operation::OppoChoosesZone(operation));
     }
 
     pub fn is_activatable(self, duel: &Duel, player: u8, neglect_loc: bool, neglect_target: bool) -> bool {

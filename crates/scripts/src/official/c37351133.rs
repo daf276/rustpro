@@ -23,7 +23,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_code(duel, EVENT_SUMMON_SUCCESS);
     e1.set_count_limit(duel, 1, ID);
     e1.set_condition(duel, spcon);
-    e1.set_target(duel, stock::special_summon_self_target_player_0);
+    e1.set_target(duel, stock::special_summon_self_target);
     e1.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e1);
     let e2 = e1.clone_effect(duel);
@@ -32,13 +32,13 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e3 = duel.create_effect(c);
     e3.set_description(duel, aux::stringid(ID, 1));
     e3.set_category(duel, CATEGORY_SPECIAL_SUMMON + CATEGORY_DISABLE);
-    e3.set_property(duel, EFFECT_FLAG_DAMAGE_STEP + EFFECT_FLAG_DELAY);
+    e3.set_property_full(duel, EFFECT_FLAG_DAMAGE_STEP + EFFECT_FLAG_DELAY, EFFECT_FLAG2_CHECK_SIMULTANEOUS);
     e3.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_TRIGGER_O);
     e3.set_range(duel, LOCATION_GRAVE);
     e3.set_code(duel, EVENT_LEAVE_FIELD);
     e3.set_count_limit(duel, 1, (ID, 1));
     e3.set_condition(duel, spcon2);
-    e3.set_target(duel, stock::special_summon_self_target_player_0);
+    e3.set_target(duel, sptg2);
     e3.set_operation(duel, spop2);
     c.register_effect(duel, e3);
 }
@@ -61,7 +61,18 @@ fn cfilter2(c: CardId, duel: &Duel, tp: u8, rp: u8) -> bool {
 
 fn spcon2(duel: &Duel, a: &Args) -> bool {
     let (tp, rp) = (a.tp, a.rp);
-    a.eg.is_some_and(|eg| eg.is_exists(duel, |c, duel| cfilter2(c, duel, tp, rp), 1, None))
+    a.eg.is_some_and(|eg| eg.is_exists(duel, |c, duel| cfilter2(c, duel, tp, rp), 1, None) && !eg.is_contains(a.e.get_handler(duel)))
+}
+
+fn sptg2(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+    let (e, tp) = (a.e, a.tp);
+    let c = e.get_handler(duel);
+    if chk == 0 {
+        return Ok(duel.get_location_count(tp, LOCATION_MZONE) > 0 && c.is_can_be_special_summoned(duel, e, 0, tp, false, false));
+    }
+    duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(c.into()), 1, tp, 0);
+    duel.set_operation_info(0, CATEGORY_DISABLE, None, 1, 1 - tp, LOCATION_MZONE as i32);
+    Ok(false)
 }
 
 fn spop2(duel: &mut Duel, a: &Args) -> Script<()> {

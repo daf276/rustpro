@@ -1,7 +1,8 @@
 # Porting a card
 
-Port `vendor/CardScripts/official/c<code>.lua` to `crates/scripts/src/official/c<code>.rs` so that the engine matches
-the oracle (ocgcore running the Lua) message for message. The file is all there is to add: `crates/scripts/build.rs`
+Port `vendor/CardScripts/official/c<code>.lua` (`pre-release/` for the 101402xxx BETB-EN cards) to
+`crates/scripts/src/official/c<code>.rs` so that the engine matches the oracle (ocgcore running the Lua) message for
+message. The file is all there is to add: `crates/scripts/build.rs`
 registers every `c<code>.rs` and reads its `LISTED_NAMES`, `FIT_MONSTER`, `SUPPORT` and `CHECKS`. The order of work is
 `porting/queue.tsv` (TCG Advanced pool, most viewed first; `ported` is `no script` for cards that need no port).
 `vendor/` is read-only.

@@ -197,7 +197,11 @@ pub enum Operation {
     ZwEquip(ZwEquipFn),
     // op(e, xyz, matg) of an EFFECT_DOUBLE_XYZ_MATERIAL effect, with the Xyz Monster's minimum material count (its `minxyzct`): read only by proc_xyz.
     XyzMaterial(XyzMaterialFn),
+    // operation(e, c, move_player, reason) of an EFFECT_OPPO_CHOOSES_SPSUMMON_ZONE effect, a condition the core checks when a card moves to the field.
+    OppoChoosesZone(OppoChoosesZoneFn),
 }
+
+pub type OppoChoosesZoneFn = fn(&Duel, EffectId, CardId, u8, u32) -> bool;
 
 pub type XyzMaterialFn = fn(&Duel, EffectId, CardId, CardSet, usize) -> bool;
 

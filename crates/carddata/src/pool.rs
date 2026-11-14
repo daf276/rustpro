@@ -64,9 +64,35 @@ impl Deck {
     }
 }
 
+// (official, pre-release) codes of the BETB-EN cards BabelCDB still lists as pre-release; goes away when upstream migrates BETB-EN.
+const PRERELEASE_CODES: [(u32, u32); 16] = [
+    (99630221, 101402082),
+    (25024929, 101402083),
+    (52123534, 101402084),
+    (98518633, 101402085),
+    (24902348, 101402086),
+    (51307986, 101402087),
+    (87395095, 101402088),
+    (24780790, 101402089),
+    (50284408, 101402090),
+    (86673403, 101402091),
+    (13068112, 101402092),
+    (59062857, 101402093),
+    (86457955, 101402094),
+    (12845564, 101402095),
+    (48340269, 101402096),
+    (52245126, 101402101),
+];
+
 fn original<'a>(codes: impl Iterator<Item = &'a str>, cards: &CardDatabase) -> Vec<u32> {
     codes
         .filter_map(|code| code.trim().parse().ok())
+        .map(|code| {
+            PRERELEASE_CODES
+                .iter()
+                .find(|&&(official, _)| official == code)
+                .map_or(code, |&(_, prerelease)| prerelease)
+        })
         .map(|code| match cards.get(code) {
             Some(card) if card.is_alternate_art() => card.alias,
             _ => code,

@@ -1,10 +1,26 @@
 """What the tools share; `python -I` leaves the script's directory off sys.path, so each tool adds it to import this."""
+import re
 import sqlite3
 from contextlib import closing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 OFFICIAL = ROOT / "crates/scripts/src/official"
+CONSTANT_SOURCES = ["constant.lua", "card_counter_constants.lua", "archetype_setcode_constants.lua"]
+
+
+def lua_constants():
+    for source in CONSTANT_SOURCES:
+        text = (ROOT / "vendor/CardScripts" / source).read_text(encoding="utf-8")
+        for line in re.sub(r"--\[\[.*?\]\]", "", text, flags=re.S).splitlines():
+            match = re.match(r"^(\w+)\s*=\s*(.+?)\s*$", line.split("--")[0])
+            if match:
+                yield match[1], strip_parentheses(match[2].replace("0X", "0x"))
+
+
+def strip_parentheses(expression):
+    depths = [expression[:end].count("(") - expression[:end].count(")") for end in range(1, len(expression))]
+    return expression[1:-1] if expression.startswith("(") and all(depths) else expression
 
 
 def cdb(query):

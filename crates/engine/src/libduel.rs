@@ -1175,11 +1175,11 @@ impl Duel {
     }
 
     pub fn check_lp_cost(&self, player: u8, lp: u32) -> bool {
-        unported!(self, self.filter_player_effect(player, EFFECT_LPCOST_CHANGE, true));
-        if lp > 0 && !self.field_effect_range(Container::Continuous, EFFECT_LPCOST_REPLACE).is_empty() {
+        let val = self.changed_lp_cost(player, lp);
+        if val > 0 && !self.field_effect_range(Container::Continuous, EFFECT_LPCOST_REPLACE).is_empty() {
             unported!(self, self.check_mut(|duel| duel.lpcost_replacements(player, lp)));
         }
-        player <= 1 && (lp == 0 || lp as i32 <= self.player[player].lp)
+        player <= 1 && (val <= 0 || val <= self.player[player].lp)
     }
 
     pub fn pay_lp_cost(&mut self, player: u8, cost: u32) -> Script<()> {

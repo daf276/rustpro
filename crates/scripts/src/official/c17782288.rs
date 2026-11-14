@@ -108,7 +108,7 @@ fn tdfilter(c: CardId, duel: &Duel, tp: u8) -> bool {
         && c.is_able_to_extra(duel)
 }
 
-fn tdtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+pub fn tdtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
     let tp = a.tp;
     if chk == 0 {
         return Ok(duel.is_existing_matching_card(|c, duel| tdfilter(c, duel, tp), tp, LOCATION_STZONE, 0, 1, None));
@@ -119,6 +119,10 @@ fn tdtg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> 
 }
 
 fn tdop(duel: &mut Duel, a: &Args) -> Script<()> {
+    return_to_extra(duel, a, aux::stringid(ID, 2))
+}
+
+pub fn return_to_extra(duel: &mut Duel, a: &Args, desc: u64) -> Script<()> {
     let (e, tp) = (a.e, a.tp);
     duel.hint(HINT_SELECTMSG, tp, HINTMSG_TODECK);
     let g = duel.select_matching_card(tp, |c, duel| tdfilter(c, duel, tp), tp, LOCATION_STZONE, 0, 1, 1, None)?;
@@ -128,7 +132,7 @@ fn tdop(duel: &mut Duel, a: &Args) -> Script<()> {
         && sc.is_location(duel, LOCATION_EXTRA)
         && duel.get_location_count_from_ex(tp, tp, None, sc) > 0
         && sc.is_can_be_special_summoned(duel, e, 0, tp, false, false)
-        && duel.select_yes_no(tp, aux::stringid(ID, 2))?
+        && duel.select_yes_no(tp, desc)?
     {
         duel.break_effect()?;
         duel.special_summon(sc, 0, tp, tp, false, false, POS_FACEUP)?;

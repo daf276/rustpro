@@ -1,4 +1,6 @@
 // The Dark - Hex-Sealed Fusion
+use engine::OperationFn;
+
 use crate::prelude::*;
 use crate::testing::{Check, EXTRA, MZONE};
 
@@ -10,14 +12,19 @@ pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ALBION, EXTRA), (38142739, MZ
 pub const CHECKS: &[Check] = &[Check::SpecialSummonedCode(ALBION)];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
+    register::<ID, ATTRIBUTE_DARK>(duel, c, |duel, a| operation(duel, a, a.tp));
+}
+
+// The effects The Dark and The Light - Hex-Sealed Fusion share; the Light's operation checks the zones from the activating player.
+pub fn register<const CODE: u32, const ATTRIBUTE: u32>(duel: &mut Duel, c: CardId, operation: OperationFn) {
     let e1 = duel.create_effect(c);
     e1.set_category(duel, CATEGORY_SPECIAL_SUMMON);
-    e1.set_description(duel, aux::stringid(ID, 0));
+    e1.set_description(duel, aux::stringid(CODE, 0));
     e1.set_type(duel, EFFECT_TYPE_IGNITION);
     e1.set_range(duel, LOCATION_MZONE);
     e1.set_label(duel, 0);
     e1.set_cost(duel, cost);
-    e1.set_target(duel, target);
+    e1.set_target(duel, target::<ATTRIBUTE>);
     e1.set_operation(duel, operation);
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
@@ -30,9 +37,9 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.register_effect(duel, e2);
 }
 
-fn filter(c: CardId, duel: &Duel, e: EffectId, tp: u8, m: CardSet, gc: CardId, chkf: u64) -> bool {
+fn filter<const ATTRIBUTE: u32>(c: CardId, duel: &Duel, e: EffectId, tp: u8, m: CardSet, gc: CardId, chkf: u64) -> bool {
     c.is_type(duel, TYPE_FUSION)
-        && c.is_attribute(duel, ATTRIBUTE_DARK)
+        && c.is_attribute(duel, ATTRIBUTE)
         && c.is_can_be_special_summoned(duel, e, 0, tp, false, false)
         && c.check_fusion_material(duel, Some(m), Some(gc.into()), chkf)
 }
@@ -61,7 +68,7 @@ fn materials(duel: &Duel, tp: u8) -> CardSet {
     mg.union(mg2)
 }
 
-fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+fn target<const ATTRIBUTE: u32>(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
     let (e, tp) = (a.e, a.tp);
     let c = e.get_handler(duel);
     let chkf = u64::from(tp) | FUSPROC_NOTFUSION;
@@ -71,13 +78,20 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool
         }
         e.set_label(duel, 0);
         let m = materials(duel, tp);
-        return Ok(duel.is_existing_matching_card(|sc, duel| filter(sc, duel, e, tp, m, c, chkf), tp, LOCATION_EXTRA, 0, 1, None));
+        return Ok(duel.is_existing_matching_card(
+            |sc, duel| filter::<ATTRIBUTE>(sc, duel, e, tp, m, c, chkf),
+            tp,
+            LOCATION_EXTRA,
+            0,
+            1,
+            None,
+        ));
     }
     let m = materials(duel, tp);
     duel.hint(HINT_SELECTMSG, tp, HINTMSG_SPSUMMON);
     let g = duel.select_matching_card(
         tp,
-        |sc, duel| filter(sc, duel, e, tp, m, c, chkf),
+        |sc, duel| filter::<ATTRIBUTE>(sc, duel, e, tp, m, c, chkf),
         tp,
         LOCATION_EXTRA,
         0,
@@ -95,12 +109,12 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool
     Ok(false)
 }
 
-fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn operation(duel: &mut Duel, a: &Args, rp: u8) -> Script<()> {
     let (e, tp) = (a.e, a.tp);
     let code = e.get_label(duel) as u32;
     let filter2 = |c: CardId, duel: &Duel| {
         c.is_code(duel, code)
-            && duel.get_location_count_from_ex(tp, tp, None, c) > 0
+            && duel.get_location_count_from_ex(tp, rp, None, c) > 0
             && c.is_can_be_special_summoned(duel, e, 0, tp, false, false)
     };
     if let Some(tc) = duel.get_first_matching_card(filter2, tp, LOCATION_EXTRA, 0, None) {

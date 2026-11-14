@@ -7,8 +7,8 @@ const ID: u32 = 82112494;
 pub const LISTED_SERIES: &[u16] = &[SET_SUPERHEAVY_SAMURAI];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // Copies in the Pendulum Zone and on the field, with Key Mace (Level 1) and Ally of Justice Catastor in the Extra Deck to
-// Synchro Summon with it, a Superheavy Samurai in the Deck and a monster in the hand to discard. No Superheavy Samurai Pendulum
-// Monster is ported, so the Pendulum Zone placement from the Deck is only reported.
+// Synchro Summon with it, a Superheavy Samurai in the Deck, a monster in the hand to discard, and Superheavy Samurai Monk
+// Big Benkei (a Pendulum) in the Deck to place.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, PZONE),
     (ID, MZONE),
@@ -18,9 +18,11 @@ pub const SUPPORT: &[(u32, u16)] = &[
     (87535691, DECK),
     (87535691, DECK),
     (1929294, HAND),
+    (19510093, DECK),
+    (19510093, DECK),
 ];
 pub const CHECKS: &[Check] = &[
-    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 0))),
+    Check::ResolvesEffect(aux::stringid(ID, 0)),
     Check::ResolvesEffect(aux::stringid(ID, 1)),
     Check::ResolvesEffect(aux::stringid(ID, 2)),
 ];
@@ -168,16 +170,16 @@ fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
     Ok(())
 }
 
-fn pencon(duel: &Duel, a: &Args) -> bool {
+pub fn pencon(duel: &Duel, a: &Args) -> bool {
     let c = a.e.get_handler(duel);
     a.r & REASON_SYNCHRO == REASON_SYNCHRO && c.is_faceup(duel) && c.is_location(duel, LOCATION_EXTRA)
 }
 
-fn pentg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+pub fn pentg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
     Ok(chk == 0 && duel.check_pendulum_zones(a.tp))
 }
 
-fn penop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn penop(duel: &mut Duel, a: &Args) -> Script<()> {
     let tp = a.tp;
     if !duel.check_pendulum_zones(tp) {
         return Ok(());

@@ -65,7 +65,7 @@ fn thop(duel: &mut Duel, a: &Args) -> Script<()> {
     stock::search(duel, a, thfilter, LOCATION_DECK)
 }
 
-fn settg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+pub fn settg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
     let c = a.e.get_handler(duel);
     if chk == 0 {
         return Ok(c.is_ssetable(duel));
@@ -74,7 +74,7 @@ fn settg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool>
     Ok(false)
 }
 
-fn setop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn setop(duel: &mut Duel, a: &Args) -> Script<()> {
     let c = a.e.get_handler(duel);
     if c.is_relate_to_effect(duel, a.e) && c.is_ssetable(duel) {
         duel.sset(a.tp, c)?;

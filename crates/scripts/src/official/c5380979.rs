@@ -70,7 +70,7 @@ fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
     if !g.is_empty() {
         duel.special_summon(g, 0, tp, tp, false, false, POS_FACEUP)?;
     }
-    aux::welcome_labrynth_trap_destroy_operation(duel, tp);
+    aux::welcome_labrynth_trap_destroy_operation(duel, e, tp)?;
     if !e.is_has_type(duel, EFFECT_TYPE_ACTIVATE) {
         return Ok(());
     }

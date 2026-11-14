@@ -81,7 +81,7 @@ fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
             }
         }
     }
-    aux::welcome_labrynth_trap_destroy_operation(duel, tp);
+    aux::welcome_labrynth_trap_destroy_operation(duel, e, tp)?;
     Ok(())
 }
 

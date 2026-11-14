@@ -397,9 +397,30 @@ pub mod aux {
         c.is_location(duel, if spirit_elimination { LOCATION_MZONE } else { LOCATION_GRAVE })
     }
 
-    // Auxiliary.WelcomeLabrynthTrapDestroyOperation: Labrynth Labyrinth, the only source of the effect, is not ported.
-    pub fn welcome_labrynth_trap_destroy_operation(duel: &mut Duel, tp: u8) {
-        unported!(duel, duel.is_player_affected_by_effect(tp, CARD_LABRYNTH_LABYRINTH).is_some());
+    pub fn welcome_labrynth_trap_destroy_operation(duel: &mut Duel, e: EffectId, tp: u8) -> Script<()> {
+        let c = e.get_handler(duel);
+        let Some(addeff) = duel.is_player_affected_by_effect(tp, CARD_LABRYNTH_LABYRINTH) else {
+            return Ok(());
+        };
+        if !(addeff.check_count_limit(duel, tp)
+            && e.is_has_type(duel, EFFECT_TYPE_ACTIVATE)
+            && e.get_active_type(duel) == TYPE_TRAP
+            && c.is_set_card(duel, &[SET_WELCOME_LABRYNTH])
+            && !c.is_status(duel, STATUS_ACT_FROM_HAND)
+            && duel.is_existing_matching_card(TRUE, tp, LOCATION_ONFIELD, LOCATION_ONFIELD, 1, Some(c.into()))
+            && duel.select_yes_no(tp, stringid(CARD_LABRYNTH_LABYRINTH, 1))?)
+        {
+            return Ok(());
+        }
+        addeff.use_count_limit(duel, tp);
+        duel.hint(HINT_SELECTMSG, tp, HINTMSG_DESTROY);
+        let g = duel.select_matching_card(tp, TRUE, tp, LOCATION_ONFIELD, LOCATION_ONFIELD, 1, 1, Some(c.into()))?;
+        if !g.is_empty() {
+            duel.hint_selection_full(g, true);
+            duel.break_effect()?;
+            duel.destroy(g, REASON_EFFECT)?;
+        }
+        Ok(())
     }
 
     pub fn ice_barrier_discard_filter(c: CardId, duel: &Duel, tp: u8) -> bool {

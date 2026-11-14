@@ -8,7 +8,7 @@ use carddata::Card as CardData;
 use crate::constants::*;
 use crate::duel::Duel;
 use crate::effect::{Container, EffectId, EffectSet, Event, Operation, Target, Value, container_key};
-use crate::field::{Cards8, PerPlayer};
+use crate::field::{Cards8, PerPlayer, Zones};
 use crate::list::{List, Marks};
 use crate::script::{Args, Procedure};
 
@@ -625,8 +625,8 @@ impl Duel {
         card_type
     }
 
-    // card::get_type while field::check_extra_link has moved the card to a Monster Zone, for effects that apply wherever it is.
-    pub(crate) fn get_type_placed(&self, card: CardId) -> u32 {
+    // card::get_type during field::check_extra_link's move to a Monster Zone, made on a duel copy when an effect could tell.
+    pub(crate) fn get_type_placed(&self, zones: &Zones, card: CardId, controler: u8, sequence: u32) -> u32 {
         if let Some(card_type) = self.get_assumed_property(card, ASSUME_TYPE) {
             return card_type as u32;
         }
@@ -639,8 +639,18 @@ impl Duel {
                 || self.equip_effects(card, code).next().is_some()
                 || self.xmaterial_effects(card, code).next().is_some()
         });
-        unported!(self, moved.then_some(()));
-        self.get_type_lookup(card, self.cards[card].data.card_type)
+        if !moved {
+            return self.get_type_lookup(card, self.cards[card].data.card_type);
+        }
+        self.check_mut(|duel| {
+            for p in 0..2 {
+                (duel.player[p].list_mzone, duel.player[p].used_location) = (zones.mzone[p], zones.used[p]);
+            }
+            let current = &mut duel.cards[card].current;
+            (current.controler, current.location, current.sequence, current.position) =
+                (controler, LOCATION_MZONE, sequence, POS_FACEUP_ATTACK);
+            duel.get_type(card)
+        })
     }
 
     // Whether a single effect is available or not alike wherever its card is.

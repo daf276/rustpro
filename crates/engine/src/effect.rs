@@ -1633,10 +1633,11 @@ impl Duel {
         }
     }
 
-    // effect::get_value(1) of EFFECT_CHANGE_BATTLE_DAMAGE with a player target.
+    // effect::get_value(1) of EFFECT_CHANGE_BATTLE_DAMAGE with a player target; a function ignoring the attacker is `Own`.
     pub(crate) fn get_player_battle_damage_value(&self, effect: EffectId) -> i64 {
         match self.effects[effect].value {
             Value::Int(value) => i64::from(value),
+            Value::Own(value) => i64::from(self.call_script(|duel| value(duel, effect))),
             _ => misread!(self, "a battle damage value"),
         }
     }

@@ -3220,11 +3220,21 @@ impl Duel {
             self.return_cards.clear();
             return None;
         }
-        let (mut release_cards, mut release_cards_ex) = (CardSet::default(), CardSet::default());
-        let rcount = self.get_summon_release_list(target, &mut release_cards, &mut release_cards_ex, None, false, releasable, pos);
+        let (mut release_cards, mut release_cards_ex, mut release_cards_ex_oneof) =
+            (CardSet::default(), CardSet::default(), CardSet::default());
+        let rcount = self.get_summon_release_list(
+            target,
+            &mut release_cards,
+            &mut release_cards_ex,
+            &mut release_cards_ex_oneof,
+            None,
+            false,
+            releasable,
+            pos,
+        );
         self.core.release_cards = release_cards;
         self.core.release_cards_ex = release_cards_ex;
-        self.core.release_cards_ex_oneof.clear();
+        self.core.release_cards_ex_oneof = release_cards_ex_oneof;
         if rcount == 0 {
             self.return_cards.clear();
             return None;
@@ -4613,20 +4623,21 @@ impl Duel {
                 if !self.return_cards.canceled
                     && let Some(&card) = self.return_cards.list.first()
                 {
-                    if self.core.operated_set.contains(card) {
-                        self.core.operated_set.remove(card);
-                    } else {
-                        self.core.operated_set.insert(card);
-                    }
+                    let selected = !self.core.operated_set.contains(card);
+                    self.core.operated_set.toggle(card);
                     if self.core.release_cards_ex_oneof.contains(card) {
-                        arg.extra_release_effect = self.is_affected_by_effect(card, EFFECT_EXTRA_RELEASE_SUM);
+                        arg.extra_release_effect = selected
+                            .then(|| self.is_affected_by_effect(card, EFFECT_EXTRA_RELEASE_SUM))
+                            .flatten();
                     }
                 }
                 let (remaining_min, remaining_max) = self.remaining_tributes(arg);
                 if (self.return_cards.canceled && remaining_min == 0) || remaining_max == 0 {
                     self.return_cards.clear();
                     self.return_cards.list = self.core.operated_set.iter().collect();
-                    unported!(self, arg.extra_release_effect);
+                    if let Some(effect) = arg.extra_release_effect {
+                        self.dec_count(effect, PLAYER_NONE);
+                    }
                     return true;
                 }
                 arg.step = 1;

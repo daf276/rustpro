@@ -515,9 +515,18 @@ impl Duel {
 
     pub fn get_tribute_group(&self, card: CardId) -> CardSet {
         let mut group = CardSet::default();
-        let mut ex_list = CardSet::default();
-        self.summon_release_list(card, &mut group, &mut ex_list, None, false, 0xff00ff, POS_FACEUP);
-        group.union(ex_list)
+        let (mut ex_list, mut ex_list_oneof) = (CardSet::default(), CardSet::default());
+        self.summon_release_list(
+            card,
+            &mut group,
+            &mut ex_list,
+            &mut ex_list_oneof,
+            None,
+            false,
+            0xff00ff,
+            POS_FACEUP,
+        );
+        group.union(ex_list).union(ex_list_oneof)
     }
 
     // Duel.CheckTribute with every argument; toplayer is the card's controller where Lua leaves it out.
@@ -539,11 +548,13 @@ impl Duel {
         if player > 1 || toplayer > 1 {
             return Ok(CardSet::default());
         }
-        let (mut release_cards, mut release_cards_ex) = (CardSet::default(), CardSet::default());
+        let (mut release_cards, mut release_cards_ex, mut release_cards_ex_oneof) =
+            (CardSet::default(), CardSet::default(), CardSet::default());
         self.get_summon_release_list(
             card,
             &mut release_cards,
             &mut release_cards_ex,
+            &mut release_cards_ex_oneof,
             mg,
             toplayer != player,
             0xff00ff,
@@ -551,7 +562,7 @@ impl Duel {
         );
         self.core.release_cards = release_cards;
         self.core.release_cards_ex = release_cards_ex;
-        self.core.release_cards_ex_oneof.clear();
+        self.core.release_cards_ex_oneof = release_cards_ex_oneof;
         self.select_tribute_cards(None, player, cancelable, min, max, toplayer, zone);
         self.yield_script()?;
         Ok(self.returned_cards())

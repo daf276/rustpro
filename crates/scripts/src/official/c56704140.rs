@@ -20,7 +20,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.register_effect(duel, e1);
 }
 
-fn cost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+pub fn cost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     let tp = a.tp;
     if chk == 0 {
         return Ok(aux::ice_barrier_discard_cost_check(duel, tp, aux::TRUE, true, 1));

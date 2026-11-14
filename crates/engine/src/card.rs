@@ -46,6 +46,11 @@ fn match_setcode(setcode: u16, code: u16) -> bool {
     code != 0 && (setcode & 0xfff) == (code & 0xfff) && (setcode & code) == setcode
 }
 
+fn pack_tribute_count(min: i32, max: i32) -> i32 {
+    let min = min.max(0);
+    min + (max.max(min) << 16)
+}
+
 // card_set: ordered by cardid like card_sort. Scripts see it as a Group.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct CardSet([u64; MAX_CARDS / 64]);
@@ -1852,20 +1857,7 @@ impl Duel {
             return (0, procedures);
         }
         if !ignore_count && self.summon_count_reached(playerid) {
-            let controler = self.cards[card].current.controler;
-            let found = self.filter_effect(card, EFFECT_EXTRA_SUMMON_COUNT, true).into_iter().any(|effect| {
-                let (new_min, new_zone, releasable) = self.extra_summon_values(effect, card, 0x1f);
-                self.field_check_tribute(
-                    card,
-                    i32::from(min.max(new_min)),
-                    i32::from(max),
-                    None,
-                    controler,
-                    zone & new_zone,
-                    releasable,
-                    POS_FACEUP,
-                )
-            });
+            let found = self.check_extra_count_tribute(card, EFFECT_EXTRA_SUMMON_COUNT, (min.into(), max.into()), zone, POS_FACEUP);
             return (i32::from(found), procedures);
         }
         let controler = self.cards[card].current.controler;
@@ -1873,6 +1865,16 @@ impl Duel {
             i32::from(self.field_check_tribute(card, i32::from(min), i32::from(max), None, controler, zone, 0xff00ff, POS_FACEUP)),
             procedures,
         )
+    }
+
+    // Whether an EFFECT_EXTRA_SUMMON_COUNT or EFFECT_EXTRA_SET_COUNT effect lets the card be summoned past the count.
+    fn check_extra_count_tribute(&self, card: CardId, code: u32, (min, max): (i32, i32), zone: u32, pos: u32) -> bool {
+        let controler = self.cards[card].current.controler;
+        self.filter_effect(card, code, true).into_iter().any(|effect| {
+            let (new_min, new_zone, releasable) = self.extra_summon_values(effect, card, 0x1f);
+            let new_min = i32::from(new_min).max(min);
+            self.field_check_tribute(card, new_min, max, None, controler, zone & new_zone, releasable, pos)
+        })
     }
 
     // What an EFFECT_EXTRA_SUMMON_COUNT value returns for the card: the minimum Tributes, the zones and the releasable mask.
@@ -1984,8 +1986,8 @@ impl Duel {
             return (0, procedures);
         }
         if !ignore_count && self.summon_count_reached(playerid) {
-            unported!(self, self.filter_effect(card, EFFECT_EXTRA_SET_COUNT, true));
-            return (0, procedures);
+            let found = self.check_extra_count_tribute(card, EFFECT_EXTRA_SET_COUNT, (min, max), zone, POS_FACEDOWN_DEFENSE);
+            return (i32::from(found), procedures);
         }
         let controler = self.cards[card].current.controler;
         (
@@ -2044,21 +2046,38 @@ impl Duel {
 
     // The min/max number of tributes for an ordinary advance summon, packed as min + (max << 16).
     pub(crate) fn get_summon_tribute_count(&self, card: CardId) -> i32 {
-        self.tribute_count(card, EFFECT_DECREASE_TRIBUTE)
+        let Some((mut min, mut max)) = self.level_tribute_count(card) else {
+            return 0;
+        };
+        let (mut min_unlimited, mut max_unlimited) = (0, 0);
+        for effect in self.filter_effect(card, EFFECT_DECREASE_TRIBUTE, true) {
+            let decrease = self.get_value(effect, card);
+            if !self.effects[effect].is_flag(EFFECT_FLAG_COUNT_LIMIT) {
+                min_unlimited = min_unlimited.max(decrease & 0xffff);
+                max_unlimited = max_unlimited.max(decrease >> 16);
+            } else if self.effects[effect].count_limit > 0 {
+                min -= decrease & 0xffff;
+                max -= decrease >> 16;
+            }
+        }
+        pack_tribute_count(min - min_unlimited, max - max_unlimited)
     }
 
     pub(crate) fn get_set_tribute_count(&self, card: CardId) -> i32 {
-        self.tribute_count(card, EFFECT_DECREASE_TRIBUTE_SET)
+        let Some((min, max)) = self.level_tribute_count(card) else {
+            return 0;
+        };
+        let decreases = self.filter_effect(card, EFFECT_DECREASE_TRIBUTE_SET, true);
+        let decrease = decreases.last().map_or(0, |&effect| self.get_value(effect, card));
+        pack_tribute_count(min - (decrease & 0xffff), max - (decrease >> 16))
     }
 
-    fn tribute_count(&self, card: CardId, decrease: u32) -> i32 {
-        let (min, max) = match self.get_level(card) {
-            ..5 => return 0,
-            5..7 => (1, 1),
-            _ => (2, 2),
-        };
-        unported!(self, self.filter_effect(card, decrease, true));
-        min + (max << 16)
+    pub(crate) fn level_tribute_count(&self, card: CardId) -> Option<(i32, i32)> {
+        match self.get_level(card) {
+            ..5 => None,
+            5..7 => Some((1, 1)),
+            _ => Some((2, 2)),
+        }
     }
 
     pub(crate) fn is_setable_mzone(
@@ -2915,16 +2934,11 @@ impl Duel {
             return false;
         }
         let limits = self.filter_effect(card, EFFECT_CANNOT_BE_SYNCHRO_MATERIAL, true);
-        unported!(
-            self,
-            limits
-                .iter()
-                .filter(|&&effect| scard.is_none() && matches!(self.effects[effect].value, Value::Card(_)))
-        );
-        if limits
-            .into_iter()
-            .any(|effect| self.get_value(effect, scard.unwrap_or_default()) != 0)
-        {
+        let limited = |effect| match scard {
+            Some(scard) => self.get_value(effect, scard),
+            None => self.get_value_nil(effect, card),
+        };
+        if limits.into_iter().any(|effect| limited(effect) != 0) {
             return false;
         }
         !self.is_forbidden_material(card, scard, SUMMON_TYPE_SYNCHRO.into(), playerid)

@@ -7,6 +7,7 @@ use crate::effect::{Chain, Container, EffectId, EffectSet, Event, Target, Value}
 use crate::field::{Cards16, PerPlayer};
 use crate::processor::{
     PointEvent, RESTART, SelectCard, SelectCounter, SelectOption, SelectPlace, SelectPosition, SelectTributeP, SelectUnselectCard,
+    SelectYesNo,
 };
 use crate::script::Procedure;
 
@@ -251,6 +252,7 @@ pub struct SummonRule {
     pub tributes: CardSet,
     pub ordinary_first: bool,
     pub ordinary_count_first: bool,
+    pub max_allowed_tributes: i32,
 }
 
 #[derive(Debug, Clone)]
@@ -265,6 +267,8 @@ pub struct MonsterSet {
     pub extra_summon_effect: Option<EffectId>,
     pub tributes: CardSet,
     pub ordinary_first: bool,
+    pub ordinary_count_first: bool,
+    pub max_allowed_tributes: i32,
 }
 
 #[derive(Debug, Clone)]
@@ -2997,6 +3001,7 @@ impl Duel {
             tributes: CardSet::default(),
             ordinary_first: false,
             ordinary_count_first: false,
+            max_allowed_tributes: 0,
         });
     }
 
@@ -3020,6 +3025,8 @@ impl Duel {
             extra_summon_effect: None,
             tributes: CardSet::default(),
             ordinary_first: false,
+            ordinary_count_first: false,
+            max_allowed_tributes: 0,
         });
     }
 
@@ -3173,7 +3180,8 @@ impl Duel {
         });
     }
 
-    // Step 2 of SummonRule and MonsterSet without a procedure: the tribute selection, if the card needs one.
+    // Step 2 of SummonRule and MonsterSet without a procedure: the tribute selection, if the card needs one. With optional
+    // Tributes it asks whether to Tribute instead and returns the most allowed, which step 3 selects.
     fn select_summon_tributes(
         &mut self,
         target: CardId,
@@ -3183,12 +3191,12 @@ impl Duel {
         advance: bool,
         (zone, releasable): (u32, u32),
         pos: u32,
-    ) {
+    ) -> Option<i32> {
         self.core.select_cards.clear();
         let (min, max) = ((required & 0xffff).max(i32::from(min_tribute)), required >> 16);
         if max == 0 || !advance {
             self.return_cards.clear();
-            return;
+            return None;
         }
         let (mut release_cards, mut release_cards_ex) = (CardSet::default(), CardSet::default());
         let rcount = self.get_summon_release_list(target, &mut release_cards, &mut release_cards_ex, None, false, releasable, pos);
@@ -3197,12 +3205,31 @@ impl Duel {
         self.core.release_cards_ex_oneof.clear();
         if rcount == 0 {
             self.return_cards.clear();
-            return;
+            return None;
         }
-        // Without EFFECT_DECREASE_TRIBUTE min is 0 only when max is, so the core's optional-tribute SelectYesNo cannot come up.
+        let (count, _) = self.get_tofield_count(Some(target), player, LOCATION_MZONE, player, LOCATION_REASON_TOFIELD, zone);
         let fcount = self.get_mzone_limit(player, player, LOCATION_REASON_TOFIELD);
+        if min == 0 && count > 0 && fcount > 0 {
+            self.emplace_process(SelectYesNo {
+                playerid: player,
+                description: 90,
+                ..SelectYesNo::default()
+            });
+            return Some(max);
+        }
         let cancelable = self.core.summon_cancelable;
         self.select_tribute_cards(Some(target), player, cancelable, min.max(1 - fcount), max, player, zone);
+        None
+    }
+
+    // Step 3 of SummonRule and MonsterSet: the Tributes after the player declined to summon without any.
+    fn select_optional_tributes(&mut self, target: CardId, player: u8, max: i32, zone: u32) {
+        if self.returns.at_i32(0) != 0 {
+            self.return_cards.clear();
+        } else {
+            let cancelable = self.core.summon_cancelable;
+            self.select_tribute_cards(Some(target), player, cancelable, 1, max, player, zone);
+        }
     }
 
     fn release_tributes(&mut self, target: CardId, tributes: CardSet, player: u8) {
@@ -3281,12 +3308,120 @@ impl Duel {
             return;
         };
         self.core.extra_summon[player] = 1;
-        let handler = self.effects[extra].handler.unwrap_or_default();
-        self.hint(HINT_CARD, 0, u64::from(self.cards[handler].data.code));
+        self.hint_handler(extra);
         unported!(self, self.effects[extra].operation);
     }
 
-    // Step 3 (optional tributes) needs EFFECT_DECREASE_TRIBUTE.
+    // Step 1 of SummonRule and MonsterSet: offers the ordinary summon if the count allows it, then each extra count effect
+    // that allows it past the count; returns whether the ordinary summon is the first option.
+    fn offer_extra_counts(
+        &mut self,
+        target: CardId,
+        player: u8,
+        (ignore_count, min_tribute, zone): (bool, u8, u32),
+        procedure_effect: Option<EffectId>,
+        extras: EffectSet,
+        set: bool,
+    ) -> bool {
+        self.core.select_effects.clear();
+        self.core.select_options.clear();
+        let ordinary = ignore_count || self.core.summon_count[player] < self.get_summon_count_limit(player);
+        if ordinary {
+            self.core.select_options.push(1);
+        }
+        if !ignore_count && self.core.extra_summon[player] == 0 {
+            unported!(self, procedure_effect.filter(|_| !extras.is_empty()));
+            for extra in extras {
+                let (new_min, new_zone, releasable) = self.extra_summon_values(extra, target, 0x1f_001f);
+                let (rcount, advance, pos) = if set {
+                    let advance = self.is_player_can_mset(SUMMON_TYPE_ADVANCE, player, target, player);
+                    (self.get_set_tribute_count(target), advance, POS_FACEDOWN_DEFENSE)
+                } else {
+                    let advance = self.field_is_player_can_summon(SUMMON_TYPE_ADVANCE, player, target, player);
+                    (self.get_summon_tribute_count(target), advance, POS_FACEUP)
+                };
+                let min = (rcount & 0xffff).max(i32::from(min_tribute));
+                let max = if advance { (rcount >> 16) & 0xffff } else { 0 };
+                let controler = self.cards[target].current.controler;
+                if max < min
+                    || !self.field_check_tribute(
+                        target,
+                        min.max(i32::from(new_min)),
+                        max,
+                        None,
+                        controler,
+                        new_zone & zone,
+                        releasable,
+                        pos,
+                    )
+                {
+                    continue;
+                }
+                self.core.select_effects.push(extra);
+                self.core.select_options.push(self.effects[extra].description);
+            }
+        }
+        match self.core.select_options.len() {
+            0 | 1 => self.returns.set_i32(0, 0),
+            _ => self.emplace_process(SelectOption {
+                playerid: player,
+                ..SelectOption::default()
+            }),
+        }
+        ordinary
+    }
+
+    // Step 2 of SummonRule and MonsterSet: the chosen extra count effect raises the minimum Tributes and narrows the zones;
+    // returns the releasable mask it allows.
+    fn apply_extra_count(&self, target: CardId, extra: Option<EffectId>, min_tribute: &mut u8, zone: &mut u32) -> u32 {
+        let Some(extra) = extra else { return 0xff00ff };
+        let (new_min, new_zone, releasable) = self.extra_summon_values(extra, target, 0x1f_001f);
+        *min_tribute = (*min_tribute).max(new_min);
+        *zone &= new_zone;
+        releasable
+    }
+
+    fn hint_handler(&mut self, effect: EffectId) {
+        let handler = self.effects[effect].handler.unwrap_or_default();
+        self.hint(HINT_CARD, 0, u64::from(self.cards[handler].data.code));
+    }
+
+    // SummonRule step 6: hints the decreases that made up for the `missing` Tributes and uses up the count-limited ones; the
+    // core takes one count-limited decrease from each pass even when the earlier ones already covered them.
+    fn use_tribute_decreases(&mut self, target: CardId, mut missing: i32) {
+        let decreases = self.filter_effect(target, EFFECT_DECREASE_TRIBUTE, true);
+        let mut unlimited = None;
+        for &effect in decreases.iter() {
+            if !self.effects[effect].is_flag(EFFECT_FLAG_COUNT_LIMIT) {
+                let decrease = self.get_value(effect, target) & 0xffff;
+                if unlimited.map_or(0, |(most, _)| most) < decrease {
+                    unlimited = Some((decrease, effect));
+                }
+            }
+        }
+        if let Some((decrease, effect)) = unlimited {
+            missing -= decrease;
+            self.hint_handler(effect);
+        }
+        for targeted in [true, false] {
+            for &effect in decreases.iter() {
+                let peffect = &self.effects[effect];
+                if !peffect.is_flag(EFFECT_FLAG_COUNT_LIMIT)
+                    || peffect.count_limit == 0
+                    || matches!(peffect.target, Target::None) == targeted
+                {
+                    continue;
+                }
+                missing -= self.get_value(effect, target) & 0xffff;
+                self.dec_count(effect, PLAYER_NONE);
+                self.hint_handler(effect);
+                if missing <= 0 {
+                    break;
+                }
+            }
+        }
+    }
+
     pub(crate) fn process_summon_rule(&mut self, arg: &mut SummonRule) -> bool {
         let (sumplayer, target, procedure_effect) = (arg.sumplayer, arg.target, arg.summon_procedure_effect);
         let procedure_args = Procedure {
@@ -3346,70 +3481,29 @@ impl Duel {
                 if arg.summon_procedure_effect.is_none() {
                     arg.summon_procedure_effect = self.chosen_effect(arg.ordinary_first);
                 }
-                let procedure_effect = arg.summon_procedure_effect;
-                self.core.select_effects.clear();
-                self.core.select_options.clear();
-                arg.ordinary_count_first = arg.ignore_count || self.core.summon_count[sumplayer] < self.get_summon_count_limit(sumplayer);
-                if arg.ordinary_count_first {
-                    self.core.select_options.push(1);
-                }
-                if use_extra {
-                    unported!(self, procedure_effect.filter(|_| !extras.is_empty()));
-                    for extra in extras {
-                        let (new_min, new_zone, releasable) = self.extra_summon_values(extra, target, 0x1f_001f);
-                        let rcount = self.get_summon_tribute_count(target);
-                        let (mut min, mut max) = ((rcount & 0xffff) as u8, ((rcount >> 16) & 0xffff) as u8);
-                        if !self.field_is_player_can_summon(SUMMON_TYPE_ADVANCE, sumplayer, target, sumplayer) {
-                            max = 0;
-                        }
-                        min = min.max(arg.min_tribute);
-                        if max < min {
-                            continue;
-                        }
-                        let controler = self.cards[target].current.controler;
-                        if !self.field_check_tribute(
-                            target,
-                            i32::from(min.max(new_min)),
-                            i32::from(max),
-                            None,
-                            controler,
-                            new_zone & arg.zone,
-                            releasable,
-                            POS_FACEUP,
-                        ) {
-                            continue;
-                        }
-                        self.core.select_effects.push(extra);
-                        self.core.select_options.push(self.effects[extra].description);
-                    }
-                }
-                match self.core.select_options.len() {
-                    0 | 1 => self.returns.set_i32(0, 0),
-                    _ => self.emplace_process(SelectOption {
-                        playerid: sumplayer,
-                        ..SelectOption::default()
-                    }),
-                }
+                let tribute = (arg.ignore_count, arg.min_tribute, arg.zone);
+                arg.ordinary_count_first = self.offer_extra_counts(target, sumplayer, tribute, arg.summon_procedure_effect, extras, false);
                 false
             }
             2 => {
                 arg.extra_summon_effect = self.chosen_effect(arg.ordinary_count_first);
                 // The core keeps selecting with the Tributes and zones the step started with.
                 let (min_tribute, zone) = (arg.min_tribute, arg.zone);
-                let mut releasable = 0xff00ff;
-                if let Some(extra) = arg.extra_summon_effect {
-                    let (new_min, new_zone, new_releasable) = self.extra_summon_values(extra, target, 0x1f_001f);
-                    arg.min_tribute = arg.min_tribute.max(new_min);
-                    arg.zone &= new_zone;
-                    releasable = new_releasable;
-                }
+                let releasable = self.apply_extra_count(target, arg.extra_summon_effect, &mut arg.min_tribute, &mut arg.zone);
                 if procedure_effect.is_some() {
                     arg.step = 3;
                     return false;
                 }
                 let required = self.get_summon_tribute_count(target);
                 let advance = self.field_is_player_can_summon(SUMMON_TYPE_ADVANCE, sumplayer, target, sumplayer);
-                self.select_summon_tributes(target, sumplayer, required, min_tribute, advance, (zone, releasable), POS_FACEUP);
+                match self.select_summon_tributes(target, sumplayer, required, min_tribute, advance, (zone, releasable), POS_FACEUP) {
+                    Some(max) => arg.max_allowed_tributes = max,
+                    None => arg.step = 4,
+                }
+                false
+            }
+            3 => {
+                self.select_optional_tributes(target, sumplayer, arg.max_allowed_tributes, arg.zone);
                 arg.step = 4;
                 false
             }
@@ -3451,13 +3545,10 @@ impl Duel {
                 false
             }
             6 => {
-                let required = match self.get_level(target) {
-                    ..5 => 0,
-                    5..7 => 1,
-                    _ => 2,
-                };
-                if required > arg.tributes.len() {
-                    unported!(self, self.filter_effect(target, EFFECT_DECREASE_TRIBUTE, true));
+                let required = self.level_tribute_count(target).map_or(0, |(min, _)| min);
+                let missing = required - arg.tributes.len() as i32;
+                if missing > 0 {
+                    self.use_tribute_decreases(target, missing);
                 }
                 let summon = &mut self.cards[target].summon;
                 (summon.location, summon.summon_type, summon.pzone) = (LOCATION_HAND, SUMMON_TYPE_NORMAL, false);
@@ -3707,7 +3798,6 @@ impl Duel {
         }
     }
 
-    // Step 3 (optional tributes) needs EFFECT_DECREASE_TRIBUTE_SET.
     pub(crate) fn process_monster_set(&mut self, arg: &mut MonsterSet) -> bool {
         let (setplayer, target, procedure_effect) = (arg.setplayer, arg.target, arg.summon_procedure_effect);
         let procedure_args = Procedure {
@@ -3741,33 +3831,34 @@ impl Duel {
                 false
             }
             1 => {
-                let extra = self.filter_effect(target, EFFECT_EXTRA_SET_COUNT, true);
+                let extras = self.filter_effect(target, EFFECT_EXTRA_SET_COUNT, true);
                 if arg.summon_procedure_effect.is_none() {
                     arg.summon_procedure_effect = self.chosen_effect(arg.ordinary_first);
                 }
-                if !arg.ignore_count && self.core.extra_summon[setplayer] == 0 {
-                    unported!(self, extra);
-                }
-                self.returns.set_i32(0, 0);
+                let tribute = (arg.ignore_count, arg.min_tribute, arg.zone);
+                arg.ordinary_count_first = self.offer_extra_counts(target, setplayer, tribute, arg.summon_procedure_effect, extras, true);
                 false
             }
             2 => {
+                arg.extra_summon_effect = self.chosen_effect(arg.ordinary_count_first);
+                // The core keeps selecting with the Tributes and zones the step started with.
+                let (min_tribute, zone) = (arg.min_tribute, arg.zone);
+                let releasable = self.apply_extra_count(target, arg.extra_summon_effect, &mut arg.min_tribute, &mut arg.zone);
                 if procedure_effect.is_some() {
                     arg.step = 3;
                     return false;
                 }
                 let required = self.get_set_tribute_count(target);
                 let advance = self.is_player_can_mset(SUMMON_TYPE_ADVANCE, setplayer, target, setplayer);
-                self.select_summon_tributes(
-                    target,
-                    setplayer,
-                    required,
-                    arg.min_tribute,
-                    advance,
-                    (arg.zone, 0xff00ff),
-                    POS_FACEDOWN_DEFENSE,
-                );
-                arg.step = 3;
+                let pos = POS_FACEDOWN_DEFENSE;
+                match self.select_summon_tributes(target, setplayer, required, min_tribute, advance, (zone, releasable), pos) {
+                    Some(max) => arg.max_allowed_tributes = max,
+                    None => arg.step = 3,
+                }
+                false
+            }
+            3 => {
+                self.select_optional_tributes(target, setplayer, arg.max_allowed_tributes, arg.zone);
                 false
             }
             4 => {

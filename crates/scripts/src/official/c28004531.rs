@@ -1,15 +1,24 @@
 // Rex, Freight Fur Hire
 use crate::prelude::*;
-use crate::testing::{Check, GRAVE, MZONE};
+use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 28004531;
 
 pub const LISTED_SERIES: &[u16] = &[SET_FUR_HIRE];
-// The Deck has no Fur Hire Spell/Trap to search (none ported); the Graveyard effect needs another Fur Hire in the Graveyard
-// and one on the field.
-pub const SUPPORT: &[(u32, u16)] = &[(ID, GRAVE), (47647354, GRAVE), (93850652, GRAVE), (93850652, MZONE)];
+// In the hand with Mayhem Fur Hire in the Deck to search; the Graveyard effect needs another Fur Hire in the Graveyard and one
+// on the field.
+pub const SUPPORT: &[(u32, u16)] = &[
+    (ID, GRAVE),
+    (47647354, GRAVE),
+    (93850652, GRAVE),
+    (93850652, MZONE),
+    (ID, HAND),
+    (ID, HAND),
+    (91405870, DECK),
+    (91405870, DECK),
+];
 pub const CHECKS: &[Check] = &[
-    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 0))),
+    Check::ResolvesEffect(aux::stringid(ID, 0)),
     Check::ResolvesEffect(aux::stringid(ID, 1)),
 ];
 

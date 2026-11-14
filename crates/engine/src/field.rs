@@ -2451,8 +2451,8 @@ impl Duel {
 
     pub(crate) fn add_battled_card(&mut self, card: CardId, battled: Option<CardId>) {
         let fieldid = battled.map_or(0, |battled| self.cards[battled].fieldid_r);
-        if !self.battled_cards.contains(&(card, fieldid)) {
-            self.battled_cards.push((card, fieldid));
+        if !self.battled_cards.iter().any(|entry| (entry.0, entry.1) == (card, fieldid)) {
+            self.battled_cards.push((card, fieldid, battled));
         }
     }
 

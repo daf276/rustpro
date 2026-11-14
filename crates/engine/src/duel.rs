@@ -167,8 +167,8 @@ pub struct Duel {
     pub(crate) attacked_cards: Vec<(CardId, u32)>,
     // Card.indestructable_effects: one entry per time an EFFECT_INDESTRUCTABLE_COUNT effect without a count limit was spent on a card.
     pub(crate) indestructable_effects: Vec<(CardId, EffectId)>,
-    // Card.battled_cards: per card, the fieldid_r of each card it battled (0 for a direct attack).
-    pub(crate) battled_cards: Vec<(CardId, u32)>,
+    // Card.battled_cards: per card, the fieldid_r of each card it battled (0 for a direct attack) and that card.
+    pub(crate) battled_cards: Vec<(CardId, u32, Option<CardId>)>,
     // The cards equipped to a monster; card::equiping_cards of a card are those whose equiping_target it is.
     pub(crate) equip_cards: CardSet,
     // card::immune_effect as (card, effect) pairs, refreshed only by refresh_disable_status.

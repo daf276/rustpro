@@ -656,7 +656,7 @@ impl<'a> Refs<'a> {
         };
         let announced = (duel.announced_cards.iter()).map(|&(card, field_id, count)| mix((0u8, self.card(card), target(field_id), count)));
         let attacked = (duel.attacked_cards.iter()).map(|&(card, field_id)| mix((1u8, self.card(card), target(field_id))));
-        let battled = (duel.battled_cards.iter()).map(|&(card, field_id)| mix((2u8, self.card(card), target(field_id))));
+        let battled = (duel.battled_cards.iter()).map(|&(card, field_id, _)| mix((2u8, self.card(card), target(field_id))));
         summed(announced.chain(attacked).chain(battled))
     }
 

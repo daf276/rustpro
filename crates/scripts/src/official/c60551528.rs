@@ -79,11 +79,11 @@ fn tdop(duel: &mut Duel, a: &Args) -> Script<()> {
     Ok(())
 }
 
-fn rmfilter(c: CardId, duel: &Duel, e: Option<EffectId>) -> bool {
+pub fn rmfilter(c: CardId, duel: &Duel, e: Option<EffectId>) -> bool {
     c.is_able_to_remove(duel) && aux::sp_elim_filter(c, duel, false, false) && e.is_none_or(|e| c.is_can_be_effect_target(duel, e))
 }
 
-fn rmcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+pub fn rmcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     let (e, tp) = (a.e, a.tp);
     let dg = duel.get_matching_group(|c, duel| rmfilter(c, duel, Some(e)), tp, 0, LOCATION_MZONE | LOCATION_GRAVE, None);
     let check = aux::release_check_target(dg);
@@ -95,7 +95,7 @@ fn rmcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     Ok(false)
 }
 
-fn rmtg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bool> {
+pub fn rmtg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bool> {
     let tp = a.tp;
     if let Some(chkc) = chkc {
         return Ok(chkc.is_location(duel, LOCATION_MZONE | LOCATION_GRAVE)
@@ -112,7 +112,7 @@ fn rmtg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<boo
     Ok(false)
 }
 
-fn rmop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn rmop(duel: &mut Duel, a: &Args) -> Script<()> {
     if let Some(tc) = duel.get_first_target()
         && tc.is_relate_to_effect(duel, a.e)
     {

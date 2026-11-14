@@ -772,6 +772,12 @@ impl CardId {
         duel.attacked_cards.contains(&(self, 0))
     }
 
+    pub fn get_battled_group(self, duel: &Duel) -> CardSet {
+        (duel.battled_cards.iter())
+            .filter_map(|&(card, _, battled)| battled.filter(|_| card == self))
+            .collect()
+    }
+
     pub fn get_battled_group_count(self, duel: &Duel) -> usize {
         duel.battled_cards.iter().filter(|entry| entry.0 == self).count()
     }

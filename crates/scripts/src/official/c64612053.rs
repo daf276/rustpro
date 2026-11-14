@@ -31,7 +31,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_code(duel, EVENT_SUMMON_SUCCESS);
     e1.set_range(duel, LOCATION_HAND);
     e1.set_count_limit(duel, 1, (ID, 0));
-    e1.set_condition(duel, spcon);
+    e1.set_condition(duel, spcon::<ID>);
     e1.set_target(duel, stock::special_summon_self_target);
     e1.set_operation(duel, stock::special_summon_self::<POS_FACEUP>);
     c.register_effect(duel, e1);
@@ -52,13 +52,13 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.register_effect(duel, e3);
 }
 
-fn spcfilter(c: CardId, duel: &Duel, tp: u8) -> bool {
-    c.is_faceup(duel) && c.is_controler(duel, tp) && c.is_set_card(duel, &[SET_RESCUE_ACE]) && !c.is_code(duel, ID)
+fn spcfilter<const CODE: u32>(c: CardId, duel: &Duel, tp: u8) -> bool {
+    c.is_faceup(duel) && c.is_controler(duel, tp) && c.is_set_card(duel, &[SET_RESCUE_ACE]) && !c.is_code(duel, CODE)
 }
 
-fn spcon(duel: &Duel, a: &Args) -> bool {
+pub fn spcon<const CODE: u32>(duel: &Duel, a: &Args) -> bool {
     let tp = a.tp;
-    a.eg.is_some_and(|eg| eg.is_exists(duel, |c, duel| spcfilter(c, duel, tp), 1, None))
+    a.eg.is_some_and(|eg| eg.is_exists(duel, |c, duel| spcfilter::<CODE>(c, duel, tp), 1, None))
 }
 
 fn cfilter(c: CardId, duel: &Duel, tp: u8) -> bool {

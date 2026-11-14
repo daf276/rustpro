@@ -46,8 +46,8 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e3.set_range(duel, LOCATION_MZONE);
     e3.set_count_limit(duel, 1, (ID, 1));
     e3.set_cost(duel, spcost);
-    e3.set_target(duel, sptg);
-    e3.set_operation(duel, spop);
+    e3.set_target(duel, sptg::<ID>);
+    e3.set_operation(duel, spop::<ID>);
     c.register_effect(duel, e3);
 }
 
@@ -67,7 +67,7 @@ fn cfilter(c: CardId, duel: &Duel, tp: u8, forced: CardId) -> bool {
     c.is_faceup(duel) && c.is_able_to_grave_as_cost(duel) && duel.get_mzone_count(tp, Some([c, forced].into_iter().collect())) > 0
 }
 
-fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
+pub fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     let tp = a.tp;
     let c = a.e.get_handler(duel);
     let filter = |sc, duel: &Duel| cfilter(sc, duel, tp, c);
@@ -81,27 +81,27 @@ fn spcost(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     Ok(false)
 }
 
-fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
-    c.is_set_card(duel, &[SET_SNAKE_EYE]) && c.is_can_be_special_summoned(duel, e, 0, tp, false, false) && !c.is_code(duel, ID)
+fn spfilter<const CODE: u32>(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
+    c.is_set_card(duel, &[SET_SNAKE_EYE]) && c.is_can_be_special_summoned(duel, e, 0, tp, false, false) && !c.is_code(duel, CODE)
 }
 
-fn sptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+pub fn sptg<const CODE: u32>(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
     let (e, tp) = (a.e, a.tp);
     if chk == 0 {
-        let filter = |c, duel: &Duel| spfilter(c, duel, e, tp);
+        let filter = |c, duel: &Duel| spfilter::<CODE>(c, duel, e, tp);
         return Ok(duel.is_existing_matching_card(filter, tp, LOCATION_HAND | LOCATION_DECK, 0, 1, None));
     }
     duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, None, 1, tp, (LOCATION_HAND | LOCATION_DECK) as i32);
     Ok(false)
 }
 
-fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn spop<const CODE: u32>(duel: &mut Duel, a: &Args) -> Script<()> {
     let (e, tp) = (a.e, a.tp);
     if duel.get_location_count(tp, LOCATION_MZONE) <= 0 {
         return Ok(());
     }
     duel.hint(HINT_SELECTMSG, tp, HINTMSG_SPSUMMON);
-    let filter = |c, duel: &Duel| spfilter(c, duel, e, tp);
+    let filter = |c, duel: &Duel| spfilter::<CODE>(c, duel, e, tp);
     let g = duel.select_matching_card(tp, filter, tp, LOCATION_HAND | LOCATION_DECK, 0, 1, 1, None)?;
     if !g.is_empty() {
         duel.special_summon(g, 0, tp, tp, false, false, POS_FACEUP)?;

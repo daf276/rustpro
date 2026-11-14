@@ -1,16 +1,24 @@
 // Rescue-ACE Impulse
 use crate::prelude::*;
-use crate::testing::{Check, HAND, MZONE, OPPONENT};
+use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 38339996;
 
 pub const LISTED_SERIES: &[u16] = &[SET_RESCUE_ACE];
-// On the field and in the hand, against the opponent's Ash Blossom and Elfnote Lucina. No "Rescue-ACE" Machine monster is ported,
-// so the Special Summon effect is only reported.
-pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, HAND), (14558127, MZONE | OPPONENT), (13597785, MZONE | OPPONENT)];
+// On the field and in the hand with Rescue-ACE Turbulence and Fire Engine (Machines) in the Deck, against the opponent's Ash
+// Blossom and Elfnote Lucina.
+pub const SUPPORT: &[(u32, u16)] = &[
+    (ID, MZONE),
+    (ID, HAND),
+    (14558127, MZONE | OPPONENT),
+    (13597785, MZONE | OPPONENT),
+    (37495766, DECK),
+    (90000652, DECK),
+    (90000652, DECK),
+];
 pub const CHECKS: &[Check] = &[
     Check::ResolvesEffect(aux::stringid(ID, 0)),
-    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 1))),
+    Check::ResolvesEffect(aux::stringid(ID, 1)),
 ];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
@@ -72,7 +80,7 @@ fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
     Ok(())
 }
 
-fn spcond(duel: &Duel, a: &Args) -> bool {
+pub fn spcond(duel: &Duel, a: &Args) -> bool {
     a.rp == 1 - a.tp
         && a.re
             .is_some_and(|re| re.is_monster_effect(duel) && re.get_activate_location(duel) == LOCATION_MZONE)

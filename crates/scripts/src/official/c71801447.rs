@@ -1,5 +1,5 @@
 // Enneacraft - Atil.SPIA
-use super::c44716748::{flip_quick, register_counter, register_set_summon};
+use super::c28454232::{flip_quick, register_counter, register_destroy, register_flip_flag, register_set_summon};
 use crate::prelude::*;
 use crate::testing::{Check, HAND, MZONE, OPPONENT, PZONE, SZONE};
 
@@ -30,29 +30,8 @@ pub const CHECKS: &[Check] = &[
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     register_counter(duel, c);
-    let e2 = duel.create_effect(c);
-    e2.set_description(duel, aux::stringid(ID, 0));
-    e2.set_category(duel, CATEGORY_DESTROY);
-    e2.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_TRIGGER_O);
-    e2.set_property(duel, EFFECT_FLAG_CARD_TARGET);
-    e2.set_code(duel, EVENT_PHASE | PHASE_BATTLE);
-    e2.set_range(duel, LOCATION_PZONE);
-    e2.set_count_limit(duel, 1, 0);
-    e2.set_condition(duel, descon);
-    e2.set_target(duel, destg);
-    e2.set_operation(duel, stock::destroy_first_target);
-    c.register_effect(duel, e2);
-    let e3a = duel.create_effect(c);
-    e3a.set_type(duel, EFFECT_TYPE_SINGLE + EFFECT_TYPE_CONTINUOUS);
-    e3a.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE);
-    e3a.set_code(duel, EVENT_FLIP);
-    e3a.set_operation(duel, |duel, a| {
-        let reset = RESET_EVENT | RESETS_STANDARD;
-        a.e.get_handler(duel)
-            .register_flag_effect_full(duel, ID, reset, EFFECT_FLAG_CLIENT_HINT, 1, 0, aux::stringid(ID, 1));
-        Ok(())
-    });
-    c.register_effect(duel, e3a);
+    register_destroy::<ID>(duel, c);
+    register_flip_flag::<ID, 1>(duel, c);
     let e3b = duel.create_effect(c);
     e3b.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
     e3b.set_code(duel, EVENT_CHAINING);
@@ -65,37 +44,12 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
         Ok(())
     });
     c.register_effect(duel, e3b);
-    let e4 = flip_quick::<ID>(duel, c, CATEGORY_NEGATE + CATEGORY_DESTROY);
+    let e4 = flip_quick::<ID>(duel, c, CATEGORY_NEGATE + CATEGORY_DESTROY, 0);
     e4.set_condition(duel, negcon);
     e4.set_target(duel, negtg);
     e4.set_operation(duel, negop);
     c.register_effect(duel, e4);
-    register_set_summon::<ID>(duel, c);
-}
-
-fn descon(duel: &Duel, a: &Args) -> bool {
-    let handler = a.e.get_handler(duel);
-    duel.get_first_matching_card(aux::TRUE, a.tp, LOCATION_PZONE, 0, Some(handler.into()))
-        .is_some_and(|pc| pc.is_set_card(duel, &[SET_ENNEACRAFT]))
-}
-
-fn destg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bool> {
-    let tp = a.tp;
-    let atk = a.e.get_handler(duel).get_attack(duel) - 1;
-    if let Some(chkc) = chkc {
-        return Ok(chkc.is_controler(duel, 1 - tp)
-            && chkc.is_location(duel, LOCATION_MZONE)
-            && chkc.is_faceup(duel)
-            && chkc.is_attack_below(duel, atk));
-    }
-    let filter = aux::faceup_filter(move |c, duel| c.is_attack_below(duel, atk));
-    if chk == 0 {
-        return Ok(duel.is_existing_target(&filter, tp, 0, LOCATION_MZONE, 1, None));
-    }
-    duel.hint(HINT_SELECTMSG, tp, HINTMSG_DESTROY);
-    let g = duel.select_target(tp, &filter, tp, 0, LOCATION_MZONE, 1, 1, None)?;
-    duel.set_operation_info(0, CATEGORY_DESTROY, g, 1, tp, 0);
-    Ok(false)
+    register_set_summon::<ID, 3>(duel, c);
 }
 
 // The chain links before this one that the opponent activated, with the effect each activated.

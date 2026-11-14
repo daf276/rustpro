@@ -45,13 +45,15 @@ impl<T> IndexMut<u8> for PerPlayer<T> {
     }
 }
 
-// What get_attack_target reports besides the targets: the type of attack, and the pairs and the effects of must_attack_map.
-#[derive(Debug, Clone, Copy)]
+// What get_attack_target reports besides the targets: the type of attack and must_attack_map.
+#[derive(Debug, Clone)]
 pub(crate) struct AttackInfo {
     pub atype: u8,
-    pub must_pairs: usize,
-    pub must_effects: usize,
+    pub must_attack_map: MustAttackMap,
 }
+
+// The EFFECT_MUST_ATTACK_MONSTER effect each must-attack target is under, in the core's multimap order: by effect, then insertion.
+pub type MustAttackMap = Vec<(EffectId, CardId)>;
 
 // The monster an Extra Deck zone count is for; without a card, the core's temp card with no type or the type GetLocationCountFromEx names.
 #[derive(Debug, Clone, Copy)]
@@ -2263,13 +2265,13 @@ impl Duel {
         self.field_get_attack_target_info(card, chain_attack, select_target).0
     }
 
-    // The same with the type of attack and the number of (effect, monster) pairs and of effects of EFFECT_MUST_ATTACK_MONSTER.
+    // The same with the type of attack and must_attack_map.
     pub(crate) fn field_get_attack_target_info(&mut self, card: CardId, chain_attack: bool, select_target: bool) -> (Cards16, AttackInfo) {
         self.cards[card].direct_attackable = 0;
         let p = self.cards[card].current.controler;
         let opponent = self.player[1 - p].list_mzone;
         let (mut auto_attack, mut only_attack, mut must_attack) = (Cards8::default(), Cards8::default(), Cards8::default());
-        let mut must_effects = EffectSet::default();
+        let mut must_attack_map = MustAttackMap::new();
         for target in opponent.into_iter().flatten() {
             if self.is_affected_by_effect(target, EFFECT_ONLY_BE_ATTACKED).is_some() {
                 auto_attack.push(target);
@@ -2282,16 +2284,12 @@ impl Duel {
             }
             if let Some(effect) = self.is_affected_by_effect_target(card, EFFECT_MUST_ATTACK_MONSTER, target) {
                 must_attack.push(target);
-                if !must_effects.contains(&effect) {
-                    must_effects.push(effect);
-                }
+                must_attack_map.push((effect, target));
             }
         }
-        let mut info = AttackInfo {
-            atype: 0,
-            must_pairs: must_attack.len(),
-            must_effects: must_effects.len(),
-        };
+        // The core keys the multimap by effect address, which the arena index stands in for.
+        must_attack_map.sort_by_key(|&(effect, _)| effect);
+        let mut info = AttackInfo { atype: 0, must_attack_map };
         let (atype, attack_tg) = if !auto_attack.is_empty() {
             info.atype = 1;
             if auto_attack.len() != 1 {

@@ -1115,7 +1115,7 @@ keyed! {
     processor::IdleCommand { step, phase_to_change_to, card_to_reposition }
     processor::PhaseEvent { step, phase, is_opponent, priority_passed }
     processor::PointEvent { step, skip_trigger, skip_freechain, skip_new }
-    processor::BattleCommand { step, phase_to_change_to, forced_attack_done, is_replaying_attack, attack_announce_failed, repeat_battle_phase, second_battle_phase_is_optional, previous_point_event_had_any_trigger_to_resolve, reason_player, cards_destroyed_by_battle, reason_card }
+    processor::BattleCommand { step, phase_to_change_to, forced_attack_done, is_replaying_attack, attack_announce_failed, repeat_battle_phase, second_battle_phase_is_optional, previous_point_event_had_any_trigger_to_resolve, reason_player, cards_destroyed_by_battle, reason_card, must_attack_map }
     processor::DamageStep { step, attacker, attack_target, new_attack, backup_phase, cards_destroyed_by_battle }
     operations::Destroy { step, reason_player, reason, targets, reason_effect, replacing }
     operations::DestroyReplace { step, battle, target }

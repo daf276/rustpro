@@ -29,12 +29,12 @@ pub const CHECKS: &[Check] = &[
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     register_counter(duel, c);
     register_destroy::<ID>(duel, c);
-    register_set_summon::<ID>(duel, c);
+    register_set_summon::<ID, 1>(duel, c);
     let e4 = flip_quick::<ID>(duel, c, 0, 0);
     e4.set_condition(duel, indescon);
     e4.set_operation(duel, indesop);
     c.register_effect(duel, e4);
-    register_flip_flag::<ID>(duel, c);
+    register_flip_flag::<ID, 3>(duel, c);
     let e5b = duel.create_effect(c);
     e5b.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
     e5b.set_code(duel, EVENT_TO_GRAVE);

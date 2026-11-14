@@ -99,7 +99,7 @@ fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
     Ok(())
 }
 
-fn repfilter(c: CardId, duel: &Duel, tp: u8) -> bool {
+pub fn repfilter(c: CardId, duel: &Duel, tp: u8) -> bool {
     c.is_faceup(duel)
         && c.is_set_card(duel, &[SET_SIX_SAMURAI])
         && c.is_location(duel, LOCATION_MZONE)
@@ -117,7 +117,7 @@ fn reptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool>
     duel.select_effect_yes_no_full(tp, c, 96)
 }
 
-fn repop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn repop(duel: &mut Duel, a: &Args) -> Script<()> {
     duel.remove(a.e.get_handler(duel), POS_FACEUP, REASON_EFFECT | REASON_REPLACE)?;
     Ok(())
 }

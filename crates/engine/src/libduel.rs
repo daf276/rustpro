@@ -1410,10 +1410,20 @@ impl Duel {
 
     // Sequence -2 sends to no location; SEQ_DECKSHUFFLE places on top and shuffles at the next check.
     pub fn send_to_deck(&mut self, targets: impl Into<CardSet>, player: u8, sequence: i32, reason: u32) -> Script<i32> {
+        self.send_to_deck_full(targets, player, sequence, reason, self.core.reason_player.get())
+    }
+
+    pub fn send_to_deck_full(
+        &mut self,
+        targets: impl Into<CardSet>,
+        player: u8,
+        sequence: i32,
+        reason: u32,
+        reason_player: u8,
+    ) -> Script<i32> {
         if player > PLAYER_NONE {
             return Ok(0);
         }
-        let reason_player = self.core.reason_player.get();
         let location = if sequence == -2 { 0 } else { LOCATION_DECK };
         self.send_cards(
             targets.into(),

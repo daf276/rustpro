@@ -37,3 +37,8 @@ inherits = "release"
 incremental = true
 codegen-units = 256
 lto = "off"
+
+# LLVM optimization is 85% of a full scripts build; unoptimized it builds 3x faster and per-card runs, dominated by the
+# oracle, take the same time.
+[profile.card.package.scripts]
+opt-level = 0

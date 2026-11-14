@@ -2752,19 +2752,28 @@ impl Duel {
                     self.core.special_summoning.insert(target);
                 }
                 self.enable_field_effect(target, false);
-                // The core narrows a group's zone by the other summons; outside the Extra Deck move_to_field drops the same zones.
                 let summon_player = self.cards[target].summon.player;
                 let mut zone = arg.zone;
-                if arg.in_group && self.is_flag(DUEL_EMZONE) && self.cards[target].current.location == LOCATION_EXTRA {
+                let extra = zone & 0xff == 0;
+                if arg.in_group && self.is_flag(DUEL_EMZONE) {
                     let (mut ct1, flag1) =
                         self.get_tofield_count(Some(target), playerid, LOCATION_MZONE, summon_player, LOCATION_REASON_TOFIELD, zone);
+                    let (mut ct2, flag2) = self.get_spsummonable_count_fromex(Some(target), playerid, summon_player, zone);
                     for card in self.core.spsummon_group {
-                        let location = self.cards[card].current.location;
-                        if location != LOCATION_MZONE && location != LOCATION_EXTRA {
-                            ct1 -= 1;
+                        match self.cards[card].current.location {
+                            LOCATION_MZONE => {}
+                            LOCATION_EXTRA => ct2 -= 1,
+                            _ => ct1 -= 1,
                         }
                     }
-                    if ct1 == 0 {
+                    if self.cards[target].current.location != LOCATION_EXTRA {
+                        if ct2 == 0 {
+                            zone &= flag2;
+                            if !extra {
+                                zone &= !0x60;
+                            }
+                        }
+                    } else if ct1 == 0 {
                         zone &= flag1;
                     }
                 }

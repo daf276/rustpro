@@ -1658,6 +1658,21 @@ impl Duel {
         }
     }
 
+    // check_value_condition(4) of EFFECT_REVERSE_DAMAGE; no ported value reads the damage's card, the fourth parameter.
+    pub(crate) fn check_value_reverse_damage(
+        &self,
+        effect: EffectId,
+        reason_effect: Option<EffectId>,
+        reason: u32,
+        reason_player: u8,
+    ) -> bool {
+        match self.effects[effect].value {
+            Value::Int(value) => value != 0,
+            Value::Reason(value) => value(self, effect, reason_effect, reason, reason_player),
+            _ => misread!(self, "a damage reversal"),
+        }
+    }
+
     // effect::get_value(card, 0, retval): every value the function returns.
     pub(crate) fn get_values(&self, effect: EffectId, card: CardId) -> List<i32, 3> {
         match self.effects[effect].value {

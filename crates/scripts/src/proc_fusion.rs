@@ -359,6 +359,11 @@ impl Fusion {
         Fusion::add_proc_mix::<M>(duel, c)
     }
 
+    // Fusion.AddProcFun2(c, f1, f2, insf), with SUB false.
+    pub fn add_proc_fun2<M: FusionMix>(duel: &mut Duel, c: CardId) -> Option<EffectId> {
+        Fusion::add_proc_mix::<M>(duel, c)
+    }
+
     pub fn add_proc_mix_rep<M: FusionMixRep>(duel: &mut Duel, c: CardId) -> Option<EffectId> {
         if c.is_status(duel, STATUS_COPYING_EFFECT) {
             return None;

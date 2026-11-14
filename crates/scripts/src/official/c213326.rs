@@ -4,6 +4,7 @@ use crate::testing::{DECK, HAND};
 
 const ID: u32 = 213326;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ELEMENTAL_HERO];
 // Elemental HERO Normal Monsters (Neos, Burstinatrix, Sparkman) in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (89943723, DECK), (58932615, DECK), (20721928, DECK)];
 

@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 42209438;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SIX_SAMURAI, SET_SIX_STRIKE];
 // In the Extra Deck, Synchro Summoned with Anarchist Monk of the Six Samurai (a Level 3 Tuner) and Legendary Six Samurai - Kageki,
 // with Six Strike - Triple Impact in the Graveyard to banish, and in the Graveyard to revive with two Six Samurai on the field.
 pub const SUPPORT: &[(u32, u16)] = &[

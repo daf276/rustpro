@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 92501449;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PRIMITE];
 // In the hand and Graveyard with Mystical Elf (Normal Monster) in the Deck to summon and on the field to banish with, against the
 // opponent's monsters (Sangan) summoned or on the field.
 pub const SUPPORT: &[(u32, u16)] = &[

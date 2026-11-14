@@ -6,6 +6,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 53389254;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ASSAULT_BLACKWING, SET_BLACKWING];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Extra Deck (Synchro Summoned from Gale, a Level 3 Tuner, and Zephyros, Level 4) and on the field, with Sohaya and Assault

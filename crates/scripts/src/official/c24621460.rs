@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 24621460;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KARAKURI];
 // Copies on the field and in the hand, with a strong monster of the opponent's to attack it.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE), (ID, HAND), (ID, HAND), (27125110, MZONE | OPPONENT)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

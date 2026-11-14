@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 24925387;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ADAMANCIPATOR];
 // In the hand and on the field, with Adamancipator Researcher in the hand to place and in the Deck to excavate.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

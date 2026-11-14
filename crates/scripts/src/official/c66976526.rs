@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, MZONE};
 
 const ID: u32 = 66976526;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KARAKURI];
 // In the Extra Deck, Synchro Summoned with Genex Controller (a Level 3 Tuner) and Shapesnatch (a Level 5 Machine), with Karakuri
 // Gama in the Deck to summon and Karakuri monsters on the field to change position.
 pub const SUPPORT: &[(u32, u16)] = &[

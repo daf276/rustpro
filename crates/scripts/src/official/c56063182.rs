@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 56063182;
+
+pub const LISTED_SERIES: &[u16] = &[SET_SCARECLAW];
+
 const ACRO: u32 = 46877100;
 
 pub const LISTED_NAMES: &[u32] = &[CARD_VISAS_STARFROST];

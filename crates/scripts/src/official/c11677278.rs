@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 11677278;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MIMIGHOUL];
 // Copies face-down on the field to Flip with the opponent's Elfnote Lucina to attack them, and in the hand to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

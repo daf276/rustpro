@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 36320744;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ROLAND];
 pub const LISTED_NAMES: &[u32] = &[CARD_INFERNOBLE_CHARLES, 55749927];
 // A copy on the field and two in the Extra Deck, Synchro Summoned with Infernoble Knight Ricciardetto (a Level 1 Tuner) and Noble Knight Artorigus
 // (Level 4), with Horn of Olifant and Burstinatrix (a FIRE Warrior) in the Deck, Roland in the Extra Deck, and Mind Control in the opponent's hand to target it.

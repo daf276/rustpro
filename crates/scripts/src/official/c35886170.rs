@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 35886170;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GOGOGO, SET_DODODO];
 // Dodododwarf Gogogoglove and Onomatokage (Gogogo monsters) in the Deck to Special Summon. The Dododo search needs it to be detached
 // from an Xyz Monster as a cost, which no scenario reaches.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (59724555, DECK), (59724555, DECK), (55088578, DECK)];

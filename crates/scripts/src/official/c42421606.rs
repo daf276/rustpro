@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{EXTRA, MZONE};
 
 const ID: u32 = 42421606;
+
+pub const ROLL_DICE: bool = true;
 pub const XYZ_NUMBER: u32 = 85;
 
 // In the Extra Deck, Xyz Summoned with two Level 4 monsters.
@@ -15,7 +17,6 @@ impl XyzProcedure for Procedure {
     const CT: usize = 2;
 }
 
-// s.roll_dice, which only cards that are not ported read, is left out.
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     Xyz::add_procedure::<Procedure>(duel, c);
     c.enable_revive_limit(duel);

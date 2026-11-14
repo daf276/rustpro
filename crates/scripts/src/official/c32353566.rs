@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 32353566;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WITCHCRAFTER];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand to activate, with Witchcrafter Haine and Pot of Greed to discard on the field, and Witchcrafter monsters and Spells in the

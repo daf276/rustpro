@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 91557476;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUNAVALON];
 // In the Extra Deck, Link Summoned with Sunseed Genius Loci into the Extra Monster Zone (its Special Summon needs the zone it
 // points to free), with Sunavalon Dryas on the field to boost from and low-DEF monsters (Key Mace) of the opponent's to destroy by
 // battle.

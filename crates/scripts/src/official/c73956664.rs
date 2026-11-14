@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 73956664;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TEARLAMENTS];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand to summon, with Scheiren to send it to the Graveyard and Merrli in the hand and Deck to send.

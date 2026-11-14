@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 17132130;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DESTINY_HERO];
 // In the hand, Special Summoned by Tributing Destiny HERO - Malicious, Denier and Sangan.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (9411399, MZONE), (16605586, MZONE), (26202165, MZONE)];
 pub const CHECKS: &[Check] = &[Check::SpecialSummoned, Check::ResolvesEffect(aux::stringid(ID, 1))];

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 99330325;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KAIJU];
 // In the hand and Graveyard, with two Kaiju in the Deck to Special Summon (and one to add) and Sangan on both fields to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

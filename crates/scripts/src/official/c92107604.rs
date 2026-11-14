@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND};
 
 const ID: u32 = 92107604;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RUNICK];
 // Activated from the hand, then a Runick Quick-Play Spell from the hand with Runick Tips in the Graveyard to return.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

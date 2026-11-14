@@ -4,6 +4,7 @@ use crate::testing::{DECK, EXTRA, MZONE};
 
 const ID: u32 = 770365;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SPELLBOOK];
 // In the Extra Deck, Xyz Summoned with Level 5 Spellcaster Normal Monsters (Leo Wizard, LaMoon, Ill Witch), with Spellbooks in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

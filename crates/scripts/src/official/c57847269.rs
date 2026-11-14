@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, SZONE};
 
 const ID: u32 = 57847269;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CLOWN_CREW];
 // In the hand and Spell & Trap Zone, with Clown Crew monsters in the Deck and Extra Deck to Special Summon, and Clown Crew
 // Biancaviso in the hand to Tribute Summon with the Ritual Monster Clown Crew Flair, for the End Phase draw.
 pub const SUPPORT: &[(u32, u16)] = &[

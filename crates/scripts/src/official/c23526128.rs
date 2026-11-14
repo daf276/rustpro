@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 23526128;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLITZCLIQUE];
 // A copy in the GY, a Blitzclique monster on the field and in the GY, and Mystical Space Typhoon (a Spell) in the hand of the
 // opponent to negate.
 pub const SUPPORT: &[(u32, u16)] = &[

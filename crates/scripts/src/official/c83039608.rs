@@ -4,6 +4,7 @@ use crate::testing::{GRAVE, HAND};
 
 const ID: u32 = 83039608;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FABLED];
 // In the Graveyard with Fabled Lurrie in the hand to discard.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, GRAVE), (ID, GRAVE), (97651498, HAND), (97651498, HAND)];
 

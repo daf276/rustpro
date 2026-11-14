@@ -4,6 +4,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 56495147;
+
+pub const LISTED_SERIES: &[u16] = &[SET_SWORDSOUL];
+
 const SWORDSOUL_OF_MO_YE: u32 = 20001443;
 const SWORDSOUL_GRANDMASTER_CHIXIAO: u32 = 69248256;
 const THE_GOLDEN_SWORDSOUL: u32 = 82489470;

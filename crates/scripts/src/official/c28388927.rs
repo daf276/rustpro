@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 28388927;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BATTLEWASP];
 // Copies in the hand to summon with Battlewasp - Pin the Bullseye in the Deck to search, a Fiend Scorpion (Insect) to release, and
 // Effect Monsters (Ash Blossom) on the opponent's side to negate.
 pub const SUPPORT: &[(u32, u16)] = &[

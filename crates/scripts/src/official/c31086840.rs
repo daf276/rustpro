@@ -7,7 +7,8 @@ pub const XYZ_NUMBER: u32 = 69;
 const HERALDRY_CREST: u32 = 2407234;
 const DEMOLITION: u32 = 77571454;
 
-pub const LISTED_NAMES: &[u32] = &[HERALDRY_CREST, DEMOLITION];
+// s.listed_series holds these two card codes, which no u16 setcode equals, so Card.ListsArchetype is false for it.
+pub const LISTED_SERIES: &[u16] = &[];
 
 // In the Extra Deck, Xyz Summoned with four Level 4 monsters or over Number 69: Heraldry Crest, with Dark Matter Demolition
 // in the Extra Deck to Special Summon.

@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, MZONE, SZONE};
 
 const ID: u32 = 98431356;
 
+pub const LISTED_SERIES: &[u16] = &[SET_THE_PHANTOM_KNIGHTS];
 // Set, to be activated on Doomed Soleret; a second Soleret in the GY to revive.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, SZONE), (ID, GRAVE), (83566725, MZONE), (83566725, GRAVE)];
 // The Activate effect has no description to check; Resolves is met by it and by the GY effect alike.

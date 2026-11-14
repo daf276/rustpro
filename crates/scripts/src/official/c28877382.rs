@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 28877382;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DOOMZ];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // On the field, with Axe of Despair in the hand to equip, DoomZ monsters in the Deck to search, Dark Hole to destroy it, and
 // DoomZ Break - Diactorus in the Extra Deck to attach it to.

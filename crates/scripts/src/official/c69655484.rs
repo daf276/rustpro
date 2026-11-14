@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 69655484;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RANK_UP_MAGIC, SET_PERFORMAGE];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // Xyz Summoned from the Extra Deck with Level 5 monsters (Leo Wizard), a second copy in the Extra Deck to summon, Performage Trick
 // Clown in the Deck and Graveyard, Phantom Knights Rank-Up-Magic Spells in the Deck, and the opponent's Mage Power to target it.

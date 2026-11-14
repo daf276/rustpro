@@ -4,6 +4,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 13332685;
+
+pub const LISTED_SERIES: &[u16] = &[SET_MITSURUGI];
+
 const MITSURUGI_RITUAL: u32 = 81560239;
 
 pub const LISTED_NAMES: &[u32] = &[ID, MITSURUGI_RITUAL];

@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, MZONE};
 
 const ID: u32 = 40502912;
+
+pub const LISTED_SERIES: &[u16] = &[SET_MELODIOUS];
+
 const BLOOM_HARMONIST: u32 = 34974462;
 
 // Special Summoned by Bloom Harmonist, Link Summoned from Fairy Normal Monsters.

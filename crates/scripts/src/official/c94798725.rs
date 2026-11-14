@@ -4,6 +4,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 94798725;
+
+pub const LISTED_SERIES: &[u16] = &[SET_GUNKAN];
+
 const CARD_SUSHIP_UNI: u32 = 42377643;
 pub const LISTED_NAMES: &[u32] = &[CARD_SUSHIP_SHARI, CARD_SUSHIP_UNI];
 

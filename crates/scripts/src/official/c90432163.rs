@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, MZONE};
 
 const ID: u32 = 90432163;
+
+pub const LISTED_SERIES: &[u16] = &[SET_THE_PHANTOM_KNIGHTS];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // A second copy on the field and in the GY, and Doomed Soleret in the Deck to search.

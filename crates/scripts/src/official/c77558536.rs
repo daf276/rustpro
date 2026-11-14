@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE};
 
 const ID: u32 = 77558536;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LIGHTSWORN];
 // On the field with Lightsworn monsters (Lyla, Wulf, Jain) in the Deck to send to the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (22624373, DECK), (22624373, DECK), (58996430, DECK), (96235275, DECK)];
 

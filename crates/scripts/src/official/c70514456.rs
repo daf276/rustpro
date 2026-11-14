@@ -5,6 +5,8 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 70514456;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RAGNARAIKA];
+
 pub struct Procedure<const LIMIT: usize>;
 
 impl<const LIMIT: usize> LinkProcedure for Procedure<LIMIT> {

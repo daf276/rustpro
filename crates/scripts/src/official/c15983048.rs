@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 15983048;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAGIKEY];
 // Copies in the hand to Normal Summon, a Magikey monster on the field to enable the extra Normal Summon and Magikey monsters in the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (98234196, MZONE), (98234196, GRAVE), (98234196, GRAVE)];
 pub const CHECKS: &[Check] = &[

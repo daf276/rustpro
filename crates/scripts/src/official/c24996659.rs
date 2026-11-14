@@ -5,6 +5,7 @@ use engine::constants::MSG_ATTACK;
 
 const ID: u32 = 24996659;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WATT];
 // Wattkid and Wattaildragon are Normal Monsters of the archetype.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (27324313, MZONE), (87151205, MZONE)];
 pub const CHECKS: &[Check] = &[Check::Message(MSG_ATTACK)];

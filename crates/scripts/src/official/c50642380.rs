@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE, OPPONENT};
 
 const ID: u32 = 50642380;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PUNK];
 // Gagaku-P.U.N.K. Crash Beat in the Deck to search, and the opponent's Sangans to attack it.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

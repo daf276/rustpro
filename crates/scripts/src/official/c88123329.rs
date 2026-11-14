@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, MZONE};
 
 const ID: u32 = 88123329;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RITUAL_BEAST];
 // On the field with a Ritual Beast Ulti- monster (Cyberse) in the Extra Deck to banish and Ritual Beast Tamer Elder (Cyberse) in the Deck to send.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

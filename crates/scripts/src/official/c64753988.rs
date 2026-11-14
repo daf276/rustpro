@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 64753988;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CYBERDARK];
 // In the hand and in a random zone, with Cyberdark Claws in the hand to Normal Summon and in the Deck to search, and Cyberdark Wurms.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

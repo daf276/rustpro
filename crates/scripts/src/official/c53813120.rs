@@ -5,6 +5,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 53813120;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RADIANT_TYPHOON];
 pub const LISTED_NAMES: &[u32] = &[CARD_MYSTICAL_SPACE_TYPHOON];
 // Quick-Play Spells (Mystical Space Typhoon twice, Radiant Typhoon Chant) in the GY to shuffle, a Mystical Space Typhoon in
 // the hand to activate and one set to destroy this card with, and an Effect Monster of the opponent's to negate.

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 29157292;
 
+pub const LISTED_SERIES: &[u16] = &[SET_METALMORPH];
 pub const LISTED_NAMES: &[u32] = &[CARD_MAX_METALMORPH];
 
 // In the hand to Normal Summon and on the field for the Type change, with Max Metalmorph in the Deck to Set and in the Graveyard

@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 6165656;
+
+pub const LISTED_SERIES: &[u16] = &[SET_RANK_UP_MAGIC];
 pub const XYZ_NUMBER: u32 = 88;
 
 pub const LISTED_NAMES: &[u32] = &[48995978];

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 26236560;
 
+pub const LISTED_SERIES: &[u16] = &[SET_UNCHAINED];
 // In the hand and on the field, with Unchained Twins - Rakea on the field to destroy it and Rakea and Sarama in the Deck to summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (53624265, MZONE), (53624265, DECK), (31588572, DECK)];
 pub const CHECKS: &[Check] = &[

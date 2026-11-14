@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE, OPPONENT};
 
 const ID: u32 = 51023024;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SHADDOLL];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Face-down on the field, to be flipped by an attack and sent to the Graveyard by Dark Hole drawn later, with Shaddoll monsters in the Deck.

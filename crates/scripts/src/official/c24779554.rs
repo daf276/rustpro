@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 24779554;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WHITE_FOREST];
 // In the hand and the GY, with Diabell, a White Forest Synchro Monster, on the field and in the GY, Silvy of the White Forest to
 // qualify the Special Summon, and Tales of the White Forest, a Spell, in hand as the draw cost.
 pub const SUPPORT: &[(u32, u16)] = &[

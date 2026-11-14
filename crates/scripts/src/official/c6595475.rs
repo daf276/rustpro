@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{DECK, HAND};
 
 const ID: u32 = 6595475;
+
+pub const LISTED_SERIES: &[u16] = &[SET_GAGAGA, SET_GOGOGO, SET_DODODO, SET_ZUBABA];
+
 const SETCODES: [u16; 4] = [SET_GAGAGA, SET_GOGOGO, SET_DODODO, SET_ZUBABA];
 
 // Onomatokage and Dodododwarf Gogogoglove in the Deck to search, and a card to discard.

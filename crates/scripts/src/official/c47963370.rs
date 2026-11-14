@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 47963370;
+
+pub const LISTED_SERIES: &[u16] = &[SET_CHAOS];
+
 const CHAOS_FORM: u32 = 21082832;
 
 pub const LISTED_NAMES: &[u32] = &[CHAOS_FORM, CARD_DARK_MAGICIAN];

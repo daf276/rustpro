@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 33972299;
+
+pub const LISTED_SERIES: &[u16] = &[SET_GENEX];
+
 const GENEX_CONTROLLER: u32 = 68505803;
 
 pub const MATERIAL: &[u32] = &[GENEX_CONTROLLER];

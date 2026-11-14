@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 63899465;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RESCUE_ACE];
 // In the hand to activate and in a random zone for the others, with Rescue-ACE Impulse and Fire Attacker in the Graveyard to
 // shuffle, on the field to power up and a monster of the opponent's to enable the boost.
 pub const SUPPORT: &[(u32, u16)] = &[

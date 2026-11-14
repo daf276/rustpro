@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, SZONE};
 
 const ID: u32 = 15177750;
 
+pub const LISTED_SERIES: &[u16] = &[SET_AROMA];
 // In the hand and the Spell & Trap Zone, with Plant Normal Monsters (Dark Plant, Angel Trumpeter) in the hand and Graveyard and
 // Aroma monsters (Angelica, Rosalina) in the Graveyard to summon.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 66378485;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FLAMVELL];
 // In the hand, with Neo Flamvell Hedgehog and Flamvell Guard on the field.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (2377034, MZONE), (21615956, MZONE)];
 pub const CHECKS: &[Check] = &[Check::SpecialSummoned];

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 40164421;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LIGHTSWORN];
 // In the hand and on the field with Lightsworn monsters in the Graveyard and Dragons (Galaxy Serpent, Alexandrite
 // Dragon) in the Deck to search, and Raiden to send her from the Deck to the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[

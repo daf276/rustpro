@@ -6,6 +6,7 @@ use engine::constants::MSG_SELECT_EFFECTYN;
 
 const ID: u32 = 34235530;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SIX_SAMURAI, SET_SHIEN];
 // In the Extra Deck, Synchro Summoned with Anarchist Monk of the Six Samurai (a Warrior Tuner) and Legendary Six Samurai - Kageki,
 // with Kageki in the Deck to search, and Raigeki in hand to destroy the opponent's Sangan, whose effect is negated.
 pub const SUPPORT: &[(u32, u16)] = &[

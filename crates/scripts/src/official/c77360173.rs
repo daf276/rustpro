@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 77360173;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RESONATOR];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Hand and field copies, Blackwing Armor Master (a Synchro) on the field, Dark Hole in hand to destroy them, and Darkness

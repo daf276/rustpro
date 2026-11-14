@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 90241276;
+
+pub const LISTED_SERIES: &[u16] = &[SET_SNAKE_EYE];
+
 const SNAKE_EYE_ASH: u32 = 9674034;
 const DRAMATIC_SNAKE_EYE_CHASE: u32 = 26700718;
 const KITCHEN_DRAGONMAID: u32 = 16960120;

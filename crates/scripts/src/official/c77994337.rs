@@ -1,10 +1,10 @@
 // Hallohallo
-// s.roll_dice, which only cards that are not ported read, is left out.
 use crate::prelude::*;
 use crate::testing::{MZONE, PZONE};
 
 const ID: u32 = 77994337;
 
+pub const ROLL_DICE: bool = true;
 // In the Pendulum Zone, with monsters on the field to target.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, PZONE), (48531733, MZONE), (5628232, MZONE)];
 

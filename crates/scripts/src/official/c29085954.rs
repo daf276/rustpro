@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{EXTRA, MZONE};
 
 const ID: u32 = 29085954;
+
+pub const LISTED_SERIES: &[u16] = &[SET_NUMBER];
 pub const XYZ_NUMBER: u32 = 78;
 
 // In the Extra Deck (Xyz Summoned with two Level 1 Normal Monsters) among other Number Xyz Monsters for the opponent to pick.

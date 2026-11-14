@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 37683441;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TRICKSTAR, SET_BLUE_TEARS];
 // On the field with Trickstar monsters in the Graveyard and Blue Tears cards in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

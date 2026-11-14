@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 55920742;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PUNK];
 // Copies in the hand, on the field to Tribute and battle weak Sangan, and Ze Amin in the Deck to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

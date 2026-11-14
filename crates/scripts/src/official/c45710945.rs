@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 45710945;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TACHYON];
 // On the field and in the hand, with Dark Rebellion Xyz Dragons (Level 4) of both players to attack and to attach to.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

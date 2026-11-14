@@ -4,6 +4,7 @@ use crate::testing::{EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 58504745;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FIRE_FIST, SET_FIRE_FORMATION];
 // In the Extra Deck, Xyz Summoned from Level 4 Fire Fists (Boar, Buffalo), with Fire Fists in the Graveyard and Sangan on the opponent's side to return.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

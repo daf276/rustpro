@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 1174075;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRYTRON];
 // In the Extra Deck, Xyz Summoned from Level 1 Normal Monsters (Bone Mouse, Skull Servant), with Drytron Eclipse in the Deck to send.
 // No Machine Ritual Monster is ported, so the negation is only reported.
 pub const SUPPORT: &[(u32, u16)] = &[

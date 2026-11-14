@@ -6,6 +6,7 @@ use super::c67680512::{operation, target, thcon};
 
 const ID: u32 = 89019964;
 
+pub const LISTED_SERIES: &[u16] = &[SET_UNCHAINED];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // On the field with an opponent's Aruha and Muckraker From the Underworld in the Extra Deck to Link Summon, and in the Graveyard

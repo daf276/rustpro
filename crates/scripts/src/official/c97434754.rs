@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 97434754;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARTMAGE];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand and on the field, with Artmage Finmel and Graflare in the Graveyard to add and Graflare in the hand to Special Summon.

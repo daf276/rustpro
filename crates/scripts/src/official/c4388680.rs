@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 4388680;
 
+pub const LISTED_SERIES: &[u16] = &[SET_VENDREAD];
 // Ritual Summoned with Advanced Ritual Art (Normal Zombies in the Deck as materials), then destroyed by the opponent's Dark Hole, with
 // itself in the Deck as the Vendread monster to send and Advanced Ritual Art to search; Zombies in the Graveyard to banish and the
 // opponent's monsters to battle.

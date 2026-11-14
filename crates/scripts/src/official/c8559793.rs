@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 8559793;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RAIDRAPTOR];
 // Raidraptor - Force Strix, two on the field to enable it and one in the Graveyard to add to the hand.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (73347079, MZONE), (73347079, MZONE), (73347079, GRAVE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(0)];

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 28388296;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SCRAP];
 // Activated from the hand, with Scrap Raptor on the field to destroy a Scrap monster and Scrap monsters in the Deck to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

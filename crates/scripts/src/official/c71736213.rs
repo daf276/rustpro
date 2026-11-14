@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 71736213;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NOBLE_KNIGHT];
+
 struct Params;
 
 impl FusionSummonParams for Params {

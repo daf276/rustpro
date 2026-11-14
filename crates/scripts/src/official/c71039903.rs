@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 71039903;
+
+pub const LISTED_SERIES: &[u16] = &[SET_BLUE_EYES];
+
 const BLUE_EYES_WHITE_DRAGON: u32 = 89631139;
 
 // In the hand, on the field and in the Graveyard with Blue-Eyes White Dragon in the Deck to Summon and in the Graveyard to

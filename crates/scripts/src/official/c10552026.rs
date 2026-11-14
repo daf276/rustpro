@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 10552026;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GOUKI];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Link Summoned from Gouki Guts and Gouki Machine Suprex, with Gouki monsters in the Graveyard and the opponent's monsters to negate.

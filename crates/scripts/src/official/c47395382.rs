@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 47395382;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FABLED];
 // In the Extra Deck, Synchro Summoned with Fabled Raven (a Level 2 Tuner that discards the hand) and Swordsman of Landstar (Level 3).
 pub const SUPPORT: &[(u32, u16)] = &[
     (47217354, MZONE),

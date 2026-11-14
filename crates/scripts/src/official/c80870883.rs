@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 80870883;
 
+pub const LISTED_SERIES: &[u16] = &[SET_METALMORPH];
 pub const LISTED_NAMES: &[u32] = &[CARD_MAX_METALMORPH];
 
 // In the hand and on the field, with the opponent's Dark Hole to negate, Sangan to damage and Max Metalmorph in the Deck to Set.

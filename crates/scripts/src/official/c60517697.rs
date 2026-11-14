@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 60517697;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ATLANTEAN, SET_MERMAIL];
+
 struct Procedure;
 
 impl XyzProcedure for Procedure {
@@ -74,7 +76,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
 }
 
 fn ovfilter(c: CardId, duel: &Duel, tp: u8, lc: CardId) -> bool {
-    c.is_set_card_full(duel, &[SET_ATLANTEAN, SET_MERMAIL], Some(lc), SUMMON_TYPE_XYZ as u64, tp)
+    c.is_set_card_full(duel, LISTED_SERIES, Some(lc), SUMMON_TYPE_XYZ as u64, tp)
         && c.is_type_full(duel, TYPE_XYZ, Some(lc), SUMMON_TYPE_XYZ as u64, tp)
         && c.is_faceup(duel)
 }

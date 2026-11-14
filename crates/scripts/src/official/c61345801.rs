@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND};
 
 const ID: u32 = 61345801;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SHADDOLL, SET_INFERNOID];
 // Shaddoll Squamata (a monster) in the hand to reveal, with Shaddoll Fusion (a Spell) and Shaddoll Core (a Trap) in the Deck to add.
 // No Infernoid monster is ported, so the Graveyard effect is only reported.
 pub const SUPPORT: &[(u32, u16)] = &[

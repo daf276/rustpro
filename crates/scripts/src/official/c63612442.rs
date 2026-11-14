@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 63612442;
 
+pub const LISTED_SERIES: &[u16] = &[SET_X_SABER];
 // In the Extra Deck, Synchro Summoned with X-Saber Airbellum (Level 3 Tuner) and Anu Piranha (Level 4), with a second X-Saber
 // to Tribute and weak opponent monsters (Key Mace) to battle.
 pub const SUPPORT: &[(u32, u16)] = &[

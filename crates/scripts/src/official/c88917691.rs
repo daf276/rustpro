@@ -4,6 +4,15 @@ use crate::testing::{Check, DECK, EXTRA, MZONE};
 
 const ID: u32 = 88917691;
 
+pub const LISTED_SERIES: &[u16] = &[
+    SET_ZUBABA,
+    SET_GAGAGA,
+    SET_GOGOGO,
+    SET_DODODO,
+    SET_ONOMAT,
+    SET_XYZ,
+    SET_UTOPIC_FUTURE,
+];
 // In the Extra Deck, Xyz Summoned with Gagaga Ganbara Knight and Zubababancho Gagagacoat (Level 4 Gagaga cards), and a copy and
 // Evilswarm Exciton Knight (Rank 4) on the field for Number F0: Utopic Future to Xyz Summon with, and Xyz Import to search.
 pub const SUPPORT: &[(u32, u16)] = &[

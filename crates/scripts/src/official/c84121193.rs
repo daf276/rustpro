@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 84121193;
+
+pub const LISTED_SERIES: &[u16] = &[SET_CODEBREAKER];
+
 const ZERO_DAY: u32 = 8662794;
 
 pub const LISTED_NAMES: &[u32] = &[ZERO_DAY];

@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, MZONE, SZONE};
 
 const ID: u32 = 27556460;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PRIMITE];
 // Set, in the Graveyard and with Primite Dragon Ether Beryl and Mystical Elf (Normal Monster) on the field.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, SZONE),

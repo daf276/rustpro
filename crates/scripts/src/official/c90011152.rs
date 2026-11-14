@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 90011152;
 
+pub const LISTED_SERIES: &[u16] = &[SET_OJAMA];
 // Activated from the hand, with Ojamas (Green, Yellow, Black) in the hand to send and in the Graveyard to Special Summon, and on the
 // field to swap ATK and DEF.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 64193046;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPERHEAVY_SAMURAI];
 // A copy and Big Benkei on the field for the opponent's Smashing Ground and Hammer Shot to destroy, and a copy in the Extra
 // Deck, Synchro Summoned from Draluvice (a Level 7 Tuner) and Shapesnatch (Level 5).
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::Check;
 
 const ID: u32 = 70488851;
+
+pub const LISTED_SERIES: &[u16] = &[SET_POWER_PATRON];
+
 const TYPES_FSX: u32 = TYPE_FUSION | TYPE_SYNCHRO | TYPE_XYZ;
 
 // Special Summoned by returning a Fusion, a Synchro and an Xyz Monster: Albion, Chaos Angel, Gauntlet Launcher.

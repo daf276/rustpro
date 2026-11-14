@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 64910482;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TG];
 // Two on the field as the Level 1 Tuner with Disk Magician (Level 4) for T.G. Hyper Librarian, and destroyed by the opponent's Raigeki
 // to search a T.G. monster from the Deck. The hand Synchro material it grants is checked from T.G. Warwolf's file.
 pub const SUPPORT: &[(u32, u16)] = &[

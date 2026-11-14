@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 74011784;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ARTMAGE];
+
 const ACROPOLIS: u32 = 74733322;
 
 pub const LISTED_NAMES: &[u32] = &[CARD_MEDIUS_THE_PURE, ACROPOLIS, ID];

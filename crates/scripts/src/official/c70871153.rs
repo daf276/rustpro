@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 70871153;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRACOTAIL];
 // Fusion Material with Dracotail Faimena for Dracotail Arthalion, Dracotail Spellcasters in the Graveyard to add, and a
 // Dracotail Spell in the Deck to Set.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -5,6 +5,7 @@ use engine::{Operation, Target};
 
 const ID: u32 = 2815176;
 
+pub const LISTED_SERIES: &[u16] = &[SET_VAALMONICA];
 pub const COUNTER_LIST: &[u16] = &[COUNTER_RESONANCE];
 
 pub const LISTED_NAMES: &[u32] = &[ID];

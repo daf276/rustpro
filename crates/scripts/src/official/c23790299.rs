@@ -5,6 +5,8 @@ use engine::constants::MSG_SELECT_YESNO;
 
 const ID: u32 = 23790299;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ALTERGEIST];
+
 struct Procedure;
 
 impl LinkProcedure for Procedure {

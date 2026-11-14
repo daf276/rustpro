@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, HAND, OPPONENT};
 
 const ID: u32 = 63926180;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ALEISTER];
+
 const AIWASS: u32 = 84288367;
 
 pub const LISTED_NAMES: &[u32] = &[AIWASS];

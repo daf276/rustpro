@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 6071005;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WITCHCRAFTER];
 // In the hand and the Graveyard, with Witchcrafter monsters on the field for the opponent's Raigeki to destroy, Sangan of the opponent
 // to Tribute and Walpurgis in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[

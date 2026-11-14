@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 81677154;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MEMENTO];
 // In the hand and on the field, with Mementotlan Angwitch (Level 3) in the Deck to send to the GY.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (54550967, DECK), (54550967, DECK), (54550967, DECK)];
 pub const CHECKS: &[Check] = &[

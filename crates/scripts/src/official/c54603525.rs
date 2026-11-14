@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 54603525;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SPEEDROID];
 // Synchro Summoned from Ash Blossom & Joyous Spring and Mystical Elf, with Turbo Synchron (WIND Tuner) in the hand to summon on
 // the opponent's Raigeki and Doron for Mist Bird Clausolas, and the opponent's Sangan to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[

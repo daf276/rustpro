@@ -5,6 +5,7 @@ use engine::constants::MSG_RECOVER;
 
 const ID: u32 = 36326160;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LIL_LA];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In hand with Live Twin Lil-la in the Deck to Special Summon, and an attacker to gain Life Points from.

@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 43834302;
+
+pub const LISTED_SERIES: &[u16] = &[SET_SYNCHRON];
+
 const ASSAULT_SONIC_WARRIOR: u32 = 18711696;
 const NAMES: [u32; 2] = [CARD_JUNK_WARRIOR, CARD_STARDUST_DRAGON];
 

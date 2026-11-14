@@ -4,6 +4,7 @@ use crate::testing::{DECK, HAND};
 
 const ID: u32 = 96363153;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SYNCHRON];
 // Jet and Turbo Synchron in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (9742784, DECK), (9742784, DECK), (67270095, DECK), (67270095, DECK)];
 

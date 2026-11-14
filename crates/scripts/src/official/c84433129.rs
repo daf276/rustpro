@@ -5,6 +5,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 84433129;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RYZEAL];
 // In the hand, Special Summoned by detaching a material that Xyz Import attached to Dark Requiem Xyz Dragon.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

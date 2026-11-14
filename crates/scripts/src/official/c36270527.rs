@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT, REMOVED};
 
 const ID: u32 = 36270527;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARS_MAGNA, SET_POWER_PATRON];
 // A second copy banished to be Special Summoned when Purification Power Patron is Link Summoned from the Extra Deck with Dark Magician
 // (Normal Monsters), Ars Magna monsters in the Deck to add, Ars Magna - "Citrinitas" in hand for the Quick Effect, and Sangan of
 // the opponent to banish.

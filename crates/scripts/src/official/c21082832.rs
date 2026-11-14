@@ -2,6 +2,7 @@
 use crate::prelude::*;
 use crate::testing::{GRAVE, HAND};
 
+pub const LISTED_SERIES: &[u16] = &[SET_CHAOS, SET_NUMBER_C];
 pub const LISTED_NAMES: &[u32] = &[CARD_DARK_MAGICIAN, CARD_BLUEEYES_W_DRAGON];
 
 struct Params;

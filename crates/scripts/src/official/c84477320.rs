@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 84477320;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRACOTAIL];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In hand to Normal Summon and as Fusion Material with Dracotail Faimena for Dracotail Arthalion, Dracotail Lukias in the

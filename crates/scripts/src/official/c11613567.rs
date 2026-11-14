@@ -4,6 +4,7 @@ use crate::testing::{HAND, MZONE, OPPONENT};
 
 const ID: u32 = 11613567;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 // Blackwing - Gale the Whirlwind on the field for the Normal Summon without tribute, Sangan to change the position of.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (2009101, MZONE), (26202165, MZONE | OPPONENT)];
 

@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 71089030;
 
+pub const LISTED_SERIES: &[u16] = &[SET_EARTHBOUND];
 // In the hand with Earthbound Prisoner Stone Sweeper on the field and in the Graveyard, Sangan (an effect monster) on the opponent's
 // field to negate, and the opponent's Mystical Space Typhoon to destroy it.
 pub const SUPPORT: &[(u32, u16)] = &[

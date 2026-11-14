@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 16926971;
 
+pub const LISTED_SERIES: &[u16] = &[SET_AI];
 // A copy on the field and two in the Extra Deck, Synchro Summoned with Guardragon Justicia (a Level 2 Tuner) and Garoozis (Level 5),
 // with Cyberse Synchron on the field to copy the Level of and in the Graveyard to add to the hand.
 pub const SUPPORT: &[(u32, u16)] = &[

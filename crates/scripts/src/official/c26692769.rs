@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, MZONE};
 
 const ID: u32 = 26692769;
 
+pub const LISTED_SERIES: &[u16] = &[SET_THE_PHANTOM_KNIGHTS, SET_PHANTOM_KNIGHTS];
 // Four copies, so the linked zones cover the Xyz Summons; Doomed Soleret (Xyz material, and the monster to send), Umbrage Veil
 // (the "Phantom Knights" Trap to Set), Break Sword and Malevolent Scythe (the DARK Xyz Monsters).
 pub const SUPPORT: &[(u32, u16)] = &[

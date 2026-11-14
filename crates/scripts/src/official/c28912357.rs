@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 28912357;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GEARGIA];
 // In the Extra Deck, Xyz Summoned with Level 4 Machines (Golgoil, Yaiba Robo), with Level 4 Machines in the Deck to add, Geargiano Mk-II in
 // the Graveyard to summon, and the opponent's Raigeki to destroy it.
 pub const SUPPORT: &[(u32, u16)] = &[

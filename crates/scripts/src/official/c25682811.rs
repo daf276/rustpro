@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 25682811;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRAGUNITY];
 // In the Extra Deck, Synchro Summoned from Darkspear (a Level 3 Dragon Tuner), Zephyros (a Level 4 Winged Beast) and Tribus (Level 1),
 // with Dragunity monsters in the Graveyard to equip.
 pub const SUPPORT: &[(u32, u16)] = &[

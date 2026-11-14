@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 92895501;
 
+pub const LISTED_SERIES: &[u16] = &[SET_VANQUISH_SOUL];
 // In the hand and on the field, with Vanquish Soul Razen (a non-Machine on the field to return, FIRE to reveal) on the field and
 // in the hand, and Unicycular (EARTH) in the hand to reveal with it for the damage.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 84766279;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GUSTO];
 // In the Extra Deck, Synchro Summoned with Gusto Gulldo (a Level 3 Tuner) and Gusto Griffin (Level 2), with Gusto monsters in the
 // Graveyard and Sangan on the other side.
 pub const SUPPORT: &[(u32, u16)] = &[

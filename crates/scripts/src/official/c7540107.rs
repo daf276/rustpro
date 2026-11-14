@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 7540107;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GOUKI];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // On the field with Gouki Machine Suprex to power up, one in the Deck to search after Dark Hole.

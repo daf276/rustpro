@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 10808715;
+
+pub const LISTED_SERIES: &[u16] = &[SET_HERO, SET_MASKED_HERO];
+
 const FURNACE: u32 = 58288218;
 
 pub const LISTED_NAMES: &[u32] = &[ID];

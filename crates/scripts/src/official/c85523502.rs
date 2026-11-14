@@ -5,6 +5,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 85523502;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLITZCLIQUE];
 // In the hand and on the field, with Thunder Normal Monsters (LaLa Li-oon) in the hand and on the field, and Surge
 // Blitzclique in the hand to destroy a card with.
 pub const SUPPORT: &[(u32, u16)] = &[

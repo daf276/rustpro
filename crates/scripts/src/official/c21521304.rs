@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 21521304;
+
+pub const LISTED_SERIES: &[u16] = &[SET_UTOPIA];
 pub const XYZ_NUMBER: u32 = 39;
 
 // In the Extra Deck, Xyz Summoned with two Level 6 monsters, with an opponent's monster to zero and Number 39: Utopia in the

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, SZONE};
 
 const ID: u32 = 8915275;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TOON];
 pub const LISTED_NAMES: &[u32] = &[CARD_TOON_WORLD];
 
 // In the hand with Toon World face-up on the field to Special Summon, Toon Terror in the Deck to add or Set, and cards in the Graveyard.

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, PZONE};
 
 const ID: u32 = 92746535;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRACOSLAYER];
 // Two copies in the Pendulum Zones, and copies in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, PZONE), (ID, DECK), (ID, DECK)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(0)];

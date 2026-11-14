@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 96402918;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ICE_BARRIER];
+
 const LOCATION_HAND_DECK_EXTRA_GRAVE: u32 = LOCATION_HAND | LOCATION_DECK | LOCATION_EXTRA | LOCATION_GRAVE;
 
 // In the Extra Deck, Synchro Summoned with Water Spirit (a WATER Tuner) and Phantom of Yubel (Level 9) or Guardragon Justicia and Evil HERO Dark Gaia (Level 8), with General Raiho in the Deck

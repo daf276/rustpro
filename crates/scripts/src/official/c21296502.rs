@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, SZONE};
 
 const ID: u32 = 21296502;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TOON];
 pub const LISTED_NAMES: &[u32] = &[CARD_TOON_WORLD, ID];
 
 // On the field with a Toon monster in the hand to discard, and Toon World, Toon Terror, Toon Mermaid and Blue-Eyes Toon

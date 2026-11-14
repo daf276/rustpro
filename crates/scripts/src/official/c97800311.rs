@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 97800311;
 
+pub const LISTED_SERIES: &[u16] = &[SET_APOPHIS];
+
 struct Materials;
 
 impl FusionMix for Materials {

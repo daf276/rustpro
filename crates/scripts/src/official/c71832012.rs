@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 71832012;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KASHTIRA];
 pub const LISTED_NAMES: &[u32] = &[73542331];
 
 // In the hand, with Kashtira monsters in the Deck to search and Kashtira Shangri-Ira on the field to chain its effects to.

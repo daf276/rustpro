@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 38339996;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RESCUE_ACE];
 // On the field and in the hand, against the opponent's Ash Blossom and Elfnote Lucina. No "Rescue-ACE" Machine monster is ported,
 // so the Special Summon effect is only reported.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, HAND), (14558127, MZONE | OPPONENT), (13597785, MZONE | OPPONENT)];

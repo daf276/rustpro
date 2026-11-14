@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 36757171;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LSWARM];
 // On the field with Xyz Import to attach Sangan, Evilswarm Heliotrope in the hand to discard, and the opponent's Sangan to take.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

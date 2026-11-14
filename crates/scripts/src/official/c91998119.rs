@@ -33,8 +33,6 @@ impl ContactFusion for Contact {
     }
 }
 
-pub const LISTED_NAMES: &[u32] = &[X_HEAD_CANNON, Y_DRAGON_HEAD, Z_METAL_TANK];
-
 // In the Extra Deck, Special Summoned by banishing the three materials on the field, with a Sangan to destroy and a card to discard.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

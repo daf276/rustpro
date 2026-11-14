@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 50275295;
 
+pub const LISTED_SERIES: &[u16] = &[SET_VIRTUAL_WORLD];
 // In the hand and Graveyard, with Virtual World Kyubi - Shenshen in the Graveyard to banish and Virtual World Mai-Hime - Lulu
 // and Roshi - Laolao in the Deck to search, and Elfnote Lucina on the opponent's side to negate.
 pub const SUPPORT: &[(u32, u16)] = &[

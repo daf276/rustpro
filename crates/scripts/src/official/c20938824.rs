@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 20938824;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MALISS];
 // With Maliss <P> Chessy Cat and Dormouse to banish, and Dormouse to banish another Maliss monster to add.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

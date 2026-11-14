@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 19144622;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FAIRY_TAIL];
 pub const LISTED_NAMES: &[u32] = &[91957038, CARD_PRINCE_OF_FAIRIES];
 
 // Fairy Tail - Luna on the field to enable the Special Summon, Fairy Tale Tails in the Deck to search, and Elfnote Lucina

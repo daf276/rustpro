@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 74567889;
+
+pub const LISTED_SERIES: &[u16] = &[SET_IGNISTER];
+
 const AI_LAND: u32 = 59054773;
 
 pub const LISTED_NAMES: &[u32] = &[AI_LAND];

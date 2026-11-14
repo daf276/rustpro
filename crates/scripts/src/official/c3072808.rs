@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 3072808;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 // In the Graveyard with Gale, and Blue-Eyes White Dragons of the opponent's to attack directly for 2000 or more.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, GRAVE),

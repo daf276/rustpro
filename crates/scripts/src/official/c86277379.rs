@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 86277379;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GUSTO];
 // Copies in the hand and Normal Summoned, with Gusto monsters on the field and in the Deck, destroyed by the opponent's Raigeki.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

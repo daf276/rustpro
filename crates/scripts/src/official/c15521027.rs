@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 15521027;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MORPHTRONIC];
+pub const ROLL_DICE: bool = true;
 // In the hand and on the field in both positions, with Morphtronic Videon and Radion in the Graveyard to banish and in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),
@@ -22,7 +24,6 @@ pub const CHECKS: &[Check] = &[
     Check::ResolvesEffect(aux::stringid(ID, 2)),
 ];
 
-// s.roll_dice, which only cards that are not ported read, is left out.
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.enable_revive_limit(duel);
     let e1 = duel.create_effect(c);

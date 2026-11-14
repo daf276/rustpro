@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 7142724;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ICEJADE];
+
 const ICEJADE_RAN_AEGIRINE: u32 = 18494511;
 
 // In the hand, with Icejade Ran Aegirine in the Graveyard to add and on the field (WATER) to lose ATK.

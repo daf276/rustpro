@@ -4,6 +4,7 @@ use crate::testing::MZONE;
 
 const ID: u32 = 16828633;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GENEX];
 // On the field with Genex Controllers, the other Genex it needs.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (68505803, MZONE), (68505803, MZONE)];
 

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 69748261;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WITCHCRAFTER];
 // Set and in the Graveyard, with Witchcrafter Haine on the field and Snipe Hunter of the opponent to negate, and Level 5 or higher
 // Spellcasters in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[

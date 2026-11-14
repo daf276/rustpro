@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 87676171;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TISTINA];
 pub const LISTED_NAMES: &[u32] = &[CARD_CRYSTAL_GOD_TISTINA];
 
 // In the Extra Deck, Xyz Summoned with two of four Level 10 monsters, with Set cards on the opponent's side to send. No Tistina

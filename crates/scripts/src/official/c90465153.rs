@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 90465153;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MANNADIUM];
 pub const LISTED_NAMES: &[u32] = &[CARD_VISAS_STARFROST];
 
 struct Procedure;

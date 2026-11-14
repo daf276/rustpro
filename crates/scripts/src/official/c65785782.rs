@@ -7,7 +7,7 @@ const ID: u32 = 65785782;
 pub const LISTED_NAMES: &[u32] = &[CARD_ATLANTIS_CITY_OF_THE_SEA_DRAGON, CARD_UMI];
 
 // In the hand and the Graveyard, with Atlantis monsters in the Deck to search, and Umi in the hand to activate and a WATER monster
-// to boost. Atlantis, City of the Sea Dragon is not ported yet, so the negation is not reached.
+// to boost, and Atlantis, City of the Sea Dragon in the hand and a random zone for the negation.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),
     (ID, GRAVE),
@@ -18,6 +18,8 @@ pub const SUPPORT: &[(u32, u16)] = &[
     (22702055, HAND),
     (22702055, HAND),
     (37092104, MZONE),
+    (CARD_ATLANTIS_CITY_OF_THE_SEA_DRAGON, HAND),
+    (CARD_ATLANTIS_CITY_OF_THE_SEA_DRAGON, 0),
 ];
 pub const CHECKS: &[Check] = &[
     Check::ResolvesEffect(aux::stringid(ID, 0)),

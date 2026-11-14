@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 62006866;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ZUBABA, SET_GAGAGA];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Zubababancho Gagagacoat (Zubaba) and Gagaga Ganbara Knight in the Deck, with copies on the field to be Xyz Material for M-X-Saber

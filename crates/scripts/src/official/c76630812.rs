@@ -4,8 +4,8 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 76630812;
 
+pub const ROLL_DICE: bool = true;
 pub const LISTED_NAMES: &[u32] = &[CARD_DARK_TIME_WIZARD];
-// s.roll_dice, which only cards that are not ported read, is left out.
 
 // In the hand and the Graveyard, with Panthers to buff, the opponent's Sangan to weaken and its Level 4 Normal Monsters to summon.
 pub const SUPPORT: &[(u32, u16)] = &[

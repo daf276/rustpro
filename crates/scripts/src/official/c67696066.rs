@@ -4,6 +4,7 @@ use crate::testing::{GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 67696066;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PERFORMAGE];
 // On the field to be destroyed by the opponent's Raigeki, with a copy in the Graveyard to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE), (ID, GRAVE), (12580477, HAND | OPPONENT)];
 

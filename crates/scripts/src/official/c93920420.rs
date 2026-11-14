@@ -4,6 +4,7 @@ use crate::testing::{GRAVE, HAND, MZONE, OPPONENT, REMOVED};
 
 const ID: u32 = 93920420;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WORLD_LEGACY, SET_ORCUST];
 // Copies on the field, in the hand and in the Graveyard, an Orcust banished, and Dark Hole in the opponent's hand.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

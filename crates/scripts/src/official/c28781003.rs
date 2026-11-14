@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 28781003;
 
+pub const LISTED_SERIES: &[u16] = &[SET_THE_PHANTOM_KNIGHTS, SET_RAIDRAPTOR, SET_XYZ_DRAGON];
 // Break Sword and Malevolent Scythe, the Rank 3 "The Phantom Knights" Xyz Monsters it Xyz Summons.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (62709239, EXTRA), (78449284, EXTRA)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

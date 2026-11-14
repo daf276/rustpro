@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 60203670;
+
+pub const LISTED_SERIES: &[u16] = &[SET_GOLD_PRIDE];
+
 const GOLD_PRIDE_TOKEN: u32 = ID + 1;
 
 pub const LISTED_NAMES: &[u32] = &[GOLD_PRIDE_TOKEN];

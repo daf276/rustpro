@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 59106048;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WITCHCRAFTER];
 pub const LISTED_NAMES: &[u32] = &[ID, CARD_REGULUS_THE_PRINCE_OF_ENDYMION];
 
 // In the hand and the Graveyard, with Witchcrafter monsters on the field (some are placed face-down) and Pot of Greed in the hand to

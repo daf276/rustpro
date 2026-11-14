@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, MZONE};
 
 const ID: u32 = 31826057;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SYMPHONIC_WARRIOR];
 // Copies on the field to change the Type of and in the Graveyard to banish.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE), (ID, MZONE), (ID, GRAVE), (ID, GRAVE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

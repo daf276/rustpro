@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 57108202;
+
+pub const LISTED_SERIES: &[u16] = &[SET_MORPHTRONIC];
+
 const SCOPEN: u32 = 10591919;
 
 // On the field in both positions, with Level 3 Morphtronic Scopen in the hand, Deck and Graveyard.

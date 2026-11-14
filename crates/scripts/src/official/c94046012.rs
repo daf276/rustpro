@@ -5,6 +5,7 @@ use crate::testing::{Check, GRAVE, HAND};
 
 const ID: u32 = 94046012;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ORCUST];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Graveyard, with Girsu in the hand to Special Summon.

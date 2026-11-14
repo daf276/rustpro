@@ -4,6 +4,7 @@ use crate::testing::{EXTRA, MZONE};
 
 const ID: u32 = 26329679;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CONSTELLAR];
 // In the Extra Deck, Xyz Summoned with two Level 4 LIGHT monsters (Mystical Elf, Ancient Elf).
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

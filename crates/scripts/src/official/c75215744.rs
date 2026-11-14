@@ -4,6 +4,9 @@ use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 use engine::{OperationFn, TargetFn};
 
 const ID: u32 = 75215744;
+
+pub const LISTED_SERIES: &[u16] = &[SET_GUNKAN];
+
 const CARD_SUSHIP_IKURA: u32 = 61027400;
 pub const LISTED_NAMES: &[u32] = &[CARD_SUSHIP_SHARI, CARD_SUSHIP_IKURA];
 

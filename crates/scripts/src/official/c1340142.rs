@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT, PZONE};
 
 const ID: u32 = 1340142;
 
+pub const LISTED_SERIES: &[u16] = &[SET_VAALMONICA];
 pub const COUNTER_LIST: &[u16] = &[COUNTER_RESONANCE];
 
 struct Procedure;

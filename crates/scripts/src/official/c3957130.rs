@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 3957130;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ROKKET];
 pub const LISTED_NAMES: &[u32] = &[67526112, 20071842, 38129297];
 
 // In the Extra Deck, Link Summoned from two Rokket monsters, with the three Spells in the Deck and a DARK Dragon in the Graveyard.

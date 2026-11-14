@@ -4,6 +4,9 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 use engine::constants::MSG_MOVE;
 
 const ID: u32 = 99311889;
+
+pub const LISTED_SERIES: &[u16] = &[SET_POWER_PATRON];
+
 const NERVA: u32 = 53589300;
 const JUPITER: u32 = 68231287;
 const JUNORA: u32 = 5914858;

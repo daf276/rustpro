@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE, OPPONENT};
 
 const ID: u32 = 67744384;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TINDANGLE];
 // Face-down to be flipped by Elfnote Lucina, with Tindangle Angel in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

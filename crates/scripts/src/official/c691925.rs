@@ -2,6 +2,7 @@
 use crate::prelude::*;
 use crate::testing::HAND;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LIGHTSWORN];
 // Lyla and Jain, Lightsworn monsters, in the hand to discard.
 pub const SUPPORT: &[(u32, u16)] = &[(22624373, HAND), (96235275, HAND)];
 

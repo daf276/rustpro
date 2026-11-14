@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, MZONE};
 
 const ID: u32 = 7987191;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ROKKET, SET_BORREL];
 pub const LISTED_NAMES: &[u32] = &[20071842];
 
 // On the field with Rokket monsters to destroy and in the Graveyard with Rokket monsters to add.

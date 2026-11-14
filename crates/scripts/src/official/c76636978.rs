@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 76636978;
 
+pub const LISTED_SERIES: &[u16] = &[SET_STARDUST];
 // Copies on the field and in the Graveyard (the first Tributes itself, which lets the second Special Summon), Stardust Dragon in
 // the Extra Deck to Special Summon, and Pot of Greed for an activation to respond to.
 pub const SUPPORT: &[(u32, u16)] = &[

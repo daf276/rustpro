@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 24079759;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GOBLIN_RIDER];
 // In the hand to detach from Dark Requiem Xyz Dragon (attached to by Xyz Import), with Goblin Biker Grand Breakout in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

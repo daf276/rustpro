@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 92714517;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LABRYNTH];
 // Set, with a copy in the GY to banish, Labrynth monsters (Arias, Arianna) in the Deck to summon and the opponent's Set card to
 // return.
 pub const SUPPORT: &[(u32, u16)] = &[

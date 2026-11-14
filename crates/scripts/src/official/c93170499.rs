@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 93170499;
 
+pub const LISTED_SERIES: &[u16] = &[SET_JURRAC];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Copies in the hand to Special Summon with Uraby on the field, and discard together; the only Jurrac monster other than Megalo

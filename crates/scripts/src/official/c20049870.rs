@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 20049870;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GMX];
 // A second copy in the hand and GMX Partner Selandea to Special Summon it by a monster effect, GMX Chairman Kimridge and
 // Dinosaur Normal Monsters (Mammoth Graveyard, Trakodon) in the Deck, and GMX Applied Experiment #55 to search. No Dinosaur
 // Fusion Monster is ported, so the third effect is not reached.

@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND};
 
 const ID: u32 = 34022970;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RYZEAL];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand, Special Summoned by sending an Xyz Monster from the Extra Deck to the Graveyard, with FIRE Thunder Ryzeal

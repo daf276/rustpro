@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 10178757;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GENEX];
 // No ported Genex card sends a card from the Deck to the hand by an effect, so the trigger is not reachable.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, DECK)];
 pub const CHECKS: &[Check] = &[Check::Report(&Check::Resolves)];

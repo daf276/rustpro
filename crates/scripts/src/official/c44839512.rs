@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 44839512;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAGNET_WARRIOR];
 // Alpha, Beta and Gamma the Magnet Warrior (Normal Monsters) to send, and Beta on the field for the ATK gain.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (99785935, HAND), (39256679, DECK), (11549357, DECK), (39256679, MZONE)];
 pub const CHECKS: &[Check] = &[Check::SpecialSummoned, Check::ResolvesEffect(aux::stringid(ID, 0))];

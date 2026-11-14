@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 35552985;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FIENDSMITH];
 pub const LISTED_NAMES: &[u32] = &[ID + 1];
 
 // In the hand with Fiendsmith Engraver on the field, destroyed by the opponent's Raigeki, for the copy in the Graveyard to Set.

@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT, REMOVED};
 
 const ID: u32 = 16643334;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PHOTON];
 pub const LISTED_NAMES: &[u32] = &[CARD_GALAXYEYES_P_DRAGON];
 
 struct Procedure;

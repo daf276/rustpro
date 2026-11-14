@@ -2,6 +2,9 @@
 use crate::prelude::*;
 
 const ID: u32 = 12375297;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ELFNOTE];
+
 const JUNORA: u32 = 5914858;
 
 pub const LISTED_NAMES: &[u32] = &[JUNORA];

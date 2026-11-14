@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 4079728;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SPRINGANS, SET_THERION];
 pub const LISTED_NAMES: &[u32] = &[CARD_ALBAZ, 29601381];
 
 // In the Extra Deck, Xyz Summoned from Springans Kitt, with Springans Kitt and Springans Captain Sargas in the Deck to search or summon, and

@@ -6,6 +6,7 @@ use engine::constants::MSG_ATTACK;
 
 const ID: u32 = 31114334;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 // In the Extra Deck, Synchro Summoned from Blackwing - Shamal the Sandstorm (Level 4 Tuner) and Blackwing - Gram the Shining Star
 // (Level 5 Synchro Monster), then attacking the opponent's Sangan.
 pub const SUPPORT: &[(u32, u16)] = &[

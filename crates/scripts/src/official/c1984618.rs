@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND};
 
 const ID: u32 = 1984618;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DOGMATIKA];
 pub const LISTED_NAMES: &[u32] = &[CARD_ALBAZ];
 // Fallen of Albaz, in the Deck, to search with an Extra Deck monster of at least its ATK, Secreterion Dragon, to send.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (89851827, EXTRA), (CARD_ALBAZ, DECK), (CARD_ALBAZ, DECK)];

@@ -5,6 +5,8 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 7375867;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRACOTAIL];
+
 struct Params;
 
 impl FusionSummonParams for Params {

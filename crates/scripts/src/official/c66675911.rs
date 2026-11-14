@@ -4,6 +4,7 @@ use crate::testing::{Check, MZONE, OPPONENT};
 
 const ID: u32 = 66675911;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SHADDOLL];
 // Face-down on the field, to be flipped by an attack, with another Genius and the opponent's monster to affect.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE), (13597785, MZONE | OPPONENT)];
 pub const CHECKS: &[Check] = &[

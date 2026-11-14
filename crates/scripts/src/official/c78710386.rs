@@ -5,6 +5,7 @@ use engine::constants::MSG_RECOVER;
 
 const ID: u32 = 78710386;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RB];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // In the hand, activated for the field with R.B. Lambda Cannon in the Deck to search and Special Summon, and on the field to
 // be destroyed with the opponent's monsters by the opponent's Dark Hole.

@@ -6,6 +6,7 @@ use crate::testing::{Check, MZONE, OPPONENT};
 
 const ID: u32 = 55119278;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MORPHTRONIC];
 // Only continuous effects, so the check is the attacks, with the opponent's attackers.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE), (13597785, MZONE | OPPONENT)];
 pub const CHECKS: &[Check] = &[Check::Message(MSG_ATTACK)];

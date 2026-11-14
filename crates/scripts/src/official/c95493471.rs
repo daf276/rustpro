@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 95493471;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPER_QUANT];
 // On the field, so a copy may sit in an Extra Monster Zone, and in the Extra Deck, Link Summoned from Super Quantum Blue Layers, or the Layers Xyz Summoned into Grampulse,
 // with Layers in the Deck to summon and the opponent's Dark Hole to destroy the Xyz Monster.
 pub const SUPPORT: &[(u32, u16)] = &[

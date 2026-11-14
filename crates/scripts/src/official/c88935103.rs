@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, GRAVE, HAND, MZONE, PZONE};
 
 const ID: u32 = 88935103;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ODD_EYES, SET_MAGICIAN];
+
 const STARGAZER_MAGICIAN: u32 = 94415058;
 const ODD_EYES_METEORBURST_DRAGON: u32 = 80696379;
 

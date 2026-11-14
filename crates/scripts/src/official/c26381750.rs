@@ -4,6 +4,7 @@ use crate::testing::{EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 26381750;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LAVAL];
 // On the field as the Level 1 Tuner of a Synchro Summon of Red Dragon Archfiend with Zoa, a Level 7 Normal Monster, and four
 // Laval monsters in the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[

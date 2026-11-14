@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 2407147;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LAVAL];
 // On the field, with a Laval monster in the Graveyard, more in the Deck, and the opponent's Dark Hole to destroy it.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

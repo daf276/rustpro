@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, REMOVED};
 
 const ID: u32 = 72498838;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAGISTUS];
 // In the hand and the Graveyard, Magistus Spells in the Deck to search, a banished Spellcaster to return, a Magistus monster
 // on the field to equip to, and a Level 8 Magistus in the Graveyard to equip.
 pub const SUPPORT: &[(u32, u16)] = &[

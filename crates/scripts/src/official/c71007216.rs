@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 71007216;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WINDWITCH];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Copies in the hand to Normal Summon, and Windwitch - Snow Bell and Blizzard Bell in the Deck to search.

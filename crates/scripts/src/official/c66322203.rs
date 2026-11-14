@@ -3,6 +3,8 @@ use crate::prelude::*;
 
 const ID: u32 = 66322203;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FA];
+
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e1 = duel.create_effect(c);
     e1.set_property(duel, EFFECT_FLAG_CARD_TARGET);

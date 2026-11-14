@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 79559912;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DD, SET_DARK_CONTRACT];
 // Three copies in the Extra Deck, Xyz Summoned with two Level 6 Fiends (Ushi Oni, Neck Hunter and Summoned Skull), against the opponent's
 // Monster Reborn. The "Dark Contract" search needs a Dark Contract card, none of which is ported.
 pub const SUPPORT: &[(u32, u16)] = &[

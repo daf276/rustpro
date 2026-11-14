@@ -7,6 +7,7 @@ const ID: u32 = 40939228;
 const MAJESTIC_DRAGON: u32 = 21159309;
 
 pub const LISTED_NAMES: &[u32] = &[MAJESTIC_DRAGON, CARD_STARDUST_DRAGON];
+pub const MATERIAL: &[u32] = &[MAJESTIC_DRAGON];
 
 struct Procedure;
 

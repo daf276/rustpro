@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 35763582;
+
+pub const LISTED_SERIES: &[u16] = &[SET_LUNALIGHT];
+
 const LUNALIGHT_BLACK_SHEEP: u32 = 11317977;
 const LUNALIGHT_PERFUME_DANCER: u32 = 81196066;
 const DARK_HOLE: u32 = 53129443;

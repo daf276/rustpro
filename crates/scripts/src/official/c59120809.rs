@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 59120809;
+
+pub const LISTED_SERIES: &[u16] = &[SET_SCARECLAW];
+
 const ACRO: u32 = 46877100;
 
 struct Procedure;

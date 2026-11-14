@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE, REMOVED, SZONE};
 
 const ID: u32 = 70576413;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DD, SET_DARK_CONTRACT];
 // Three copies in the Extra Deck, Synchro Summoned with D/D Lamia (a Level 1 Tuner) and D/D Pandora (Level 5), with D/D monsters
 // banished and in the Graveyard, and Dark Contract with the Witch on the field.
 pub const SUPPORT: &[(u32, u16)] = &[

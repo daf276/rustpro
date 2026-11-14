@@ -4,6 +4,7 @@ use engine::constants::MSG_ADD_COUNTER;
 use crate::prelude::*;
 use crate::testing::{Check, HAND};
 
+pub const LISTED_SERIES: &[u16] = &[SET_SIX_SAMURAI];
 pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_BUSHIDO];
 
 // Activated from the hand, with Six Samurai (Kageki, Kizan) in the hand to Summon.

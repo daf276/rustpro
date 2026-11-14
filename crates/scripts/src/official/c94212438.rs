@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, SZONE};
 
 const ID: u32 = 94212438;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SPIRIT_MESSAGE];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // Spirit Message cards in the Deck to place, and copies in the hand and set to be activated.
 pub const SUPPORT: &[(u32, u16)] = &[

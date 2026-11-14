@@ -4,6 +4,17 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND};
 
 const ID: u32 = 12908094;
 
+pub const LISTED_SERIES: &[u16] = &[
+    SET_ZUBABA,
+    SET_GAGAGA,
+    SET_GOGOGO,
+    SET_DODODO,
+    SET_DJINN,
+    SET_HEROIC_CHAMPION,
+    SET_NUMBER,
+    SET_ZW,
+    SET_ZS,
+];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Gagaga Ganbara Knight in the hand and Graveyard to Special Summon with it, and Gagaga Cowboy and Zubaba General (Rank 4) to Xyz Summon.

@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 10736540;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NOBLE_KNIGHT];
 // In the hand to Normal Summon and in the Graveyard to return, with Noble Knight Artorigus (a Normal Monster) in the
 // Graveyard and Infernoble Knight Captain Roland (Level 5) on the field.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, GRAVE), (92125819, GRAVE), (40251688, MZONE)];

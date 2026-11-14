@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 28168762;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUNAVALON];
 // On the field and in the Extra Deck, with Sunavalon Dryas in the Extra Deck to be Link Summoned pointing at it, and strong
 // monsters of the opponent's (Blue-Eyes White Dragon) to attack it.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -6,6 +6,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 43129357;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RAGNARAIKA];
 // Link Summoned from Insect and Plant Normal Monsters, with Ragnaraika Wicked Butterfly and a copy in the Graveyard to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

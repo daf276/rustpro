@@ -6,6 +6,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 40543231;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MITSURUGI];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Copies on the field to Tribute for each other's destruction by the opponent's Raigeki, and in the hand and Deck to

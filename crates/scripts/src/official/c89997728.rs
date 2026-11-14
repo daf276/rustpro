@@ -4,6 +4,7 @@ use crate::testing::{DECK, HAND};
 
 const ID: u32 = 89997728;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TOON];
 // In the hand, with Toon Alligator (a Normal Monster) in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (59383041, DECK), (59383041, DECK)];
 

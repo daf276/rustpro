@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 71386411;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPERHEAVY_SAMURAI];
 // Copies on the field to attack the opponent's weak monsters, with Swordsman of Landstar (Level 3) and Ally of Justice Catastor in
 // the Extra Deck to Synchro Summon, and Superheavy Samurai Swordmaster Musashi for the Graveyard effect.
 pub const SUPPORT: &[(u32, u16)] = &[

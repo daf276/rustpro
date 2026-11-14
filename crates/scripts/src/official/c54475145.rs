@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 54475145;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MILLENNIUM];
 pub const LISTED_NAMES: &[u32] = &[CARD_MILLENNIUM_CROSS];
 
 // In the hand to discard and in the Graveyard, with Millennium Ankh and its five limbs of the Forbidden One to activate, and the opponent

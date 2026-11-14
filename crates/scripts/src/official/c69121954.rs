@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 69121954;
+
+pub const LISTED_SERIES: &[u16] = &[SET_DINOWRESTLER];
+
 const WORLD_DINO_WRESTLING: u32 = 90173539;
 
 struct Procedure;

@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 54082269;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 pub const COUNTER_PLACE_LIST: &[u16] = &[0x1002];
 const WEDGE_COUNTER: u16 = 0x1002;
 

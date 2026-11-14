@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 80949182;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BATTLEWASP];
 // Copies on the field to attack the opponent's weak monsters, with Battlewasp monsters in the Graveyard and a copy in the Extra
 // Deck, Synchro Summoned from Water Spirit (a Level 1 Tuner) and Dark Magician (Level 7).
 pub const SUPPORT: &[(u32, u16)] = &[

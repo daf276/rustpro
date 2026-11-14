@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 59479050;
+
+pub const LISTED_SERIES: &[u16] = &[SET_NUMBER, SET_RANK_UP_MAGIC];
 pub const XYZ_NUMBER: u32 = 71;
 
 pub const LISTED_NAMES: &[u32] = &[ID];

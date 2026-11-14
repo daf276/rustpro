@@ -6,6 +6,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 66961194;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLUE_EYES];
 pub const LISTED_NAMES: &[u32] = &[CARD_BLUEEYES_W_DRAGON];
 
 // In the hand and on the field with Blue-Eyes White Dragon in the Deck, hand and Graveyard; it makes the opponent choose attack targets.

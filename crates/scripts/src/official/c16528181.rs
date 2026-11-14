@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE, SZONE};
 
 const ID: u32 = 16528181;
+
+pub const LISTED_SERIES: &[u16] = &[SET_HORUS];
+
 const IMSETY: u32 = 84941194;
 
 // Active on the field and in the hand, with Imsety (the only ported Horus monster) in the Deck and on the field.

@@ -4,6 +4,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, MZONE};
 
 const ID: u32 = 58884063;
+
+pub const LISTED_SERIES: &[u16] = &[SET_GOLD_PRIDE];
+
 const NYTRO_HEAD: u32 = 59900655;
 
 pub const LISTED_NAMES: &[u32] = &[NYTRO_HEAD];

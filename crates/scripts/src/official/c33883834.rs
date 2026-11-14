@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 33883834;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SIX_SAMURAI];
 // In the hand beside Six Samurai monsters on the field to battle the opponent's Elfnote Lucinas.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

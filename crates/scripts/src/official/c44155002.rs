@@ -6,6 +6,7 @@ use engine::constants::MSG_CHAIN_NEGATED;
 
 const ID: u32 = 44155002;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FABLED];
 // In the Extra Deck, Synchro Summoned with The Fabled Chawa (a Level 1 Tuner) and Swordsman of Landstar (Level 3), against the opponent's Dark Hole.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 11969228;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRAGUNITY];
 // Link Summoned from two Dragon or Winged Beast monsters, with Guardragon Pisty to Link Summon into its zone, Dragon Ravine to search and monsters in the hand to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

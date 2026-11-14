@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 74029853;
+
+pub const LISTED_SERIES: &[u16] = &[SET_BAMBOO_SWORD];
+
 const BROKEN_BAMBOO_SWORD: u32 = 41587307;
 
 // In the hand, with Broken Bamboo Sword in the hand to equip to a monster, which is its condition.

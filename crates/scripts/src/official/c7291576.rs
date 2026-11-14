@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, OPPONENT, REMOVED};
 
 const ID: u32 = 7291576;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SIX_SAMURAI];
 // In the hand to be Normal Summoned and in the Graveyard, with Legendary Six Samurai - Kageki banished to add and the
 // opponent's Raigeki to destroy it, for the copy in the Graveyard to replace.
 pub const SUPPORT: &[(u32, u16)] = &[

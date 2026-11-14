@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 49721904;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SIX_SAMURAI];
 // Six Samurai (Kageki, Hatsume) on the field to Special Summon from the hand and to boost it.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (2511717, MZONE), (44686185, MZONE)];
 pub const CHECKS: &[Check] = &[Check::SpecialSummoned];

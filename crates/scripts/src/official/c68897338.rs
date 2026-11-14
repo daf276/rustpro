@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND};
 
 const ID: u32 = 68897338;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FABLED];
 // In the hand with Fabled monsters (Level 2 Cerburrel, Level 1 Lurrie) to discard for Fabled Gammajin (Level 4), and in the
 // Graveyard with Fabled Kushano and Lurrie to discard from the hand.
 pub const SUPPORT: &[(u32, u16)] = &[

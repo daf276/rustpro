@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 63060238;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ELEMENTAL_HERO];
 pub const LISTED_NAMES: &[u32] = &[CARD_POLYMERIZATION];
 
 // Two in the hand, with Polymerization and Elemental HERO Sparkman in the Deck.

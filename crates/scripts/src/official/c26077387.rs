@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 26077387;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SKY_STRIKER_ACE];
 // On the field and in the GY, with Sky Striker Ace Link Monsters in the Extra Deck to summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, GRAVE), (8491308, EXTRA), (90673288, EXTRA)];
 pub const CHECKS: &[Check] = &[

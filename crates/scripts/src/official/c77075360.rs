@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 77075360;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SYNCHRON];
+
 struct Procedure;
 
 impl SynchroProcedure for Procedure {

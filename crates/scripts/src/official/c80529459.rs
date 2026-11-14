@@ -4,6 +4,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, MZONE};
 
 const ID: u32 = 80529459;
+
+pub const LISTED_SERIES: &[u16] = &[SET_SCRAP];
+
 const SCRAP_FACTORY: u32 = 28388296;
 
 pub const LISTED_NAMES: &[u32] = &[SCRAP_FACTORY, ID];

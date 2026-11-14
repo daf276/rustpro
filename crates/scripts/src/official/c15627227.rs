@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 15627227;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ROKKET];
 // In the Extra Deck, Link Summoned from Rokket monsters or on the field with copies, with Rokket monsters in the hand to Special
 // Summon, and in the Graveyard to add when it is destroyed in battle.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, MZONE, SZONE};
 
 const ID: u32 = 67322708;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DD, SET_DARK_CONTRACT];
 // On the field and in the Graveyard, with Dark Contract with the Witch on the field and in the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

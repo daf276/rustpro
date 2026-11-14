@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 73602965;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LABRYNTH];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand and the GY, with a Labrynth monster (Arianna) and Normal Traps (Trap Hole) in the hand, a Set Trap to chain to, and

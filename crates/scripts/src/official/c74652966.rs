@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 74652966;
+
+pub const LISTED_SERIES: &[u16] = &[SET_SALAMANGREAT];
+
 const SALAMANGREAT_RAGING_PHOENIX: u32 = 57134592;
 const LINK_APPLE: u32 = 7925734;
 

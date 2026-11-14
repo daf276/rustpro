@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 87209160;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TRI_BRIGADE];
 // In the hand and on the field, with Tri-Brigade Shuraig in the Extra Deck, four Beast monsters in the Graveyard to banish
 // for its Link Rating and more in the Deck to send.
 pub const SUPPORT: &[(u32, u16)] = &[

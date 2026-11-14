@@ -4,6 +4,7 @@ use crate::testing::DECK;
 
 const ID: u32 = 32339440;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BUJIN];
 // On the field with more Yamato in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, DECK), (ID, DECK)];
 

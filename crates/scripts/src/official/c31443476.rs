@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 31443476;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ROKKET];
 // In the hand with Rokket Tracer in the Deck to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (68464358, DECK), (68464358, DECK)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(0), Check::SpecialSummonedCode(68464358)];

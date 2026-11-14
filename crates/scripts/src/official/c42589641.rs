@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 42589641;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TELLARKNIGHT];
 // Xyz Summoned from the Extra Deck with three Level 4 "tellarknight" monsters (Satellarknight Deneb, Unukalhai), with another in the
 // Graveyard to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[

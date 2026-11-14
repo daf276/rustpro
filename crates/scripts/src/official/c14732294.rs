@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 14732294;
+
+pub const LISTED_SERIES: &[u16] = &[SET_WHITE_KNIGHT_NIGHT];
+
 const WHITE_VEIL: u32 = 49306994;
 
 pub const LISTED_NAMES: &[u32] = &[WHITE_VEIL];

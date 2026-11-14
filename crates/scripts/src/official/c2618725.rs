@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND};
 
 const ID: u32 = 2618725;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GMX];
 // GMX Researcher Selande to Special Summon it from the hand by a monster effect, and Dinosaur Normal Monsters (Trakodon,
 // Mammoth Graveyard) in the Deck, hand and Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[

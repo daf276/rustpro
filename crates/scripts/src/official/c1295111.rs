@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 1295111;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SALAMANGREAT];
 // In the hand with Salamangreat Raging Phoenix on the field and in the Extra Deck, for the Reincarnation Link Summon, and a Link Monster to gain
 // the Life Points of.
 pub const SUPPORT: &[(u32, u16)] = &[

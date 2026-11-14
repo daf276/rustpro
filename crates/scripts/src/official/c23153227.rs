@@ -6,6 +6,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 23153227;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SEVENTH, SET_BARIANS, SET_RANK_UP_MAGIC];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the GY with The Phantom Knights' Rank-Up-Magic Requiem in the hand to copy, and Extra Deck monsters of the opponent's

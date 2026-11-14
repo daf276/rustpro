@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 84288367;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ALEISTER, SET_INVOKED];
+
 const ALEISTER_THE_INVOKER: u32 = 86120751;
 
 // Aleister the Invoker to search and Summon, Dark Hole to send Red-Eyes Dark Dragoon to the Graveyard with this card there, and

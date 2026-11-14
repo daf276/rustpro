@@ -4,6 +4,7 @@ use engine::constants::MSG_ADD_COUNTER;
 use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
+pub const LISTED_SERIES: &[u16] = &[SET_KAIJU];
 pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_KAIJU];
 
 // Kaiju monsters in the Deck to add.

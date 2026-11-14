@@ -4,6 +4,7 @@ use crate::testing::{EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 12219047;
 
+pub const LISTED_SERIES: &[u16] = &[SET_THE_PHANTOM_KNIGHTS];
 // In the Extra Deck, Xyz Summoned from Level 2 Normal Monsters (Pharaoh's Servant, Fiend's Hand), with Sangan on the opponent's side to
 // negate. No Level 2 Phantom Knight exists, so the Quick Effect that needs one as material shares the same description.
 pub const SUPPORT: &[(u32, u16)] = &[

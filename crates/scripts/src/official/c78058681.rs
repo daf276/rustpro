@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 78058681;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KEWL_TUNE];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Kewl Tune Mix and Cue for the search, and Mix on the field with Track Maker in the Extra Deck to Synchro Summon.

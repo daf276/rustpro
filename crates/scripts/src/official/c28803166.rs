@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND};
 
 const ID: u32 = 28803166;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FIENDSMITH];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // With Fiendsmith Engraver in the Deck to send, and Fiendsmith's Sequence in the GY to revive.

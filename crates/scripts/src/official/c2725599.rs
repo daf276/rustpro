@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 2725599;
+
+pub const LISTED_SERIES: &[u16] = &[SET_RESCUE_ACE];
+
 const HQ: u32 = 63899465;
 
 struct Procedure;

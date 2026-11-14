@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 7656689;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WITCHCRAFTER];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // In the hand and on the field, with Dark Magician (a Spellcaster Normal Monster) on the field to Special Summon next to and
 // to banish, and the other "Witchcrafter" monsters in the Deck.

@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 75518330;
 
+pub const LISTED_SERIES: &[u16] = &[SET_UMBRAL_HORROR, SET_MASQUERADE, SET_NUMBER];
 // In the hand and Graveyard, with Umbral Horror monsters in the hand and on the field to Special Summon and change Levels, and a
 // Number C104 on the field with Numbers (Number C104 and Number 83: Galaxy Queen) in the Extra Deck and Graveyard to attach.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND};
 
 const ID: u32 = 17782288;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ANGELECHY];
 // A Field Spell for Angelechy Opening to e4 and Angelechy Destrier, Level 7, and Angelechy Shatranga, to be placed.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND)];
 pub const CHECKS: &[Check] = &[Check::Resolves];

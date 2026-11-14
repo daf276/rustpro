@@ -5,6 +5,8 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 18236002;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PRANK_KIDS];
+pub const LISTED_NAMES: &[u32] = &[ID];
 // Link Summoned from the field with Prank-Kids Dropsies and Fansies to Special Summon, and Dodo-Doodle-Doo in the Extra Deck.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

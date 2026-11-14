@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE, OPPONENT};
 
 const ID: u32 = 91662792;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GUSTO];
 // Two copies on the field, which Elfnote Lucinas attack, with Gusto Griffin (a non-Tuner) in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

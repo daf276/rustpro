@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND};
 
 const ID: u32 = 73355772;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DOGMATIKA];
 // In the hand with Despian Quaeritis Fusion Summoned from the Extra Deck by Polymerization with Aluber and Mystical Elf, and
 // Dogmatika Punishment in the Deck to Set.
 pub const SUPPORT: &[(u32, u16)] = &[

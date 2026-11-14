@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 70686400;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WITCHCRAFTER];
+
 struct Params;
 
 impl FusionSummonParams for Params {

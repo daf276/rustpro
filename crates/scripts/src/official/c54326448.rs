@@ -4,6 +4,7 @@ use crate::testing::MZONE;
 
 const ID: u32 = 54326448;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FLAMVELL];
 // On the field with Neo Flamvell Hedgehog, a Pyro Flamvell, and Flamvell Guard.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE), (2377034, MZONE), (2377034, MZONE), (21615956, MZONE)];
 

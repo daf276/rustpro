@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 23151193;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SINFUL_SPOILS, SET_DIABELL];
 // In the hand, with Curse of Diabell and Filia Diabell in the hand to banish and an opponent's monster to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

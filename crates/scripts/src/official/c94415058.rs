@@ -6,6 +6,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT, PZONE, SZONE};
 
 const ID: u32 = 94415058;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAGICIAN, SET_ODD_EYES];
 // Copies in the Pendulum Zone, on the field and in the hand (to attack with and to be summoned after Compulsory Evacuation
 // Device, set or in the opponent's hand, bounces one).
 pub const SUPPORT: &[(u32, u16)] = &[

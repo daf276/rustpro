@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 1061200;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FA];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand beside F.A. Dawn Dragster, another in the Deck to search, and the opponent's Mystical Space Typhoon to destroy it.

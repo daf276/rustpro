@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 61980241;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WHITE_FOREST];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand and the Graveyard, with a Spell as its cost, Silvy of the White Forest in the Deck to search and in the Graveyard to

@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 27565379;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BATTLEWASP];
+
 struct Procedure;
 
 impl SynchroProcedure for Procedure {

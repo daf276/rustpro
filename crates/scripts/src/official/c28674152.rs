@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 28674152;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KAIJU];
 pub const COUNTER_LIST: &[u16] = &[COUNTER_KAIJU];
 
 pub const LISTED_NAMES: &[u32] = &[ID + 1];

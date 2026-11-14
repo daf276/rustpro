@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND};
 
 const ID: u32 = 80845034;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DIABELLSTAR, SET_SINFUL_SPOILS];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand and the Graveyard, with Diabellstar the Black Witch in the Deck and Graveyard to add, and a Sinful Spoils Spell

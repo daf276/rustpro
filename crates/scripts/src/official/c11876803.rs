@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 11876803;
+
+pub const LISTED_SERIES: &[u16] = &[SET_LUNALIGHT];
+
 const EXTRA_EFFECT: u8 = 0;
 const LUNALIGHT_KALEIDO_CHICK: u32 = 35618217;
 const DARK_HOLE: u32 = 53129443;

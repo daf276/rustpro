@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 3828844;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RIKKA];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Extra Deck, Xyz Summoned with Level 4 Plant Normal Monsters, with Rank 5+ Plant Xyz Monsters (Teardrop, Kanzashi) in the Extra Deck

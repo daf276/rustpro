@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 98558751;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TG];
 // In the Extra Deck and on the field, Synchro Summoned from T.G. Screw Serpent (Level 4 Tuner) and T.G. Tank Grub (non-Tuner for T.G.
 // Synchros), against the opponent's Raigeki and Spell/Trap Zone.
 pub const SUPPORT: &[(u32, u16)] = &[

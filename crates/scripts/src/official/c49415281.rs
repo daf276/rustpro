@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, SZONE};
 
 const ID: u32 = 49415281;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SYNCHRON];
 // Set with Normal Monsters in the hand to summon, and a copy in the Graveyard with Black Rose Dragon to Synchro Summon from
 // Ash Blossom & Joyous Spring and Mystical Elf.
 pub const SUPPORT: &[(u32, u16)] = &[

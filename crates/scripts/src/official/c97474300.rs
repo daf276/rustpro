@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 97474300;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SYNCHRO];
 // In the hand with Junk Synchron on the field and Synchro Overtake in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (63977008, MZONE), (99243014, DECK), (99243014, DECK)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

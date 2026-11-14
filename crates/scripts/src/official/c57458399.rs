@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 57458399;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WARRIOR, SET_STARDUST, SET_SYNCHRON];
 // In hand and on the field (Level 2) with Junk Warrior in the Graveyard, and Monster Reborn to Special Summon from there.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (CARD_JUNK_WARRIOR, GRAVE), (83764718, HAND)];
 pub const CHECKS: &[Check] = &[

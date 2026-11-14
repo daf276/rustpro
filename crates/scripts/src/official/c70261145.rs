@@ -6,6 +6,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 70261145;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NATURIA];
 // On the field, and the opponent's Mystical Space Typhoon and Dark Hole to activate; the ATK gain has no message of its own.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

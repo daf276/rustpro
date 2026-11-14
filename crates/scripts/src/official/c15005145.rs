@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 15005145;
+
+pub const LISTED_SERIES: &[u16] = &[SET_CENTUR_ION];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand to search with, and Trudea on the field to place it as a Continuous Trap, with Trudea and Auxila in the Deck.

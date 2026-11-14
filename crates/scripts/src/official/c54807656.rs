@@ -6,6 +6,7 @@ use super::c27412542::{spcon, spop, sptg};
 
 const ID: u32 = 54807656;
 
+pub const LISTED_SERIES: &[u16] = &[SET_UNCHAINED];
 // Activated from the hand with Unchained Soul Lord of Yama in the Extra Deck to Link Summon from Aruha and Sarama on the field, or Set
 // and destroyed by the opponent's Mystical Space Typhoon, with Aruha and Sarama in the Deck to summon.
 pub const SUPPORT: &[(u32, u16)] = &[

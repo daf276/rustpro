@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 27564031;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MALEFIC];
 // Three Malefic monsters in the Deck for the field to search, which draws a card at the start of the turn.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (48829461, DECK), (48829461, DECK), (74509280, DECK), (74509280, DECK)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

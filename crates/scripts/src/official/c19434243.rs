@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND};
 
 const ID: u32 = 19434243;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RESONATOR];
 pub const LISTED_NAMES: &[u32] = &[CARD_RED_DRAGON_ARCHFIEND];
 
 // In hand to Special Summon, with Soul Resonators (Tuners) in hand and the Deck to Synchro Summon Red Dragon Archfiend and search.

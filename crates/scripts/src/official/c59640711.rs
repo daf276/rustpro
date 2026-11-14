@@ -4,6 +4,7 @@ use crate::testing::{GRAVE, HAND};
 
 const ID: u32 = 59640711;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SPEEDROID];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Speedroid Darumaknocker (a Tuner) in the hand to Special Summon.

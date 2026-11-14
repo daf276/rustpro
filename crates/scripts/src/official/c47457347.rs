@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, REMOVED};
 
 const ID: u32 = 47457347;
 
+pub const LISTED_SERIES: &[u16] = &[SET_INVOKED];
 // In the hand, with Invoked monsters of different names banished: Raidjin, Sorath, Cocytus, Mechaba and Elysium.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

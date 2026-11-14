@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 1710647;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ASHTRA];
+
 const ASHTRA_DIVINE_DOMAIN: u32 = 37839434;
 
 // In the hand with face-down Ashtra Divine Domain (Trap) to return, with Ashtra Divine Domain in the Deck to Set, and the opponent's

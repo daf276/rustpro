@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, PZONE};
 
 const ID: u32 = 19491080;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CLOWN_CREW];
 // Copies in the Pendulum Zone and on the field (to Tribute for Emissary from Pandemonium in the hand), and non-Pendulum Clown Crew
 // monsters in the Deck and the Extra Deck.
 pub const SUPPORT: &[(u32, u16)] = &[

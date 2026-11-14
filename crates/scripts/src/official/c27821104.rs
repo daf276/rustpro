@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 27821104;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SIX_SAMURAI];
 // In the hand beside Legendary Six Samurai - Kageki, with Chamberlain of the Six Samurai (same ATK) in the Deck to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (2511717, MZONE), (44430454, DECK), (44430454, DECK), (44430454, DECK)];
 pub const CHECKS: &[Check] = &[Check::Resolves];

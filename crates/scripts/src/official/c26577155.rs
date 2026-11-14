@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 26577155;
+
+pub const LISTED_SERIES: &[u16] = &[SET_DRAGUNITY];
+
 const DRAGON_RAVINE: u32 = 62265044;
 
 pub const LISTED_NAMES: &[u32] = &[DRAGON_RAVINE];

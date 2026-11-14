@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 88722973;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRACOSLAYER];
 // Xyz Summoned from the Extra Deck with Level 4 Pendulum Monsters (Flash Knight, Magicalibra), Luster Pendulum on the field to be destroyed
 // by Raigeki into the Extra Deck face-up, and Pendulum Monsters in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[

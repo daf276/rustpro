@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND};
 
 const ID: u32 = 57329501;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MARINCESS];
 pub const LISTED_NAMES: &[u32] = &[91027843];
 
 // In hand with Marincess Sea Star in the Graveyard. Marincess Battle Ocean is not ported, so the Deck option is never offered.

@@ -6,6 +6,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 74752631;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SIX_SAMURAI];
 pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_BUSHIDO];
 
 struct Procedure;

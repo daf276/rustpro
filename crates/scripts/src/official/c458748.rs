@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 458748;
 
+pub const LISTED_SERIES: &[u16] = &[SET_INVOKED];
 // In the hand twice, with Invoked Raidjin (WIND) on the field to Tribute and Invoked Sorath, Caliga and Oceanus in the Extra Deck.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

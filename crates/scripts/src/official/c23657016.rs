@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 23657016;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TENPAI_DRAGON];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // On the field and in the Deck, with Shiina and a WIND monster on the field and Raigeki in the opponent's hand to return it to

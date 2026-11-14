@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 9453320;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ABYSS];
 // In the Extra Deck, Xyz Summoned with Level 7 WATER monsters (Mermail Abyssteus), with Mermail Abysspike in the Graveyard to
 // revive. No "Abyss-" Trap is ported, so the Set effect is only reported.
 pub const SUPPORT: &[(u32, u16)] = &[

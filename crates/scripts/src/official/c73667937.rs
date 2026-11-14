@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 73667937;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WINDWITCH];
 // In the Extra Deck, Synchro Summoned with Windwitch - Blizzard Bell (a Level 5 Tuner) and Wicked Dragon with the Ersatz Head (WIND,
 // Level 3), with Windwitch monsters in the Graveyard to burn with and a second Synchro Summon to damage the opponent.
 pub const SUPPORT: &[(u32, u16)] = &[

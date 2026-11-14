@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, MZONE};
 
 const ID: u32 = 73341839;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BORREL, SET_ROKKET];
 // In the Graveyard with Borreload Dragon (a "Borrel" Link Monster) on the field, and Linguriboh (Link 1) to release.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, GRAVE), (ID, GRAVE), (31833038, MZONE), (24842059, MZONE), (24842059, MZONE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

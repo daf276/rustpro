@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, PZONE, SZONE};
 
 const ID: u32 = 72181263;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DD, SET_DARK_CONTRACT];
 // In the Pendulum Zone and the hand, with Dark Contract with the Witch (Spells, and a damage source) on the field.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, PZONE),

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 80722024;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MEMENTO];
 // In the hand with Mementotlan Tatsunootoshigo on the field to destroy and Mementotlan Angwitch in the Deck to search, and in the
 // Graveyard to give it piercing damage.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, GRAVE), (81677154, MZONE), (54550967, DECK), (54550967, DECK)];

@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 76359406;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CRYSTRON];
 // In the Extra Deck, Synchro Summoned with Crystron Citree (Level 2 Tuner) and Crystron Smiger (Level 3), with a non-Synchro
 // Crystron in the Graveyard, and the opponent's Dark Hole to destroy it.
 pub const SUPPORT: &[(u32, u16)] = &[

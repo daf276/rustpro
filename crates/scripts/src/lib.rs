@@ -35,7 +35,8 @@ mod utility;
 
 use engine::{Duel, Library};
 
-pub use official::{CARD_SCRIPTS, CLASSIC_CARDS, CardScript, card, card_script};
+// roll_dice is public as its only readers, cards checking for a die rolling effect, are not ported yet.
+pub use official::{CARD_SCRIPTS, CLASSIC_CARDS, CardScript, card, card_script, roll_dice};
 
 pub mod prelude {
     pub use engine::{

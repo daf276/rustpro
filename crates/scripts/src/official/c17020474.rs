@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT, REMOVED, SZONE};
 
 const ID: u32 = 17020474;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ASHTRA];
+
 const BANISH_COUNT: u8 = 0;
 const NUMBER_OF_TARGETS: u8 = 1;
 

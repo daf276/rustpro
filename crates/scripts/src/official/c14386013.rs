@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 14386013;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SPIRIT_MESSAGE];
 pub const LISTED_NAMES: &[u32] = &[CARD_DESTINY_BOARD];
 // Dark Necrofear (Level 8 Fiend) in the Deck to search and Ojama Green to discard. The GY effect needs Destiny Board or a
 // "Spirit Message", which are unported.

@@ -6,6 +6,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 97792247;
 
+pub const LISTED_SERIES: &[u16] = &[SET_JUNK];
 // Twelve copies in the Extra Deck so that it is Synchro Summoned before other monsters join the field (its effect needs an empty
 // field), with Paces (a Level 2 Tuner) and Great White (Level 4), and Junk Synchron and Junk Warrior in the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[

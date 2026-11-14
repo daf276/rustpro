@@ -4,6 +4,7 @@ use crate::testing::{HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 16940215;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NATURIA];
 // On the field with a second one to tribute, and the opponent's Dark Hole and Mystical Space Typhoon to negate.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

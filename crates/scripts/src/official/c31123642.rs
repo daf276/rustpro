@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 31123642;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ZW, SET_ZS, SET_NUMBER, SET_UTOPIC];
 // In the Extra Deck, Xyz Summoned with two Level 4 monsters (Hyosube), with ZW - Ultimate Shield in the Deck to Special Summon and a Number 39: Utopia
 // to replace the destruction of, by the opponent's Raigeki and monsters.
 pub const SUPPORT: &[(u32, u16)] = &[

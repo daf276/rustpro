@@ -5,6 +5,8 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 31411835;
 
+pub const LISTED_SERIES: &[u16] = &[SET_HECAHANDS];
+
 struct Materials;
 
 impl FusionMix for Materials {

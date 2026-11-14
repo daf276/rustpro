@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 20248754;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PLUNDER_PATROLL];
 // Xyz Summoned from the Extra Deck with Level 4 Plunder Patroll monsters (Whitebeard, Goldenhair), more in the hand to discard, and the
 // opponent's Effect Monsters (Sangan) to banish. No Plunder Patroll Equip Spell is ported, so the Quick Effect is not reached.
 pub const SUPPORT: &[(u32, u16)] = &[

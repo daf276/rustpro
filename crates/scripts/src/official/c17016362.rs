@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 17016362;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PERFORMAGE];
 // Xyz Summoned from the Extra Deck with Level 4 Spellcasters (Mystical Elf) that it also gives a second attack, destroyed by the
 // opponent's Raigeki to Special Summon Performage Trick Clown from the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[

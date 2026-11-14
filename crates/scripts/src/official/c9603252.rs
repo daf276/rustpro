@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 9603252;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WITCHCRAFTER];
+
 struct Materials;
 
 impl FusionMix for Materials {

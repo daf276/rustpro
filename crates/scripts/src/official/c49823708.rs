@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 49823708;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DESTRUCTION_SWORD];
 pub const LISTED_NAMES: &[u32] = &[CARD_BUSTER_BLADER];
 
 // Copies to Normal Summon, Tribute and use from the Graveyard; Buster Blader to Special Summon and to be on the field; Dragon Buster Destruction Sword to search and discard.

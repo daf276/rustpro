@@ -5,6 +5,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, REMOVED};
 
 const ID: u32 = 69964858;
+
+pub const LISTED_SERIES: &[u16] = &[SET_WITCHCRAFTER];
+
 // The slots of the chain data's revealed_card and pupils_target_effect.
 const REVEALED_CARD: u8 = 1;
 const TARGET_EFFECT: u8 = 2;

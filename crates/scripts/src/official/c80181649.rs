@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 80181649;
 
+pub const LISTED_SERIES: &[u16] = &[SET_K9];
 // In the hand and on the field, with K9-17 Izuna and K9-X Forced Release in the Deck to add and Set, and the opponent's
 // Mystical Space Typhoon to destroy it.
 pub const SUPPORT: &[(u32, u16)] = &[

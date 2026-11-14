@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 2009101;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 // Copies in the hand, with Bora and a copy on the field to Special Summon them beside.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, MZONE), (49003716, MZONE), (26202165, MZONE | OPPONENT)];
 pub const CHECKS: &[Check] = &[Check::SpecialSummoned, Check::ResolvesEffect(aux::stringid(ID, 0))];

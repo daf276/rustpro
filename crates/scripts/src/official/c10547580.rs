@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 10547580;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ANCIENT_GEAR];
+
 const GEARTOWN: u32 = 37694547;
 
 pub const LISTED_NAMES: &[u32] = &[GEARTOWN];

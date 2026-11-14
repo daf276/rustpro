@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 15710054;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KRAWLER];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // On the field face-down, flipped by Elfnote Lucina's attack to destroy Mystical Space Typhoon, and destroyed by Raigeki, with Krawler
 // Spine and Dendrite (two other names) in the Deck to summon.

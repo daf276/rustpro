@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 59975920;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPER_QUANT];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // A copy and Super Quantum Green Layer in the hand and Graveyard to Special Summon from the hand, add and revive, and

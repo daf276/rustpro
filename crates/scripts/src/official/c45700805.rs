@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 45700805;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAGNET_WARRIOR, SET_MAGNA_WARRIOR];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // On the field and in the hand to tribute Valkyrion the Magna Warrior for, with Alpha and Gamma the Magnet Warrior in the Deck to send.

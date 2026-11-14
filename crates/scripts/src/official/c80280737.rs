@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, MZONE, SZONE};
 
 const ID: u32 = 80280737;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ASSAULT_MODE];
+
 const CRIMSON_BLADER: u32 = 80321197;
 const CRIMSON_BLADER_ASSAULT_MODE: u32 = 50604072;
 

@@ -36,15 +36,17 @@ const COUNT_ONLY: [&str; 4] = [
 // Identifiers that check or change battle positions, besides those ending in `_pos`.
 const POSITION_WORDS: [&str; 4] = ["position", "POSITION", "POSCHANGE", "CHANGE_POS"];
 // The consts the registry reads from a card file, found only as `pub const NAME:` at a line's start, and their types.
-const METADATA: [(&str, &str); 11] = [
+const METADATA: [(&str, &str); 13] = [
     ("SUPPORT", "&[(u32,u16)]"),
     ("CHECKS", "&[Check]"),
     ("LISTED_NAMES", "&[u32]"),
+    ("LISTED_SERIES", "&[u16]"),
     ("FIT_MONSTER", "&[u32]"),
     ("MATERIAL_SETCODE", "&[u16]"),
     ("MATERIAL", "&[u32]"),
     ("DARK_CALLING", "bool"),
     ("TOSS_COIN", "bool"),
+    ("ROLL_DICE", "bool"),
     ("XYZ_NUMBER", "u32"),
     ("ASSAULT_MODE", "u32"),
     ("PENDULUM_LEVEL", "u32"),
@@ -100,14 +102,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
     }
     writeln!(out, "];")?;
-    let tables: [(&str, &[&str], &str); 10] = [
+    let tables: [(&str, &[&str], &str); 12] = [
         ("LISTED_NAMES", &["LISTED_NAMES", "FIT_MONSTER"], "&[u32]"),
+        ("LISTED_SERIES", &["LISTED_SERIES"], "&[u16]"),
         ("COUNTER_PLACE_LIST", &["COUNTER_PLACE_LIST"], "&[u16]"),
         ("COUNTER_LIST", &["COUNTER_LIST"], "&[u16]"),
         ("MATERIAL_SETCODE", &["MATERIAL_SETCODE"], "&[u16]"),
         ("MATERIAL", &["MATERIAL"], "&[u32]"),
         ("DARK_CALLING", &["DARK_CALLING"], "bool"),
         ("TOSS_COIN", &["TOSS_COIN"], "bool"),
+        ("ROLL_DICE", &["ROLL_DICE"], "bool"),
         ("XYZ_NUMBER", &["XYZ_NUMBER"], "u32"),
         ("ASSAULT_MODE", &["ASSAULT_MODE"], "u32"),
         ("PENDULUM_LEVEL", &["PENDULUM_LEVEL"], "u32"),

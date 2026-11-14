@@ -4,6 +4,7 @@ use crate::testing::{HAND, MZONE};
 
 const ID: u32 = 25988873;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRAGUNITY];
 // Copies in hand to Normal Summon, and Dragunity Tribus (Winged Beast) in hand to Special Summon and equip to.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, MZONE), (81962318, HAND), (81962318, HAND)];
 

@@ -6,6 +6,7 @@ use super::c54178659::{spcon, spreg, sptg};
 
 const ID: u32 = 92411493;
 
+pub const LISTED_SERIES: &[u16] = &[SET_THE_WEATHER];
 // Banished as the cost of the negation The Weather Painter Rainbow grants to copies on the field, with Pot of Greed and Elfnote Lucina on
 // the opponent's side to chain. The placing effect needs a "The Weather" Spell/Trap in the hand, and none is ported.
 pub const SUPPORT: &[(u32, u16)] = &[

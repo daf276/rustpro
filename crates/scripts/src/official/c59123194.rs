@@ -5,6 +5,7 @@ use crate::testing::{EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 59123194;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAGICIAN];
 // In the Extra Deck, Synchro Summoned from Nobledragon Magician (Level 3 Tuner) and Stargazer Magician (Level 5), both Pendulum
 // Magicians, with Spells in the Graveyard and weak monsters of the opponent's to battle.
 pub const SUPPORT: &[(u32, u16)] = &[

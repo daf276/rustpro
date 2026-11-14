@@ -5,6 +5,8 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 18321034;
 
+pub const LISTED_SERIES: &[u16] = &[SET_HECAHANDS];
+
 struct Params;
 
 impl FusionSummonParams for Params {

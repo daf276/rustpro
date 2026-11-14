@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 65536818;
+
+pub const LISTED_SERIES: &[u16] = &[SET_YANG_ZING];
+
 const CHIWEN: u32 = 61488417;
 
 // In the Extra Deck, Synchro Summoned with Lunar Rabbit Omajinai and Mystery Shell Dragon, with Chiwen to search and Special

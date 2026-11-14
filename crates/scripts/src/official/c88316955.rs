@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 88316955;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KRAWLER];
 // On the field face-down, flipped by Elfnote Lucina's attack, and destroyed by Raigeki, with Krawler Axon and Dendrite (two other
 // names) in the Deck to summon.
 pub const SUPPORT: &[(u32, u16)] = &[

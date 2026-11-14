@@ -5,6 +5,7 @@ use crate::testing::{DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 4729591;
 
+pub const LISTED_SERIES: &[u16] = &[SET_APPLIANCER];
 // Link Summoned from an Appliancer monster, with Appliancer Link monsters in the Extra Deck and the Graveyard to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

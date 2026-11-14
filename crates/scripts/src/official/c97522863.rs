@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 97522863;
 
+pub const LISTED_SERIES: &[u16] = &[SET_APOPHIS];
 pub const LISTED_NAMES: &[u32] = &[CARD_TEMPLE_OF_THE_KINGS];
 // Three copies in the hand to Normal Summon, with Temple of the Kings in the Deck to find.
 pub const SUPPORT: &[(u32, u16)] = &[

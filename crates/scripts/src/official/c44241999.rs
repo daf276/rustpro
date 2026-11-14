@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 44241999;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GOBLIN];
 // In the Extra Deck, Xyz Summoned from Level 3 Goblins (Goblin Biker Dugg Charger, Scrap Goblin), and on the field with Xyz Import attaching
 // Sangan, with monsters in the opponent's hand to Summon and Elfnote Lucina on the opponent's side to attack.
 pub const SUPPORT: &[(u32, u16)] = &[

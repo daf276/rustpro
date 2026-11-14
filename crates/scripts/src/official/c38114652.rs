@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, SZONE};
 
 const ID: u32 = 38114652;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ASHTRA];
 // In the hand with face-down Ashtra Divine Domain (Trap) to return, Yoa in the Deck to add, and Ashtra Divine Domain (Tuner) with
 // Ashtraya Mikumari-no-Mikoto in the Extra Deck for the Synchro Summon that sends it to the Graveyard, with a Normal Trap to Set.
 pub const SUPPORT: &[(u32, u16)] = &[

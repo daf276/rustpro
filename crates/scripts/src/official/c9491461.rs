@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND};
 
 const ID: u32 = 9491461;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GAGAGA, SET_GOGOGO];
 // Every effect needs a Gagaga monster in the Extra Deck to reveal or an Xyz Monster to detach this card from, and no Gagaga Xyz Monster is ported.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND)];
 pub const CHECKS: &[Check] = &[

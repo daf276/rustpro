@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE};
 
 const ID: u32 = 94722358;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MALISS];
 // With Maliss <P> March Hare in the Deck to add and on the field to banish for the turn it is Set.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, 0), (20938824, DECK), (20938824, DECK), (96676583, DECK), (20938824, MZONE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

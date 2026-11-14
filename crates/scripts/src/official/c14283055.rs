@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, HAND};
 
 const ID: u32 = 14283055;
+
+pub const LISTED_SERIES: &[u16] = &[SET_NOUVELLES, SET_PATISSCIEL, SET_RECIPE];
+
 const LOCATIONS: u32 = LOCATION_HAND | LOCATION_DECK | LOCATION_EXTRA;
 
 // In the hand, with a Nouvelles Pendulum Monster in the Deck and a Patissciel one in the Extra Deck.

@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 19304410;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TRI_BRIGADE, SET_SPRINGANS];
 pub const LISTED_NAMES: &[u32] = &[ID, CARD_ALBAZ];
 
 // In the hand and on the field with Tri-Brigade Mercourier and Fallen of Albaz in the Graveyard to Special Summon, and

@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 54594017;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 // Blackwing Armor Master (2800 ATK) on the field to Special Summon from the hand and to enable the Graveyard effect.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, GRAVE), (69031175, MZONE), (26202165, MZONE | OPPONENT)];
 pub const CHECKS: &[Check] = &[Check::SpecialSummoned, Check::ResolvesEffect(aux::stringid(ID, 1))];

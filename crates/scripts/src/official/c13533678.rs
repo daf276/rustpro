@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 13533678;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SPRIGHT];
 // Psychic Kappa, a Level 2 Normal Monster, to Special Summon it. No Spright Spell/Trap is ported, so the search is not reached.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (7892180, MZONE)];
 pub const CHECKS: &[Check] = &[Check::SpecialSummoned, Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 0)))];

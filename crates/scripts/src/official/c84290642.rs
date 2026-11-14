@@ -6,11 +6,11 @@ use crate::testing::{Check, HAND};
 
 const ID: u32 = 84290642;
 
+pub const ROLL_DICE: bool = true;
 // A second copy in the hand, to discard.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND)];
 pub const CHECKS: &[Check] = &[Check::Resolves, Check::Message(MSG_TOSS_DICE)];
 
-// s.roll_dice, which only cards that are not ported read, is left out.
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e1 = duel.create_effect(c);
     e1.set_description(duel, aux::stringid(ID, 0));

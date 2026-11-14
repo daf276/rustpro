@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 18595008;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PREDAPLANT, SET_STARVING_VENOM];
 pub const LISTED_NAMES: &[u32] = &[CARD_POLYMERIZATION];
 // In the hand and Graveyard (Monster Reborn to revive it) with Predaplant Dragostapelia on the field and Polymerization in
 // the Deck.

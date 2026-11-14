@@ -5,6 +5,7 @@ use engine::constants::MSG_EQUIP;
 
 const ID: u32 = 80549379;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRAGUNITY];
 // Copies and Dragunity Tribus (Winged Beast) on the field, and Raigeki in the opponent's hand to destroy them.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

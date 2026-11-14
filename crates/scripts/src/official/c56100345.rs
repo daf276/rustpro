@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 56100345;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CYBER, SET_CYBERNETIC, SET_CYBER_DRAGON];
 pub const LISTED_NAMES: &[u32] = &[CARD_CYBER_DRAGON];
 
 // In the hand and in the Graveyard, with Cyber Dragons on the field and in the hand to send as the cost, and Cyber Emergency in the

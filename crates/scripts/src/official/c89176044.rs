@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 89176044;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FUSION, SET_PREDAP];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // Polymerization to search and Predaplant Dragostapelia to destroy; no other "Predap" monster that can stand in the Deck
 // to be sent as the cost is ported, so that effect is only reported.

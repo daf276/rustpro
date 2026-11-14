@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 6767771;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TEARLAMENTS];
 pub const LISTED_NAMES: &[u32] = &[CARD_VISAS_STARFROST];
 
 // In the hand to activate with Merrli on the field and in the hand to summon, a copy and Sulliek in the Deck to add, and Merrli's

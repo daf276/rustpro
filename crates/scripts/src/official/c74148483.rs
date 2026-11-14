@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 74148483;
 
+pub const LISTED_SERIES: &[u16] = &[SET_INFERNITY];
 // In the hand discarding Infernity Avenger, and on the field banishing the one in the Graveyard; the Level change needs an empty hand, rare after the opening draw.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (85475641, HAND), (85475641, GRAVE), (85475641, GRAVE)];
 pub const CHECKS: &[Check] = &[Check::SpecialSummoned, Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 1)))];

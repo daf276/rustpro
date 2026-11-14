@@ -4,6 +4,9 @@ use crate::prelude::*;
 use crate::testing::{Check, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 67489919;
+
+pub const LISTED_SERIES: &[u16] = &[SET_MECHA_PHANTOM_BEAST];
+
 const HAND_CHECK: u32 = EFFECT_HAND_SYNCHRO + EFFECT_SYNCHRO_CHECK;
 
 pub const LISTED_NAMES: &[u32] = &[TOKEN_MECHA_PHANTOM_BEAST];

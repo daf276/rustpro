@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, MZONE, OPPONENT};
 
 const ID: u32 = 28904860;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ANGELECHY];
+
 const CARD_ANGELECHY_SHATRANGA: u32 = 42410161;
 
 struct Procedure;

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 39053882;
 
+pub const LISTED_SERIES: &[u16] = &[SET_UMBRAL_HORROR, SET_MASQUERADE, SET_NUMBER];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand and Graveyard, with Thousand Umbral Horror in the Deck to add, and Number 104: Masquerade (Rank 4) on the field to

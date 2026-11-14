@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, PZONE, REMOVED};
 
 const ID: u32 = 65496951;
 
+pub const LISTED_SERIES: &[u16] = &[SET_VAALMONICA];
 pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_RESONANCE];
 const AGATHOKAKOLOGICAL_VOICE: u32 = 39210885;
 

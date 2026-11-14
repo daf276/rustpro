@@ -5,6 +5,8 @@ use crate::testing::{EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 65285459;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUNVINE];
+
 struct Procedure;
 
 impl LinkProcedure for Procedure {

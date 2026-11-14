@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, REMOVED};
 
 const ID: u32 = 37432075;
+
+pub const LISTED_SERIES: &[u16] = &[SET_INVOKED, SET_ALEISTER];
+
 const ALEISTER_THE_INVOKER: u32 = 86120751;
 const FUSION_SUMMON: u64 = 1170;
 

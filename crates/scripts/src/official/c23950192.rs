@@ -6,6 +6,7 @@ use crate::testing::{Check, MZONE, OPPONENT};
 
 const ID: u32 = 23950192;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ICE_BARRIER];
 // On the field with Mirror Mage of the Ice Barrier, and Level 4 or higher attackers on the opponent's side.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

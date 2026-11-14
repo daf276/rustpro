@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 96030710;
+
+pub const LISTED_SERIES: &[u16] = &[SET_EMBLEMA, SET_CENTUR_ION];
+
 const TRUDEA: u32 = 42493140;
 const EMBLEMA_OATH: u32 = 77765207;
 

@@ -4,6 +4,9 @@ use crate::prelude::*;
 use crate::testing::Check;
 
 const ID: u32 = 17473466;
+
+pub const LISTED_SERIES: &[u16] = &[SET_POWER_PATRON, SET_ARTMAGE];
+
 const NERVA: u32 = 53589300;
 
 pub const LISTED_NAMES: &[u32] = &[ID, NERVA];

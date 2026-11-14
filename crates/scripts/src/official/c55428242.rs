@@ -5,6 +5,7 @@ use engine::constants::MSG_ATTACK;
 
 const ID: u32 = 55428242;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TRAP_HOLE, SET_HOLE];
 // Continuous effects only (no "Hole" Normal Trap is ported); on the field to attack and be attacked.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE), (26202165, MZONE | OPPONENT), (13597785, MZONE | OPPONENT)];
 pub const CHECKS: &[Check] = &[Check::Message(MSG_ATTACK)];

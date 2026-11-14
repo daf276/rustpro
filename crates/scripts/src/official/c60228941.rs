@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, OPPONENT};
 
 const ID: u32 = 60228941;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DARK_WORLD];
 // In the hand, to be discarded by Dark World Dealings from either side, with Renge and Zure in the Deck to search and a
 // monster in the opponent's Graveyard to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[

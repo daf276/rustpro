@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 64182380;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FIRE_KING];
 // In the Extra Deck, Xyz Summoned with Tri-Horned Dragon and Metal Armored Bug (Level 8), with a Set Mystical Space Typhoon to destroy,
 // Fire King monsters in the Graveyard to revive, and Raigeki on the other side.
 pub const SUPPORT: &[(u32, u16)] = &[

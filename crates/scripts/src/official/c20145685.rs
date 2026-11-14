@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE};
 
 const ID: u32 = 20145685;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARMORED_XYZ];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Tornado Dragon to Xyz Summon on, and Armored Xyz, Full-Armored Xyz and Reincarnation Unveiling Mail in the Deck to search.

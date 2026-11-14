@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 59392529;
+
+pub const LISTED_SERIES: &[u16] = &[SET_HERO];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand to Normal Summon and on the field as Elemental HERO Gaia's material with Polymerization and Clayman, and

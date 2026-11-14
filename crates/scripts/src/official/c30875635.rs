@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, OPPONENT};
 
 const ID: u32 = 30875635;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ELEMENTAL_HERO, SET_NEO_SPACIAN];
 // In the hand, with Neo-Spacian Air Hummingbird in the Deck for the cost, Burst Return in the Deck to search, Dark Hole to
 // send it to the Graveyard and a card in the opponent's Graveyard to banish.
 pub const SUPPORT: &[(u32, u16)] = &[

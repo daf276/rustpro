@@ -6,6 +6,8 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 95072744;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SHADDOLL];
+
 struct Params;
 
 impl FusionSummonParams for Params {

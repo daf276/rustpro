@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 66540884;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARCHFIEND];
 // On the field with the opponent's Raigeki to destroy it, and Lesser Fiend (an Archfiend) in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (12580477, HAND | OPPONENT), (16475472, DECK), (16475472, DECK)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

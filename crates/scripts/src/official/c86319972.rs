@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, REMOVED};
 
 const ID: u32 = 86319972;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ALEISTER, SET_INVOKED];
 // Aleister the Reminiscent and Invoked Elysium (Fusion) to banish from the Graveyard, Invoked Sorath and Oceanus in the Extra
 // Deck to Special Summon, and a second copy in the Graveyard with a banished Invoked Raidjin to return.
 pub const SUPPORT: &[(u32, u16)] = &[

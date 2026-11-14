@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, REMOVED};
 
 const ID: u32 = 18865703;
 
+pub const LISTED_SERIES: &[u16] = &[SET_UTOPIA];
 // Copies in the hand to Normal Summon, beside Number 39: Utopia on the field to equip to, and others in the banishment to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

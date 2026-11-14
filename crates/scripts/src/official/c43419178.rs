@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT, REMOVED, 
 
 const ID: u32 = 43419178;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ASHTRA];
+
 struct Procedure;
 
 impl SynchroProcedure for Procedure {

@@ -4,6 +4,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 36239585;
+
+pub const LISTED_SERIES: &[u16] = &[SET_GHOSTRICK];
+
 const GHOSTRICK_JIANGSHI: u32 = 80885284;
 const GHOSTRICK_SCARE: u32 = 86516889;
 const ELFNOTE_LUCINA: u32 = 13597785;

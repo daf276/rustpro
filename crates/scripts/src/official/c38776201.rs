@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND};
 
 const ID: u32 = 38776201;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SACRED_BEAST];
 // Differently named Sacred Beast monsters in the Deck, listed twice since the opening hand draws some, a copy in the hand to
 // activate and one in the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[

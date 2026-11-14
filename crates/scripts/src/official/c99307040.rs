@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 99307040;
 
+pub const LISTED_SERIES: &[u16] = &[SET_HORUS];
 pub const LISTED_NAMES: &[u32] = &[ID, CARD_KING_SARCOPHAGUS];
 
 // In the hand with Imsety and King's Sarcophagus on the field, which the opponent's Raigeki and Dark Hole destroy.

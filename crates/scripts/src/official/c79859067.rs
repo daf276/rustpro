@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 79859067;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RB];
 // Set with R.B. Lambda Cannon on the field, to negate the opponent's Effect Monster (Effect Veiler, from the hand).
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, SZONE),

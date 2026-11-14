@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 76145933;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SPRIGHT];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Psychic Kappa, a Level 2 Normal Monster, to Special Summon it, with Spright Red and Jet in the Deck to search.

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, SZONE};
 
 const ID: u32 = 2906939;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ASHTRA];
 // Activated from the hand with face-down Ashtra Divine Domain (Trap) to send and Yoa on the field, with Yoa, Mikumari and Akasuna
 // in the Deck to add (different names) and Yoa's Set from the Deck to return a card.
 pub const SUPPORT: &[(u32, u16)] = &[

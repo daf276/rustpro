@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 91499077;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GAGAGA];
 // In the Extra Deck, Xyz Summoned with two Level 4 monsters (Hyosube, Water Omotics), and opponent's attackers (Elfnote
 // Lucina) to redirect.
 pub const SUPPORT: &[(u32, u16)] = &[

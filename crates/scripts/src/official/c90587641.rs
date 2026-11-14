@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT, PZONE};
 
 const ID: u32 = 90587641;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPERHEAVY_SAMURAI];
+
 // Masurawo, Minerva, Grand Partisan, Ballista and Hama reuse it.
 pub struct Procedure;
 

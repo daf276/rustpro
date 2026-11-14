@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 59138498;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SACRED_BEAST];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // A second copy on the field and more in the Deck, Graveyard and hand for the Special Summon, a Level 10 Sacred Beast

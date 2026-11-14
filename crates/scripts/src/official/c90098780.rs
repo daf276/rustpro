@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 90098780;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DJINN];
 // In the Extra Deck, Xyz Summoned with two Level 3 monsters (Necrolancer the Time-lord, Rock Ogre Grotto #1), a Djinn Xyz
 // Monster (Melomelody) in the Graveyard to revive, and cards in the hand to attach.
 pub const SUPPORT: &[(u32, u16)] = &[

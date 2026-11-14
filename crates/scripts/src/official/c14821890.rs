@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 14821890;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SWORDSOUL];
 pub const LISTED_NAMES: &[u32] = &[TOKEN_SWORDSOUL];
 
 // Mystery Shell Dragon (a Wyrm) on the field and on the opponent's to destroy three cards, and Pot of Desires to banish this card

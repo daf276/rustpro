@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, MZONE};
 
 const ID: u32 = 94845588;
 
+pub const LISTED_SERIES: &[u16] = &[SET_AZAMINA, SET_SINFUL_SPOILS];
 // In the Graveyard, with Elzette (an Azamina monster) on the field to shuffle.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, GRAVE), (38648860, MZONE)];
 // No Sinful Spoils card is ported, so nothing is sent to the Graveyard for the Fusion Summon.

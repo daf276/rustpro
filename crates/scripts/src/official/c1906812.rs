@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 1906812;
+
+pub const LISTED_SERIES: &[u16] = &[SET_SPRINGANS];
+
 const KITT: u32 = 45484331;
 
 pub const LISTED_NAMES: &[u32] = &[CARD_ALBAZ];

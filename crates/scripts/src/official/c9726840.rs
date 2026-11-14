@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, SZONE};
 
 const ID: u32 = 9726840;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SKY_STRIKER_ACE];
 // In the hand with a Spell on the field to send (no monsters), Sky Striker Ace Link Monsters in the Extra Deck, and a DARK and
 // a LIGHT Sky Striker Ace in the GY for the ATK gain.
 pub const SUPPORT: &[(u32, u16)] = &[

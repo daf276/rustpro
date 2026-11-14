@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, MZONE};
 
 const ID: u32 = 89544521;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DESKBOT];
 // A copy on the field and two in the Extra Deck, Synchro Summoned with Deskbot 001 (a Level 1 Tuner) and two Normal Monsters (Level 4
 // and 5), with more Deskbot 001 in the Deck and on the field to Special Summon and destroy.
 pub const SUPPORT: &[(u32, u16)] = &[

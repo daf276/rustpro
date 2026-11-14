@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, SZONE};
 
 const ID: u32 = 5380979;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LABRYNTH];
 // Set and in the Graveyard, with Labrynth monsters (Arianna, Arias) in the Deck and Normal Traps (Mirror Force, Trap Hole) Set to
 // make a monster leave the field.
 pub const SUPPORT: &[(u32, u16)] = &[

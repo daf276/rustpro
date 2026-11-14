@@ -4,6 +4,7 @@ use crate::testing::{HAND, MZONE, OPPONENT};
 
 const ID: u32 = 20745268;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAGICAL_MUSKET];
 // In the hand to activate with Magical Musketeer Kidbrave on the field, and a monster of the opponent to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (5230799, MZONE), (24154052, MZONE | OPPONENT)];
 

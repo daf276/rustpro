@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 44686185;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SIX_SAMURAI];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // On the field and in the Graveyard with Legendary Six Samurai - Kageki to banish and to Special Summon, and the opponent's

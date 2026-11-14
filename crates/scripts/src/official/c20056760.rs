@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 20056760;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GRAYDLE];
 // In the hand and Graveyard to Special Summon, with Graydle Slime Jr. on the field to destroy and in the Graveyard to revive.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, GRAVE), (80250319, MZONE), (80250319, MZONE), (80250319, GRAVE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(0)];

@@ -4,6 +4,7 @@ use crate::testing::{EXTRA, GRAVE, MZONE, REMOVED};
 
 const ID: u32 = 67359907;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRAGON_RULER];
 // In the Extra Deck, Xyz Summoned with two Rank 7 Xyz Monsters (Chasma, Eclipse), with the other Level 7 Dragon Rulers in the Graveyard and banished
 // to attach.
 pub const SUPPORT: &[(u32, u16)] = &[

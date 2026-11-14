@@ -4,6 +4,7 @@ use crate::testing::{EXTRA, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 36953371;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPERHEAVY_SAMURAI];
 // In the Extra Deck, Synchro Summoned from Superheavy Samurai Drum (a Level 1 Tuner) and Swordmaster Musashi (Level 5), with
 // Spells/Traps on the opponent's side to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[

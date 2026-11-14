@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 86516889;
+
+pub const LISTED_SERIES: &[u16] = &[SET_GHOSTRICK];
+
 const GHOSTRICK_JIANGSHI: u32 = 80885284;
 
 // Set in the Spell and Trap Zone with face-down Ghostrick monsters to flip and the opponent's monsters to turn face-down.

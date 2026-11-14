@@ -4,6 +4,7 @@ use crate::testing::{DECK, HAND};
 
 const ID: u32 = 94886282;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LIGHTSWORN];
 // Copies in the hand, and Lightsworn monsters of Level 4 or lower (Lyla, Wulf, Jain) in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

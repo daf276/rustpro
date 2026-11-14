@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, MZONE};
 
 const ID: u32 = 53577438;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MATHMECH];
 // On the field to Tribute itself, with Mathmech Sigma and Diameter in the Deck to Special Summon, and Sigma, Leotron and Geomathmech
 // Magma (Synchro Summoned into the Extra Monster Zone) for the second effect.
 pub const SUPPORT: &[(u32, u16)] = &[

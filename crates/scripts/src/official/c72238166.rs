@@ -5,6 +5,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 72238166;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RYZEAL];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand and on the field, Special Summoned with an Xyz Monster on the field or in the Graveyard, with Ryzeal monsters

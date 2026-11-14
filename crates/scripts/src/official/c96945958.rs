@@ -4,6 +4,7 @@ use crate::testing::{GRAVE, HAND, MZONE};
 
 const ID: u32 = 96945958;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SPEEDROID];
 // Speedroid Terrortop and Speedroid Taketomborg (WIND monsters) on the field and Speedroid Terrortop in the GY to banish.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

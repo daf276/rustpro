@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 75003700;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRACOTAIL];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In hand to Normal Summon and as Fusion Material with Dracotail Faimena for Dracotail Arthalion, a Dracotail monster in the Deck

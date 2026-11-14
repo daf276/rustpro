@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 37414347;
+
+pub const LISTED_SERIES: &[u16] = &[SET_FA];
+
 const COUNTER_FA: u16 = 0x4a;
 
 struct Procedure;

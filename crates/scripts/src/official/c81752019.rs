@@ -4,6 +4,7 @@ use crate::testing::{HAND, OPPONENT};
 
 const ID: u32 = 81752019;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FLOWER_CARDIAN];
 // Three in the hand to Normal Summon, and Raigeki in the opponent's hand to destroy them.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, HAND), (12580477, HAND | OPPONENT)];
 

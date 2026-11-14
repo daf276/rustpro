@@ -4,6 +4,7 @@ use crate::testing::{HAND, MZONE};
 
 const ID: u32 = 16725505;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SPEEDROID];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Speedroid Terrortop on the field to target.

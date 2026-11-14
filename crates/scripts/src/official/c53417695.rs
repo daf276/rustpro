@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 53417695;
 
+pub const LISTED_SERIES: &[u16] = &[SET_UNCHAINED];
 // Set copies destroyed by the opponent's Mystical Space Typhoon, with Unchained Twins - Aruha on the field and Sarama in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

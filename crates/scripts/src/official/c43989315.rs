@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 43989315;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ALEISTER, SET_INVOKED];
 pub const MATERIAL_SETCODE: &[u16] = &[SET_ALEISTER];
 
 struct Materials;

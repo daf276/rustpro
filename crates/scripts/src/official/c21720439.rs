@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 21720439;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ARTMAGE];
+
 const ACROPOLIS: u32 = 74733322;
 
 // In hand to activate against monsters of the opponent, or to discard as the cost of Acropolis (in hand to activate), with Artmage

@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, OPPONENT};
 
 const ID: u32 = 80208225;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRACOTAIL];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // A monster and a Spell/Trap in the opponent's Graveyard to banish, and a Dracotail monster in the Graveyard to place on the

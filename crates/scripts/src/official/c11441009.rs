@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 11441009;
+
+pub const LISTED_SERIES: &[u16] = &[SET_PUNK];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Extra Deck, Xyz Summoned with two Level 8 monsters (Tri-Horned Dragon, Gogiga Gagagigo), with a Level 3 Psychic in the

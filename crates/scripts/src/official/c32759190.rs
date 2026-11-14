@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 32759190;
 
+pub const LISTED_SERIES: &[u16] = &[SET_HECAHANDS];
 // In the hand and on the field, with Yad'al-Hecahands in the Deck to add and in the Graveyard to Set, and Ib'al-Hecahands in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

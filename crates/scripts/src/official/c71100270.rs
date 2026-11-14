@@ -5,6 +5,7 @@ use engine::constants::MSG_SELECT_EFFECTYN;
 
 const ID: u32 = 71100270;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GOBLIN];
 // The destruction replacement is no chain link and moves no card; its prompt is the MSG_SELECT_EFFECTYN.
 // On the field with materials attached by Xyz Import from the opponent's Sangan, and Set Spells and Traps to attach; a copy in the
 // Graveyard to summon with Goblin Bikers Gone Bonkers to attach, and in the Extra Deck with two Frostosaurus, Level 6.

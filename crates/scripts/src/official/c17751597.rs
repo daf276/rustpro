@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 17751597;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BRANDED];
 pub const LISTED_NAMES: &[u32] = &[CARD_ALBAZ, ID];
 
 // Albion the Branded Dragon on the field and in the Graveyard (Fusion Monsters listing Albaz), Branded Fusion in the Graveyard to

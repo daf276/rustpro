@@ -4,6 +4,7 @@ use crate::testing::{GRAVE, HAND};
 
 const ID: u32 = 14025912;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MATHMECH];
 // In hand with Mathmech Sigma in the Graveyard to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (27182739, GRAVE), (27182739, GRAVE)];
 

@@ -4,6 +4,7 @@ use crate::testing::{Check, MZONE, REMOVED};
 
 const ID: u32 = 79783880;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SHIRANUI];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // On the field with Shiranui Squire and Zombie Normal Monsters banished, to Special Summon from.

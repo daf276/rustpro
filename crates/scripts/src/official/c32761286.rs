@@ -5,6 +5,7 @@ use crate::testing::{Check, GRAVE, MZONE};
 
 const ID: u32 = 32761286;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SCRAP];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // On the field to attack directly, with Scrap Synchron and Scrap Recycler in the Graveyard to add.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE), (16449363, GRAVE), (4334811, GRAVE), (4334811, GRAVE)];

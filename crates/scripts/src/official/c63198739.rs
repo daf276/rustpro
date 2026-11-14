@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, MZONE};
 
 const ID: u32 = 63198739;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PRIMITE];
 // On the field and in the GY, with Mystical Elf (Normal Monster) in the Deck and the GY. No Normal Monster or ported card is a
 // "Primite" Spell/Trap, so the Set trigger never resolves.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, GRAVE), (15025844, DECK), (15025844, GRAVE)];

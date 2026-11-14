@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 7628844;
+
+pub const LISTED_SERIES: &[u16] = &[SET_SHARK_DRAKE];
 pub const XYZ_NUMBER: u32 = 32;
 
 // In the Extra Deck, Xyz Summoned with four Level 5 monsters, or over Number C32: Shark Drake Veiss by discarding a Spell.

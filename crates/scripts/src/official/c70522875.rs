@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 70522875;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRAGUNITY];
 // On the field, with Dragunity Knight - Luin in the Extra Deck and the GY to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (12496261, EXTRA), (12496261, GRAVE)];
 pub const CHECKS: &[Check] = &[

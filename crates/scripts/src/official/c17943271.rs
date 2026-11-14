@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 17943271;
+
+pub const LISTED_SERIES: &[u16] = &[SET_MEMENTO];
+
 const MEMENTOTLAN_ANGWITCH: u32 = 54550967;
 const MEMENTOTLAN_TATSUNOOTOSHIGO: u32 = 81677154;
 const MEMENTOTLAN_BONE_PARTY: u32 = 80722024;

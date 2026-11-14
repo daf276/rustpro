@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 26285557;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GOUKI];
 // Gouki Guts on the field to destroy and in the Graveyard to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (7540107, MZONE), (7540107, GRAVE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(0)];

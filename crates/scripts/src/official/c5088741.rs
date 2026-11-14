@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 5088741;
 
+pub const LISTED_SERIES: &[u16] = &[SET_AI];
 // In the Extra Deck, Xyz Summoned with Level 4 Normal Monsters (Overdrive, Mechanicalchaser), with Paladin of Storm Dragon (Cyberse Ritual
 // Monster) in the Deck to add and in the hand to Ritual Summon. No A.I. Trap is ported, so its search as a Link Material is only reported.
 pub const SUPPORT: &[(u32, u16)] = &[

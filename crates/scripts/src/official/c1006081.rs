@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 1006081;
 
+pub const LISTED_SERIES: &[u16] = &[SET_JUNK];
 // Junk Synchron on the field to raise or lower the Level of.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (63977008, MZONE), (63977008, MZONE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 23856331;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SACRED_BEAST];
 // A copy in the hand to reveal and one on the field, and the Sacred Beast Trap to search in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, HAND), (86132414, DECK), (86132414, DECK)];
 pub const CHECKS: &[Check] = &[

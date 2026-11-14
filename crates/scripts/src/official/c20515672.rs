@@ -5,6 +5,7 @@ use crate::testing::{DECK, EXTRA, MZONE, OPPONENT, REMOVED};
 
 const ID: u32 = 20515672;
 
+pub const LISTED_SERIES: &[u16] = &[SET_S_FORCE];
 // Link Summoned from S-Force Edge Razor, with another one on the field and one banished for the Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

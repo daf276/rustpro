@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 19535693;
+
+pub const LISTED_SERIES: &[u16] = &[SET_PUNK];
+
 const FOXY_TUNE: u32 = 55920742;
 
 // On the field to search, with Foxy Tune in the Deck to search and on the field to boost, and Raigeki to send it to the Graveyard.

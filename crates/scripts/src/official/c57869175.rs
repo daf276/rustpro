@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 57869175;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FORTUNE_LADY];
 // Copies on the field, with Sealmaster Meisei, a Spellcaster, in the hand and Graveyard to banish.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE), (2468169, HAND), (2468169, HAND), (2468169, GRAVE)];
 pub const CHECKS: &[Check] = &[

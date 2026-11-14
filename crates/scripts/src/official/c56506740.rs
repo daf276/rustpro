@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, SZONE};
 
 const ID: u32 = 56506740;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PRIMITE];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Primite Dragon Ether Beryl to search, a copy on the field for its Special Summon effect, and Mystical Elf (Normal

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 17725109;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLUE_EYES];
 pub const LISTED_NAMES: &[u32] = &[CARD_BLUEEYES_W_DRAGON];
 
 struct Params;

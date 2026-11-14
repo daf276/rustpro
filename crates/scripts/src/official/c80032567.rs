@@ -6,6 +6,7 @@ use engine::constants::MSG_ATTACK;
 
 const ID: u32 = 80032567;
 
+pub const LISTED_SERIES: &[u16] = &[SET_JURRAC];
 // In the Extra Deck, Synchro Summoned with Jurrac Megalo (a Level 1 Tuner) and Frostosaurus (a Level 6 Dinosaur), with Jurrac
 // monsters in the Graveyard for the ATK.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 73320394;
 
+pub const ROLL_DICE: bool = true;
 // In the hand, the Graveyard and on the field, with Level 8 Fiends in the Deck to search, Kozaky on the field to be destroyed, and
 // Elfnote Lucina on the opponent's field to destroy it by battle.
 pub const SUPPORT: &[(u32, u16)] = &[
@@ -28,7 +29,6 @@ pub const CHECKS: &[Check] = &[
     Check::ResolvesEffect(aux::stringid(ID, 2)),
 ];
 
-// s.roll_dice, which only cards that are not ported read, is left out.
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e1 = duel.create_effect(c);
     e1.set_description(duel, aux::stringid(ID, 0));

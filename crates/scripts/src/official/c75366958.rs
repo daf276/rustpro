@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND};
 
 const ID: u32 = 75366958;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DINOWRESTLER];
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND)];
 pub const CHECKS: &[Check] = &[Check::SpecialSummoned];
 

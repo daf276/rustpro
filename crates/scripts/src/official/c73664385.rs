@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{HAND, MZONE};
 
 const ID: u32 = 73664385;
+
+pub const LISTED_SERIES: &[u16] = &[SET_MAGISTUS, SET_WITCHCRAFTER];
+
 // The field of its chain data table.
 const CHOICE: u8 = 0;
 

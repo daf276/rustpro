@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 82385847;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DINOWRESTLER];
 // In the hand and on the field, with monsters on the opponent's side to outnumber us and to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

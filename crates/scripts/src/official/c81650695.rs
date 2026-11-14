@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 81650695;
+
+pub const LISTED_SERIES: &[u16] = &[SET_DOOMZ];
+
 const JUPITER: u32 = 68231287;
 
 pub const LISTED_NAMES: &[u32] = &[JUPITER];

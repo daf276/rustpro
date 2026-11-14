@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 53334641;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GHOSTRICK];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 struct Procedure;

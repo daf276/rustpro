@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, MZONE, OPPONENT, PZONE};
 
 const ID: u32 = 18897163;
+
+pub const LISTED_SERIES: &[u16] = &[SET_DDD, SET_DD];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Two copies in the Extra Deck, Xyz Summoned with two Level 8 D/D/D Synchro Monsters (Cursed King Siegfried); a copy and D/D Orthros

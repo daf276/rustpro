@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, HAND};
 
 const ID: u32 = 5125629;
+
+pub const LISTED_SERIES: &[u16] = &[SET_MALEFIC];
+
 const MALEFIC_WORLD: u32 = 27564031;
 
 pub const LISTED_NAMES: &[u32] = &[MALEFIC_WORLD];

@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 63288573;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SKY_STRIKER_ACE, SET_SKY_STRIKER];
+
 struct Procedure;
 
 impl LinkProcedure for Procedure {

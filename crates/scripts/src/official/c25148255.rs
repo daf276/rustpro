@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 25148255;
 
+pub const LISTED_SERIES: &[u16] = &[SET_JUNK];
 // Copies on the field with Junk Meister (Level 4) in the Graveyard and Drill Warrior in the Extra Deck, and Kojikocy (a
 // Level 4 Normal Monster) in the hand to discard.
 pub const SUPPORT: &[(u32, u16)] = &[

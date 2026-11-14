@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 13243124;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ELEMENTAL_HERO];
+
 struct Materials;
 
 impl FusionMix for Materials {

@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 90875418;
+
+pub const LISTED_SERIES: &[u16] = &[SET_POWER_PATRON, SET_THEOREALIZE, SET_ARS_MAGNA, SET_DIACTORUS];
+
 const CHOICE: u8 = 0;
 
 // Artmage Power Patron as the "Power Patron" card on the field, Theorealize cards in the Deck to add, an Ars Magna monster in hand to

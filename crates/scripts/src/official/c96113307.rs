@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, MZONE, OPPONENT, REMOVED};
 
 const ID: u32 = 96113307;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RITUAL_BEAST];
+
 struct Procedure;
 
 impl LinkProcedure for Procedure {

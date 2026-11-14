@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, SZONE};
 
 const ID: u32 = 34950192;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SHADDOLL];
 // In the hand to activate and on the field; El Shaddoll Meshahrail in the Extra Deck to summon with Rulkallos, a Fusion Monster of
 // another Attribute, on the field to Tribute and in the Extra Deck to send.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, SZONE), (32467459, EXTRA), (84330567, EXTRA), (84330567, MZONE)];

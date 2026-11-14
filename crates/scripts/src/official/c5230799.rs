@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 5230799;
+
+pub const LISTED_SERIES: &[u16] = &[SET_MAGICAL_MUSKET];
+
 const DESPERADO: u32 = 20745268;
 
 // On the field in several columns, with Magical Musket - Desperado in the hand to activate in one of them, and cards in the Deck to draw.

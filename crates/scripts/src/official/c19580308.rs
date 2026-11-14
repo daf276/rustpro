@@ -4,6 +4,7 @@ use crate::testing::{GRAVE, HAND, MZONE, SZONE};
 
 const ID: u32 = 19580308;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DD, SET_DARK_CONTRACT];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // In the hand and the Graveyard, with D/D Lance Soldier to send as the cost and Dark Contract with the Witch on the field.
 pub const SUPPORT: &[(u32, u16)] = &[

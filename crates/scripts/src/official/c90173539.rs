@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 90173539;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DINOWRESTLER];
 // In the hand to activate and in the Graveyard to banish, with Dinowrestlers on the field and in the Deck, and more monsters of the
 // opponent's than the player's.
 pub const SUPPORT: &[(u32, u16)] = &[

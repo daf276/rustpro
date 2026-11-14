@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 43863925;
 
+pub const LISTED_SERIES: &[u16] = &[SET_EXOSISTER];
 pub const LISTED_NAMES: &[u32] = &[16474916];
 
 // On the field with Exosister Elis in the hand to summon and on the field, and the opponent's Monster Reborn to take a monster out of a

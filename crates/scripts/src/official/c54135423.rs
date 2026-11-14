@@ -4,6 +4,7 @@ use crate::testing::{GRAVE, HAND, MZONE};
 
 const ID: u32 = 54135423;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FLOWER_CARDIAN];
 // In the hand and on the field with Flower Cardian Pine (Level 1) on the field to allow the Special Summon and in the
 // Graveyard to shuffle.
 pub const SUPPORT: &[(u32, u16)] = &[

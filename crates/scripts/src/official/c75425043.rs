@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, HAND, OPPONENT};
 
 const ID: u32 = 75425043;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PSY_FRAME];
 pub const LISTED_NAMES: &[u32] = &[CARD_PSYFRAME_DRIVER];
 
 // In the hand with PSY-Frame Driver and PSY-Framegear Gamma in the Deck, against monsters the opponent Summons.

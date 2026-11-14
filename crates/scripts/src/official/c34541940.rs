@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 34541940;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARTMAGE];
 // In the hand and on the field, with Artmage Graflare and Mystical Elf on the field for three Races and a monster of the opponent's
 // to negate.
 pub const SUPPORT: &[(u32, u16)] = &[

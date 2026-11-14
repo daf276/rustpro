@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, GRAVE, HAND};
 
 const ID: u32 = 82997779;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARCHFIEND];
+
 struct Params;
 
 impl RitualParams for Params {

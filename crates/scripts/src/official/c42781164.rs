@@ -4,6 +4,7 @@ use crate::testing::{EXTRA, HAND, MZONE};
 
 const ID: u32 = 42781164;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KEWL_TUNE];
 // Kewl Tune Mix on the field and one in the hand.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, EXTRA), (16509007, MZONE), (16509007, HAND)];
 

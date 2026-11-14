@@ -5,6 +5,7 @@ use engine::constants::MSG_CHAIN_NEGATED;
 
 const ID: u32 = 703897;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ORCUST];
 // Galatea on the field to enable the negation, a copy in the Graveyard, and Girsu (a DARK Machine) in the Deck and banished to add.
 pub const SUPPORT: &[(u32, u16)] = &[
     (30741503, MZONE),

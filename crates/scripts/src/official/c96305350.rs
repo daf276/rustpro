@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 96305350;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GOLD_PRIDE];
 // In the hand and on the field, with Chariot Carrie in the Extra Deck (Xyz Summoned with Level 3 Chamberlain of the Six Samurai) to boost,
 // Gold Pride - Leon in the Graveyard to banish, and the opponent's Raigeki to send it to the Graveyard. No Gold Pride Trap is ported, so
 // the search is not reached.

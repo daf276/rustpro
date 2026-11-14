@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, OPPONENT};
 
 const ID: u32 = 37694547;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ANCIENT_GEAR];
 // In the hand to activate, with Ancient Gear Box in the Deck to Special Summon, and Mystical Space Typhoon in the opponent's hand to
 // destroy it.
 // The Tribute reduction is never reached: the other Ancient Gear monsters are unported, so none is Tribute Summoned.

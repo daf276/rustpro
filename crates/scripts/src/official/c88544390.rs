@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, GRAVE, HAND};
 
 const ID: u32 = 88544390;
+
+pub const LISTED_SERIES: &[u16] = &[SET_THE_PHANTOM_KNIGHTS];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Doomed Soleret, Decayed Cloak and Silent Boots, "The Phantom Knights" monsters that Special Summon themselves from the hand.

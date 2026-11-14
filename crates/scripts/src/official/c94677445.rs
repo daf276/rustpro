@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 94677445;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WORLD_LEGACY, SET_WORLD_CHALICE];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Extra Deck, Synchro Summoned with Chosen by the World Chalice (a Normal Monster treated as the Tuner) and Psychic Kappa, with

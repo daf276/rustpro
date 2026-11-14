@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 97750534;
 
+pub const LISTED_SERIES: &[u16] = &[SET_THE_AGENT];
 pub const LISTED_NAMES: &[u32] = &[CARD_SANCTUARY_SKY];
 // In the hand with The Sanctuary in the Sky to Special Summon it, and on the field with The Agent of Creation - Venus and Master Hyperion in the Deck to send.
 pub const SUPPORT: &[(u32, u16)] = &[

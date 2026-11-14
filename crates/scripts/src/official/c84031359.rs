@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 84031359;
+
+pub const LISTED_SERIES: &[u16] = &[SET_DARKLORD, SET_FORBIDDEN];
+
 const TOKEN_DARKLORD: u32 = ID + 1;
 
 pub const LISTED_NAMES: &[u32] = &[ID, TOKEN_DARKLORD];

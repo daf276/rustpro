@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND};
 
 const ID: u32 = 38129297;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ROKKET];
 // Fighting Flame Dragon is Fusion Summoned and Borreload Riot Dragon Ritual Summoned, by banishing Rokket Loader and Rokket Caliber
 // (Dragons) and Burstinatrix (FIRE Warrior) from the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 6556909;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RED_EYES];
 pub const LISTED_NAMES: &[u32] = &[CARD_REDEYES_B_DRAGON, ID];
 
 // In the hand and on the field, with Red-Eyes Black Dragons in the Deck to Special Summon.

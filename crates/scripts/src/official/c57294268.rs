@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 57294268;
 
+pub const LISTED_SERIES: &[u16] = &[SET_INVOKED];
 pub const LISTED_NAMES: &[u32] = &[CARD_INVOCATION];
 
 // Two in hand to Special Summon one and Normal Summon the other, Invoked Sorath on the field to give ATK to, Invoked

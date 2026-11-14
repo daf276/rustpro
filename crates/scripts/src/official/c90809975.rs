@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 90809975;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FROG];
+
 struct Procedure;
 
 impl XyzProcedure for Procedure {

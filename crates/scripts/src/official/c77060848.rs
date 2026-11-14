@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 77060848;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NORDIC];
 // Normal Summoned (Level 5) by tributing a copy, with Valkyrie of the Nordic Ascendant in the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, MZONE), (40844552, GRAVE), (40844552, GRAVE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

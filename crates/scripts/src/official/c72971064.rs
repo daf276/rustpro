@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 72971064;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LYRILUSC];
 // In the Extra Deck, Xyz Summoned with Level 1 Normal Monsters, with a Lyrilusc in the Graveyard and the opponent's Dark Hole to send it there.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 3422200;
+
+pub const LISTED_SERIES: &[u16] = &[SET_CRYSTRON];
+
 const CRYSTRON_SULFADOR: u32 = 25865565;
 const CRYSTRON_SMIGER: u32 = 83443619;
 const DARK_HOLE: u32 = 53129443;

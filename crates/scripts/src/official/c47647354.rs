@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 47647354;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FUR_HIRE];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // In the hand with a second Fur Hire to Special Summon, on the field with one to draw when the opponent's Pot of Greed does.
 pub const SUPPORT: &[(u32, u16)] = &[

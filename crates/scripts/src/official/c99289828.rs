@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 99289828;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WHITE_FOREST];
 // In the hand to search with and as the cost of Astellar of the White Forest on the field, with Silvy of the White Forest on the
 // field and in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 86331741;
 
+pub const LISTED_SERIES: &[u16] = &[SET_UTOPIC_FUTURE];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Extra Deck, Xyz Summoned with two Level 4 monsters (Hyosube, Water Omotics), and Xyz Monsters (Gagaga Cowboy, Gagagaga

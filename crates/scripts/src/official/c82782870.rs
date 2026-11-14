@@ -5,6 +5,9 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 use engine::constants::MSG_SELECT_EFFECTYN;
 
 const ID: u32 = 82782870;
+
+pub const LISTED_SERIES: &[u16] = &[SET_MITSURUGI];
+
 const MITSURUGI_ARAMASA: u32 = 40543231;
 
 pub const LISTED_NAMES: &[u32] = &[ID];

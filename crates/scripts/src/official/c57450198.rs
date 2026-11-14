@@ -4,6 +4,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 57450198;
+
+pub const LISTED_SERIES: &[u16] = &[SET_SUPER_QUANTUM];
+
 const WHITE_LAYER: u32 = 73422829;
 
 pub const LISTED_NAMES: &[u32] = &[WHITE_LAYER];

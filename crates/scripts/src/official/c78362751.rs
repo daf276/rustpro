@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 78362751;
+
+pub const LISTED_SERIES: &[u16] = &[SET_GUNKAN];
 pub const LISTED_NAMES: &[u32] = &[ID, CARD_SUSHIP_SHARI];
 
 // One in the hand with Gunkan Suship Shari on the field, one on the field, and Ikura and Uni in the hand to Special Summon, with Shari

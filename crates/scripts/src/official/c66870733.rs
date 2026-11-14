@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 66870733;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAYAKASHI];
 // In the Extra Deck, Link Summoned with Yuki-Musume (a Mayakashi) on the field.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 83232904;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CLOWN_CREW];
 // In the hand and the Graveyard, with Clown Crew monsters in the Deck and the Extra Deck to Special Summon and a monster on the
 // field to Tribute for the Graveyard copy: Mystical Elf.
 pub const SUPPORT: &[(u32, u16)] = &[

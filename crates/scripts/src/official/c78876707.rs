@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 78876707;
+
+pub const LISTED_SERIES: &[u16] = &[SET_NOBLE_KNIGHT];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Extra Deck, Xyz Summoned with Level 4 Noble Knights (Noble Knight Artorigus, Shield-Bearer), with the opponent's cards to return

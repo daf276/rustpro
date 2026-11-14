@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 52558805;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DJINN];
 // In the Extra Deck, Xyz Summoned with two Level 3 monsters (Necrolancer the Time-lord, Rock Ogre Grotto #1), and a copy in
 // the opponent's Extra Deck and monsters, whose Xyz Material it detaches.
 pub const SUPPORT: &[(u32, u16)] = &[

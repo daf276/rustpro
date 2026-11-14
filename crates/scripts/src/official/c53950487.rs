@@ -5,6 +5,7 @@ use crate::testing::{Check, MZONE, OPPONENT};
 
 const ID: u32 = 53950487;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BATTLEWASP];
 // Copies on the field to attack the opponent's Dark Magician, Summoned Skull, Black Luster Soldier and Steam Knight - Hamburk
 // (ATK 2500 or more) or Sangan (weaker, for the battle damage).
 pub const SUPPORT: &[(u32, u16)] = &[

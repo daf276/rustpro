@@ -3,6 +3,7 @@ use crate::prelude::*;
 
 const ID: u32 = 74405783;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ECCLESIA];
 pub const LISTED_NAMES: &[u32] = &[CARD_ALBAZ];
 
 struct Procedure;

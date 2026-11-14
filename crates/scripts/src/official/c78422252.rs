@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 78422252;
 
+pub const LISTED_SERIES: &[u16] = &[SET_X_SABER];
 // On the field with X-Saber monsters (Emmersblade) in the Graveyard, and attackers (Alexandrite Dragon) and low-DEF monsters
 // (Key Mace) of the opponent's.
 pub const SUPPORT: &[(u32, u16)] = &[

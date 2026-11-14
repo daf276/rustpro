@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 34433770;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SKY_STRIKER_ACE, SET_SKY_STRIKER];
 // In the hand and the GY, with Sky Striker Ace monsters and Spells in the GY to shuffle and Link Monsters in the Extra Deck.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

@@ -5,6 +5,7 @@ use engine::constants::MSG_SELECT_EFFECTYN;
 
 const ID: u32 = 29981921;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SIX_SAMURAI];
 // In the Extra Deck, Synchro Summoned with Tactical Trainer of the Six Samurai (a Warrior Tuner) and Legendary Six Samurai - Kageki,
 // with the opponent's Raigeki to negate and destroy.
 pub const SUPPORT: &[(u32, u16)] = &[

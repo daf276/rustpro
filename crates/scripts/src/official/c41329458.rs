@@ -5,6 +5,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 41329458;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MECHA_PHANTOM_BEAST];
 pub const LISTED_NAMES: &[u32] = &[TOKEN_MECHA_PHANTOM_BEAST];
 
 // Copies in the hand and on the field, with Mecha Phantom Beast Warbluran on the field to release and in the hand to discard.

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, REMOVED};
 
 const ID: u32 = 33334269;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DD, SET_DARK_CONTRACT];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // In the hand and on the field to be sent to the Graveyard by D/D Lamia's cost, with D/D Lance Soldier and Dark Contract
 // with the Witch in the Graveyard and the Deck, and banished D/D Lance Soldier to return.

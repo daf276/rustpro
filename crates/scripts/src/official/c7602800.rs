@@ -5,6 +5,7 @@ use engine::constants::MSG_SELECT_EFFECTYN;
 
 const ID: u32 = 7602800;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 pub const COUNTER_LIST: &[u16] = &[COUNTER_FEATHER];
 
 pub const LISTED_NAMES: &[u32] = &[CARD_BLACK_WINGED_DRAGON];

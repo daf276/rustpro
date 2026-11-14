@@ -6,6 +6,7 @@ use super::c26236560::{register_fiend_lock, spcon2, spop2, sptg2};
 
 const ID: u32 = 53624265;
 
+pub const LISTED_SERIES: &[u16] = &[SET_UNCHAINED];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // On the field, with Unchained Twins - Aruha in the hand to destroy it and Aruha and Sarama in the Deck to summon.

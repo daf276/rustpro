@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 20448151;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CLOWN_CREW];
+
 struct Params;
 
 impl RitualParams for Params {

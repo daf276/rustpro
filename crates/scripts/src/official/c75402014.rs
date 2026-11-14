@@ -3,9 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 75402014;
-pub const XYZ_NUMBER: u32 = 39;
 
-pub const LISTED_NAMES: &[u32] = &[56840427];
+pub const LISTED_SERIES: &[u16] = &[SET_ZW];
+pub const XYZ_NUMBER: u32 = 39;
 
 // On the field with ZW - Ultimate Shield in the Deck to equip when it is attacked by Sangan, with Xyz Import to attach Sangan, which it detaches to negate.
 pub const SUPPORT: &[(u32, u16)] = &[

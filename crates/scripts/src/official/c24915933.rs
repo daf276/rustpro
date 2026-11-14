@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 24915933;
+
+pub const LISTED_SERIES: &[u16] = &[SET_DOGMATIKA, SET_DESPIA];
+
 const BLAZING_CARTESIA: u32 = 95515789;
 
 struct Materials;

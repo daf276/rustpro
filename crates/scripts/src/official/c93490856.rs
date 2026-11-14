@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 93490856;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SWORDSOUL];
 pub const LISTED_NAMES: &[u32] = &[TOKEN_SWORDSOUL];
 
 // A second copy and Mystery Shell Dragon (a Wyrm) in the hand for the discard, and Chengying in the Extra Deck to Synchro Summon with it.

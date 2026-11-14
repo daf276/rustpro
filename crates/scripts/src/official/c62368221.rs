@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT, REMOVED, SZONE};
 
 const ID: u32 = 62368221;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARS_MAGNA, SET_POWER_PATRON];
 // A second copy banished to be Special Summoned when Purification Power Patron is Link Summoned from the Extra Deck with Dark Magician
 // (Normal Monsters), Ars Magna Spells in the Deck to add, and Mystical Space Typhoon Set by the opponent to banish.
 pub const SUPPORT: &[(u32, u16)] = &[

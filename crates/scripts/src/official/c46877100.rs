@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 46877100;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SCARECLAW];
 // In the hand, to Special Summon next to a copy on the field.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, MZONE)];
 pub const CHECKS: &[Check] = &[Check::SpecialSummoned];

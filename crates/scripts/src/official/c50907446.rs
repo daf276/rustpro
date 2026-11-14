@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, EXTRA, HAND};
 
 const ID: u32 = 50907446;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SHADDOLL];
+
 struct Materials;
 
 impl FusionMix for Materials {

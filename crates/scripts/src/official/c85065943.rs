@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 85065943;
 
+pub const LISTED_SERIES: &[u16] = &[SET_AZAMINA];
+
 struct Materials;
 
 impl FusionMix for Materials {

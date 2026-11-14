@@ -6,6 +6,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 2333365;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NORDIC];
 // On the field with Valkyrie of the Nordic Ascendant, protected from Elfnote Lucina's attacks, and in the hand as a
 // Level 4 material with Garmr for Fabled Levilazebul, with Mara of the Nordic Alfar on the field.
 pub const SUPPORT: &[(u32, u16)] = &[

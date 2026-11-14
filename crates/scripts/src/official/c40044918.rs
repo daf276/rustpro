@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 40044918;
 
+pub const LISTED_SERIES: &[u16] = &[SET_HERO];
 // In the hand with Elemental HERO Sparkman (a Normal Monster) on the field and in the Deck, and Spells/Traps on the field.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

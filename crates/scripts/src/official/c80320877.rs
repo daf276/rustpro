@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 80320877;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DOOMZ];
 // Set, to equip DoomZ Break - Diactorus (a DoomZ Xyz) on the field, with DoomZ V Five - Amalthe in the Deck to equip and an
 // opponent's Mystical Space Typhoon to destroy it.
 pub const SUPPORT: &[(u32, u16)] = &[

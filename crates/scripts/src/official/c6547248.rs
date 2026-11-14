@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, REMOVED, SZONE};
 
 const ID: u32 = 6547248;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CLOWN_CREW];
 // Set and in the hand, with three Clown Crew cards in the Graveyard and banishment to shuffle, and Clown Crew Biancaviso in the
 // hand to Tribute Summon by Tributing the Clown Crew Flair on the field, destroying the Set card.
 pub const SUPPORT: &[(u32, u16)] = &[

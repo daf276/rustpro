@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 93453053;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MALISS];
 // In the hand, Graveyard and Deck, with Maliss <P> March Hare on the field and Dormouse in the Deck, Sangan on the opponent's field to negate,
 // and Maliss in Underground in the hand to banish this card from the Graveyard for the Spell in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 2530830;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GALAXY_EYES];
 pub const LISTED_NAMES: &[u32] = &[18963306];
 
 // Xyz Summoned from the Extra Deck on a Galaxy-Eyes Cipher Dragon, destroyed by the opponent's Raigeki and Dark Hole to Special Summon another

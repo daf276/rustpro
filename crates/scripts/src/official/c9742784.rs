@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 9742784;
 
+pub const LISTED_SERIES: &[u16] = &[SET_JUNK];
 // On the field as the Tuner of a Synchro Summon of Formula Synchron with Key Mace, a Level 1 Normal Monster, and in the Graveyard to
 // revive, with Junk Synchron in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[

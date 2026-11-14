@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 65892585;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GOLD_PRIDE];
 pub const LISTED_NAMES: &[u32] = &[96305350];
 // Xyz Summoned from the Extra Deck with Level 3 monsters (Chamberlain of the Six Samurai), Gold Pride - That Came Out of Nowhere in the
 // Deck to add, and Captain Carrie in the Deck and Graveyard to Special Summon. No Gold Pride monster is in the Deck to send.

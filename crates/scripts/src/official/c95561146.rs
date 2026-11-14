@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 95561146;
 
+pub const LISTED_SERIES: &[u16] = &[SET_APOPHIS];
 pub const LISTED_NAMES: &[u32] = &[ID, 28649820];
 // Set and in the hand, with Embodiment of Apophis and Apophis the Swamp Deity in the Deck to search and Set, and a Raigeki
 // in the opponent's hand to destroy it as a monster.

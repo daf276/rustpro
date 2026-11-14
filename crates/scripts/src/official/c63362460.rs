@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 63362460;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DESTINY_HERO];
 // On the field to attack, with face-up Spells to destroy on the opponent's field (Fusion Gate, Elfnotes: Welcome Home); in the
 // Graveyard with a second copy to banish.
 pub const SUPPORT: &[(u32, u16)] = &[

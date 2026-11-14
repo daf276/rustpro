@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 94365540;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TINDANGLE];
 // On the field and in the hand beside Tindangle Angel, with another in the Deck and the opponent's Gaia Saber (a Link Monster) whose
 // linked zones the opponent summons into.
 pub const SUPPORT: &[(u32, u16)] = &[

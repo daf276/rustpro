@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, PZONE};
 
 const ID: u32 = 73941492;
+
+pub const LISTED_SERIES: &[u16] = &[SET_MAGICIAN];
+
 const STARGAZER_MAGICIAN: u32 = 94415058;
 
 pub const LISTED_NAMES: &[u32] = &[ID];

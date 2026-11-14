@@ -4,6 +4,7 @@ use crate::testing::{GRAVE, HAND, MZONE};
 
 const ID: u32 = 21576077;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRYTRON];
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, GRAVE), (1174075, GRAVE), (1174075, MZONE)];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {

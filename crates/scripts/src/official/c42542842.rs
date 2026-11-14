@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 42542842;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAYAKASHI];
 // In the Graveyard with Tsukahagi and Yuki-Musume (Mayakashi) on the field to Link Summon Yuki-Onna, the Ice Mayakashi.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, GRAVE),

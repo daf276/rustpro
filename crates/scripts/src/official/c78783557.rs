@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND};
 
 const ID: u32 = 78783557;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ASHENED];
 // Fusion Gate to destroy, and Dark Hole for the Graveyard effect (the Ashened Traps to search are not ported).
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (33550694, 0), (33550694, 0), (53129443, HAND)];
 pub const CHECKS: &[Check] = &[

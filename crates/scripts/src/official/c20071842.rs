@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 20071842;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ROKKET];
+
 const BORRELOAD_RIOT_DRAGON: u32 = 7987191;
 
 pub const LISTED_NAMES: &[u32] = &[BORRELOAD_RIOT_DRAGON];

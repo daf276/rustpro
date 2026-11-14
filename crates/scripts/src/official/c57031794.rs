@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 57031794;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPER_QUANTUM];
 pub const LISTED_NAMES: &[u32] = &[59975920];
 
 // In the Extra Deck, Xyz Summoned with two Level 5 monsters (Leogun, Togex), and Super Quantum Red Layer and Green Layer in

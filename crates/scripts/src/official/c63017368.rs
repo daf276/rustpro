@@ -6,6 +6,7 @@ use engine::constants::MSG_SELECT_EFFECTYN;
 
 const ID: u32 = 63017368;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MILLENNIUM];
 // In the hand to activate with Millennium Shield in the hand and Deck to place, and Sengenjin on the field for Dark Hole to destroy.
 // The destruction replacement is no chain link and moves no card; its prompt is the MSG_SELECT_EFFECTYN.
 pub const SUPPORT: &[(u32, u16)] = &[

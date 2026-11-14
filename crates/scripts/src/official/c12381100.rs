@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 12381100;
+
+pub const LISTED_SERIES: &[u16] = &[SET_BLUE_EYES, SET_CHAOS];
+
 const BLUE_EYES_ULTIMATE_DRAGON: u32 = 23995346;
 // s.type_list[tp], the card types already negated this turn, at this key plus tp.
 const TYPE_LIST: u64 = (ID as u64) << 16;

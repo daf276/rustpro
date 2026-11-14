@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 83445539;
+
+pub const LISTED_SERIES: &[u16] = &[SET_RESONATOR];
 pub const LISTED_NAMES: &[u32] = &[CARD_RED_DRAGON_ARCHFIEND];
 
 // In the hand with Red Dragon Archfiend in the Extra Deck to reveal, and on the field with Tuners to change the Level of.

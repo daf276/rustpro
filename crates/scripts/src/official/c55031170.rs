@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND};
 
 const ID: u32 = 55031170;
 
+pub const LISTED_SERIES: &[u16] = &[SET_K9];
 // In the hand, with K9-66a Jokul and K9-17 Izuna in the Graveyard to Special Summon with, and K9-X Forced Release and "A Case for
 // K9" in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[

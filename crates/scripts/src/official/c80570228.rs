@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 80570228;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SIX_SAMURAI];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand beside Legendary Six Samurai - Kageki to Special Summon, with the opponent's Raigeki to send it to the Graveyard

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 27780618;
 
+pub const LISTED_SERIES: &[u16] = &[SET_HERO];
 pub const LISTED_NAMES: &[u32] = &[CARD_POLYMERIZATION];
 
 // In the hand to Summon and on the field, with Elemental HERO Stratos in the Deck to send and in the GY to banish, and

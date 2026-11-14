@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 89739383;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SPELLBOOK];
 // In the hand with other Spellbooks in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

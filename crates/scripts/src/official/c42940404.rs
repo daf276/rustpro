@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 42940404;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MACHINA];
+
 struct Procedure;
 
 impl UnionProcedure for Procedure {

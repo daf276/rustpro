@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE};
 
 const ID: u32 = 58753372;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPER_QUANT];
 // Super Quant monsters in the Deck for the Special Summon: Blue Layer and White Layer, and another Alphan.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

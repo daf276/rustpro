@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 54048462;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FABLED];
+
 // Shared with the other Fabled Synchro Monsters.
 pub struct Procedure;
 

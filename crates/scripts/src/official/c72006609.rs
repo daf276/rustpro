@@ -5,6 +5,8 @@ use engine::constants::MSG_ATTACK;
 
 const ID: u32 = 72006609;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MEKK_KNIGHT, SET_WORLD_LEGACY];
+
 struct Procedure;
 
 impl LinkProcedure for Procedure {

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 93729896;
 
+pub const LISTED_SERIES: &[u16] = &[SET_YUBEL];
 // In the hand, with Yubel (Level 10, 0/0 Fiend) on the field for the opponent's Raigeki to destroy, and Terror Incarnate
 // (Level 11) and Yubel in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[

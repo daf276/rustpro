@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 94253655;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PLUNDER_PATROLL];
+
 struct Procedure;
 
 impl SynchroProcedure for Procedure {

@@ -6,6 +6,7 @@ use super::c27412542::{spcon, spop, sptg};
 
 const ID: u32 = 93898740;
 
+pub const LISTED_SERIES: &[u16] = &[SET_UNCHAINED_SOUL, SET_UNCHAINED];
 // Activated from the hand with Unchained Soul of Rage and Aruha on the field and Unchained Abomination in the Extra Deck to Link Summon,
 // or Set and destroyed by the opponent's Mystical Space Typhoon with Aruha and Sarama in the Deck to summon.
 pub const SUPPORT: &[(u32, u16)] = &[

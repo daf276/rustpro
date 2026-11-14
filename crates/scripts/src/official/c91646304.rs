@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 91646304;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CRUSADIA];
 // In the hand, to Special Summon to the zone Mekk-Knight Crusadia Avramax points to, on the field and in the Graveyard, with Dark
 // Hole in the opponent's hand to destroy the field.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (ID, GRAVE), (21887175, MZONE), (53129443, HAND | OPPONENT)];

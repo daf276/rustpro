@@ -4,6 +4,7 @@ use crate::testing::{DECK, HAND};
 
 const ID: u32 = 78231355;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRAGONMAID];
 // In the hand with Dragonmaids (Chamber and Parlor) to Special Summon and of another Level and the same Attribute in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (32600024, HAND), (88453933, DECK), (32600024, DECK)];
 

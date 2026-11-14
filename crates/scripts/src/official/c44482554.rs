@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 44482554;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRACOTAIL];
 // Fusion Material with Dracotail Faimena for Dracotail Arthalion, which is also on the field for the opponent to destroy, and
 // Dracotail Lukias in the Graveyard to Special Summon, and a Dracotail Spell in the Deck to Set.
 pub const SUPPORT: &[(u32, u16)] = &[

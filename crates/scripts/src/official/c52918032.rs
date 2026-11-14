@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 52918032;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MEMENTO];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand and in the Deck, with Mementotlan Tatsunootoshigo on the field to send it to the Graveyard and

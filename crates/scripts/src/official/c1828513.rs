@@ -4,6 +4,7 @@ use crate::testing::{EXTRA, MZONE};
 
 const ID: u32 = 1828513;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SIX_SAMURAI];
 // Xyz Summoned from the Extra Deck with Level 4 Six Samurai (Legendary Six Samurai - Kizan), another Six Samurai (Kageki) to boost.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 47355498;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GRAVEKEEPERS];
 // In the hand to activate, with Gravekeeper's Spy on the field, and the opponent's Monster Reborn and Gravekeeper's Spy in the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

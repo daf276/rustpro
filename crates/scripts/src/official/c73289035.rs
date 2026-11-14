@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 73289035;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BUJIN];
 // In the Extra Deck, Xyz Summoned with Level 4 LIGHT monsters (Fiend Reflection #2), with Yamato in the Graveyard and the
 // opponent's Mystical Space Typhoon, Dark Hole, and Raigeki to destroy it with materials.
 pub const SUPPORT: &[(u32, u16)] = &[

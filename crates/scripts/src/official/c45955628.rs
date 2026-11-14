@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 45955628;
 
+pub const LISTED_SERIES: &[u16] = &[SET_EVIL_EYE];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // On the field with Evil Eye of Selene in the hand to equip it, and in the Graveyard to Special Summon beside Gorgon, another Evil Eye.

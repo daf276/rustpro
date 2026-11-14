@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 40706444;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARGOSTARS];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Extra Deck, Xyz Summoned from Level 4 Normal Monsters. No Argostars card is ported, so neither the search nor the placement is reached.

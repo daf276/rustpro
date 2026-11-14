@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND};
 
 const ID: u32 = 45484331;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BRANDED];
 pub const LISTED_NAMES: &[u32] = &[CARD_ALBAZ];
 // In the hand with Albion the Branded Dragon in the Graveyard, and Branded Spells in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[

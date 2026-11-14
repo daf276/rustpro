@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 42082363;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GUSTO];
 // Many copies in the hand to be discarded at the end of the turn, with Gusto Egul and Gusto Gulldo in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

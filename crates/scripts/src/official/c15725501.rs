@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 15725501;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARCHFIEND];
 // In the hand and Graveyard, with Archfiend Soldier to target, Summoned Skull (Level 6, 2500 ATK) in the Graveyard to add, and the
 // opponent's weaker monsters to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[

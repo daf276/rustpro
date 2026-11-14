@@ -4,6 +4,7 @@ use crate::testing::{Check, MZONE, OPPONENT};
 
 const ID: u32 = 88234821;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRAGUNITY];
 // Two copies on the field (each may banish itself for its negation) to battle Mystical Elf of the opponent's.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE), (15025844, MZONE | OPPONENT), (15025844, MZONE | OPPONENT)];
 // The banish, whose target rmcon keeps as the label object.

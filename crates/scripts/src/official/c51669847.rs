@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, MZONE};
 
 const ID: u32 = 51669847;
+
+pub const LISTED_SERIES: &[u16] = &[SET_POWER_PATRON];
+
 const NERVA: u32 = 53589300;
 const JUPITER: u32 = 68231287;
 const JUNORA: u32 = 5914858;

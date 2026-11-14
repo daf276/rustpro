@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 74892653;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WARRIOR];
 pub const LISTED_NAMES: &[u32] = &[84012625];
 
 // On the field with Junk Warrior in the Extra Deck as the Level 8 or lower "Warrior" Synchro, against the opponent's Raigeki and Dark Hole.

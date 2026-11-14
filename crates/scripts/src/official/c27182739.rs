@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND};
 
 const ID: u32 = 27182739;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MATHMECH];
 // A second copy in the Graveyard, to Special Summon itself from the hand and from there.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, GRAVE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0)), Check::SpecialSummoned];

@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 77799846;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPER_DEFENSE_ROBOT];
 // Copies in the Extra Deck, Xyz Summoned with two Level 8 Machines (Therion "King" Regulus), Super Defense Robot Lio in the
 // Graveyard for the cost and the attach, and the opponent's Raigeki to destroy it.
 pub const SUPPORT: &[(u32, u16)] = &[

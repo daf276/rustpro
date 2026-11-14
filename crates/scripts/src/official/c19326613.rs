@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, REMOVED};
 
 const ID: u32 = 19326613;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FAIRY_TAIL];
 // Fairy Tail - Luna in the hand, Matchgiru in the Graveyard and Snow in banishment to Special Summon, and a copy in the Graveyard
 // and banishment to Set, with Luna on the field to activate it.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 41562624;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SHIRANUI_SPECTRALSWORD];
 // Four copies in the hand to Normal Summon, with Shiranui Spectralsword Shade in the Deck to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, HAND), (79783880, DECK), (79783880, DECK)];
 pub const CHECKS: &[Check] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 3287359;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAGICAL_MUSKET];
 // In the Extra Deck, Link Summoned from Magical Musketeer Starfire (LIGHT Fiend) and another monster, with more Starfires in the hand and
 // Deck to take.
 pub const SUPPORT: &[(u32, u16)] = &[

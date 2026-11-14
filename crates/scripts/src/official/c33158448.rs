@@ -4,6 +4,8 @@ use crate::testing::Check;
 
 const ID: u32 = 33158448;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FA];
+
 struct Procedure;
 
 impl SynchroProcedure for Procedure {

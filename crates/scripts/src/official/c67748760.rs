@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 67748760;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ROKKET];
 // In the hand to Special Summon with Rokket Tracer, and to be sent to the Graveyard with the opponent's Card Destruction; Rokket
 // Loader (a Rokket) in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[

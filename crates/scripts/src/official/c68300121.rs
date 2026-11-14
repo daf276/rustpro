@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 68300121;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAGIKEY];
 // In the Extra Deck, Xyz Summoned with Level 4 Normal Monsters (Prevent Rat, Kojikocy, Uraby) to add Level 4 or higher Normal Monsters
 // in the Deck and Graveyard and send the opponent's battle target of the same Attribute, with the opponent's attackers (Sangan).
 pub const SUPPORT: &[(u32, u16)] = &[

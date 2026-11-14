@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, MZONE, OPPONENT};
 
 const ID: u32 = 59627393;
+
+pub const LISTED_SERIES: &[u16] = &[SET_BATTLIN_BOXER];
 pub const XYZ_NUMBER: u32 = 105;
 
 struct Procedure;

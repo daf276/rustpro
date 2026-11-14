@@ -5,6 +5,7 @@ use engine::constants::MSG_ATTACK;
 
 const ID: u32 = 95621257;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ALLY_OF_JUSTICE];
 // Continuous effect only; on the field with Ally of Justice Clausolas (a Level 6 Normal Monster) and Sangan of the opponent's to attack.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

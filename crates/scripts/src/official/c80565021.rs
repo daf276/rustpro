@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND};
 
 const ID: u32 = 80565021;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ANGELECHY];
 // In the hand with the Field Spell Angelechy Problem in the Deck, and Angelechy Destrier, Level 7, and Angelechy Shatranga in
 // the Extra Deck.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (17782288, DECK), (55393975, EXTRA), (42410161, EXTRA)];

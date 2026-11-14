@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 8038143;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GALAXY_EYES, SET_GALAXY_EYES_TACHYON_DRAGON];
 // Set or in the hand with Galaxy-Eyes monsters on the field (a Tachyon Dragon for the hand activation), and Dark Hole and
 // Raigeki on the opponent's side to negate.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -3,6 +3,8 @@ use crate::prelude::*;
 
 const ID: u32 = 42302563;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ELFNOTE];
+
 struct Procedure;
 
 impl SynchroProcedure for Procedure {

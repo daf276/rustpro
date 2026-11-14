@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 36426778;
 
+pub const LISTED_SERIES: &[u16] = &[SET_THE_PHANTOM_KNIGHTS, SET_PHANTOM_KNIGHTS];
 // Doomed Soleret (the "The Phantom Knights" monster to control), Fog Blade and Wing ("Phantom Knights" Spell/Trap to search).
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, GRAVE), (83566725, MZONE), (25542642, 0), (98431356, 0)];
 pub const CHECKS: &[Check] = &[Check::SpecialSummoned, Check::ResolvesEffect(aux::stringid(ID, 1))];

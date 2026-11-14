@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, OPPONENT, SZONE};
 
 const ID: u32 = 27412542;
 
+pub const LISTED_SERIES: &[u16] = &[SET_UNCHAINED];
 // Activated from the hand, or Set and destroyed by the opponent's Mystical Space Typhoon, with Unchained Twins - Aruha and
 // Sarama in the Deck to search and summon.
 pub const SUPPORT: &[(u32, u16)] = &[

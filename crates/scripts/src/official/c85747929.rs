@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 85747929;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PHOTON, SET_GALAXY];
 // Xyz Summoned from the Extra Deck with two Level 4 LIGHT monsters (Alexandrite Dragon), with Galaxy-Eyes Photon Dragon in the Deck to
 // search and Galaxy Soldier in hand to Special Summon a LIGHT monster.
 pub const SUPPORT: &[(u32, u16)] = &[

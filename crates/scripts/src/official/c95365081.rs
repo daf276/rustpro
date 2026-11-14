@@ -4,6 +4,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 95365081;
+
+pub const LISTED_SERIES: &[u16] = &[SET_HECAHANDS];
+
 const HECAHANDS_GODOS: u32 = 68144894;
 const RAIGEKI: u32 = 12580477;
 

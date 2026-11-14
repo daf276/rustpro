@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 60025883;
+
+pub const LISTED_SERIES: &[u16] = &[SET_POWER_TOOL];
+
 const DUEL_DRAGON_TOKEN: u32 = ID + 1;
 
 pub const LISTED_NAMES: &[u32] = &[DUEL_DRAGON_TOKEN];

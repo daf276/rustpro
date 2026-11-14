@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 21143940;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MASKED_HERO, SET_HERO];
 // Destiny HERO - Malicious (a DARK HERO) on the field and Masked HERO Dark Law in the Extra Deck.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (9411399, MZONE), (58481572, EXTRA)];
 pub const CHECKS: &[Check] = &[Check::SpecialSummonedCode(58481572)];

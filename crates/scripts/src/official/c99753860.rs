@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, REMOVED};
 
 const ID: u32 = 99753860;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARS_MAGNA, SET_POWER_PATRON];
 // Ars Magna monsters in the Graveyard to Special Summon and banish for the draw, a second copy banished to be Special Summoned when
 // Purification Power Patron is Link Summoned from the Extra Deck with Dark Magician (Normal Monsters).
 pub const SUPPORT: &[(u32, u16)] = &[

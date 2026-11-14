@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 39477584;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FABLED];
 // In the Extra Deck, Synchro Summoned with The Fabled Rubyruda (a Level 4 Tuner) and Frostosaurus (Level 6), or on the field with Dark Hole in the Deck to
 // destroy it and Fabled monsters in the Graveyard to add.
 pub const SUPPORT: &[(u32, u16)] = &[

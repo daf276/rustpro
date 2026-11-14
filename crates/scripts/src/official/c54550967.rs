@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 54550967;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MEMENTO];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand and on the field, with Mementotlan Tatsunootoshigo in the Deck to search and Mementotlan Goblin (Level 1) in the

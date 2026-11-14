@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 29216967;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GIMMICK_PUPPET];
 // In the hand to Normal Summon, with a copy in the Deck to send to the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, DECK), (ID, DECK)];
 pub const CHECKS: &[Check] = &[Check::Resolves];

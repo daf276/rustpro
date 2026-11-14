@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 13076804;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CHAOS];
+
 // Shared with the other Chaos Synchro Monsters, which differ in the number of non-Tuners.
 pub struct Procedure<const MIN: usize>;
 

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 32731036;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BRANDED, SET_BYSTIAL];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Copies in the hand and Graveyard, Bystial Magnamhut (a Level 6 DARK Dragon) on the field to Tribute and in the Deck to add.

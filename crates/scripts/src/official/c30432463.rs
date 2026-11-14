@@ -6,6 +6,7 @@ use engine::constants::MSG_ADD_COUNTER;
 
 const ID: u32 = 30432463;
 
+pub const LISTED_SERIES: &[u16] = &[SET_VAALMONICA];
 pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_RESONANCE];
 const ANGELLO: u32 = 3048768;
 

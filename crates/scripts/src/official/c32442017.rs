@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 32442017;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DOOMZ];
 // In the hand, with DoomZ monsters on the field and in the hand to destroy and in the Deck to add or Special Summon, and the
 // opponent's monsters to destroy once it is destroyed by Dark Hole.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 use engine::constants::MSG_CHAIN_NEGATED;
 
 const ID: u32 = 56532353;
+
+pub const LISTED_SERIES: &[u16] = &[SET_BLUE_EYES];
 pub const MATERIAL_SETCODE: &[u16] = &[SET_BLUE_EYES];
 
 pub const LISTED_NAMES: &[u32] = &[CARD_BLUEEYES_W_DRAGON];

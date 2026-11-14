@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 81275020;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SPEEDROID];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Speedroid Darumaknocker in the Deck to search.

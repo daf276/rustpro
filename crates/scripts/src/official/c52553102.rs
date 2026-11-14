@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 52553102;
+
+pub const LISTED_SERIES: &[u16] = &[SET_JURRAC];
+
 const METEOR: u32 = 17548456;
 
 pub const LISTED_NAMES: &[u32] = &[METEOR];

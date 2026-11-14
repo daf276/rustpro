@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 75690317;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KARAKURI];
 // Copies on the field and in the Graveyard to banish, with a monster of the opponent's to attack it.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

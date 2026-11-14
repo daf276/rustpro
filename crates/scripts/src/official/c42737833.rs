@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE, OPPONENT};
 
 const ID: u32 = 42737833;
 
+pub const LISTED_SERIES: &[u16] = &[SET_X_SABER];
 // X-Saber Airbellum and X-Saber Anu Piranha in the Deck to summon, and strong monsters on the opponent's side to destroy it in battle.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 48835607;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ORCUST, SET_WORLD_LEGACY];
 pub const LISTED_NAMES: &[u32] = &[CARD_ORCUSTRATED_BABEL];
 
 // In the Extra Deck for its Link Summon with Girsu on the field, and in the Graveyard with Girsu there and on the field to banish.

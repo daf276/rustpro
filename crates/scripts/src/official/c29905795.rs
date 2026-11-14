@@ -4,6 +4,7 @@ use crate::testing::HAND;
 
 const ID: u32 = 29905795;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FABLED];
 // Copies in the hand with Fabled Lurrie to discard.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (97651498, HAND), (97651498, HAND)];
 

@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 77894049;
+
+pub const LISTED_SERIES: &[u16] = &[SET_VANQUISH_SOUL];
+
 const ROCK_OF_THE_VANQUISHER: u32 = 28168628;
 
 pub const LISTED_NAMES: &[u32] = &[ROCK_OF_THE_VANQUISHER];

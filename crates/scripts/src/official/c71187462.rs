@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 71187462;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 pub const LISTED_NAMES: &[u32] = &[ID, CARD_BLACK_WINGED_DRAGON];
 
 // Black-Winged Dragon in the Extra Deck and Blackwing - Elphin the Raven (Level 6) in the Deck, to sum to Level 8 with this Level 2 Tuner,

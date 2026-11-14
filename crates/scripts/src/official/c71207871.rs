@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 71207871;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SIX_SAMURAI];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // On the field and in the Graveyard beside Legendary Six Samurai - Kageki, with Chamberlain of the Six Samurai in the Deck to Special

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 98385955;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WHITE_FOREST];
 // In the hand to Normal Summon and in the Graveyard, with Witch and Tales of the White Forest in the Deck to search, and Silvera,
 // Wolf Tamer of the White Forest on the field to return.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, GRAVE), (4398189, DECK), (99289828, DECK), (41924516, MZONE)];

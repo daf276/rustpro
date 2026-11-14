@@ -6,6 +6,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT, REMOVED};
 
 const ID: u32 = 17465972;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 pub const COUNTER_PLACE_LIST: &[u16] = &[0x1002, COUNTER_FEATHER];
 const WEDGE_COUNTER: u16 = 0x1002;
 

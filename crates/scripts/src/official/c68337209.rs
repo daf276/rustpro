@@ -4,6 +4,7 @@ use crate::testing::{DECK, HAND, MZONE};
 
 const ID: u32 = 68337209;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MALISS];
 // With Maliss monsters in the Deck to banish, and Maliss <Q> Hearts Crypter for the opponent's attacks to be forced onto.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (20938824, DECK), (96676583, DECK), (21848500, MZONE)];
 

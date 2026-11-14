@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 39030163;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GALAXY_EYES];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 struct Procedure;

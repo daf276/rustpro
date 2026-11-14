@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 78447174;
 
+pub const LISTED_SERIES: &[u16] = &[SET_APPLIANCER];
 // Appliancer monsters to summon from the hand and Deck.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, DECK), (ID, DECK), (3507053, MZONE)];
 pub const CHECKS: &[Check] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 68304193;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KASHTIRA];
 // On the field and in the hand, Elfnote Lucina on the opponent's side for monster effects. No ported Kashtira Spell exists to search.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (13597785, HAND | OPPONENT), (13597785, MZONE | OPPONENT)];
 pub const CHECKS: &[Check] = &[

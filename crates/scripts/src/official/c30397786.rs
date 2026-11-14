@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 30397786;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLUE_EYES];
 // A copy on the field, targeted by the opponent's Mind Control, copies in the hand and Deck (to draw) to reveal, and the
 // opponent's monsters attacking mine for the battle destruction.
 pub const SUPPORT: &[(u32, u16)] = &[

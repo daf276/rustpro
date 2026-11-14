@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 90681088;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FIRE_KING];
 // Two in hand to react to Fire King Courtier Ulcanix being destroyed by Raigeki, with Fire King Island in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

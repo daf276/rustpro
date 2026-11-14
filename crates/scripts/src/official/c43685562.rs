@@ -4,6 +4,7 @@ use crate::testing::{Check, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 43685562;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PUNK];
 // Set, with Gagaku-P.U.N.K. Wa Gon on the field to recover with and the opponent's Sangan to negate.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, SZONE), (50642380, MZONE), (26202165, MZONE | OPPONENT)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

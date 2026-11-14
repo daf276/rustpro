@@ -4,6 +4,7 @@ use crate::testing::{DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 36637374;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DESPIA];
 // Guiding Quem (Despia) in the Deck to add or summon with a card to discard, and in the Graveyard with Albion (Fusion) on the
 // field and Dark Hole to destroy it.
 pub const SUPPORT: &[(u32, u16)] = &[

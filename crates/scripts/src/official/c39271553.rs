@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 39271553;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FA];
 // In the hand and Graveyard with F.A. Dawn Dragster on the field, raised in Level by F.A. Downforce in the hand, and F.A. City Grand Prix in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 85257384;
 
+pub const LISTED_SERIES: &[u16] = &[SET_THE_PHANTOM_KNIGHTS];
 // Doomed Soleret (the "The Phantom Knights" monster to control and the Xyz material), Break Sword and Malevolent Scythe
 // (the DARK Xyz Monsters), and an opponent's monster for the position change.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 53792930;
 
+pub const LISTED_SERIES: &[u16] = &[SET_K9];
 // K9-66X "Jacks" and K9-17 Izuna on the field to battle, with K9-17 "Ripper" and K9-X "Werewolf" in the Extra Deck to Xyz Summon
 // over Jacks, copies in the hand and Graveyard to Set after a K9 monster battles, and an opponent's monster to battle or destroy.
 pub const SUPPORT: &[(u32, u16)] = &[

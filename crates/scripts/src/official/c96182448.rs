@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 96182448;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NITRO];
 // On the field as the Tuner (Level 2) with Shapesnatch (Level 5) for Nitro Warrior (Level 7).
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

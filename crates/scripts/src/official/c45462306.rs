@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 45462306;
 
+pub const LISTED_SERIES: &[u16] = &[SET_X_SABER, SET_SABER];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // A copy on the field with X-Saber Anu Piranha (Level 4) to Synchro Summon X-Saber Urbellum, and Anu Piranha and a copy in hand to

@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 29111045;
+
+pub const LISTED_SERIES: &[u16] = &[SET_GOBLIN];
+
 const GOBLIN_BIKERS_GONE_BONKERS: u32 = 46014517;
 
 // In hand with Goblin Zombie and Goblin Attack Force in the Deck to summon and Goblin Bikers Gone Bonkers on the field to

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 3064783;
 
+pub const LISTED_SERIES: &[u16] = &[SET_UMBRAL_HORROR, SET_MASQUERADE, SET_NUMBER];
 // In the hand and on the field, with V Umbral Horror in the hand to Normal Summon and Umbral Horror monsters in the Deck to draw, and
 // Number 104: Masquerade Vain (3 Level 4 materials) in the Extra Deck with Mystical Elf to be Xyz Summoned with it counting as two.
 pub const SUPPORT: &[(u32, u16)] = &[

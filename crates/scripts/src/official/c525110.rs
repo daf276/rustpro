@@ -4,6 +4,7 @@ use crate::testing::{DECK, MZONE, OPPONENT};
 
 const ID: u32 = 525110;
 
+pub const LISTED_SERIES: &[u16] = &[SET_INMATO];
 // On the field with Inmato in the Deck to summon, and Elfnote Lucina on the opponent's side to destroy it in battle.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

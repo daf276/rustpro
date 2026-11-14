@@ -5,6 +5,8 @@ use engine::constants::MSG_POS_CHANGE;
 
 const ID: u32 = 952523;
 
+pub const LISTED_SERIES: &[u16] = &[SET_HOLE, SET_TRAP_HOLE, SET_TRAPTRIX];
+
 struct Procedure;
 
 impl LinkProcedure for Procedure {

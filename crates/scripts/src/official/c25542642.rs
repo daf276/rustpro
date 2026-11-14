@@ -6,6 +6,7 @@ use crate::testing::{Check, GRAVE, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 25542642;
 
+pub const LISTED_SERIES: &[u16] = &[SET_THE_PHANTOM_KNIGHTS];
 // Set, to be activated on the opponent's Effect Monster Elfnote Fortuna; Doomed Soleret in the GY to revive.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, SZONE), (ID, GRAVE), (85976588, MZONE | OPPONENT), (83566725, GRAVE)];
 pub const CHECKS: &[Check] = &[Check::Message(MSG_CARD_TARGET), Check::ResolvesEffect(aux::stringid(ID, 0))];

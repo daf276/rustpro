@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 22510667;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GOUKI];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // A MAX of 0 is Link.AddProcedure's nil maximum.

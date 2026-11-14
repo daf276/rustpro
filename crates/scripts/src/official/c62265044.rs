@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 62265044;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRAGUNITY];
 // Copies in the hand to activate and discard, and Dragons (Lesser Dragon) in the Deck to send to the Graveyard. No Dragunity
 // monster of Level 4 or lower is ported, so the search is not reached.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (55444629, DECK), (55444629, DECK)];

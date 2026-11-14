@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND};
 
 const ID: u32 = 33475154;
+
+pub const LISTED_SERIES: &[u16] = &[SET_WITCHCRAFTER];
+
 const VERRE: u32 = 21522601;
 
 struct Materials;

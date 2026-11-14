@@ -5,6 +5,7 @@ use engine::constants::MSG_SELECT_EFFECTYN;
 
 const ID: u32 = 1855932;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BUJIN];
 // In the Extra Deck, Xyz Summoned with Level 4 Beast-Warriors (Bujin Yamato, One Who Hunts Souls, Battle Ox), with Yamato in the
 // Deck to mill and the opponent's Raigeki to destroy a Bujin Yamato it protects.
 pub const SUPPORT: &[(u32, u16)] = &[

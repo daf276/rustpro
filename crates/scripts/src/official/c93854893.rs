@@ -6,6 +6,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT, REMOVED};
 
 const ID: u32 = 93854893;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ORCUST];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Extra Deck, Xyz Summoned with two Blue-Eyes White Dragons or with Galatea-I on the field, with Girsu banished to

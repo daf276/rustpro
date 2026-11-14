@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 95040215;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
+
 // A Synchro Summon of any Tuner and 1+ non-Tuners; the Assault Blackwing monsters reuse it with their own maximum.
 pub struct Procedure<const MAX: usize>;
 

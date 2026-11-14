@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 55888045;
+
+pub const LISTED_SERIES: &[u16] = &[SET_NUMBER];
 pub const XYZ_NUMBER: u32 = 106;
 
 // On the field with Xyz Import to attach the opponent's Numbers (Mannequin Cat, Djinn Buster), and effects of theirs on the field to negate.

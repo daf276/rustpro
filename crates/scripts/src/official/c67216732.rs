@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 67216732;
 
+pub const LISTED_SERIES: &[u16] = &[SET_S_FORCE];
 // Link Summoned from S-Force Edge Razor and another monster, with S-Force monsters to Special Summon from the hand, Deck and Extra Deck.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

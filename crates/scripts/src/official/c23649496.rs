@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 23649496;
+
+pub const LISTED_SERIES: &[u16] = &[SET_HERALDIC_BEAST];
 pub const XYZ_NUMBER: u32 = 18;
 
 // Two copies on the field, one destroyed by the other with Sangan pairs of the opponent's, with Xyz Import to attach, and Heraldic Beast Eale in the Deck.

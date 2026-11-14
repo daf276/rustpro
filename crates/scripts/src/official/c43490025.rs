@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 43490025;
+
+pub const LISTED_SERIES: &[u16] = &[SET_NUMBER, SET_UTOPIA];
 pub const XYZ_NUMBER: u32 = 0;
 const UTOPIC_FUTURE: u32 = 65305468;
 

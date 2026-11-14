@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 47387961;
+
+pub const LISTED_SERIES: &[u16] = &[SET_HERALDIC_BEAST];
 pub const XYZ_NUMBER: u32 = 8;
 
 // In the Extra Deck, Xyz Summoned with two Heraldic Beast Level 4 monsters (Basilisk), with an opponent's Xyz Monster (a Number 21) to

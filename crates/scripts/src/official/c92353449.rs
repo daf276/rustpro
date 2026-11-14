@@ -4,6 +4,7 @@ use crate::testing::{DECK, HAND};
 
 const ID: u32 = 92353449;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RED_EYES];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand with Red-Eyes Black Dragons to send and Return of the Red-Eyes in the Deck to search.

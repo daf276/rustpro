@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 23314220;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SPELLBOOK];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand with other Spellbooks in the hand to send, and a Spellcaster on the field.

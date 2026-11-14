@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND};
 
 const ID: u32 = 7477101;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NUMBER];
 // Number 106: Giant Hand to reveal, and Prevent Rats, which share its Level and Attribute, in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (63746411, EXTRA), (549481, DECK), (549481, DECK), (549481, DECK)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

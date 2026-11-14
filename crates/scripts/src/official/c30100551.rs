@@ -4,6 +4,7 @@ use crate::testing::{DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 30100551;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LIGHTSWORN];
 // In the Extra Deck, Xyz Summoned with two of four Level 4 monsters, with Lightsworn monsters in the Deck to send, and destroyed by
 // the opponent's Raigeki.
 pub const SUPPORT: &[(u32, u16)] = &[

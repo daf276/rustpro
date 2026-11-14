@@ -6,6 +6,8 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 10136446;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DARKLORD];
+
 struct Materials;
 
 impl FusionMix for Materials {

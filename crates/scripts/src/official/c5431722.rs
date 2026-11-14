@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, OPPONENT, SZONE};
 
 const ID: u32 = 5431722;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRACOTAIL];
 // Spells on the field to negate, and a Dracotail monster in the Graveyard to place on the bottom of the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

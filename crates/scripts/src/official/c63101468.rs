@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 63101468;
+
+pub const LISTED_SERIES: &[u16] = &[SET_THE_AGENT];
+
 const ASH_BLOSSOM: u32 = 14558127;
 const WINGWEAVER: u32 = 31447217;
 const THE_EXECUTOR_OF_THE_UNDERWORLD_PLUTO: u32 = 37706769;

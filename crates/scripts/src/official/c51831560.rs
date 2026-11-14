@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 51831560;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GEM_KNIGHT, SET_GEM];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Gem-Knight Garnet and Lapis, Normal Monsters, in the Deck to search and in the hand to Normal Summon, and Cynet Mining in the

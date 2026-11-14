@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 65861210;
+
+pub const LISTED_SERIES: &[u16] = &[SET_SACRED_BEAST];
+
 const LOCATIONS_HAND_DECK_GRAVE_REMOVED: u32 = LOCATION_HAND | LOCATION_DECK | LOCATION_GRAVE | LOCATION_REMOVED;
 
 // A Level 10 Sacred Beast monster on the field for the draw, and three monsters on the field and in the hand to send,

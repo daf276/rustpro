@@ -4,6 +4,7 @@ use crate::testing::{HAND, MZONE, OPPONENT};
 
 const ID: u32 = 89594399;
 
+pub const LISTED_SERIES: &[u16] = &[SET_REPTILIANNE];
 // In the hand, with Reptilianne Viper (DARK Reptile) on the field and a 0 ATK Viper of the opponent's, Reptilianne Lamia to
 // summon.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 40237839;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FUSION, SET_HERO];
 // In the hand with Polymerization in the Deck to add, and the opponent's Elfnote Lucina on the field to deal damage with
 // once its LP are low (the opponent's Dark Hole and Raigeki are a source of damage to itself).
 pub const SUPPORT: &[(u32, u16)] = &[

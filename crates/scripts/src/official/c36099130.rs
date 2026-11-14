@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 36099130;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAGISTUS];
 // Magistus Chorozo in the Extra Deck to equip, a second Zoroa on the field to equip it to, and Mystical Elf in the hand and
 // Graveyard to summon.
 pub const SUPPORT: &[(u32, u16)] = &[

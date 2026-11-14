@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 66452432;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ROKKET, SET_BORREL];
 // Link Summoned in the Extra Deck with three Rokket Tracers on the field to destroy, and Borrelsword and Breachborrel Dragon
 // (Link-4 or lower Borrel monsters) in the Extra Deck to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 1315120;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TG];
 // In the hand to Special Summon onto an empty field against Sangan, and on the field to be destroyed by the opponent's Raigeki
 // and search another T.G. monster from the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[

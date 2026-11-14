@@ -5,6 +5,7 @@ use crate::testing::{Check, GRAVE, HAND, PZONE};
 
 const ID: u32 = 78598237;
 
+pub const LISTED_SERIES: &[u16] = &[SET_VAALMONICA];
 // In the hand with Angello and Dimonno in the Pendulum Zone, and Level 4 monsters in the Graveyard to Summon or add.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

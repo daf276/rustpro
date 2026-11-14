@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, MZONE};
 
 const ID: u32 = 26268488;
 
+pub const LISTED_SERIES: &[u16] = &[SET_STARDUST];
 // One copy on the field and one in the Graveyard with Stardust Dragon to revive.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, GRAVE), (44508094, GRAVE)];
 pub const CHECKS: &[Check] = &[

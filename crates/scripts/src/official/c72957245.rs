@@ -4,6 +4,7 @@ use crate::testing::{DECK, GRAVE};
 
 const ID: u32 = 72957245;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ADAMANCIPATOR];
 // An Adamancipator (Researcher) and a Rock (Destroyer Golem) in the Graveyard, with Rock Level 4 or lower Normal Monsters in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[
     (85914562, GRAVE),

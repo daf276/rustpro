@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 93192592;
 
+pub const LISTED_SERIES: &[u16] = &[SET_YUMMY];
 // In the Extra Deck, Synchro Summoned with Effect Veiler (Level 1 Tuner) and Marshmao (Level 1) or with Artemis, the
 // Magistus Moon Maiden (Link-1), with Marshmao in the Graveyard to Special Summon and the opponent's Raigeki to respond to.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 10604644;
 
+pub const LISTED_SERIES: &[u16] = &[SET_THERION];
 // Copies in the hand and on the field (one is the discard cost), Overdrive (Machine) in the Graveyard to equip, and Elfnote Lucina
 // on the opponent's side to negate. The equip effects work only while this card is equipped to a Therion monster, which no
 // scenario does.

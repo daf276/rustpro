@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 29280200;
 
+pub const LISTED_SERIES: &[u16] = &[SET_VANQUISH_SOUL];
 // Dr. Mad Love with Jiaolong (FIRE), Hollie Sue (EARTH) and another copy (DARK) in the hand to reveal, and monsters on both sides.
 // No Vanquish Soul Spell/Trap is ported, so the search is not reached.
 pub const SUPPORT: &[(u32, u16)] = &[

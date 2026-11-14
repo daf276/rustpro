@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 84664085;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WARRIOR, SET_SYNCHRON, SET_STARDUST];
 // In the Extra Deck, Synchro Summoned with Plaguespreader Zombie (Level 2 Tuner) and Stardust Dragon (Level 8), with a second
 // Stardust Dragon in the Graveyard to revive and Raigeki on the other side.
 pub const SUPPORT: &[(u32, u16)] = &[

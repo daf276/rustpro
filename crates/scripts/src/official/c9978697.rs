@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 9978697;
 
+pub const LISTED_SERIES: &[u16] = &[SET_X_SABER];
+
 struct Destroy;
 
 impl aux::DelayedOperation for Destroy {

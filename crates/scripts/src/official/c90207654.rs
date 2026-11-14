@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, EXTRA, MZONE};
 
 const ID: u32 = 90207654;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NORDIC, SET_AESIR];
+
 struct Procedure;
 
 impl LinkProcedure for Procedure {
@@ -144,7 +146,5 @@ fn tgfilter(c: CardId, duel: &Duel) -> bool {
 }
 
 fn tgcon(duel: &Duel, a: &Args) -> bool {
-    a.e.get_handler(duel)
-        .get_linked_group(duel)
-        .is_exists(duel, tgfilter, 1, None)
+    a.e.get_handler(duel).get_linked_group(duel).is_exists(duel, tgfilter, 1, None)
 }

@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 92932860;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ODD_EYES];
 // On the field with Key Mace (a Level 1 non-Tuner) in the Graveyard and Odd-Eyes Meteorburst Dragon (Level 7) in the Extra Deck.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

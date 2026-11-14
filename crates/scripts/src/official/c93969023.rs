@@ -5,6 +5,7 @@ use engine::constants::{MSG_CONFIRM_CARDS, MSG_EQUIP};
 
 const ID: u32 = 93969023;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RED_EYES];
 // In the hand and on the field with Red-Eyes Black Dragon to equip to, which is also in the Deck to search; Dark Hole from the other side.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

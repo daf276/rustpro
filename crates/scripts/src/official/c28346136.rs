@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 28346136;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CIPHER_DRAGON];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // On the field and in the Extra Deck, Xyz Summoned on a Galaxy-Eyes Cipher Dragon, with another in the Graveyard to return.

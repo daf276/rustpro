@@ -4,6 +4,8 @@ use crate::testing::{HAND, MZONE};
 
 const ID: u32 = 89628781;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NINJA];
+
 struct Procedure;
 
 impl PersistentProcedure for Procedure {

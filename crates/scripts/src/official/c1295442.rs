@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 1295442;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ICEJADE];
 // In the hand and the Graveyard, with Icejade Ran Aegirine on the field to equip it to.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, GRAVE), (18494511, MZONE), (18494511, MZONE)];
 pub const CHECKS: &[Check] = &[

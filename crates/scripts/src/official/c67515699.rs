@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 67515699;
 
+pub const LISTED_SERIES: &[u16] = &[SET_K9];
 // In the Extra Deck, Xyz Summoned with K9-17 Izuna and K9-00 Lupis, and on the field, against an opponent's Elfnote Lucina in the
 // hand, Graveyard and field that activates there.
 pub const SUPPORT: &[(u32, u16)] = &[

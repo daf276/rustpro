@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 38331244;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ASHTRA];
 // In the hand with face-down Ashtra Divine Domain (Trap) to return and send, and in the Deck to Set, against the opponent's
 // monsters to turn face-down.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 81426505;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SIX_SAMURAI];
 // In the hand beside three Six Samurai monsters (Legendary Six Samurai - Kageki), with monsters and Spells and Traps of the opponent's to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

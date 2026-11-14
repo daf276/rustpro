@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 30010480;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GOUKI];
 // Link Summoned from Gouki Guts and Gouki Machine Suprex, with Gouki monsters in the hand to Normal Summon and the opponent's
 // Smashing Ground (which leaves the Link Monster, with no Defense, alone) to destroy the monsters it points to.
 pub const SUPPORT: &[(u32, u16)] = &[

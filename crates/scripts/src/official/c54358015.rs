@@ -4,6 +4,7 @@ use crate::testing::{EXTRA, HAND, MZONE};
 
 const ID: u32 = 54358015;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GALAXY];
 // Xyz Summoned from the Extra Deck with two Level 4 Dragons (Luster Dragon, Alexandrite Dragon), with Fairy Dragon in hand to summon.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

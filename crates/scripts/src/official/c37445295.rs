@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 37445295;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SHADDOLL];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Face-down on the field, to be flipped by an attack, and sent to the Graveyard by Dark Hole, with Shaddoll Squamata in the Graveyard.

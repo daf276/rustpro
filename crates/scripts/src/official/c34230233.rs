@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 34230233;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DARK_WORLD];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Graveyard to return Renge from the field, in the hand to be discarded by Dark World Dealings, and the opponent's

@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 48519867;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ADAMANCIPATOR];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // A copy in hand and one on the field next to an Adamancipator (Researcher), with Rock Normal Monsters (Destroyer Golem) in the Deck.

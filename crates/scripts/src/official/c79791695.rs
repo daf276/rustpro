@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 79791695;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NUMBER_C];
+
 struct Procedure;
 
 impl XyzProcedure for Procedure {

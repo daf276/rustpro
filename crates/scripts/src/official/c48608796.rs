@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 48608796;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LYRILUSC];
+
 struct Procedure;
 
 impl XyzProcedure for Procedure {

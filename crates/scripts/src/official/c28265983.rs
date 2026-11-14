@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 28265983;
 
+pub const LISTED_SERIES: &[u16] = &[SET_AROMA];
 // In the hand and the Spell & Trap Zone, with Aromaseraphy Angelica and Aromalilith Rosalina (Aroma monsters that gain LP) and
 // Dian Keto the Cure Master and Goblin's Secret Remedy in the hand, against the opponent's Sangan.
 pub const SUPPORT: &[(u32, u16)] = &[

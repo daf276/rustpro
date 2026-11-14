@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND};
 
 const ID: u32 = 89252153;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ELEMENTAL_HERO];
 // A copy in the hand (Level 5, so it qualifies) to Normal Summon without Tributes by a copy in the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, GRAVE)];
 pub const CHECKS: &[Check] = &[Check::TributeSummoned(0)];

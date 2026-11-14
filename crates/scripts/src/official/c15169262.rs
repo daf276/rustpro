@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 15169262;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LAVAL];
 // On the field with other Laval monsters and some in the Graveyard, and the opponent's Lucina to destroy it in battle.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

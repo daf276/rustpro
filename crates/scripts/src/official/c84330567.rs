@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 84330567;
+
+pub const LISTED_SERIES: &[u16] = &[SET_TEARLAMENTS];
+
 const KITKALLOS: u32 = 92731385;
 
 struct Materials;

@@ -2,6 +2,9 @@
 use crate::prelude::*;
 
 const ID: u32 = 30271097;
+
+pub const LISTED_SERIES: &[u16] = &[SET_BRANDED, SET_DOGMATIKA, SET_ECCLESIA];
+
 // The field of its chain data table.
 const CHOICE: u8 = 0;
 

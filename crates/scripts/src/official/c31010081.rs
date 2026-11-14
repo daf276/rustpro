@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 31010081;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DOOMZ];
 pub const LISTED_NAMES: &[u32] = &[CARD_MEDIUS_THE_PURE];
 // In the Extra Deck, Xyz Summoned with DoomZ VII Seven - Elara and DoomZ V Five - Amalthe, with DoomZ monsters in the hand to
 // destroy, Axe of Despair in the Deck to search or send, and Dark Hole to destroy it with them attached.

@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 15232745;
+
+pub const LISTED_SERIES: &[u16] = &[SET_NUMERON];
 pub const XYZ_NUMBER: u32 = 1;
 
 // In the Extra Deck, Xyz Summoned with Level 1 Normal Monsters, with the opponent's Elfnote Lucina and Ash Blossom to attack into it.

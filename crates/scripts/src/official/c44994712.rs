@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT, REMOVED};
 
 const ID: u32 = 44994712;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PREDAP];
 pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_PREDATOR];
 
 pub const LISTED_NAMES: &[u32] = &[CARD_POLYMERIZATION, ID];

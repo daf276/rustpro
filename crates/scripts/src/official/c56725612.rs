@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE, OPPONENT, REMOVED};
 
 const ID: u32 = 56725612;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FAIRY_TAIL];
 pub const LISTED_NAMES: &[u32] = &[91957038, CARD_PRINCE_OF_FAIRIES];
 
 // Fairy Tail - Luna in the Deck, banishment and on the field, Fairy Tale Tails in the Deck, and an opponent's Elfnote Lucina to negate.

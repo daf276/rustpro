@@ -5,6 +5,7 @@ use engine::constants::MSG_PAY_LPCOST;
 
 const ID: u32 = 73810864;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KI_SIKIL];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In hand with Live Twin Ki-sikil in the Deck to Special Summon, and an attacker to pay Life Points to.

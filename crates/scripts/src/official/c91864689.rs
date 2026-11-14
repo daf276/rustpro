@@ -4,6 +4,7 @@ use crate::testing::{DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 91864689;
 
+pub const LISTED_SERIES: &[u16] = &[SET_S_FORCE];
 // S-Force monsters in the hand to Special Summon, and Link Monsters to Link Summon.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

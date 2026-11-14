@@ -6,6 +6,9 @@ use crate::prelude::*;
 use crate::testing::{Check, MZONE, OPPONENT};
 
 const ID: u32 = 97165977;
+
+pub const LISTED_SERIES: &[u16] = &[SET_LUNALIGHT];
+
 const LUNALIGHT_CAT_DANCER: u32 = 51777272;
 pub const MATERIAL_SETCODE: &[u16] = &[SET_LUNALIGHT];
 

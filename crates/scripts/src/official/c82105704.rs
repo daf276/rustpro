@@ -4,6 +4,7 @@ use crate::testing::{HAND, MZONE, OPPONENT};
 
 const ID: u32 = 82105704;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PURRELY];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand with monsters on both sides to choose from.

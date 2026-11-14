@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND};
 
 const ID: u32 = 17946349;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MATHMECH];
 // Copies in hand to Normal Summon, with Leotron (Level 4 Cyberse) in the Graveyard to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (47226949, GRAVE), (47226949, GRAVE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

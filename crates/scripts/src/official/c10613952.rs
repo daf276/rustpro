@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 10613952;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NOBLE_ARMS, SET_NOBLE_KNIGHT];
 // In the Extra Deck, Xyz Summoned with two Level 5 Noble Knights (Infernoble Knight Captain Roland and Oliver), with Noble Arms of
 // Destiny and Noble Knight Artorigus in the Graveyard, and Sangan on the opponent's side to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND};
 
 const ID: u32 = 27132400;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ALTERGEIST];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Copies in the hand to Normal Summon and in the Graveyard to be added by Monster Reincarnation, and Altergeist Fifinellag in the Graveyard.

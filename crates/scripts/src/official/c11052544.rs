@@ -4,6 +4,7 @@ use crate::testing::{HAND, MZONE, OPPONENT};
 
 const ID: u32 = 11052544;
 
+pub const LISTED_SERIES: &[u16] = &[SET_X_SABER];
 // X-Saber monsters (Anu Piranha) on the field to count, and cards on the opponent's field to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

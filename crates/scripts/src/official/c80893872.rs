@@ -4,6 +4,7 @@ use crate::testing::{DECK, HAND, MZONE, SZONE};
 
 const ID: u32 = 80893872;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PENGUIN];
 // Activated from the hand to search Flying Penguin and Bolt Penguin, and on the field with Flying Penguin to reduce and Raigeki
 // to discard.
 pub const SUPPORT: &[(u32, u16)] = &[

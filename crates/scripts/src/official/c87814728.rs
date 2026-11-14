@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 87814728;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAGNA_WARRIOR];
+
 struct Params;
 
 impl FusionSummonParams for Params {

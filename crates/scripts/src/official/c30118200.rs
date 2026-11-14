@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 30118200;
 
+pub const LISTED_SERIES: &[u16] = &[SET_APPLIANCER];
 // Link Summoned from an Appliancer monster, with cards in the hand to discard and opponent's cards to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

@@ -5,6 +5,8 @@ use engine::constants::MSG_SELECT_EFFECTYN;
 
 const ID: u32 = 12986807;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LAVAL];
+
 struct Procedure;
 
 impl SynchroProcedure for Procedure {

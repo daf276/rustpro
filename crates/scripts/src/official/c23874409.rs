@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, MZONE};
 
 const ID: u32 = 23874409;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KARAKURI];
 // In the Extra Deck, Synchro Summoned with Genex Controller (a Level 3 Tuner) and Overdrive (a Level 4 Machine), with
 // Karakuri Gama in the Deck to summon.
 pub const SUPPORT: &[(u32, u16)] = &[

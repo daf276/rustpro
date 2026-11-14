@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 8633261;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RYZEAL];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Two in the hand, Special Summoned by sending a card to the Graveyard or Normal Summoned, with Ryzeal monsters in the

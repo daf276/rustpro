@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 90616316;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FABLED];
 // In the hand and face-down on the field with Fabled Lurrie in the hand and the Deck, a destroyer and an attacker of
 // the opponent's to flip it.
 pub const SUPPORT: &[(u32, u16)] = &[

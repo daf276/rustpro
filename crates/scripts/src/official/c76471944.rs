@@ -6,6 +6,7 @@ use crate::testing::{Check, EXTRA, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 76471944;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPERHEAVY_SAMURAI];
 // In the Extra Deck, Synchro Summoned from Motorbike (a Level 2 Tuner) and Ogre Shutendoji (Level 6), with Spells/Traps to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

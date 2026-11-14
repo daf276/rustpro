@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 2606417;
+
+pub const ROLL_DICE: bool = true;
+
 const COUNTER_REVERSAL_BOX: u16 = 0x21b;
 
 pub const LISTED_NAMES: &[u32] = &[CARD_DARK_TIME_WIZARD];

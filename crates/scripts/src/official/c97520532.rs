@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, EXTRA, MZONE};
 
 const ID: u32 = 97520532;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GIMMICK_PUPPET];
+
 struct Procedure;
 
 impl LinkProcedure for Procedure {

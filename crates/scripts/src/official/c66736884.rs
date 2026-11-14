@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 66736884;
+
+pub const LISTED_SERIES: &[u16] = &[SET_FUR_HIRE];
+
 const FANDORA: u32 = 64400161;
 
 pub const LISTED_NAMES: &[u32] = &[FANDORA];

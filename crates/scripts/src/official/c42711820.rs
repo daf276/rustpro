@@ -4,6 +4,9 @@ use crate::prelude::*;
 use crate::testing::{DECK, EXTRA, MZONE};
 
 const ID: u32 = 42711820;
+
+pub const LISTED_SERIES: &[u16] = &[SET_WARRIOR];
+
 const SCRAP_SYNCHRON: u32 = 16449363;
 
 struct Procedure;

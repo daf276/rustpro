@@ -4,6 +4,7 @@ use crate::testing::{EXTRA, MZONE};
 
 const ID: u32 = 48905153;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ZOODIAC];
 // Xyz Summoned from the Extra Deck with four Level 4 monsters (Luster Dragon), or over Zoodiac Chakanine.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

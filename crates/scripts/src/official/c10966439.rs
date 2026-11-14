@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND};
 
 const ID: u32 = 10966439;
 
+pub const LISTED_SERIES: &[u16] = &[SET_YUMMY];
 // No Yummy Spell/Trap is ported yet, so the second effect never has a target.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, HAND)];
 pub const CHECKS: &[Check] = &[

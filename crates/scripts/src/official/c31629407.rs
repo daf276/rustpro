@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE, SZONE};
 
 const ID: u32 = 31629407;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAGICAL_MUSKET];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // On the field with a Spell/Trap Card in its column, and in the Deck. No other Level 4 or lower "Magical Musket" monster is ported to

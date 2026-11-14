@@ -6,6 +6,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 27755794;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RADIANT_TYPHOON];
 pub const LISTED_NAMES: &[u32] = &[CARD_MYSTICAL_SPACE_TYPHOON];
 // On the field with Mystical Space Typhoon (a Quick-Play Spell) in the hand, and Radiant Typhoon monsters in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (CARD_MYSTICAL_SPACE_TYPHOON, HAND), (80538047, DECK), (54143349, DECK)];

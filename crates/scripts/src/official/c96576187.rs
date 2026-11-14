@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 96576187;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LIGHTSWORN];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand and Deck with Lightsworn monsters (Lyla, Wulf) in the hand and Graveyard, and Raiden on the field to send it

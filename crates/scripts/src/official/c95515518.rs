@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT, REMOVED};
 
 const ID: u32 = 95515518;
+
+pub const LISTED_SERIES: &[u16] = &[SET_THE_WEATHER];
+
 const RAINBOW: u32 = 54178659;
 
 pub const LISTED_NAMES: &[u32] = &[RAINBOW];

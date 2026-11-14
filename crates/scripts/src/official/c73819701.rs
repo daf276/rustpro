@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND};
 
 const ID: u32 = 73819701;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ECCLESIA];
 pub const LISTED_NAMES: &[u32] = &[CARD_ALBAZ];
 
 // In the hand, with Albion the Branded Dragon in the Extra Deck to send and Dogmatika Ecclesia, the Virtuous to Special Summon.

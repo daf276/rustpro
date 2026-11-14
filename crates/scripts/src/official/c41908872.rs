@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT, PZONE};
 
 const ID: u32 = 41908872;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPREME_KING_GATE, SET_SUPREME_KING_DRAGON];
 pub const LISTED_NAMES: &[u32] = &[CARD_ZARC];
 // In the Pendulum Zone with Z-ARC and Darkwurm on the field, in the hand to Summon, and the opponent's Dark Hole to destroy the Pendulum Monsters.
 pub const SUPPORT: &[(u32, u16)] = &[

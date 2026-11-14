@@ -2,6 +2,7 @@
 use crate::prelude::*;
 use crate::testing::DECK;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RESONATOR];
 // Soul Resonator in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[(62991792, DECK), (62991792, DECK), (98396890, DECK)];
 

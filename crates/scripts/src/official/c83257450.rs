@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 83257450;
+
+pub const LISTED_SERIES: &[u16] = &[SET_FORBIDDEN_ONE, SET_EXODD];
 pub const MATERIAL_SETCODE: &[u16] = &[SET_FORBIDDEN_ONE];
 
 struct Materials;

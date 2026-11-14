@@ -1,6 +1,6 @@
 """Prints the next porting batches: unported cards of the queue (porting/queue.tsv) grouped by archetype, the archetypes with the most
 weekly views first, each batch with the unported cards its Lua names (listed names, materials, searches) that are in
-the pool. Cards outside any archetype are batched by views. One batch per line: code<TAB>name;code<TAB>name;...
+the pool. Cards outside any archetype rank among the archetypes by their own views. One batch per line: code<TAB>name;code<TAB>name;...
 
   python tools/batch.py [--queue=FILE] [--top=N] [--type=REGEX] [batches] [size] [skip codes...]
 
@@ -43,7 +43,7 @@ for code in todo:
     groups[setcodes.get(code, 0) & 0xFFF].append(code)
 loose = groups.pop(0, [])
 views = lambda codes: sum(int(pool[code]["weekly_views"]) for code in codes)
-order = sorted(groups.values(), key=lambda codes: -views(codes)) + [[code] for code in loose]
+order = sorted([*groups.values(), *([code] for code in loose)], key=lambda codes: -views(codes))
 taken, batch, out = set(), [], []
 for group in order:
     for code in group:

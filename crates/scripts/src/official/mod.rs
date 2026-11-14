@@ -36,9 +36,14 @@ fn lookup<T: Copy>(table: &'static [(u32, T)], code: u32) -> Option<T> {
     table.get(index).map(|&(_, value)| value)
 }
 
-// s.listed_names, or else mt.fit_monster, which Ritual.AddProcCode sets and Card.ListsCode reads in its place.
-pub fn listed_names(code: u32) -> &'static [u32] {
-    lookup(&LISTED_NAMES, code).unwrap_or(&[])
+// s.listed_names, which Card.ListsCodeWithArchetype reads, and Card.ListsCode unless it is nil.
+pub fn listed_names(code: u32) -> Option<&'static [u32]> {
+    lookup(&LISTED_NAMES, code)
+}
+
+// mt.fit_monster, which Ritual.AddProcCode sets and Card.ListsCode reads when s.listed_names is nil.
+pub fn fit_monster(code: u32) -> Option<&'static [u32]> {
+    lookup(&FIT_MONSTER, code)
 }
 
 // s.listed_series, which Card.ListsArchetype reads.

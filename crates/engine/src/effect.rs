@@ -269,6 +269,8 @@ pub enum Value {
     SpSummonCount(fn(&Duel, EffectId, Option<EffectId>, u8) -> i32),
     // value(e, damp, rc): EFFECT_CHANGE_BATTLE_DAMAGE.
     BattleDamage(fn(&Duel, EffectId, u8, CardId) -> i64),
+    // value(e, re, rp, val): EFFECT_LPCOST_CHANGE.
+    LpCost(fn(&Duel, EffectId, Option<EffectId>, u8, i32) -> i32),
     // value(e, re, val, r, rp, rc), which may reset the effect or add hints: EFFECT_CHANGE_DAMAGE.
     ChangeDamage(ChangeDamageFn),
     // value(e, re, val, r, rp, rc): EFFECT_REFLECT_DAMAGE.
@@ -1558,6 +1560,7 @@ impl Duel {
             | Value::Chain(_)
             | Value::SpSummonCount(_)
             | Value::BattleDamage(_)
+            | Value::LpCost(_)
             | Value::ChangeDamage(_)
             | Value::ReflectDamage(_)
             | Value::ReflectDamageMut(_)
@@ -1869,6 +1872,15 @@ impl Duel {
             Value::Int(value) => value,
             Value::SpSummonCount(value) => value(self, effect, reason_effect, playerid),
             _ => misread!(self, "a spsummon count"),
+        }
+    }
+
+    // effect::get_value(3) with the parameters of EFFECT_LPCOST_CHANGE: value(e, re, rp, val).
+    pub(crate) fn get_value_lpcost(&self, effect: EffectId, reason_effect: Option<EffectId>, playerid: u8, cost: i32) -> i32 {
+        match self.effects[effect].value {
+            Value::Int(value) => value,
+            Value::LpCost(value) => value(self, effect, reason_effect, playerid, cost),
+            _ => misread!(self, "an LP cost"),
         }
     }
 

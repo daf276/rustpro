@@ -1325,13 +1325,25 @@ impl Duel {
             .collect()
     }
 
+    // The cost each EFFECT_LPCOST_CHANGE value gets in turn, starting from `cost`.
+    pub(crate) fn changed_lp_cost(&self, playerid: u8, cost: u32) -> i32 {
+        let reason_effect = self.core.reason_effect.get();
+        self.filter_player_effect(playerid, EFFECT_LPCOST_CHANGE, true)
+            .into_iter()
+            .fold(cost as i32, |val, effect| {
+                self.get_value_lpcost(effect, reason_effect, playerid, val)
+            })
+    }
+
     pub(crate) fn process_pay_lp_cost(&mut self, arg: &mut PayLpCost) -> bool {
-        let (playerid, cost) = (arg.playerid, arg.cost);
+        let playerid = arg.playerid;
         if arg.step == 0 {
-            unported!(self, self.filter_player_effect(playerid, EFFECT_LPCOST_CHANGE, true));
-            if cost as i32 <= 0 {
+            let val = self.changed_lp_cost(playerid, arg.cost);
+            if val <= 0 {
                 return true;
             }
+            arg.cost = val as u32;
+            let cost = arg.cost;
             self.core.select_options.clear();
             self.core.select_effects.clear();
             if cost as i32 <= self.player[playerid].lp {
@@ -1345,6 +1357,7 @@ impl Duel {
             self.returns.set_i32(0, 0);
             return false;
         }
+        let cost = arg.cost;
         self.player[playerid].lp -= cost as i32;
         self.trace.message(MSG_PAY_LPCOST).u8(playerid).u32(cost);
         let reason_effect = self.core.reason_effect.get();

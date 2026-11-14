@@ -1854,6 +1854,7 @@ pub trait CardUtility: Copy {
     fn is_attribute_except(self, duel: &Duel, att: u32) -> bool;
     fn add_must_be_special_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_be_special_summoned_by_card_effect(self, duel: &mut Duel) -> EffectId;
+    fn add_must_be_ritual_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_be_fusion_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_be_synchro_summoned(self, duel: &mut Duel) -> EffectId;
     fn add_must_be_xyz_summoned(self, duel: &mut Duel) -> EffectId;
@@ -2466,6 +2467,13 @@ impl CardUtility for CardId {
             duel,
             Value::SpSummonCondition(|duel, _, se, _, _, _, _| se.is_some_and(|se| se.is_has_type(duel, EFFECT_TYPE_ACTIONS))),
         );
+        self.register_effect(duel, e0);
+        e0
+    }
+
+    fn add_must_be_ritual_summoned(self, duel: &mut Duel) -> EffectId {
+        let e0 = single_uncopyable(duel, self, EFFECT_SPSUMMON_CONDITION);
+        e0.set_value(duel, Value::SpSummonCondition(aux::ritlimit));
         self.register_effect(duel, e0);
         e0
     }

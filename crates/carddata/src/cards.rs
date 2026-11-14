@@ -180,6 +180,10 @@ impl FromIterator<Card> for CardDatabase {
     }
 }
 
+// The TCG-only Blazing Eternity cards, still under their pre-release codes upstream; goes away when BabelCDB migrates them.
+#[cfg(feature = "cdb")]
+const PRERELEASE_CDB: &str = "prerelease-betb-en.cdb";
+
 impl CardDatabase {
     #[cfg(feature = "cdb")]
     pub fn load(directory: &Path) -> Result<Self, CardsError> {
@@ -187,7 +191,7 @@ impl CardDatabase {
         for entry in std::fs::read_dir(directory)? {
             let path = entry?.path();
             let name = path.file_name().and_then(|name| name.to_str()).unwrap_or_default();
-            if name == "cards.cdb" || (name.starts_with("release-") && name.ends_with(".cdb")) {
+            if matches!(name, "cards.cdb" | PRERELEASE_CDB) || (name.starts_with("release-") && name.ends_with(".cdb")) {
                 paths.push(path);
             }
         }

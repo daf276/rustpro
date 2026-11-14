@@ -9,8 +9,9 @@ ocg feature:
   cargo run --release -p diff --bin pool --features ocg > pool-ocg.tsv
   python tools/queue.py --ocg pool-ocg.tsv cardinfo.json
 
-cardinfo.json is https://db.ygoprodeck.com/api/v7/cardinfo.php?misc=yes (not committed). Cards it lacks (new sets)
-get their name from the cdb files the pool reads, no type and 0 views.
+cardinfo.json is https://db.ygoprodeck.com/api/v7/cardinfo.php?misc=yes (not committed). Cards it lacks by code (the
+pre-release codes) are matched by name; cards it lacks altogether (new sets) get their name from the cdb files the pool
+reads, no type and 0 views.
 """
 import json
 import sys
@@ -23,6 +24,7 @@ OT_OCG, OT_TCG = 0x1, 0x2
 ocg = "--ocg" in sys.argv
 pool_path, cards_path = (arg for arg in sys.argv[1:] if arg != "--ocg")
 cards = {card["id"]: card for card in json.loads(Path(cards_path).read_text(encoding="utf-8"))["data"]}
+by_name = {card["name"]: card for card in cards.values()}
 names = dict(cdb("select id, name from texts"))
 ots = dict(cdb("select id, ot from datas"))
 rows = []
@@ -30,7 +32,8 @@ for line in Path(pool_path).read_text(encoding="utf-8").splitlines():
     code, ported = line.split("\t")
     if ocg and ots.get(int(code), 0) & (OT_OCG | OT_TCG) != OT_OCG:
         continue
-    card = cards.get(int(code), {"name": names.get(int(code), "")})
+    name = names.get(int(code), "")
+    card = cards.get(int(code)) or by_name.get(name, {"name": name})
     views = (card.get("misc_info") or [{}])[0].get("viewsweek", 0)
     rows.append((-views, int(code), card.get("name", ""), card.get("type", ""), ported))
 with open(ROOT / ("porting/queue-ocg.tsv" if ocg else "porting/queue.tsv"), "w", encoding="utf-8", newline="\n") as out:

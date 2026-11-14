@@ -3,7 +3,7 @@ use crate::card::{CardId, CardSet, LocInfo, SendtoParam};
 use crate::chain::ExecuteKind;
 use crate::constants::*;
 use crate::duel::Duel;
-use crate::effect::{Chain, Container, EffectId, EffectSet, Event, Target, Value};
+use crate::effect::{Chain, Container, EffectId, EffectSet, Event, Operation, Target, Value};
 use crate::field::{Cards16, PerPlayer};
 use crate::processor::{
     PointEvent, RESTART, SelectCard, SelectCounter, SelectOption, SelectPlace, SelectPosition, SelectTributeP, SelectUnselectCard,
@@ -4033,7 +4033,7 @@ impl Duel {
     pub(crate) fn process_move_to_field(&mut self, arg: &mut MoveToField) -> bool {
         let target = arg.target;
         let param = self.cards[target].to_field_param;
-        let (move_player, playerid, location, positions) = ((param >> 24) as u8, (param >> 16) as u8, (param >> 8) as u8, param as u8);
+        let (mut move_player, playerid, location, positions) = ((param >> 24) as u8, (param >> 16) as u8, (param >> 8) as u8, param as u8);
         let reason = arg.location_reason;
         let data_type = self.cards[target].data.card_type;
         let is_field_spell =
@@ -4122,10 +4122,23 @@ impl Duel {
                     return false;
                 }
                 if reason == LOCATION_REASON_SUMMON || reason == LOCATION_REASON_SPSUMMON || reason == LOCATION_REASON_SET {
-                    unported!(
-                        self,
-                        self.filter_player_effect(move_player, EFFECT_OPPO_CHOOSES_SPSUMMON_ZONE, true)
-                    );
+                    for effect in self.filter_player_effect(move_player, EFFECT_OPPO_CHOOSES_SPSUMMON_ZONE, true) {
+                        let peffect = &self.effects[effect];
+                        if peffect.is_flag(EFFECT_FLAG_COUNT_LIMIT) && peffect.count_limit == 0 {
+                            continue;
+                        }
+                        match peffect.operation {
+                            Some(Operation::OppoChoosesZone(operation)) => {
+                                if !operation(self, effect, target, move_player, reason) {
+                                    continue;
+                                }
+                            }
+                            Some(_) => unported!(self),
+                            None => {}
+                        }
+                        self.dec_count(effect, PLAYER_NONE);
+                        move_player = 1 - move_player;
+                    }
                 }
                 let flag = match (move_player == playerid, location == LOCATION_SZONE) {
                     (true, true) => ((flag & 0xff) << 8) | 0xffff_00ff,

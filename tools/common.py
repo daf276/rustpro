@@ -7,6 +7,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 OFFICIAL = ROOT / "crates/scripts/src/official"
 CONSTANT_SOURCES = ["constant.lua", "card_counter_constants.lua", "archetype_setcode_constants.lua"]
+# The TCG-only Blazing Eternity cards, still under their pre-release codes upstream; goes away when BabelCDB migrates them.
+PRERELEASE_CDB = "prerelease-betb-en.cdb"
 
 
 def lua_constants():
@@ -26,7 +28,7 @@ def strip_parentheses(expression):
 def cdb(query):
     rows = {}
     for path in sorted((ROOT / "vendor/BabelCDB").glob("*.cdb")):
-        if path.name == "cards.cdb" or path.name.startswith("release-"):
+        if path.name in ("cards.cdb", PRERELEASE_CDB) or path.name.startswith("release-"):
             with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)) as database:
                 rows.update((row[0], row) for row in database.execute(query))
     return list(rows.values())
@@ -38,4 +40,5 @@ def ported_codes():
 
 
 def lua_script(code):
-    return ROOT / f"vendor/CardScripts/official/c{code}.lua"
+    official = ROOT / f"vendor/CardScripts/official/c{code}.lua"
+    return official if official.exists() else ROOT / f"vendor/CardScripts/pre-release/c{code}.lua"

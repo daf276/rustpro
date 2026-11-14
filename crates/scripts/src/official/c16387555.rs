@@ -95,7 +95,7 @@ fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
     Ok(())
 }
 
-fn splimit(duel: &Duel, _: EffectId, c: CardId) -> bool {
+pub fn splimit(duel: &Duel, _: EffectId, c: CardId) -> bool {
     if c.is_monster(duel) {
         !c.is_type(duel, TYPE_TUNER)
     } else {

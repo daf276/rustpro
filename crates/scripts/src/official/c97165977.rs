@@ -3,7 +3,7 @@ use engine::constants::MSG_ATTACK;
 
 use super::c81196066::LUNALIGHT_MATERIAL;
 use crate::prelude::*;
-use crate::testing::{Check, MZONE, OPPONENT};
+use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 97165977;
 
@@ -20,12 +20,23 @@ impl FusionMix for Materials {
     const MATERIALS: &'static [FusionMaterial] = &[FusionMaterial::Code(LUNALIGHT_CAT_DANCER), LUNALIGHT_MATERIAL];
 }
 
-// Two on the field to attack the opponent's two Sangan; Lunalight Cat Dancer, its material, is not ported.
-pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE), (26202165, MZONE | OPPONENT), (26202165, MZONE | OPPONENT)];
+// Two on the field to attack the opponent's two Sangan, and in the Extra Deck, Fusion Summoned by Polymerization with
+// Lunalight Cat Dancer and Silver Hound.
+pub const SUPPORT: &[(u32, u16)] = &[
+    (ID, MZONE),
+    (ID, MZONE),
+    (26202165, MZONE | OPPONENT),
+    (26202165, MZONE | OPPONENT),
+    (ID, EXTRA),
+    (CARD_POLYMERIZATION, HAND),
+    (LUNALIGHT_CAT_DANCER, MZONE),
+    (35763582, MZONE),
+];
 pub const CHECKS: &[Check] = &[
     Check::ResolvesEffect(aux::stringid(ID, 0)),
     Check::ResolvesEffect(aux::stringid(ID, 1)),
     Check::Message(MSG_ATTACK),
+    Check::SpecialSummoned,
 ];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
@@ -66,7 +77,7 @@ fn splimit(duel: &Duel, e: EffectId, _: Option<EffectId>, _: u8, st: u32, _: u8,
     !e.get_handler(duel).is_location(duel, LOCATION_EXTRA) || st & SUMMON_TYPE_FUSION == SUMMON_TYPE_FUSION
 }
 
-fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
     let (e, tp) = (a.e, a.tp);
     let c = e.get_handler(duel);
     let e1 = duel.create_effect(c);

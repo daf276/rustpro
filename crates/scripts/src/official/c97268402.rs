@@ -53,7 +53,7 @@ fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
 }
 
 // The EFFECT_DISABLE and EFFECT_DISABLE_EFFECT pair of the monster negations, with the given property.
-pub fn negate(duel: &mut Duel, c: CardId, tc: CardId, property: u32) {
+pub fn negate(duel: &mut Duel, c: CardId, tc: CardId, property: u32) -> (EffectId, EffectId) {
     let e1 = duel.create_effect(c);
     e1.set_type(duel, EFFECT_TYPE_SINGLE);
     if property != 0 {
@@ -71,4 +71,5 @@ pub fn negate(duel: &mut Duel, c: CardId, tc: CardId, property: u32) {
     e2.set_value(duel, RESET_TURN_SET as i32);
     e2.set_reset(duel, RESETS_STANDARD_PHASE_END);
     tc.register_effect(duel, e2);
+    (e1, e2)
 }

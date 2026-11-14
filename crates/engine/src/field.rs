@@ -2561,12 +2561,13 @@ impl Duel {
         target: CardId,
         release_list: &mut CardSet,
         ex_list: &mut CardSet,
+        ex_list_oneof: &mut CardSet,
         mg: Option<CardSet>,
         ex: bool,
         releasable: u32,
         pos: u32,
     ) -> u32 {
-        let (rcount, params) = self.summon_release_list(target, release_list, ex_list, mg, ex, releasable, pos);
+        let (rcount, params) = self.summon_release_list(target, release_list, ex_list, ex_list_oneof, mg, ex, releasable, pos);
         for (card, param) in params {
             self.cards[card].release_param = param;
         }
@@ -2579,6 +2580,7 @@ impl Duel {
         target: CardId,
         release_list: &mut CardSet,
         ex_list: &mut CardSet,
+        ex_list_oneof: &mut CardSet,
         mg: Option<CardSet>,
         ex: bool,
         releasable: u32,
@@ -2600,7 +2602,7 @@ impl Duel {
                 1
             }
         };
-        let (mut rcount, mut params) = (0, List::default());
+        let (mut rcount, mut params, mut ex_oneof_max) = (0, List::default(), 0);
         let in_mg = |card: CardId| mg.is_none_or(|mg| mg.contains(card));
         for card in self.player[p].list_mzone.into_iter().flatten() {
             if (releasable >> self.cards[card].current.sequence) & 1 != 0 && self.is_releasable_by_summon(card, p, target) {
@@ -2628,11 +2630,14 @@ impl Duel {
             } else if ex || ex_tribute.contains(card) {
                 release_list.insert(card);
                 rcount += param;
-            } else {
-                unported!(self, self.is_affected_by_effect(card, EFFECT_EXTRA_RELEASE_SUM));
+            } else if let Some(effect) = self.is_affected_by_effect(card, EFFECT_EXTRA_RELEASE_SUM)
+                && !(self.effects[effect].is_flag(EFFECT_FLAG_COUNT_LIMIT) && self.effects[effect].count_limit == 0)
+            {
+                ex_list_oneof.insert(card);
+                ex_oneof_max = ex_oneof_max.max(param);
             }
         }
-        (rcount, params)
+        (rcount + ex_oneof_max, params)
     }
 
     // Puts the cards the player may release for a non-summon reason into the set, matching `fun`.
@@ -2814,7 +2819,16 @@ impl Duel {
         let ex = toplayer == 1 - sumplayer;
         let (mut release_list, mut ex_list) = (CardSet::default(), CardSet::default());
         let count = self
-            .summon_release_list(card, &mut release_list, &mut ex_list, mg, ex, releasable, pos)
+            .summon_release_list(
+                card,
+                &mut release_list,
+                &mut ex_list,
+                &mut CardSet::default(),
+                mg,
+                ex,
+                releasable,
+                pos,
+            )
             .0 as i32;
         if !share && min > max.min(count) {
             return false;

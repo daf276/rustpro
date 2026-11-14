@@ -71,7 +71,7 @@ fn fcheck(duel: &Duel, _: CardId, _: u8, sg: CardSet, _: CardId) -> bool {
     true
 }
 
-fn extraop(duel: &mut Duel, _: EffectId, _: CardId, _: u8, sg: &mut CardSet) -> Script<()> {
+pub fn extraop(duel: &mut Duel, _: EffectId, _: CardId, _: u8, sg: &mut CardSet) -> Script<()> {
     let rg = sg.filter(duel, |c, duel| c.is_location(duel, LOCATION_GRAVE), None);
     if !rg.is_empty() {
         duel.remove(rg, POS_FACEUP, REASON_EFFECT | REASON_MATERIAL | REASON_FUSION)?;

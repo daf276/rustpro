@@ -80,7 +80,7 @@ fn cfilter(c: CardId, duel: &Duel, tp: u8) -> bool {
     c.is_faceup(duel) && c.is_set_card(duel, &[SET_FUR_HIRE]) && c.is_controler(duel, tp)
 }
 
-fn thcon(duel: &Duel, a: &Args) -> bool {
+pub fn thcon(duel: &Duel, a: &Args) -> bool {
     let eg = a.eg.unwrap_or_default();
     !eg.is_contains(a.e.get_handler(duel)) && eg.is_exists(duel, |c, duel| cfilter(c, duel, a.tp), 1, None)
 }

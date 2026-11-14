@@ -6,6 +6,7 @@ use super::c26236560::{spcon2, spop2, sptg2};
 
 const ID: u32 = 31588572;
 
+pub const LISTED_SERIES: &[u16] = &[SET_UNCHAINED];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // On the field, with Unchained Twins - Aruha and Rakea in the GY to Set and Rakea in the Deck to summon after being destroyed.

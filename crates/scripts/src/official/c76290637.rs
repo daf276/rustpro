@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 76290637;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RANK_UP_MAGIC, SET_GIMMICK_PUPPET];
 // In the Extra Deck, Xyz Summoned with two of four Level 8 monsters, with Rank-Up-Magic Spells in the Deck to add, and a copy in the
 // Graveyard that is Special Summoned when the Extra Deck copy is.
 pub const SUPPORT: &[(u32, u16)] = &[

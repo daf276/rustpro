@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 17691568;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PUNK];
 // Activated from the hand with a P.U.N.K. monster (Wa Gon) for the opponent's Mage Power to target.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

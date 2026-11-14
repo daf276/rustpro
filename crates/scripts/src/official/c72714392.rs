@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE};
 
 const ID: u32 = 72714392;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 // Blackwing - Sirocco the Dawn (Level 5) in the GY and Blackwing - Boreastorm the Wicked Wind (Level 6) in the Extra Deck.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, GRAVE),

@@ -4,6 +4,7 @@ use crate::testing::{DECK, HAND};
 
 const ID: u32 = 62623659;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ZEXAL, SET_ZW, SET_ZS, SET_RANK_UP_MAGIC, SET_RANK_DOWN_MAGIC];
 // Two copies in the hand, with ZW - Ultimate Shield in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (18865703, DECK), (18865703, DECK)];
 

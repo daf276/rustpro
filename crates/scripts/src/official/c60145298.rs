@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 60145298;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WHITE_FOREST, SET_SINFUL_SPOILS, SET_DIABELL];
 // In the hand and on the field, with Diabellstar the Black Witch on the field and Curse of Diabell in the hand and Deck to send.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (72270339, MZONE), (64998567, HAND), (64998567, DECK)];
 pub const CHECKS: &[Check] = &[

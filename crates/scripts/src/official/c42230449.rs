@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 42230449;
+
+pub const LISTED_SERIES: &[u16] = &[SET_NUMERON];
 pub const XYZ_NUMBER: u32 = 2;
 
 // On the field with Xyz Import to attach Sangan, to attack the opponent's Sangan (Dve cannot be destroyed by battle).

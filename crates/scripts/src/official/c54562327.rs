@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 54562327;
 
+pub const LISTED_SERIES: &[u16] = &[SET_VANQUISH_SOUL];
+
 struct ReturnToHand;
 
 impl aux::DelayedOperation for ReturnToHand {

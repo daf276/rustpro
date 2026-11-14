@@ -5,7 +5,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 17080584;
 
-pub const LISTED_NAMES: &[u32] = &[ID];
+pub const LISTED_SERIES: &[u16] = &[SET_ATLANTEAN, SET_MERMAIL];
 // In the hand (and the Graveyard to draw), with Atlantean Pikeman, a WATER Normal Monster, on the field to Tribute and in
 // the hand to discard, and Ignihorse Dragonis, a Level 7 Sea Serpent Normal Monster, in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[
@@ -54,7 +54,7 @@ fn thspfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8, mmz_check: bool) -> b
 }
 
 fn thspcostfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
-    c.is_set_card(duel, &[SET_ATLANTEAN, SET_MERMAIL])
+    c.is_set_card(duel, LISTED_SERIES)
         && (c.is_faceup(duel) || c.is_controler(duel, tp))
         && duel.is_existing_matching_card(
             |sc, duel| thspfilter(sc, duel, e, tp, duel.get_mzone_count(tp, Some(c.into())) > 0),

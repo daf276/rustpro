@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 58446973;
 
+pub const LISTED_SERIES: &[u16] = &[SET_INFERNOID];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Copies in the hand to Normal Summon, and Infernoid Pirmais, a monster with effects to copy, in the Deck.

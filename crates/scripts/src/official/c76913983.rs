@@ -5,6 +5,8 @@ use engine::constants::MSG_ATTACK;
 
 const ID: u32 = 76913983;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
+
 // Blackwing Tuner + non-Tuners; Full Armor Master and Silverwind reuse it with their own minimum of non-Tuners.
 pub struct Procedure<const MIN: usize>;
 

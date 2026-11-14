@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 17719582;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARTMAGE];
 // In hand to return Artmage Litera and Special Summon a monster from the opponent's Graveyard, or to discard as the cost of
 // Acropolis (in hand to activate, with Artmage monsters in the Deck to add), with a second Acropolis in the Graveyard to add.
 pub const SUPPORT: &[(u32, u16)] = &[

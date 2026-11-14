@@ -1812,6 +1812,7 @@ pub trait CardUtility: Copy {
     fn xyz_number(self, duel: &Duel) -> Option<u32>;
     fn lists_code_as_material(self, duel: &Duel, codes: &[u32]) -> bool;
     fn lists_archetype_as_material(self, duel: &Duel, setcodes: &[u16]) -> bool;
+    fn lists_archetype(self, duel: &Duel, setcodes: &[u16]) -> bool;
     fn places_counter(self, duel: &Duel, counter_type: u16) -> bool;
     fn lists_counter(self, duel: &Duel, counter_type: u16) -> bool;
     fn lists_code_with_archetype(self, duel: &Duel, setcodes: &[u16]) -> bool;
@@ -2364,6 +2365,11 @@ impl CardUtility for CardId {
         setcodes
             .iter()
             .any(|&setcode| listed.iter().any(|&to_match| match_setcode(setcode, to_match)))
+    }
+
+    fn lists_archetype(self, duel: &Duel, setcodes: &[u16]) -> bool {
+        let listed = crate::official::listed_series(self.get_original_code(duel));
+        setcodes.iter().any(|setcode| listed.contains(setcode))
     }
 
     fn places_counter(self, duel: &Duel, counter_type: u16) -> bool {

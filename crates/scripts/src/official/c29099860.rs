@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, OPPONENT};
 
 const ID: u32 = 29099860;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GOUKI];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand with Gouki Guts to Special Summon alongside it, one in the Deck to search, and the opponent's Dark Hole to destroy them.

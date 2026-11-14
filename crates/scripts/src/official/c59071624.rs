@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 59071624;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TRAPTRIX];
 // On the field with Xyz Import to attach Sangan, a Level 4 Insect (Flying Kamakiri #2) in the Graveyard to Special Summon, and Raigeki
 // to send the opponent's Sangan to the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[

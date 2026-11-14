@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 2347477;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CODE_TALKER, SET_CYNET];
 // Another on the field and in the hand as Link material for Code Talker, and Leotron to add when it was on the field.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, HAND), (53413628, EXTRA), (47226949, DECK)];
 // The search, which finds only Leotron with the label thcon sets, and this card as extra material from the hand.

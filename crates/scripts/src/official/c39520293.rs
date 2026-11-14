@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 39520293;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WARRIOR, SET_SYNCHRON, SET_STARDUST];
 // A copy on the field and in the Graveyard, Junk Warrior on the field, and Swordsman of Landstar (Level 3) as the other
 // material of Armory Arm and Toxic Boxfish (Level 4) in the Extra Deck.
 pub const SUPPORT: &[(u32, u16)] = &[

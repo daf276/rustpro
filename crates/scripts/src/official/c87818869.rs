@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 87818869;
 
+pub const LISTED_SERIES: &[u16] = &[SET_UTOPIC, SET_NUMBER, SET_NUMBER_99];
 // Utopia on the field and Number 99: Utopic Dragon in the Extra Deck, which gains the granted effect, with Elfnote Lucina on the
 // opponent's field and Kuriboh in its hand to activate monster effects in the Battle Phase. No Rank 10 or higher "Number" Xyz
 // Monster ported has a rum_limit, so that check is left out.

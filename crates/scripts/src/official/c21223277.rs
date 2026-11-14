@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 21223277;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NOBLE_ARMS, SET_NOBLE_KNIGHT];
 // In the Extra Deck, Xyz Summoned with two Level 4 Noble Knights (Noble Knight Artorigus, Shield-Bearer), with Noble Arms of Destiny
 // in the Graveyard to equip, and Sangan on the opponent's side.
 pub const SUPPORT: &[(u32, u16)] = &[

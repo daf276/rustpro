@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 53765052;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SINFUL_SPOILS];
 // In the hand with a "Sinful Spoils" Spell (Sinful Spoils of Subversion - Snake-Eye) in the Graveyard, and Set Spells and Traps on
 // both sides for the destruction to target.
 pub const SUPPORT: &[(u32, u16)] = &[

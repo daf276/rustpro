@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 34031284;
+
+pub const LISTED_SERIES: &[u16] = &[SET_OJAMA];
+
 const OJAMA_COUNTRY: u32 = 90011152;
 
 pub const LISTED_NAMES: &[u32] = &[OJAMA_COUNTRY];

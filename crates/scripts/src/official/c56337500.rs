@@ -4,6 +4,7 @@ use crate::testing::{DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 56337500;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CYNET];
 // In the Extra Deck, Xyz Summoned with Level 3 Normal Monsters, with Cynet Mining in the Graveyard, Level 4 Cyberse monsters in the
 // Deck, and the opponent's Raigeki to destroy it.
 pub const SUPPORT: &[(u32, u16)] = &[

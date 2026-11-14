@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 60946049;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARTMAGE];
 // In the hand and on the field, with Acropolis in the Deck to Set, Mystical Elf and Stone Ogre Grotto on the field for three Races,
 // and an opposing Spell to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[

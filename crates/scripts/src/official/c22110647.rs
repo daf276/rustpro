@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 22110647;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MECHA_PHANTOM_BEAST];
 pub const LISTED_NAMES: &[u32] = &[TOKEN_MECHA_PHANTOM_BEAST];
 
 // On the field with Xyz Import to attach Sangan, Level 7 Normal Monsters (Gaia The Fierce Knight) to Xyz Summon it, and Mecha Phantom

@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 95243515;
 
+pub const LISTED_SERIES: &[u16] = &[SET_VIRTUAL_WORLD, SET_VIRTUAL_WORLD_GATE];
 // On the field with Xyz Import to attach Sangan, against the opponent's Sangan of another Type and Attribute. No Virtual World Gate
 // is ported, so its direct attack and immunity are not reached.
 pub const SUPPORT: &[(u32, u16)] = &[

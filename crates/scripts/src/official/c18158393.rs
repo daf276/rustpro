@@ -4,6 +4,7 @@ use crate::testing::{Check, MZONE, SZONE};
 
 const ID: u32 = 18158393;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MANNADIUM];
 pub const LISTED_NAMES: &[u32] = &[CARD_VISAS_STARFROST];
 // Set with a Synchro Monster, Black Rose Dragon, on the field. Its destruction needs Visas Starfrost or a monster with 1500
 // ATK and 2100 DEF, and its second effect a "Mannadium" monster in the Graveyard; none of them is ported.

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 12213463;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ROSE_DRAGON];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // In the hand and on the field with Angel Trumpeter (a Plant Tuner) to summon it, Red Rose Dragon in the Graveyard to summon,
 // and Ash Blossom & Joyous Spring (Level 3 Tuner) with Black Rose Dragon in the Extra Deck to Synchro Summon with it.

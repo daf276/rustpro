@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, PZONE};
 
 const ID: u32 = 82224646;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PERFORMAPAL, SET_ODD_EYES];
 // Two on the field and one in the Graveyard and hand, with Performapal Skullcrobat Joker (Level 4, not a Tuner) in a Pendulum Zone
 // and on the field, and Level 6 Synchros in the Extra Deck.
 pub const SUPPORT: &[(u32, u16)] = &[

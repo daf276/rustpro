@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 27693363;
 
+pub const LISTED_SERIES: &[u16] = &[SET_URSARCTIC];
 pub const LISTED_NAMES: &[u32] = &[CARD_URSARCTIC_BIG_DIPPER];
 
 // In the Extra Deck, Special Summoned by sending Gusto Egul (a Level 1 Tuner) and Gusto Griffin (Level 2) to the Graveyard, with Ursarctic

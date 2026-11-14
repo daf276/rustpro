@@ -4,6 +4,8 @@ use crate::testing::{Check, GRAVE, MZONE};
 
 const ID: u32 = 71222868;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RAIDRAPTOR];
+
 struct Procedure;
 
 impl XyzProcedure for Procedure {

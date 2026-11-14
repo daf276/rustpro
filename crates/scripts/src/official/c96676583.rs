@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 96676583;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MALISS];
 // With Maliss <P> March Hare to banish it from the hand.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, HAND), (ID, HAND), (20938824, HAND), (20938824, GRAVE)];
 pub const CHECKS: &[Check] = &[

@@ -4,6 +4,8 @@ use crate::testing::{EXTRA, MZONE};
 
 const ID: u32 = 60634565;
 
+pub const LISTED_SERIES: &[u16] = &[SET_REPTILIANNE];
+
 struct Procedure;
 
 impl SynchroProcedure for Procedure {

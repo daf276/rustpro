@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 48016074;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CHARMER, SET_FAMILIAR_POSSESSED, SET_POSSESSED];
+
 struct Materials;
 
 impl FusionMixRep for Materials {

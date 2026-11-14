@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 18165869;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MEMENTO];
 // In the hand and on the field, with Mementotlan Angwitch (Level 3) to discard and in the Deck, and a Spell to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

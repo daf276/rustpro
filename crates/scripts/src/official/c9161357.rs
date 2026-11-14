@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 9161357;
+
+pub const LISTED_SERIES: &[u16] = &[SET_NUMBER];
 pub const XYZ_NUMBER: u32 = 6;
 
 // In the Extra Deck, Xyz Summoned with Level 6 Normal Monsters, with Number monsters in the Graveyard to equip.

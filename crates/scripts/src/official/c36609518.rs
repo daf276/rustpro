@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 36609518;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KI_SIKIL, SET_LIL_LA];
+
 pub struct Procedure;
 
 impl LinkProcedure for Procedure {

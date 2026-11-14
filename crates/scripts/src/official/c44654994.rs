@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 44654994;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARTMAGE];
 // Set with Artmage Diactorus on the field to banish, Mystical Elf and Stone Ogre Grotto for three Races, and Ash Blossom & Joyous
 // Spring in the opponent's hand to negate Silvy of the White Forest's search, a monster effect to respond to.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 37613663;
+
+pub const LISTED_SERIES: &[u16] = &[SET_FORBIDDEN_ONE, SET_EXODIA, SET_MILLENNIUM];
+
 const EXODIA_INCARNATE: u32 = 83257450;
 
 pub const LISTED_NAMES: &[u32] = &[EXODIA_INCARNATE];

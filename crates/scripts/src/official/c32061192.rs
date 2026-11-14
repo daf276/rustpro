@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 32061192;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MALISS];
 // With Maliss <P> March Hare in the Deck to banish, and in the hand to banish it.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, HAND), (20938824, HAND), (20938824, DECK), (20938824, DECK)];
 pub const CHECKS: &[Check] = &[

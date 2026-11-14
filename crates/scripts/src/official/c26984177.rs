@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 26984177;
+
+pub const LISTED_SERIES: &[u16] = &[SET_HORUS];
+
 const HORUS_THE_BLACK_FLAME_DEITY: u32 = 99307040;
 
 pub const LISTED_NAMES: &[u32] = &[CARD_KING_SARCOPHAGUS, HORUS_THE_BLACK_FLAME_DEITY];

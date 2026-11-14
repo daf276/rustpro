@@ -6,6 +6,8 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 12421694;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SKY_STRIKER_ACE, SET_SKY_STRIKER];
+
 struct Procedure;
 
 impl LinkProcedure for Procedure {

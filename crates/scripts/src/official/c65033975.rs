@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 65033975;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SINFUL_SPOILS, SET_AZAMINA, SET_WHITE_FOREST];
 // On the field to attack and be destroyed by the opponent's Raigeki and Dark Hole, with Sinful Spoils of the White Forest in the
 // Graveyard to add and weak monsters of the opponent's to battle.
 pub const SUPPORT: &[(u32, u16)] = &[

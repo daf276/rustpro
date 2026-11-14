@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 69680031;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DOGMATIKA];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand with a monster of the opponent's from the Extra Deck, Special Summoned beside the other Dogmatika monster to negate it,

@@ -4,6 +4,7 @@ use crate::testing::{MZONE, OPPONENT};
 
 const ID: u32 = 25866285;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NATURIA];
 // Copies on the field to be attacked, and the opponent's attackers.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

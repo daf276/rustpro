@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 72291078;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MECHA_PHANTOM_BEAST];
 pub const LISTED_NAMES: &[u32] = &[TOKEN_MECHA_PHANTOM_BEAST];
 
 // In the hand, on the field and in the Graveyard, with Mecha Phantom Beast Warbluran in the hand to Normal Summon and Dark Hole in

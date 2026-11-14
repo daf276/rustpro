@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 21187631;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ALTERGEIST];
 // In the Extra Deck, Synchro Summoned with Altergeist Malwisp (a Level 3 Tuner) and Bolt Penguin (Level 3), with Orion (a Level 5 Normal
 // Monster) in hand to Tribute it and the opponent's Dragvirions in the Extra Deck (with their materials),
 // which are Synchro Summoned and attack.

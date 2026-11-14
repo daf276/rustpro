@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 11790356;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BUSTER_BLADER, SET_DESTRUCTION_SWORD];
+
 struct Procedure;
 
 impl SynchroProcedure for Procedure {

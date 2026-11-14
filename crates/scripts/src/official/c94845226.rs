@@ -4,6 +4,7 @@ use crate::testing::{HAND, MZONE, OPPONENT};
 
 const ID: u32 = 94845226;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FABLED];
 // Two on the field with Fabled Lurrie in the hand to discard, and attackers of the opponent's.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND};
 
 const ID: u32 = 41091257;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SPYRAL];
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND)];
 pub const CHECKS: &[Check] = &[Check::Resolves];
 

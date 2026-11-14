@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 67803035;
 
+pub const LISTED_SERIES: &[u16] = &[SET_UNCHAINED];
 pub const LISTED_NAMES: &[u32] = &[27412542, ID];
 
 // In the hand with Abomination's Prison in the Deck to search, then on the field with Unchained cards in the Graveyard to shuffle

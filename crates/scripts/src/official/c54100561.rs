@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE, PZONE};
 
 const ID: u32 = 54100561;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SOLFACHORD];
 // On the field with DoSolfachord Cutia (Scale 1) in the Pendulum Zone and in the Deck to send to the Extra Deck.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE), (55226153, PZONE), (55226153, DECK), (55226153, DECK)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 1))];

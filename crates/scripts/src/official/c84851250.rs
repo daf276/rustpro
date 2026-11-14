@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 84851250;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WINDWITCH];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Windwitch - Glass Bell on the field for the condition, Windwitch - Snow Bell and a copy in the hand, and Raigeki in the opponent's

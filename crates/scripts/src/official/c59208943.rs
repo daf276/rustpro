@@ -4,6 +4,7 @@ use crate::testing::{DECK, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 59208943;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TIME_THIEF];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Extra Deck, Xyz Summoned from Level 4 Normal Monsters, with Time Thief Winder in the Graveyard and Deck and Time Thief Redoer on the field.

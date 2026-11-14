@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 91002901;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ASSAULT_MODE];
 pub const LISTED_NAMES: &[u32] = &[CARD_ASSAULT_MODE];
 // Two copies in the hand, with monsters that mention Assault Mode Activate (Assault Sonic Warrior, Crimson Blader/Assault Mode) in the
 // Deck to add. Releasing a Synchro Monster in the Extra Deck for Assault Mode Activate is unported in the engine, so none is placed.

@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT, PZONE};
 
 const ID: u32 = 13331639;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPREME_KING_DRAGON];
+
 fn fusfilter<const CARD_TYPE: u32>(c: CardId, duel: &Duel, fc: CardId, sumtype: u64, tp: u8) -> bool {
     c.is_race_full(duel, RACE_DRAGON, Some(fc), sumtype, tp) && c.is_type_full(duel, CARD_TYPE, Some(fc), sumtype, tp)
 }

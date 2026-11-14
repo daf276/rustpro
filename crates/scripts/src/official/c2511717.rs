@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 2511717;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SIX_SAMURAI];
 // On the field, with Secret Six Samurai - Hatsume in the hand to Special Summon and on the field for the ATK gain.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (44686185, HAND), (44686185, HAND), (44686185, MZONE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

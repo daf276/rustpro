@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 19139516;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SCRAP];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // On the field in Defense Position against Skull Servants too weak to destroy it, with Scrap Raptor to destroy it and Scrap monsters in the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[

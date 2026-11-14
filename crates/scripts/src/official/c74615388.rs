@@ -4,6 +4,7 @@ use crate::testing::{EXTRA, MZONE};
 
 const ID: u32 = 74615388;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GENERAIDER];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Extra Deck, Xyz Summoned with Level 9 monsters (Wandering Titan of Tartarus, Thunder King, the Lightningstrike Kaiju), beside Jormungandr

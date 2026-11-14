@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, SZONE};
 
 const ID: u32 = 81497285;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LABRYNTH];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand and on the field, with Normal Traps (Trap Hole Set, Mirror Force in the Deck) to activate in response to and to Set.

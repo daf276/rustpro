@@ -41,6 +41,11 @@ pub fn listed_names(code: u32) -> &'static [u32] {
     lookup(&LISTED_NAMES, code).unwrap_or(&[])
 }
 
+// s.listed_series, which Card.ListsArchetype reads.
+pub fn listed_series(code: u32) -> &'static [u16] {
+    lookup(&LISTED_SERIES, code).unwrap_or(&[])
+}
+
 // s.counter_place_list, which Card.PlacesCounter reads.
 pub fn counter_place_list(code: u32) -> &'static [u16] {
     lookup(&COUNTER_PLACE_LIST, code).unwrap_or(&[])
@@ -69,6 +74,11 @@ pub fn dark_calling(code: u32) -> bool {
 // s.toss_coin, which the cards that search for a coin tossing effect read on the cards they check.
 pub fn toss_coin(code: u32) -> bool {
     lookup(&TOSS_COIN, code).unwrap_or(false)
+}
+
+// s.roll_dice, which the cards that search for a die rolling effect read on the cards they check.
+pub fn roll_dice(code: u32) -> bool {
+    lookup(&ROLL_DICE, code).unwrap_or(false)
 }
 
 // s.xyz_number, which Card.xyz_number reads.

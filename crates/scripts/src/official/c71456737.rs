@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, REMOVED};
 
 const ID: u32 = 71456737;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BATTLEWASP];
+
 // Halberd reuses it.
 pub struct Procedure;
 

@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, SZONE};
 
 const ID: u32 = 34298391;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TOON];
 // Toon World (a "Toon" Spell) in the hand and a Toon monster on the field for the declaration, with copies Set to activate.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, SZONE),

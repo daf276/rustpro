@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 19891310;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GEARGIA];
 // Three times in the Extra Deck, Xyz Summoned with Level 3 Machine Normal Monsters, with Geargiarsenals in the Graveyard, and the
 // opponent's Elfnote Lucinas to battle and Raigeki to destroy it.
 pub const SUPPORT: &[(u32, u16)] = &[

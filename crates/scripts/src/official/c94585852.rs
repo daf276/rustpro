@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 94585852;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARCHFIEND];
 // In the hand, with Summoned Skull on both sides for Raigeki to destroy and Archfiend Soldier and Marmot of Nefariousness (lower
 // Levels) in the Deck. The LP cost replacement needs an "Archfiend" monster paying LP in the Standby Phase, which none ported does.
 pub const SUPPORT: &[(u32, u16)] = &[

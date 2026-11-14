@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 38391684;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DAEDALUS];
 pub const LISTED_NAMES: &[u32] = &[CARD_ATLANTIS_CITY_OF_THE_SEA_DRAGON, CARD_UMI];
 
 // Copies in the hand and the Graveyard, with Levia-Dragon of Atlantis - Daedalus on the field, which mentions Atlantis and is named Umi.

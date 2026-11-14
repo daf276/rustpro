@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 58201062;
+
+pub const LISTED_SERIES: &[u16] = &[SET_DRAGON_RULER];
+
 const CHASMA: u32 = 4965193;
 
 pub const LISTED_NAMES: &[u32] = &[ID, CHASMA];

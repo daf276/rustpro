@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 35334193;
 
+pub const LISTED_SERIES: &[u16] = &[SET_S_FORCE];
 // Link Summoned from S-Force Edge Razor and two effect monsters, with many opponent's monsters to negate, attack and banish.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

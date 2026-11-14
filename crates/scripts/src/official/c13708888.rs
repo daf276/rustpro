@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 13708888;
+
+pub const LISTED_SERIES: &[u16] = &[SET_HERO, SET_EVIL_HERO];
 pub const LISTED_NAMES: &[u32] = &[CARD_NEOS, CARD_DARK_FUSION];
 pub const MATERIAL_SETCODE: &[u16] = &[SET_ELEMENTAL_HERO, SET_HERO, SET_NEOS];
 pub const DARK_CALLING: bool = true;

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 14816857;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TRI_BRIGADE];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // On the field with Tri-Brigade Shuraig in the Extra Deck and four Beast monsters in the Graveyard to banish for its Link

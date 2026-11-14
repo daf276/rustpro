@@ -4,6 +4,7 @@ use crate::testing::{Check, MZONE, OPPONENT};
 
 const ID: u32 = 30213599;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GRAVEKEEPERS];
 // On the field with Gravekeeper's Spy and Guard to release, and the opponent's monsters to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

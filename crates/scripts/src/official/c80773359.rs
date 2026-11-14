@@ -6,6 +6,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 80773359;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 // In the Extra Deck, Synchro Summoned from Kochi (a Level 4 Tuner), Zephyros and Bora (Level 4), with Blackwing monsters of other
 // Levels in the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[

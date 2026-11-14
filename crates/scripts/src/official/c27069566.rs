@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 27069566;
 
+pub const LISTED_SERIES: &[u16] = &[SET_VIRTUAL_WORLD];
 // On the field with Xyz Import to attach Sangan, Virtual World Mai-Hime - Lulu in the Deck to Special Summon, and the opponent's
 // Raigeki to destroy it, with Sangan on the opponent's field and in the Graveyard to banish.
 pub const SUPPORT: &[(u32, u16)] = &[

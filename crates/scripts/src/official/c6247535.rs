@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 6247535;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BORREL];
 // Xyz Summoned from the Extra Deck with Level 4 DARK Dragons (Koumori Dragon), against the opponent's monsters (Sangan), with a Borrel
 // Link Monster (Borrelsword Dragon) in the Graveyard to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[

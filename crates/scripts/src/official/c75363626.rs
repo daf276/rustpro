@@ -5,6 +5,7 @@ use crate::testing::{HAND, MZONE, OPPONENT};
 
 const ID: u32 = 75363626;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MADOLCHE];
 // On the field with other Madolche monsters, and the opponent's Raigeki to destroy it and monsters to attack.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

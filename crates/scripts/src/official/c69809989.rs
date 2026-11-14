@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, MZONE};
 
 const ID: u32 = 69809989;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GHOSTRICK];
 // Another copy in the GY to attach, to Ghostrick Alucard. No Ghostrick monster outside the Extra Deck is ported yet, so the
 // first effect has no target.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, GRAVE), (75367227, MZONE)];

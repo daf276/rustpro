@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 4215180;
 
+pub const LISTED_SERIES: &[u16] = &[SET_YUMMY];
 // In the hand and the Graveyard, with Cooky★Yummy Way (a Level 2 Synchro) on the field to Special Summon it from the hand and
 // to Special Summon it from the Graveyard, and the opponent's Raigeki to respond to and monsters in the opponent's Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[

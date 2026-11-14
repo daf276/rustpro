@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 91479482;
 
+pub const LISTED_SERIES: &[u16] = &[SET_INFERNOBLE_KNIGHT];
 // In the hand and on the field with Elemental HERO Burstinatrix (a Warrior) to equip to and Infernoble Arms - Durendal in the Deck,
 // destroyed in battle by Frostosaurus on the opponent's side.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND};
 
 const ID: u32 = 67768675;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLUE_EYES];
 pub const LISTED_NAMES: &[u32] = &[CARD_BLUEEYES_W_DRAGON];
 
 // In the hand with Blue-Eyes White Dragon in the Deck to show and Special Summon, and copies in the Graveyard to search.

@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 51546708;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DARK_TUNER];
 // In the hand and on the field with Dark Tuner Catastrogue to Normal Summon, Frostosaurus (Level 6) as the non-Tuner to Tribute with
 // Dark Diviner (Level 4) in the Extra Deck, Level 6 Normal Monsters as the other Tributes, and Doron (Level 2) to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[

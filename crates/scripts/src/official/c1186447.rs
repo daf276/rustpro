@@ -5,6 +5,7 @@ use engine::constants::MSG_SELECT_EFFECTYN;
 
 const ID: u32 = 1186447;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAGICIAN, SET_ODD_EYES, SET_PERFORMAPAL];
 // In the hand with a Magician Pendulum Monster (Stargazer Magician) to discard and on the field, Supreme King Gate Magician (2500
 // ATK Pendulum) in the Deck and a face-up Pendulum in the Extra Deck, and the opponent's Spells to negate.
 pub const SUPPORT: &[(u32, u16)] = &[

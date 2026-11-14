@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 80635735;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ALEISTER];
+
 const CHOICE: u8 = 0;
 
 pub const MATERIAL_SETCODE: &[u16] = &[SET_ALEISTER];

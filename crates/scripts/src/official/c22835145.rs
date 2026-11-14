@@ -6,6 +6,7 @@ use crate::testing::{Check, GRAVE, HAND};
 
 const ID: u32 = 22835145;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (2009101, GRAVE), (2009101, GRAVE), (49003716, GRAVE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];
 

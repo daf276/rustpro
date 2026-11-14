@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 94350039;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TG];
 // In the hand, with T.G. Hyper Librarian on the field to target.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (90953320, MZONE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

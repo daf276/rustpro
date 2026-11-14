@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 8252010;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SABER, SET_GOTTOMS, SET_X_SABER];
 // In the Extra Deck, Synchro Summoned with X-Saber Airbellum (Level 3 Tuner) and Anu Piranha (Level 4), with Saber Slash in the
 // Deck to search; X-Saber monsters on the field for the Graveyard copy to be attacked into, and opponent attackers.
 pub const SUPPORT: &[(u32, u16)] = &[

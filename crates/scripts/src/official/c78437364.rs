@@ -6,6 +6,7 @@ use engine::constants::MSG_SELECT_EFFECTYN;
 
 const ID: u32 = 78437364;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GOUKI];
 // The destruction replacement is no chain link and moves no card; its prompt is the MSG_SELECT_EFFECTYN.
 // On the field with Gouki Guts and Gouki Machine Suprex, and Raigeki on the opponent's side to destroy it.
 pub const SUPPORT: &[(u32, u16)] = &[

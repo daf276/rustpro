@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 42632209;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MATHMECH];
 // In the Extra Deck, Synchro Summoned with Geomathmech Magma (a Level 8 Tuner) and Level 4 Normal Monsters, with Mathmech cards in the
 // Deck to search and the opponent's Raigeki and Dark Hole to destroy it, with copies on the field since the
 // optional trigger is often declined.

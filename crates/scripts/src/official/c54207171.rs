@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 54207171;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MEMENTO];
 // In the hand, on the field and in the Graveyard, with Mementotlan Angwitch to add and to be destroyed by the opponent's
 // Raigeki and Dark Hole.
 pub const SUPPORT: &[(u32, u16)] = &[

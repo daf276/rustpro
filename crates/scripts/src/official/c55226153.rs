@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, PZONE};
 
 const ID: u32 = 55226153;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SOLFACHORD];
 // A copy in the Pendulum Zone and copies in the hand to Summon, with FaSolfachord Fancia in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, PZONE),

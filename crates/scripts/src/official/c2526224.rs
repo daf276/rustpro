@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, OPPONENT};
 
 const ID: u32 = 2526224;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FIRE_KING];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // Two in hand with Fire King Courtier Ulcanix to destroy, Sacred Fire King Garunix in the Graveyard to revive, and Raigeki on the other side.
 pub const SUPPORT: &[(u32, u16)] = &[

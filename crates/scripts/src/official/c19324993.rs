@@ -4,6 +4,7 @@ use crate::testing::{DECK, EXTRA, MZONE};
 
 const ID: u32 = 19324993;
 
+pub const LISTED_SERIES: &[u16] = &[SET_HERO];
 // Link Summoned from two HERO monsters, with Elemental HERO Flame Wingman in the Extra Deck and its materials in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

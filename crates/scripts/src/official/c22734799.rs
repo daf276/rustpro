@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 22734799;
+
+pub const LISTED_SERIES: &[u16] = &[SET_SACRED_BEAST];
+
 const HAND_OR_GRAVE: u32 = LOCATION_HAND | LOCATION_GRAVE;
 
 // Copies in the hand, on the field and in the Graveyard for the three effects, and Sacred Beast monsters other than

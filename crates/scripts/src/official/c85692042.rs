@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, MZONE};
 
 const ID: u32 = 85692042;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MATHMECH];
 // In the Extra Deck, Xyz Summoned with three Level 4 Normal Monsters (Jellyfish, Hyosube, Water Omotics) and more in the Deck. No
 // "Mathmech" monster is ported, so its Special Summon is only reported.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 17201951;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WARRIOR];
 pub const LISTED_NAMES: &[u32] = &[CARD_JUNK_SYNCHRON, CARD_JUNK_WARRIOR];
 
 // In the hand to Normal Summon, with Junk Synchron in the Deck to search, and Assault Sonic Warrior and a Synchro

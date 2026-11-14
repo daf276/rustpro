@@ -4,6 +4,8 @@ use crate::testing::{MZONE, OPPONENT};
 
 const ID: u32 = 75797046;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BUTTERSPY];
+
 struct Procedure;
 
 impl XyzProcedure for Procedure {

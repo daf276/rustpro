@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 61496006;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NUMBER];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand with WATER monsters on the field, and Fish monsters (7 Colored Fish, Great White) in the Deck to add.

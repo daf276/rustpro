@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 10113611;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WATT];
 // Copies on the field to attack directly and in the hand, with Thunder Kid (Level 2) in the hand to release with it for Wattchimera
 // (Level 6) in the Extra Deck.
 pub const SUPPORT: &[(u32, u16)] = &[

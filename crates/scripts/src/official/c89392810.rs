@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 89392810;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KEWL_TUNE];
 // Kewl Tune Mix in the hand as the hand Synchro material for Kewl Tune RS, which Reco makes the Tuner, and the opponent's
 // Traps to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[

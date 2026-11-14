@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 85914562;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ADAMANCIPATOR];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // A copy in hand and one on the field, with a face-up Rock (Haniwa) and Rock Normal Monsters (Destroyer Golem) in the Deck.

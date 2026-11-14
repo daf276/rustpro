@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 83531441;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BURNING_ABYSS];
 // In the Extra Deck, Xyz Summoned with Level 3 Rubic and Normal Monsters, with Rubic in the Graveyard to add.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

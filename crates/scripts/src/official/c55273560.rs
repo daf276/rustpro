@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 55273560;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SWORDSOUL];
 pub const LISTED_NAMES: &[u32] = &[CARD_ALBAZ];
 
 // In the hand to Special Summon with fewer monsters than the opponent, on the field to tribute for Fallen of Albaz in the Deck, and

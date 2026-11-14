@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND};
 
 const ID: u32 = 37351133;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SKY_STRIKER_ACE];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // In the hand and the GY, with another Sky Striker Ace in the hand to summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, GRAVE), (26077387, HAND)];

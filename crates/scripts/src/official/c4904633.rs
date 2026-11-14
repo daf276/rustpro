@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, SZONE};
 
 const ID: u32 = 4904633;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SHADDOLL];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Set, to be activated as a monster, with Dark Hole to destroy it and a Shaddoll Spell in the Graveyard to add.

@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 33236860;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 // In the Extra Deck, Synchro Summoned from Blizzard (a Level 2 Tuner), Zephyros (Level 4) and Souls of the Forgotten (Level 2),
 // with low-DEF monsters of the opponent's to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[

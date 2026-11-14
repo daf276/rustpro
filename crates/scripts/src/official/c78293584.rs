@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 78293584;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DIABELL];
 // In the hand and GY, with Vengeance in the hand to banish it, Diabellze and Vengeance in the Deck to search and Black Witch on the field.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

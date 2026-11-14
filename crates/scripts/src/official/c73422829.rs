@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 73422829;
+
+pub const LISTED_SERIES: &[u16] = &[SET_SUPER_QUANT];
+
 const ALPHAN: u32 = 58753372;
 
 pub const LISTED_NAMES: &[u32] = &[ALPHAN];

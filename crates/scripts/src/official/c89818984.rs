@@ -4,6 +4,7 @@ use crate::testing::{DECK, HAND, MZONE};
 
 const ID: u32 = 89818984;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FLOWER_CARDIAN];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // In the hand, Special Summoned by Tributing Flower Cardian Willow (Level 11), with Flower Cardian Pine in the Deck to draw.
 pub const SUPPORT: &[(u32, u16)] = &[

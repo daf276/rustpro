@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 39387565;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RED_EYES];
 // Set with Red-Eyes Black Dragons on the field and in the Graveyard to revive, and the opponent's Mystical Space Typhoon to
 // destroy it.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 18843291;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LIGHTSWORN];
 // In the Extra Deck, Synchro Summoned from Felis (a Level 4 Tuner) and Jain (Level 4), with Lightsworn monsters of different
 // Types in the Deck to send and in the Graveyard to banish.
 pub const SUPPORT: &[(u32, u16)] = &[

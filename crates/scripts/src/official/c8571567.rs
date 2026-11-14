@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 8571567;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 pub const LISTED_NAMES: &[u32] = &[7602800, CARD_BLACK_WINGED_DRAGON];
 
 // Black Feather Whirlwind in the Deck, and in the GY with Blackwing - Bora the Spear to add and a Synchro Summon of Blackwing - Boreastorm the Wicked Wind

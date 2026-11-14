@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, MZONE};
 
 const ID: u32 = 28004531;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FUR_HIRE];
 // The Deck has no Fur Hire Spell/Trap to search (none ported); the Graveyard effect needs another Fur Hire in the Graveyard
 // and one on the field.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, GRAVE), (47647354, GRAVE), (93850652, GRAVE), (93850652, MZONE)];

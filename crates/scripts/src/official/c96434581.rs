@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 96434581;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CRUSADIA];
 // Copies in the hand with Crusadia Arboria on the field.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (91646304, MZONE), (91646304, MZONE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(0)];

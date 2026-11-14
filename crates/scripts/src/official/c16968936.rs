@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 16968936;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SIX_SAMURAI, SET_SIX_STRIKE];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand beside Legendary Six Samurai - Kageki to Special Summon, as the Tuner of a Synchro Summon of Legendary Six Samurai - Shi En,

@@ -4,6 +4,9 @@ use crate::prelude::*;
 use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 65325949;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ASHTRA];
+
 const ASHTRA_DIVINE_DOMAIN: u32 = 37839434;
 const ASHTRA_INSECT_POISON: u32 = 64455720;
 

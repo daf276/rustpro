@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 65302903;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DOMINUS_PURGE, SET_DOMINATORS];
 // Four copies in the hand to Normal Summon and reveal on the opponent's turn, and one on the field, with Dominus Impulse and Dominus
 // Purge in the Deck to search or Set.
 pub const SUPPORT: &[(u32, u16)] = &[

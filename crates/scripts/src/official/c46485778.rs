@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE};
 
 const ID: u32 = 46485778;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RECIPE, SET_NOUVELLES];
 // In the Pendulum Zone and on the field, with Relinquished and Clown Crew Flair (Level 1 Ritual Monsters) on the field and in the Deck. No
 // "Nouvelles" Ritual Monster is ported, so the Special Summon option is never available.
 pub const SUPPORT: &[(u32, u16)] = &[

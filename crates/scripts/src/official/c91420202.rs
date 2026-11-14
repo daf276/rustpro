@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 91420202;
+
+pub const LISTED_SERIES: &[u16] = &[SET_VENDREAD];
+
 const REVENDREAD_SLAYER: u32 = 4388680;
 
 pub const LISTED_NAMES: &[u32] = &[REVENDREAD_SLAYER];

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 29302858;
 
+pub const LISTED_SERIES: &[u16] = &[SET_VANQUISH_SOUL];
 // On the field and in the hand (FIRE) with Vanquish Soul Heavy Borger (DARK non-Warrior) in the Deck to search and in the hand to
 // reveal, and Unicycular on the field to be destroyed in the column.
 pub const SUPPORT: &[(u32, u16)] = &[

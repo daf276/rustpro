@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 69540484;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KASHTIRA];
 // Kashtira Fenrir and Unicorn (Level 7) in the hand, on the field and in the Graveyard, with Raigeki and Sangan on the
 // opponent's side to chain to and to banish.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, REMOVED};
 
 const ID: u32 = 75047173;
 
+pub const LISTED_SERIES: &[u16] = &[SET_HERO];
 pub const LISTED_NAMES: &[u32] = &[CARD_NEOS];
 
 struct Params;

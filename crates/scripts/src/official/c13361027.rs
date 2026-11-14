@@ -4,6 +4,7 @@ use crate::testing::{GRAVE, MZONE};
 
 const ID: u32 = 13361027;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRAGUNITY];
 // Copies on the field to release, and Harpie Girl (Level 2 Winged Beast) in the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE), (34100324, GRAVE), (34100324, GRAVE)];
 

@@ -5,6 +5,8 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 68679595;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ZW];
 pub const XYZ_NUMBER: u32 = 39;
 
 pub const LISTED_NAMES: &[u32] = &[56840427];

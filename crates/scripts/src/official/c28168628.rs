@@ -4,6 +4,7 @@ use crate::testing::{EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 28168628;
 
+pub const LISTED_SERIES: &[u16] = &[SET_VANQUISH_SOUL];
 // In the Extra Deck, Link Summoned with a Vanquish Soul monster, with Vanquish Soul monsters in the hand to Special Summon and in the
 // Graveyard to add, and the opponent's attackers.
 pub const SUPPORT: &[(u32, u16)] = &[

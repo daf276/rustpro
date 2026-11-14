@@ -4,6 +4,9 @@ use crate::testing::{Check, DECK, HAND, MZONE, SZONE};
 use engine::constants::MSG_SELECT_YESNO;
 
 const ID: u32 = 49088914;
+
+pub const LISTED_SERIES: &[u16] = &[SET_VIRTUAL_WORLD];
+
 const KEY: u32 = TYPE_MONSTER + TYPE_SPELL + TYPE_TRAP;
 
 pub const LISTED_NAMES: &[u32] = &[ID];

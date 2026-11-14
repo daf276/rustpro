@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 24484270;
+
+pub const LISTED_SERIES: &[u16] = &[SET_GEM_KNIGHT, SET_GEM];
+
 const ZIRCONIA: u32 = 8692301;
 
 struct Procedure;

@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 1050186;
+
+pub const LISTED_SERIES: &[u16] = &[SET_TELLARKNIGHT];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Satellarknight Deneb in the Deck to send.

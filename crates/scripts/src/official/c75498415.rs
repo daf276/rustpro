@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 75498415;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 // In the hand to Summon without Tributes against the opponent's Sangan, then to add the ATK of its other copies.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

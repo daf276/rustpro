@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 62606805;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TELEPORT];
 // Copies in the hand to Normal Summon and on the field and in the Graveyard to be banished by the opponent's Night's End Sorcerer
 // revived with Monster Reborn, with Emergency Teleport (a Teleport Quick-Play Spell) in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[

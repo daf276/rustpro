@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 92248362;
 
+pub const LISTED_SERIES: &[u16] = &[SET_K9];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Copies in the hand to Summon, a K9 monster in the Deck to send, and an opponent's Elfnote Lucina in the hand and Graveyard

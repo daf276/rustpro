@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{HAND, MZONE, OPPONENT};
 
 const ID: u32 = 63035430;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ELEMENTAL_HERO];
+
 // s[0], shared by every copy's condition and value.
 const BOOSTED: u64 = (ID as u64) << 16;
 

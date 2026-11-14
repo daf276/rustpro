@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 2896663;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ZEXAL, SET_ZW, SET_UTOPIA];
 // On the field to equip to Number 39: Utopia, with ZW - Ultimate Shield beside it and in the hand to equip and Special Summon, Zexal
 // Construction in the Deck to search and the opponent's Sangan to battle.
 pub const SUPPORT: &[(u32, u16)] = &[

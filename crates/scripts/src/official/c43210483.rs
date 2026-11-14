@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, HAND, MZONE, PZONE};
 
 const ID: u32 = 43210483;
+
+pub const LISTED_SERIES: &[u16] = &[SET_SYMPHONIC_WARRIOR];
+
 const SYMPH_AMPLIFIRE: u32 = 75304793;
 
 pub const LISTED_NAMES: &[u32] = &[SYMPH_AMPLIFIRE];

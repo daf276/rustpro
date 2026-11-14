@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE};
 
 const ID: u32 = 24317029;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GRAVEKEEPERS];
 // Face-down on the field to be flipped by an attack, with copies in the Deck: the only ported Gravekeeper's monster.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE), (ID, DECK), (ID, DECK), (ID, DECK)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

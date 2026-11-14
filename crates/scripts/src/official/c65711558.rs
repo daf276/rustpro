@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 65711558;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ANCIENT_WARRIORS];
+
 struct Procedure;
 
 impl LinkProcedure for Procedure {

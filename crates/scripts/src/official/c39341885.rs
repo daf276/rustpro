@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 39341885;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RADIANT_TYPHOON];
 pub const LISTED_NAMES: &[u32] = &[CARD_MYSTICAL_SPACE_TYPHOON];
 // On the field with a copy in the Extra Deck, two Radiant Typhoon monsters to Link Summon it with, a Quick-Play Spell
 // (Mystical Space Typhoon) in the hand, Mystical Space Typhoon in the Deck to search and Radiant Typhoon Mandate to place.

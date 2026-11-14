@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, SZONE};
 
 const ID: u32 = 37649320;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PALEOZOIC];
 // In the Extra Deck, Xyz Summoned with two Level 2 monsters (Paleozoic Marrella revived from the Graveyard by a Trap
 // activation becomes one, Trap Monsters being the Trap Xyz Material the search needs), and Paleozoic Traps in the Deck to search
 // and in the hand to activate.

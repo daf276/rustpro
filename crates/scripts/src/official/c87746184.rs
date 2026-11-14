@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND};
 
 const ID: u32 = 87746184;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BRANDED];
 pub const LISTED_NAMES: &[u32] = &[CARD_ALBAZ, ID];
 
 struct Materials;

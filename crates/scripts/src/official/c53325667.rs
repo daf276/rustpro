@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 53325667;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ROSE_DRAGON];
 pub const LISTED_NAMES: &[u32] = &[71645242];
 
 struct Procedure;

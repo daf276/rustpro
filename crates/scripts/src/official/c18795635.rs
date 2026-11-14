@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 18795635;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GMX];
 // GMX Researcher Selande and Dinosaur Normal Monsters (Trakodon, Little D) in the Deck to excavate; no GMX Fusion Monster is
 // ported yet, so the Fusion Summon is not reached.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (20049870, DECK), (20049870, DECK), (42348802, DECK), (42625254, DECK)];

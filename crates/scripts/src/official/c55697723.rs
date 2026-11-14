@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 55697723;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SHARK];
 // In the hand with Raigeki and Dark Hole to activate and copies to Summon, and Abyss Shark (the only ported Fish "Shark") in
 // the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -6,6 +6,8 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 73542331;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KASHTIRA];
+
 struct Procedure;
 
 impl XyzProcedure for Procedure {

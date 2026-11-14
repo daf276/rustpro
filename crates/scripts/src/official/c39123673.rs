@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 39123673;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ENDYMION];
 pub const LISTED_NAMES: &[u32] = &[ID];
 pub const COUNTER_LIST: &[u16] = &[COUNTER_SPELL];
 

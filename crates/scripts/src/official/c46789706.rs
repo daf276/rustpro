@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 46789706;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KURIBOH];
 // A Kuriboh on the field to Special Summon from the hand, and an opponent's monster whose effect it can equip to.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (40640057, MZONE), (41999284, MZONE)];
 pub const CHECKS: &[Check] = &[

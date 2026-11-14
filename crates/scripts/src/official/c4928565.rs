@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND};
 
 const ID: u32 = 4928565;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TEARLAMENTS, SET_KASHTIRA];
 // In the hand with Merrli in the hand and Graveyard to banish, and in the Deck for the mill of Merrli to send.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE};
 
 const ID: u32 = 53932291;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SPEEDROID];
 // Speedroid Terrortop, a WIND monster, on the field for the hand Special Summon, Speedroid Darumaknocker (a Tuner) in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[(81275020, MZONE), (ID, MZONE), (85482105, DECK), (85482105, DECK)];
 pub const CHECKS: &[Check] = &[Check::SpecialSummoned, Check::ResolvesEffect(aux::stringid(ID, 0))];

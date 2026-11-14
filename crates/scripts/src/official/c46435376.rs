@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 46435376;
 
+pub const LISTED_SERIES: &[u16] = &[SET_INFERNITY];
 // On the field and in the hand, discarded along with the hand by another copy, with Infernity Beetle in the Deck to send.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

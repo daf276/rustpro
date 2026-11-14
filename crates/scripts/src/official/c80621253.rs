@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 80621253;
+
+pub const LISTED_SERIES: &[u16] = &[SET_MANNADIUM];
+
 const MANNADIUM_MEEK: u32 = 44760562;
 
 pub const LISTED_NAMES: &[u32] = &[CARD_VISAS_STARFROST];

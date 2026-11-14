@@ -4,6 +4,7 @@ use crate::testing::{HAND, MZONE, OPPONENT};
 
 const ID: u32 = 40012727;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ASSAULT_MODE];
 // In the hand with an Assault Mode monster (Crimson Blader/Assault Mode) on the field, and an opponent's monster to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (50604072, MZONE), (26202165, MZONE | OPPONENT)];
 

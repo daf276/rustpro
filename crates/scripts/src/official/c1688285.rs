@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 1688285;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TRAPTRIX];
 // On the field with Xyz Import to attach Sangan, a Traptrix monster (Atrax) in the Deck to search, and Raigeki to send the opponent's
 // monsters to the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[

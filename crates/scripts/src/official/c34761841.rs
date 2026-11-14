@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 34761841;
+
+pub const LISTED_SERIES: &[u16] = &[SET_RESONATOR];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand to be Normal Summoned beside Red Dragon Archfiend with Vision Resonator to Special Summon, or after the opponent's Raigeki empties the field.

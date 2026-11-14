@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 87535691;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPERHEAVY_SAMURAI];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // Copies on the field for the opponent's Raigeki to destroy, with Superheavy Samurai Motorbike in the Graveyard to revive.
 pub const SUPPORT: &[(u32, u16)] = &[

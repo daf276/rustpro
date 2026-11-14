@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 59170782;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MERMAIL];
 // In the Extra Deck, Xyz Summoned with Level 3 Normal Monsters, with Mermail Abysspikes on the field and in the Graveyard for the
 // opponent's Elfnote Lucina to attack, Mage Power to target, and Raigeki to destroy it.
 pub const SUPPORT: &[(u32, u16)] = &[

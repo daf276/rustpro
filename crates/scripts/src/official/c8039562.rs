@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 8039562;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRAGUNITY];
 // Copies in hand and on the field, Dragunity Phalanx and Couse in the Deck to equip (a copy there is equipped by another copy, and then
 // banishes), and Mystical Elf on the opponent's side to banish.
 pub const SUPPORT: &[(u32, u16)] = &[

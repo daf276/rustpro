@@ -4,6 +4,9 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 use engine::constants::MSG_ATTACK;
 
 const ID: u32 = 22623509;
+
+pub const LISTED_SERIES: &[u16] = &[SET_WITCHCRAFTER];
+
 const MAGICAL_DIMENSION: u32 = 28553439;
 
 pub const LISTED_NAMES: &[u32] = &[CARD_REGULUS_THE_PRINCE_OF_ENDYMION, MAGICAL_DIMENSION];

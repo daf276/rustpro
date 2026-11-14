@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 38001022;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CXYZ, SET_NUMBER_C, SET_UMBRAL_HORROR];
 // Set with a Number C104 on the field and Umbral Horror monsters in the Graveyard, against the opponent's Raigeki, with a monster to attach.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, SZONE),

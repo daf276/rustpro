@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 94942656;
+
+pub const LISTED_SERIES: &[u16] = &[SET_NUMBER, SET_STEALTH_KRAGEN];
+
 const KRAGEN: u32 = 67557908;
 
 // Number 4: Stealth Kragen in the Extra Deck to Special Summon this card, and Stealth Kragen monsters and WATER

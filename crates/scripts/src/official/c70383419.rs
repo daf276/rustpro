@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 70383419;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ALEISTER];
 pub const MATERIAL_SETCODE: &[u16] = &[SET_ALEISTER];
 const VIRAKAM: u32 = 10673071;
 const GAMMA_SUMMON: u32 = 86319972;

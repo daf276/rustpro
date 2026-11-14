@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 54700519;
 
+pub const LISTED_SERIES: &[u16] = &[SET_URSARCTIC];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // Blue-Eyes White Dragon in the hand to Tribute, Ursarctic Megapolar and Megabilis on the field, and face-up monsters on the
 // opponent's side.

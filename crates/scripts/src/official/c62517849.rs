@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, MZONE};
 
 const ID: u32 = 62517849;
+
+pub const LISTED_SERIES: &[u16] = &[SET_UTOPIA];
+
 const DOUBLE_OR_NOTHING: u32 = 94770493;
 pub const LISTED_NAMES: &[u32] = &[DOUBLE_OR_NOTHING];
 pub const XYZ_NUMBER: u32 = 39;

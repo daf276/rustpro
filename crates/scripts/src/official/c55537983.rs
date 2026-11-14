@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 55537983;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MIMIGHOUL];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand to Normal Summon, with Mimighoul Armor in the Deck to search and Sangan on the opponent's field face-down.

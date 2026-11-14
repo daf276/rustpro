@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, MZONE, REMOVED};
 
 const ID: u32 = 9396662;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ICE_BARRIER];
+
 const TOKEN_ICE_BARRIER: u32 = 44308318;
 
 pub const LISTED_NAMES: &[u32] = &[ID, TOKEN_ICE_BARRIER];

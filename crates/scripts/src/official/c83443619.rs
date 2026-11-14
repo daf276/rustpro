@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, MZONE};
 
 const ID: u32 = 83443619;
+
+pub const LISTED_SERIES: &[u16] = &[SET_CRYSTRON];
+
 const CRYSTRON_INCLUSION: u32 = 31552317;
 
 // A copy on the field and in the Graveyard, with a Crystron Spell (Inclusion) and Crystron Quan (a Tuner) in the Deck.

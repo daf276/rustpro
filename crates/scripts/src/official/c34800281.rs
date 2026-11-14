@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 34800281;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MELFFY];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // Copies in the hand with Melffy Rabby, a Beast Normal Monster, on the field for the opponent's Compulsory Evacuation Device to
 // return, and in the Graveyard with Number 29: Mannequin Cat, a Beast Xyz Monster, to attach to.

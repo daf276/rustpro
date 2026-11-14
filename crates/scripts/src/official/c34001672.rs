@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 34001672;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GOBLIN];
 // On the field with Samuel, which detaches a material that Xyz Import took from the opponent's Sangan, and a copy in the Extra
 // Deck with two Sangan for the Xyz Summon; Goblin Zombie and Goblin Attack Force in the Deck to search and attach.
 pub const SUPPORT: &[(u32, u16)] = &[

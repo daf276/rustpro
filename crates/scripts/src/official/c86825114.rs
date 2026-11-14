@@ -4,6 +4,7 @@ use crate::testing::{EXTRA, MZONE};
 
 const ID: u32 = 86825114;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TRICKSTAR];
 // On the field with copies for a Link Summon of Trickstar Black Catbat (two Trickstar monsters).
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE), (ID, MZONE), (94626871, EXTRA), (94626871, EXTRA)];
 

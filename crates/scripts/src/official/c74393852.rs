@@ -7,6 +7,7 @@ use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 74393852;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ZOODIAC];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Extra Deck, Xyz Summoned with five Level 4 Normal Monsters, and the opponent's monsters to attack.

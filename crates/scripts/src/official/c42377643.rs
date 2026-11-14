@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 42377643;
+
+pub const LISTED_SERIES: &[u16] = &[SET_GUNKAN];
 pub const LISTED_NAMES: &[u32] = &[CARD_SUSHIP_SHARI];
 
 // In the hand with a Gunkan Suship Shari (or Ikura) to reveal, a second Uni on the field for the Level change, and Shari in the Deck.

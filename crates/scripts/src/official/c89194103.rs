@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 89194103;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FABLED];
 // In the Extra Deck, Synchro Summoned with The Fabled Chawa (a Level 1 Tuner) and Swordsman of Landstar (Level 3).
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND};
 
 const ID: u32 = 48210156;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DD];
 // Normal Summoned with D/D Pandora in the Graveyard to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (32146097, GRAVE), (32146097, GRAVE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 10300821;
+
+pub const LISTED_SERIES: &[u16] = &[SET_BATTLIN_BOXER];
 pub const XYZ_NUMBER: u32 = 79;
 const NOVA_KAISER: u32 = 71921856;
 

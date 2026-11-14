@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 61488417;
+
+pub const LISTED_SERIES: &[u16] = &[SET_YANG_ZING];
+
 const JIAOTU: u32 = 25935625;
 
 pub const LISTED_NAMES: &[u32] = &[ID];

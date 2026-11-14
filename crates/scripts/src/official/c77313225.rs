@@ -4,6 +4,8 @@ use crate::testing::{DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 77313225;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WHITE_FOREST];
+
 struct Procedure;
 
 impl SynchroProcedure for Procedure {

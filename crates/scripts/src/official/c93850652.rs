@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 93850652;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FUR_HIRE];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // On the field with a Fur Hire in the hand to Special Summon, and Fur Hire monsters in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (47647354, HAND), (47647354, DECK), (28004531, DECK)];

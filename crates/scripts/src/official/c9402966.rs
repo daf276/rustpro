@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 9402966;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPERHEAVY_SAMURAI];
 // Copies on the field, with Swordsman of Landstar (Level 3) on the opponent's side to send with it for Superheavy Samurai Swordmaster
 // Musashi (Level 5) in the Extra Deck.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -2,6 +2,7 @@
 use crate::prelude::*;
 use crate::testing::HAND;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DESTINY_HERO];
 // Destiny HERO - Dark Angel in the hand to discard.
 pub const SUPPORT: &[(u32, u16)] = &[(26964762, HAND)];
 

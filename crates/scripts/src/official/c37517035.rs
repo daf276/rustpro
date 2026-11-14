@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND};
 
 const ID: u32 = 37517035;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARTMAGE];
 // In hand to Fusion Summon Artmage Diactorus from the Extra Deck with Medius the Pure and Artmage Litera, with Acropolis in a random
 // zone for the ATK, and in the Graveyard to shuffle three Artmage cards with different names.
 pub const SUPPORT: &[(u32, u16)] = &[

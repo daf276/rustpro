@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, REMOVED};
 
 const ID: u32 = 16605586;
+
+pub const LISTED_SERIES: &[u16] = &[SET_DESTINY_HERO];
+
 const MALICIOUS: u32 = 9411399;
 
 pub const LISTED_NAMES: &[u32] = &[ID];

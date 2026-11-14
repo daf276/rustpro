@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 64414267;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TELLARKNIGHT];
 // Xyz Summoned from the Extra Deck with two Level 4 "tellarknight" monsters (Satellarknight Deneb, Unukalhai), with Tellarknight
 // Ptolemaeus in the Extra Deck to Xyz Summon. The Quick Effect needs seven different "tellarknight" monsters in the Graveyard, which
 // only three ported cards can be, so only the Ignition Effect resolves.

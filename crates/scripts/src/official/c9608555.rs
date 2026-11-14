@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 9608555;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SALAMANGREAT];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // A copy on the field and two in the Extra Deck, to Reincarnation Summon with the field copy as material, and Xyz Summoned with two

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, PZONE};
 
 const ID: u32 = 82112494;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPERHEAVY_SAMURAI];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // Copies in the Pendulum Zone and on the field, with Key Mace (Level 1) and Ally of Justice Catastor in the Extra Deck to
 // Synchro Summon with it, a Superheavy Samurai in the Deck and a monster in the hand to discard. No Superheavy Samurai Pendulum

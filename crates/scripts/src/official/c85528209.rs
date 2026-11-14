@@ -5,6 +5,8 @@ use engine::constants::MSG_ATTACK;
 
 const ID: u32 = 85528209;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPERHEAVY_SAMURAI];
+
 struct Procedure;
 
 impl SynchroProcedure for Procedure {

@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 97383507;
 
+pub const LISTED_SERIES: &[u16] = &[SET_IGNISTER];
 // Link Summoned from three differently named Cyberse monsters, with Ignister and Cyberse monsters in the Graveyard and weak opponent's monsters to destroy by battle.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

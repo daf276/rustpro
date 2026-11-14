@@ -4,6 +4,7 @@ use crate::testing::{Check, MZONE};
 
 const ID: u32 = 12496261;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRAGUNITY];
 // On the field with Dragunity Lord - Georgius, which Special Summons it back from the GY for the equip trigger.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (70522875, MZONE)];
 pub const CHECKS: &[Check] = &[

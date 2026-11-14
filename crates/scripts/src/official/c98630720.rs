@@ -7,6 +7,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 98630720;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ROKKET];
 // Link Summoned in the Extra Deck with three Rokket Tracers (Effect Monsters), and a Rokket Loader in the GY to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

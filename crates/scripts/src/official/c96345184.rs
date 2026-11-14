@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 96345184;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SACRED_BEAST];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Three on the field, two of them to Tribute, a copy in the hand to reveal and Martyr of the Sacred Beasts in the Deck to

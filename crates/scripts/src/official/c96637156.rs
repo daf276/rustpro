@@ -4,7 +4,7 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 96637156;
 
-// s.roll_dice, which only cards that are not ported read, is left out.
+pub const ROLL_DICE: bool = true;
 // In the Extra Deck, Xyz Summoned with two Level 6 Normal Monsters (Boulder Tortoise).
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

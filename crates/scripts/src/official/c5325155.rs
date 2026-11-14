@@ -5,6 +5,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 5325155;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAYAKASHI];
 // In the Graveyard with Dakki (a Mayakashi) on the field for the opponent's Raigeki and Dark Hole to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, GRAVE),

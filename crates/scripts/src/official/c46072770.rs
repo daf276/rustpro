@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 46072770;
 
+pub const LISTED_SERIES: &[u16] = &[SET_THE_PHANTOM_KNIGHTS];
 // Doomed Soleret to reveal and to search, a second copy to reveal for the other copy, and Number 11: Big Eye as the Xyz Monster.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (83566725, HAND), (83566725, DECK), (80117527, MZONE)];
 pub const CHECKS: &[Check] = &[

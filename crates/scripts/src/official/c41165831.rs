@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, SZONE};
 
 const ID: u32 = 41165831;
 
+pub const LISTED_SERIES: &[u16] = &[SET_UNCHAINED];
 // In the hand and on the field as the Fiend to destroy, with a Spell on the field. No ported card is an "Unchained" Spell/Trap, so
 // the Set trigger never resolves.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (55144522, SZONE)];

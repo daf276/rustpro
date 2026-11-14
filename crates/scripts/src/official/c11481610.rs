@@ -4,6 +4,7 @@ use crate::testing::HAND;
 
 const ID: u32 = 11481610;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PERFORMAPAL, SET_ODD_EYES, SET_MAGICIAN];
 // Psychic Kappa, a Normal Monster, in the hand to send as the cost. No Pendulum Monster of the archetypes is ported, so the
 // Special Summon is not reached.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (7892180, HAND), (7892180, HAND)];

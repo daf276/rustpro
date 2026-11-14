@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 47736165;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CRYSTRON];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Extra Deck, Synchro Summoned with Crystron Citree (Level 2 Tuner) and Crystron Sulfefnir (Level 5), with Crystron monsters

@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 16509007;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KEWL_TUNE];
 // Another in the hand is its hand Synchro material for Kewl Tune Track Maker.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, HAND), (42781164, EXTRA)];
 // EFFECT_HAND_SYNCHRO.

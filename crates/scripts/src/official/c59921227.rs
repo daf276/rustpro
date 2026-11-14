@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND};
 
 const ID: u32 = 59921227;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLITZCLIQUE];
 pub const LISTED_NAMES: &[u32] = &[CARD_HIDEOUT_IN_THE_SKY_COULOMB];
 // A copy in the GY, Surge Blitzclique in the hand to shuffle, and Thunder Normal Monsters (LaLa Li-oon) and a Blitzclique Spell
 // (Blitzclique - Breakaway) in the Deck to search.

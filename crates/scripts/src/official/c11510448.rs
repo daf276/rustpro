@@ -4,6 +4,7 @@ use crate::testing::{EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 11510448;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ZOODIAC];
 // In the Extra Deck, Xyz Summoned with Level 4 Normal Monsters (Prevent Rat, Kojikocy, Uraby), with Zoodiac Xyz Monsters in the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND};
 
 const ID: u32 = 57774843;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LIGHTSWORN];
 // In the hand and on the field, with the four ported Lightsworn monsters (Ryko, Lyla, Wulf, Jain) in the Graveyard to Summon it.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

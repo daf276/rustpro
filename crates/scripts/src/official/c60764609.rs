@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 60764609;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FIENDSMITH];
 // With Fiendsmith's Sequence to equip and Evil HERO Adusted Gold (LIGHT Fiend) to shuffle; no Fiendsmith Spell/Trap is ported to search.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

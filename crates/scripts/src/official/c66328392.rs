@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 66328392;
 
+pub const LISTED_SERIES: &[u16] = &[SET_AZAMINA];
 // In the hand with Elzette (an Azamina monster) in the Deck and on the field and Raigeki and Mystical Space Typhoon in the hand,
 // against monsters on the opponent's field.
 pub const SUPPORT: &[(u32, u16)] = &[

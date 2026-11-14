@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 41458361;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ADAMANCIPATOR];
+
 const TOKEN_GLIMMER: u32 = ID + 1;
 
 pub const LISTED_NAMES: &[u32] = &[TOKEN_GLIMMER];

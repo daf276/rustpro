@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, HAND};
 
 const ID: u32 = 18494511;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ICEJADE];
+
 const ICEJADE_CENOTE_ENION_CRADLE: u32 = 7142724;
 
 pub const LISTED_NAMES: &[u32] = &[ICEJADE_CENOTE_ENION_CRADLE, ID + 1];

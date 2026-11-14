@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, SZONE};
 
 const ID: u32 = 22024279;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ALTERGEIST];
 // Set, and in the Graveyard, with a Link Monster (Altergeist Hexstia) in the Graveyard to summon and Altergeists in the hand to Normal Summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, SZONE), (ID, GRAVE), (1508649, GRAVE), (12977245, HAND), (27132400, HAND)];
 pub const CHECKS: &[Check] = &[

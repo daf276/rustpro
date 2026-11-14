@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 42759961;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CLOWN_CREW];
 // In the hand and on the field, with Clown Crew Biancaviso in the hand to Tribute Summon with it and one in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (82159583, HAND), (82159583, DECK)];
 pub const CHECKS: &[Check] = &[

@@ -5,6 +5,8 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 7382007;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GOUKI];
+
 struct Params;
 
 impl FusionSummonParams for Params {

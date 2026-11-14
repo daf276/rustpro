@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 89264428;
 
+pub const LISTED_SERIES: &[u16] = &[SET_URSARCTIC];
 pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_BIG_DIPPER];
 const COUNTER_BIG_DIPPER: u16 = 0x204;
 

@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 78625448;
+
+pub const LISTED_SERIES: &[u16] = &[SET_NUMERON];
 pub const XYZ_NUMBER: u32 = 3;
 
 // In the Extra Deck, Xyz Summoned with three Level 1 Normal Monsters (Petit Moth), or on the field with Sangan attached by Xyz Import,

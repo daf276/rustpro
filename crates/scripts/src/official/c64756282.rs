@@ -6,6 +6,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 64756282;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WITCHCRAFTER];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // With Witchcrafter Creation in the GY to copy and in the hand to discard; no other Witchcrafter monster is ported to Special Summon from the Deck.

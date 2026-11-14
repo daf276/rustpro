@@ -4,6 +4,7 @@ use crate::testing::{HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 76407432;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ASSAULT_MODE];
 // Set on the field with an Assault Mode monster (Crimson Blader/Assault Mode), against the opponent's Sangan and Mage Power.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, SZONE),

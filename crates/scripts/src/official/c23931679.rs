@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 23931679;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KAIRYU_SHIN, SET_SEA_STEALTH];
 pub const LISTED_NAMES: &[u32] = &[CARD_UMI];
 
 // On the field with Umi in the hand to activate and in the Deck to search, and Sangans of both players for the one non-WATER

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 23732205;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ROKKET];
 // In the Extra Deck, Link Summoned from Hunter Dragons and Rokket Tracers (DARK Dragons), with a copy in the Graveyard, Rokket Tracer to
 // summon a Rokket from the Deck and Sangan on the opponent's field to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[

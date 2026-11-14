@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 96381979;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FIRE_FORMATION];
 // In the Extra Deck, Xyz Summoned from Vorse Raider (Level 4 Beast-Warrior Normal Monster, also two in the Deck to Special Summon with the same ATK),
 // with Fire Formation - Tenki to cost and Set, and the opponent's Raigeki, Ash Blossom and Elfnote Lucina as targets.
 pub const SUPPORT: &[(u32, u16)] = &[

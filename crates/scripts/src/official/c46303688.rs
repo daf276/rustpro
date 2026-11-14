@@ -6,6 +6,7 @@ use crate::testing::{Check, MZONE, OPPONENT};
 
 const ID: u32 = 46303688;
 
+pub const ROLL_DICE: bool = true;
 // Monsters of several Levels on both fields to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),
@@ -15,7 +16,6 @@ pub const SUPPORT: &[(u32, u16)] = &[
 ];
 pub const CHECKS: &[Check] = &[Check::Resolves, Check::Message(MSG_TOSS_DICE)];
 
-// s.roll_dice, which only cards that are not ported read, is left out.
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e1 = duel.create_effect(c);
     e1.set_description(duel, aux::stringid(ID, 0));

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE};
 
 const ID: u32 = 20663556;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FROG];
 // Swap Frog and Treeborn Frog in the Deck to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (9126351, DECK), (9126351, DECK), (12538374, DECK), (12538374, DECK)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

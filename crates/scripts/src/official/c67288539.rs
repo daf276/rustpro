@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 67288539;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TOPOLOGIC];
 // In the Extra Deck, Link Summoned from three Rokket effect monsters to battle a Sangan, and in the Graveyard to banish
 // Borreload Riot Dragon (DARK, 3000 ATK) for Topologic Trisbaena.
 pub const SUPPORT: &[(u32, u16)] = &[

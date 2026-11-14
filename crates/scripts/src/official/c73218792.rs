@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 73218792;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WARRIOR, SET_STARDUST, SET_JUNK];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Junk Warrior and Stardust Dragon in the Extra Deck to reveal, and Junk Synchron in the Deck to search and on the field to lower.

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 41371602;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CENTUR_ION];
 // In the hand with Primera, Trudea and Mystical Elf (Level 12 together) on the field to Synchro Summon Legatia or Auxila, and
 // Primera and Trudea in the Deck to place.
 pub const SUPPORT: &[(u32, u16)] = &[

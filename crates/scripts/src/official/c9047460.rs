@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 9047460;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 pub const LISTED_NAMES: &[u32] = &[ID + 1];
 
 // Copies on the field and in the Graveyard, a Normal Monster to Tribute and Dark Hole to destroy them.

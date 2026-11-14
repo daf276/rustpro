@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, OPPONENT, PZONE};
 
 const ID: u32 = 69610326;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPREME_KING_GATE];
 // In the Pendulum Zone and Graveyard, and in the hand to Summon for the search, with Supreme King Gate Magician in the Deck to place and
 // add, and the opponent's Dark Hole to leave the field empty.
 pub const SUPPORT: &[(u32, u16)] = &[

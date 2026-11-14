@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 56638325;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TELLARKNIGHT];
 // Xyz Summoned from the Extra Deck with three Level 4 monsters (Luster Dragon, Fairy Dragon), against the opponent's Raigeki, with
 // Satellarknight Deneb in the Deck to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 8660395;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAGISTUS];
 // In the Extra Deck, Xyz Summoned with Mystical Elf, equipped by Zoroa, with a Spellcaster in the Graveyard to return and
 // the opponent's Spell/Trap to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[

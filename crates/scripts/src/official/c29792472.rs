@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 29792472;
 
+pub const LISTED_SERIES: &[u16] = &[SET_HECAHANDS];
 // In the hand and Set, with Hecahands Gaigas on the field to negate the opponent's Set Mystical Space Typhoon and Pot of Greed.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

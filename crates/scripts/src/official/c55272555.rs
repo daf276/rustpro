@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 55272555;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MEMENTO];
 // In the hand and on the field, with three different Mementotlan monsters in the Graveyard, and Mementotlan Dark Blade and
 // Tatsunootoshigo on the field to destroy it.
 pub const SUPPORT: &[(u32, u16)] = &[

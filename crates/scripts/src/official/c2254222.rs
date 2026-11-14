@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, MZONE, PZONE};
 
 const ID: u32 = 2254222;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SPEEDROID];
 pub const LISTED_NAMES: &[u32] = &[82044279];
 
 // Speedroid Dominobutterfly (Level 2 WIND) in the other Pendulum Zone, Clear Wing Synchro Dragon in the Extra Deck and Adamancipator Risen - Raptite

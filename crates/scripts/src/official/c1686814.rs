@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 1686814;
 
+pub const LISTED_SERIES: &[u16] = &[SET_POWER_TOOL];
 // In the Extra Deck, with a Level 5 Tuner (Ally Mind) and a Level 5 non-Tuner (Zanki) to send to the Graveyard,
 // Level 7 and 8 Dragon Synchro Monsters (Exploder Dragonwing, Light End Dragon) to summon, and Trap Hole in hand to Set.
 pub const SUPPORT: &[(u32, u16)] = &[

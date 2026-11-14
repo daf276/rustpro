@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 13764881;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RESONATOR];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand beside a Synchro Monster (Red Dragon Archfiend), with Soul Resonators in the Deck to Special Summon.

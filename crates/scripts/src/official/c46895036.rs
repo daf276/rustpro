@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 46895036;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GHOSTRICK];
 // Ghostrick Fairy in the Graveyard to add; Raigeki from the opponent's hand sends the copies there, Sangan is a target for the ATK halving.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

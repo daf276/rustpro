@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 74509280;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MALEFIC];
 // On the field as the Tuner (Level 2) with Malefic Paradox Gear (Level 1) in the hand for Hi-Speedroid Cork Shooter (Level 3).
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

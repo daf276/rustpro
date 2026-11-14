@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 99398682;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ASSAULT_MODE];
 pub const LISTED_NAMES: &[u32] = &[CARD_RED_DRAGON_ARCHFIEND];
 // In the hand to search or revive a Level 4 Fiend (Zure, Knight of Dark World) and a copy in the Graveyard to banish when
 // Red Dragon Archfiend attacks Sangan.

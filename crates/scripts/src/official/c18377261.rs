@@ -5,6 +5,7 @@ use engine::constants::MSG_ATTACK;
 
 const ID: u32 = 18377261;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MIKANKO];
 // On the field with Mage Power in the hand to equip it and the opponent's attackers. No Mikanko Equip Spell is ported, so the search
 // has nothing to find.
 pub const SUPPORT: &[(u32, u16)] = &[

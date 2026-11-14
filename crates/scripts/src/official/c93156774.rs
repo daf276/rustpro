@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 93156774;
 
+pub const LISTED_SERIES: &[u16] = &[SET_VANQUISH_SOUL];
 // Hollie Sue with Jiaolong (FIRE), Dr. Mad Love (DARK) and another Hollie Sue (EARTH) in the hand to reveal, and Jiaolong in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

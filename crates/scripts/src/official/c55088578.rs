@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 55088578;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ZUBABA, SET_GAGAGA, SET_GOGOGO, SET_DODODO];
+
 const ZUBABA_GROUP: &[u16] = &[SET_ZUBABA, SET_GAGAGA, SET_GOGOGO, SET_DODODO];
 
 // Dodododwarf Gogogoglove on the field to enable the Special Summon, and an Xyz Monster (Odd-Eyes Absolute Dragon) in the Graveyard.

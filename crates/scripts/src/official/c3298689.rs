@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 3298689;
 
+pub const LISTED_SERIES: &[u16] = &[SET_THE_PHANTOM_KNIGHTS];
 // Break Sword (the DARK Xyz Monster) on the field and Raider's Knight (the Rank 4 DARK Xyz Monster) in the Extra Deck; a second
 // copy in the Graveyard and Doomed Soleret in the hand to attach. No ported Xyz Monster has a rum_limit, so that check is left out.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, GRAVE), (83566725, HAND), (62709239, MZONE), (28781003, EXTRA)];

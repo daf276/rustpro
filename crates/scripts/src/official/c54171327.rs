@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 54171327;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ANGELECHY];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Set, with an Angelechy monster on the field to give away next to the opponent's cards to negate, and a copy in the Graveyard

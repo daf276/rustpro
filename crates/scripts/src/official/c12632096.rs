@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 12632096;
+
+pub const LISTED_SERIES: &[u16] = &[SET_CIPHER];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Xyz Summoned from the Extra Deck with three Level 9 monsters (Dragonmaid Cehrmba, Lightstorm Dragon, Hot Red Dragon Archfiend

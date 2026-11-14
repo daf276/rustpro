@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 14391625;
 
+pub const LISTED_SERIES: &[u16] = &[SET_VISAS];
 pub const LISTED_NAMES: &[u32] = &[CARD_VISAS_STARFROST];
 
 // In the hand with Visas Starfrost on the field and in the Graveyard and Visas Amritara (a Synchro, which returns to the Extra Deck) in the Graveyard.

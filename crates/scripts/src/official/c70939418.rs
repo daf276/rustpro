@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 70939418;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SPEEDROID];
 // Takuhee (Level 4 WIND) on the field as a Synchro Material for Hi-Speedroid Glider #2, Speedroid Terrortop in the Deck to mill, Elfnote Lucina
 // (13597785) to attack and damage.
 pub const SUPPORT: &[(u32, u16)] = &[

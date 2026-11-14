@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, MZONE};
 
 const ID: u32 = 61777313;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NORDIC];
 // On the field with Nordic monsters in the Deck to send, and as the Level 2 Tuner (after sending Valkyrie) with Garmr and Tyr for Fabled Levilazebul.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

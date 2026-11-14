@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, OPPONENT};
 
 const ID: u32 = 85374678;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPER_QUANT];
 // Super Quantum Red Layer in the hand to Special Summon, a copy in the Graveyard and hand to discard and draw, and Raigeki in
 // the opponent's hand to send it to the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 45644898;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLUE_EYES];
 // In the hand to Normal Summon, with a Level 1 LIGHT Tuner (Effect Veiler) in the GY to add, and in the GY to shuffle, with Blue-Eyes White Dragon
 // in the GY to summon and an Effect Monster on the field to send.
 pub const SUPPORT: &[(u32, u16)] = &[

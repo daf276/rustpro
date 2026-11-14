@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, MZONE};
 
 const ID: u32 = 36709484;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARTMAGE, SET_DOOMZ, SET_ELFNOTE];
 pub const LISTED_NAMES: &[u32] = &[CARD_MEDIUS_THE_PURE];
 
 // Medius the Pure to Special Summon with Elfnote Lucina on the field, a second copy in the Graveyard and I:P Masquerena

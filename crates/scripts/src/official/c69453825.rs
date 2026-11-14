@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 69453825;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GOUKI];
 // A copy on the field and two in the Extra Deck, Synchro Summoned with Gouki Machine Suprex (a Level 4 Tuner) and Doron (Level 2),
 // with Gouki Face Turn in the Deck to search, Gouki Guts in the Graveyard to add back and Raigeki in the opponent's hand.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 34109611;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GUSTO];
 // In the Extra Deck, Synchro Summoned with Gusto Squirro (a Level 2 Tuner) and Gusto Griffin (Level 2).
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

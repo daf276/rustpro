@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, MZONE};
 
 const ID: u32 = 8165596;
+
+pub const LISTED_SERIES: &[u16] = &[SET_PHOTON, SET_GALAXY];
 pub const XYZ_NUMBER: u32 = 90;
 
 struct Procedure;

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 46044841;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GUSTO];
 // On the field with Gusto Egul and Gusto Gulldo in the Deck, destroyed by the opponent's Raigeki.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

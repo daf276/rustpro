@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 46659709;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GALAXY];
 // Twice in the hand, one to discard as the LIGHT cost, and twice in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, DECK), (ID, DECK)];
 pub const CHECKS: &[Check] = &[

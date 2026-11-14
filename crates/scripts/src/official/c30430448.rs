@@ -5,6 +5,8 @@ use engine::constants::MSG_BECOME_TARGET;
 
 const ID: u32 = 30430448;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RUNICK];
+
 struct Quickplay;
 
 impl MysteruneQuickPlay for Quickplay {

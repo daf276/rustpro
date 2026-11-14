@@ -4,6 +4,7 @@ use crate::testing::{Check, MZONE, OPPONENT};
 
 const ID: u32 = 40428851;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ANCIENT_WARRIORS];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Copies on the field to attack, with Elfnote Fortuna to attack into. The summon effect needs another Ancient Warriors monster in the

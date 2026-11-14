@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 38342335;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KNIGHTMARE];
+
 struct Procedure;
 
 impl LinkProcedure for Procedure {

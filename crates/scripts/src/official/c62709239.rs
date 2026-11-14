@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 62709239;
 
+pub const LISTED_SERIES: &[u16] = &[SET_THE_PHANTOM_KNIGHTS];
 // Doomed Soleret: two Level 3 DARK monsters as materials, and two Level 3 "The Phantom Knights" in the GY to revive.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

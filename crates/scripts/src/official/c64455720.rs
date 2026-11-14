@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 64455720;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ASHTRA];
+
 const CHOICE: u8 = 0;
 
 // In the hand to be Special Summoned as a Tuner for Ashtraja Susanoo (Level 9) with Akasuna (Level 8) on the field, or to

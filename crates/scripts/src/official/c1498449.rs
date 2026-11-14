@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 1498449;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRACOTAIL];
+
 struct Params;
 
 impl FusionSummonParams for Params {

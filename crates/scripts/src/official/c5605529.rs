@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, HAND, PZONE};
 
 const ID: u32 = 5605529;
 
+pub const LISTED_SERIES: &[u16] = &[SET_VAALMONICA];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand with Angello and Dimonno in the Pendulum Zone, a card in the hand to return and Vaalmonica Spells in the Deck to search.

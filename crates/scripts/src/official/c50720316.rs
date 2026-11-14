@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND};
 
 const ID: u32 = 50720316;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CHANGE, SET_HERO];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the GY to be revived by Monster Reborn and a second copy in the Deck to send with Foolish Burial, with Mask Change

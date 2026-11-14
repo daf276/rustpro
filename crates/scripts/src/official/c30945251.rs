@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 30945251;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLITZCLIQUE];
 // In the hand and the Graveyard, with Surge Blitzclique and a Thunder Normal Monster (LaLa Li-oon) in the hand to destroy a
 // monster with, and the opponent's monster to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[

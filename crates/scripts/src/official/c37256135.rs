@@ -4,6 +4,7 @@ use crate::testing::{GRAVE, HAND};
 
 const ID: u32 = 37256135;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MELFFY];
 // In the hand with Melffy Rabby, a Beast Normal Monster, in the Graveyard to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (20129614, GRAVE), (20129614, GRAVE)];
 

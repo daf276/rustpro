@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 36734924;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLUE_EYES];
 // Copies on the field and in the Graveyard, with Blue-Eyes monsters (White Dragon, Jet Dragon) on the field and in the Deck,
 // and the opponent's Mage Power to target them.
 pub const SUPPORT: &[(u32, u16)] = &[

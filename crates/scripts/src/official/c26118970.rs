@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 26118970;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ROSE_DRAGON];
 pub const LISTED_NAMES: &[u32] = &[CARD_BLACK_ROSE_DRAGON];
 // Used as Synchro Material with Mystical Elf for Black Rose Dragon in the Extra Deck, with White Rose Dragon in the hand and
 // Frozen Rose and Blooming of the Darkest Rose in the Deck.

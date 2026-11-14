@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 48658295;
+
+pub const LISTED_SERIES: &[u16] = &[SET_DRAGONMAID];
+
 const KITCHEN_DRAGONMAID: u32 = 16960120;
 const HOUSE_DRAGONMAID: u32 = 41232647;
 

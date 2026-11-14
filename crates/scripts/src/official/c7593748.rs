@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 7593748;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GIMMICK_PUPPET];
 // On the field with Xyz Import to attach Sangan twice for the Control effect, and monsters of other Levels to change. No Level 4
 // Gimmick Puppet is ported, so no Xyz Summon of this card is reached.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 60242223;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BRANDED, SET_BYSTIAL];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // In the hand and on the field (Dark Hole sends it to the Graveyard), Bystial Magnamhut (a DARK monster) on the field and in the Graveyard to banish
 // and in the Deck to send, and a monster of the opponent's to make the effect a Quick Effect.

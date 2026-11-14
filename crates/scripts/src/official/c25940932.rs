@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, GRAVE, SZONE};
 
 const ID: u32 = 25940932;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RADIANT_TYPHOON];
 pub const LISTED_NAMES: &[u32] = &[CARD_MYSTICAL_SPACE_TYPHOON];
 // Mystical Space Typhoon in the Deck to search and two set to destroy this card with, and Radiant Typhoon Swen in the GY.
 pub const SUPPORT: &[(u32, u16)] = &[

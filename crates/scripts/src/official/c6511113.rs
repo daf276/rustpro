@@ -5,6 +5,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 6511113;
+
+pub const LISTED_SERIES: &[u16] = &[SET_TRAPTRIX, SET_TRAP_HOLE, SET_HOLE];
+
 const TRAP_HOLE: u32 = 4206964;
 
 pub const LISTED_NAMES: &[u32] = &[ID];

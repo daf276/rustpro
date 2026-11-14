@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 69385019;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ABYSS, SET_ATLANTEAN, SET_MERMAIL];
 // On the field against the opponent's Raigeki, with Mermail Abysspike in the Deck to search. No "Abyss-" Equip Spell is ported.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

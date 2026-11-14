@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 70058649;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CLOWN_CREW];
 // In the hand and the Graveyard, with Clown Crew monsters in the Deck (to search or Special Summon), the Extra Deck and the hand,
 // and Clown Crew Flair on the field to Tribute for the one in the hand.
 pub const SUPPORT: &[(u32, u16)] = &[

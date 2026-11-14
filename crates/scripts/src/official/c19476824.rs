@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 19476824;
 
+pub const LISTED_SERIES: &[u16] = &[SET_METAPHYS];
 // In the hand and on the field with Metaphys Armed Dragon in the Deck to Special Summon after battle damage, dealt to the opponent's weak Sangans.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

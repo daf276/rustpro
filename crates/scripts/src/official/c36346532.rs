@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 36346532;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PALEOZOIC];
+
 struct Procedure;
 
 impl LinkProcedure for Procedure {

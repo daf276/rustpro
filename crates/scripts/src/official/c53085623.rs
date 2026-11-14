@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 53085623;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ATLANTEAN, SET_MERMAIL];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // On the field and in the hand, with Mermail Abyssteus and Mermail Abysspike in the hand to discard it as a cost, and
 // Mermail Abysspike in the Deck to summon.
@@ -95,7 +96,7 @@ fn spcon(duel: &Duel, a: &Args) -> bool {
 
 fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
     c.is_level_below(duel, 4)
-        && c.is_set_card(duel, &[SET_ATLANTEAN, SET_MERMAIL])
+        && c.is_set_card(duel, LISTED_SERIES)
         && !c.is_code(duel, ID)
         && c.is_can_be_special_summoned(duel, e, 0, tp, false, false)
 }

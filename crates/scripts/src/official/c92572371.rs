@@ -4,6 +4,7 @@ use crate::testing::{GRAVE, HAND, MZONE, SZONE};
 
 const ID: u32 = 92572371;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FIRE_FIST, SET_FIRE_FORMATION];
 // In the Graveyard, with Brotherhood of the Fire Fist - Spirit in the hand and on the field and Fire Formation - Tenki on
 // the field to send to the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[

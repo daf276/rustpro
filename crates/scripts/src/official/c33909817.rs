@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 33909817;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SYLVAN];
 // In the Extra Deck, Xyz Summoned with two Level 1 monsters (Dark Plant), with Sylvan Snapdrassinagon in the Graveyard to Special Summon and a
 // Plant in the hand to send.
 pub const SUPPORT: &[(u32, u16)] = &[

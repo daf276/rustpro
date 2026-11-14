@@ -6,6 +6,7 @@ use crate::testing::{Check, DECK, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 25904894;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KARAKURI];
 // In the Extra Deck, Synchro Summoned with Ally Mind (a Level 5 Tuner) and Overdrive (a Level 4 Machine), with Karakuri Gama in the
 // Deck to summon, Karakuri monsters on the field to change position and the opponent's Sangan to banish.
 pub const SUPPORT: &[(u32, u16)] = &[

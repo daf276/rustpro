@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 11911336;
+
+pub const LISTED_SERIES: &[u16] = &[SET_CHARMER, SET_FAMILIAR_POSSESSED];
+
 const CHARMERS_OF_THE_GRAND_CIRCLE: u32 = 48016074;
 
 struct Params;

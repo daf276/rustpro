@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND};
 
 const ID: u32 = 77297908;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ABYSS_ACTOR, SET_ABYSS_SCRIPT];
 // Activated from the hand. The search needs an Abyss Actor Pendulum Monster and two Abyss Script Spells, and the replacement an Abyss
 // Actor Pendulum Summoned, none of which is ported, so both are only reported.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND)];

@@ -6,6 +6,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 11302671;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ADAMANCIPATOR];
 // An opponent's monster (Haniwa) while the field is empty for the hand effect, and Rock Normal Monsters in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

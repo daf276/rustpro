@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 91714772;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PHOTON, SET_GALAXY, SET_GALAXY_EYES];
 // In the hand and Graveyard, with Photon and Galaxy monsters in the Deck (Galaxy Serpent, Galaxy Soldier, Photon Delta Wing) and
 // a Galaxy-Eyes monster to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[

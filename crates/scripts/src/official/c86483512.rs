@@ -6,6 +6,7 @@ use super::c49088914::{cannot_special_summon, tgfilter, togravefilter};
 
 const ID: u32 = 86483512;
 
+pub const LISTED_SERIES: &[u16] = &[SET_VIRTUAL_WORLD];
 // In the hand, with Virtual World Kyubi - Shenshen (a monster) and Virtual World Gate - Qinglong (a Spell) on the field as the
 // target, Qinglong in the Deck to send, and Virtual World Mai-Hime - Lulu in the Graveyard to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[

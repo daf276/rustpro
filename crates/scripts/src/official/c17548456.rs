@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 17548456;
 
+pub const LISTED_SERIES: &[u16] = &[SET_JURRAC];
 // Synchro Summoned from Jurrac Megalo, a Level 1 Tuner, with Frostosaurus (Level 6) and Little D (Level 3), Dinosaur Normal
 // Monsters, and Megalo in the Graveyard afterwards to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[

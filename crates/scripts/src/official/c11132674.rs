@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 11132674;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SPRINGANS, SET_THERION];
 // On the field with Samuel, which detaches a material that Xyz Import took from the opponent's Sangan, and Springans Kitt and
 // Therion "King" Regulus in the Deck to search. No Springans Xyz Monster is ported, so the alternative Xyz Summon is not reached.
 pub const SUPPORT: &[(u32, u16)] = &[

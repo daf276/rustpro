@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 82370493;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PREDAPLANT];
 pub const COUNTER_LIST: &[u16] = &[COUNTER_PREDATOR];
 
 pub const MATERIAL_SETCODE: &[u16] = &[SET_PREDAPLANT];

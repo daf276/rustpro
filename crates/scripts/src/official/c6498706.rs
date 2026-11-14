@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND};
 
 const ID: u32 = 6498706;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FUSION];
 // Fusionist in the Extra Deck, with its materials Petit Angel and Mystical Sheep #2 in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (1641882, EXTRA), (38142739, DECK), (83464209, DECK)];
 pub const CHECKS: &[Check] = &[Check::SpecialSummonedCode(38142739)];

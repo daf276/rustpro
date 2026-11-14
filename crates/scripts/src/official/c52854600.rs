@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 52854600;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TENYI];
 // A copy on the field and in the hand with Mystery Shell Dragon (a Level 4 Wyrm Normal Monster), Draco Berserker of the Tenyi
 // (Level 8) to Synchro Summon with them, and Monk of the Tenyi in the Extra Deck to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[

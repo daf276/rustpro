@@ -4,6 +4,7 @@ use crate::testing::{DECK, HAND};
 
 const ID: u32 = 45883110;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DOGMATIKA, SET_DESPIA];
 // In the hand to Normal Summon, with Fallen of Albaz in the Deck to send.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (68468459, DECK)];
 

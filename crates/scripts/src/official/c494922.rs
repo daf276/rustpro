@@ -6,6 +6,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 494922;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPERHEAVY_SAMURAI];
 // In the Extra Deck, Synchro Summoned from Motorbike (a Level 2 Tuner) and Big Benkei (Level 8), with Spells in the opponent's Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

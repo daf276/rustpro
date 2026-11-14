@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 64373401;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPERHEAVY_SAMURAI];
 // Copies in the hand to Special Summon and on the field, with Superheavy Samurai Big Benkei (Level 8) in the hand to Tribute
 // Summon over them.
 pub const SUPPORT: &[(u32, u16)] = &[

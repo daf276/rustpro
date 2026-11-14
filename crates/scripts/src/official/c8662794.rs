@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 8662794;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CODEBREAKER];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Codebreaker Virus Swordsmen of the opponent's for Raigeki to destroy, a Zero Day in the Deck to search, and Swordsmen and

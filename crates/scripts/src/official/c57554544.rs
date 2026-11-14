@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 57554544;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FIRE_KING];
 // In hand with Legendary Fire King Ponix to summon or destroy, a monster on the field, and Fire King monsters in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (90681088, HAND), (44455560, MZONE), (66431519, DECK), (66431519, DECK)];
 pub const CHECKS: &[Check] = &[

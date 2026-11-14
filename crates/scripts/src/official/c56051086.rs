@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 56051086;
+
+pub const LISTED_SERIES: &[u16] = &[SET_NUMBER];
 pub const XYZ_NUMBER: u32 = 43;
 
 // In the Extra Deck, Xyz Summoned with three Level 2 DARK Normal Monsters (Skull Servant is Level 1), a second copy in the Graveyard

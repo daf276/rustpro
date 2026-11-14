@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 67630394;
+
+pub const LISTED_SERIES: &[u16] = &[SET_XYZ];
+
 const XYZ_IMPORT: u32 = 14602126;
 const AXE_OF_DESPAIR: u32 = 40619825;
 const GAUNTLET_LAUNCHER: u32 = 15561463;

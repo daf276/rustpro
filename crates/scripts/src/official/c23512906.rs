@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 23512906;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GOLD_PRIDE];
 // In the hand and on the field with Gold Pride - Eliminator (a non-Warrior, whose Token is the non-Tuner) in the hand, on the field and
 // in the Graveyard, and Level 6 Synchros in the Extra Deck.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 40390147;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PHOTON];
 pub const LISTED_NAMES: &[u32] = &[CARD_GALAXYEYES_P_DRAGON];
 
 // In the Extra Deck, Xyz Summoned with Level 4 Photons (Photon Delta Wing), with Galaxy-Eyes Photon Dragon in the hand and the Deck to summon.

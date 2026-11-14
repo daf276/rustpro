@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 80086070;
 
+pub const LISTED_SERIES: &[u16] = &[SET_URSARCTIC];
 // In the Extra Deck, Special Summoned by sending Ursarctic Megabilis (a Level 8 Tuner) and Ursarctic Polari (a Level 1 Synchro Monster)
 // to the Graveyard, with Mind Control in the opponent's hand to target an Ursarctic monster.
 pub const SUPPORT: &[(u32, u16)] = &[

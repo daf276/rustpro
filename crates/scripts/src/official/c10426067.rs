@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 10426067;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DARKLORD, SET_FORBIDDEN];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // In the hand and Graveyard with Darklords (Gulgolet, Ixchel) in the Deck to summon and in the Graveyard, Forbidden Droplet,
 // and Darklord Eveningstar (DARK Fairy Fusion) on the field.

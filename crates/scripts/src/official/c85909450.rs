@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 85909450;
 
+pub const LISTED_SERIES: &[u16] = &[SET_HARPIE];
 // In the Extra Deck, Xyz Summoned with Level 4 WIND Harpie Ladies.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

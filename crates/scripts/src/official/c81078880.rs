@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 81078880;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KI_SIKIL, SET_EVIL_TWIN];
 // In the hand and Graveyard beside Live☆Twin Ki-sikil Frost (a Ki-sikil monster for the hand Special Summon) and Evil★Twin Lil-la (for the
 // battle damage), with an attacker for the opponent.
 pub const SUPPORT: &[(u32, u16)] = &[

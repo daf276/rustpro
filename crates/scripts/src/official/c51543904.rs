@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 51543904;
+
+pub const LISTED_SERIES: &[u16] = &[SET_RANK_UP_MAGIC, SET_NUMBER];
 pub const XYZ_NUMBER: u32 = 99;
 
 // In the Extra Deck, Xyz Summoned over Number 39: Utopia by discarding Rank-Up-Magic Launch, with a Number in the Graveyard to

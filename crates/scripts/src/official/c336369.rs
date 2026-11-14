@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 336369;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GUSTO];
 // On the field with Windaar, Sage of Gusto (Level 6) in the Deck, destroyed by the opponent's Raigeki.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

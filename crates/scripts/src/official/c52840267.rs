@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND};
 
 const ID: u32 = 52840267;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DARKLORD];
 // In the hand with Darklord Desire to discard. No Darklord Spell/Trap is ported yet, so the second effect never has a target.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (55690251, HAND), (55690251, HAND)];
 pub const CHECKS: &[Check] = &[

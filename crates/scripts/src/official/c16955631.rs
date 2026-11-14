@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 16955631;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MIMIGHOUL];
 // In the Extra Deck, Xyz Summoned with Level 1 Normal Monsters (Key Mace, White Duston), with Mimighoul Master in the Deck to search and
 // the opponent's Sangan face-down.
 pub const SUPPORT: &[(u32, u16)] = &[

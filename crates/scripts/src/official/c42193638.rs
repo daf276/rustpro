@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, PZONE};
 
 const ID: u32 = 42193638;
 
+pub const LISTED_SERIES: &[u16] = &[SET_VAALMONICA];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand with Angello and Dimonno in the Pendulum Zone, and Vaalmonica cards in the Deck to excavate or send.

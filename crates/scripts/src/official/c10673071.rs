@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 10673071;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ALEISTER];
 pub const LISTED_NAMES: &[u32] = &[CARD_INVOCATION];
 
 // In hand with Aleister the Invoker on the field, Invocation in the Deck to Set, and on the field with Invoked Raidjin to

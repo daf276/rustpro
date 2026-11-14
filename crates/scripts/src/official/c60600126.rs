@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, OPPONENT, SZONE};
 
 const ID: u32 = 60600126;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CYBER_DRAGON];
 // In the hand with Cyber Dragon to search, and the opponent's set Solemn Judgment to negate it.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (CARD_CYBER_DRAGON, DECK), (41420027, SZONE | OPPONENT)];
 pub const CHECKS: &[Check] = &[

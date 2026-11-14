@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, GRAVE, HAND};
 
 const ID: u32 = 59054773;
+
+pub const LISTED_SERIES: &[u16] = &[SET_IGNISTER];
+
 const ATTR_LIST: u64 = (ID as u64) << 16;
 
 // Activated, with Ignister monsters of Level 4 or less of several Attributes in the hand to Summon (it needs no monster in the Main Monster Zones), and in the

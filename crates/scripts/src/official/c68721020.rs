@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 68721020;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MALEFIC];
 // In the hand to equip and in the Graveyard for the second effect, with Malefic monsters in the Graveyard to banish and in the Deck to
 // search, and Malefic World in the hand for the Field Zone.
 pub const SUPPORT: &[(u32, u16)] = &[

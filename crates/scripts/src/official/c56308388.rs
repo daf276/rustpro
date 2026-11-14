@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 56308388;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TIME_THIEF];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand, with Time Thief Redoer, Xyz Summoned from Level 4 Normal Monsters, to detach from. No other ported Time Thief is in the Main

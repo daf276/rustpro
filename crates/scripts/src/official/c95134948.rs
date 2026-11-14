@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 95134948;
+
+pub const LISTED_SERIES: &[u16] = &[SET_NUMBER];
 pub const XYZ_NUMBER: u32 = 99;
 
 // In the Extra Deck, Xyz Summoned with three Level 12 Blue-Eyes Ultimate Dragons, with Number 39: Utopia in the Extra Deck to Special Summon

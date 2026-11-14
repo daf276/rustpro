@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 13021682;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SYNCHRON];
 pub const LISTED_NAMES: &[u32] = &[CARD_JUNK_WARRIOR];
 
 // Copies in the hand and Graveyard, Doron (Level 2) in the Graveyard to Special Summon, and Junk Warrior to protect.

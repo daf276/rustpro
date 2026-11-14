@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, GRAVE, MZONE};
 
 const ID: u32 = 38082437;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MORPHTRONIC];
+pub const ROLL_DICE: bool = true;
 // On the field in both positions, with Level 1 to 4 Morphtronics in the Graveyard to Special Summon and in the Deck to excavate.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),
@@ -20,7 +22,6 @@ pub const CHECKS: &[Check] = &[
     Check::ResolvesEffect(aux::stringid(ID, 1)),
 ];
 
-// s.roll_dice, which only cards that are not ported read, is left out.
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e1 = duel.create_effect(c);
     e1.set_description(duel, aux::stringid(ID, 0));

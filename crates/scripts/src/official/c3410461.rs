@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 3410461;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FUSION];
 pub const LISTED_NAMES: &[u32] = &[CARD_ALBAZ];
 
 struct Materials;

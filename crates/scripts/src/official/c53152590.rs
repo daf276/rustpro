@@ -4,6 +4,7 @@ use crate::testing::{Check, MZONE};
 
 const ID: u32 = 53152590;
 
+pub const LISTED_SERIES: &[u16] = &[SET_IRON_CHAIN];
 // On the field with Iron Chain Dragon, another "Iron Chain" monster, to target.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (19974580, MZONE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

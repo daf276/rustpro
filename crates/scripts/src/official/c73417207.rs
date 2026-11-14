@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 73417207;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NORDIC];
 // On the field as the Tuner (Level 2) with Garmr and Tyr (Level 4) in the hand for Fabled Levilazebul (Level 10).
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

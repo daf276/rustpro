@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 59724555;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ZUBABA, SET_GAGAGA, SET_GOGOGO, SET_DODODO];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // A copy on the field and in the Graveyard, with Onomatokage (a Dodododo, Gogogo and Zubaba monster) in the hand and on the field.

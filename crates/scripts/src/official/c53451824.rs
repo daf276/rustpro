@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 53451824;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MECHA_PHANTOM_BEAST];
 // A copy on the field and three in the Extra Deck, Synchro Summoned with Mecha Phantom Beast Warbluran (a Level 1 Tuner, which leaves a
 // Token behind) and Frostosaurus (Level 6), with Raigeki in the opponent's hand to destroy it and Warbluran in the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[

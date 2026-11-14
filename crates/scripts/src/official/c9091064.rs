@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 9091064;
+
+pub const LISTED_SERIES: &[u16] = &[SET_VANQUISH_SOUL];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Hollie Sue and Dr. Mad Love in the hand to reveal as costs, and a Hollie Sue on the field with Dr. Mad Love to chain from.

@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 16759958;
 
+pub const LISTED_SERIES: &[u16] = &[SET_AROMA];
 // Aromage Bergamot in the Graveyard to gain LP from and on the field for the condition, copies in the hand and Graveyard, and
 // Aromalilith Rosalina in the hand to gain LP first.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, GRAVE), (85967160, GRAVE), (85967160, MZONE), (24689197, HAND)];

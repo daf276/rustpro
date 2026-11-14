@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 95453143;
 
+pub const LISTED_SERIES: &[u16] = &[SET_EARTHBOUND_IMMORTAL];
 // In the Extra Deck, Synchro Summoned from Earthbound Prisoner Line Walker (Level 3 DARK Tuner) and Stone Sweeper (Level 5 Fiend);
 // more Prisoners in the Graveyard to banish and copy, and Dark Hole to destroy it. No Earthbound Immortal is ported to search.
 pub const SUPPORT: &[(u32, u16)] = &[

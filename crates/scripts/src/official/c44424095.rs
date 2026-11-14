@@ -4,6 +4,7 @@ use crate::testing::{HAND, MZONE, OPPONENT};
 
 const ID: u32 = 44424095;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MORPHTRONIC];
 // In the hand with Lantron to return and a monster of the opponent's to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (76865611, HAND), (26202165, MZONE | OPPONENT)];
 

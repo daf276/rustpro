@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 60551528;
+
+pub const LISTED_SERIES: &[u16] = &[SET_INFERNOID];
+
 const DECATRON: u32 = 58446973;
 
 // In the hand to Special Summon by banishing Infernoid Decatron from the Graveyard, with a Set Trap (Mirror Wall) to return on

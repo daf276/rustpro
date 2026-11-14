@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 18094166;
 
+pub const LISTED_SERIES: &[u16] = &[SET_HERO, SET_VISION_HERO];
 // In the hand with an Elemental HERO Stratos to discard, and Vision HERO Vyon in the Deck to place in the Spell & Trap Zone.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (40044918, HAND), (27780618, DECK)];
 pub const CHECKS: &[Check] = &[

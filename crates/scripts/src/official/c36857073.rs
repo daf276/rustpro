@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 36857073;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RED_DRAGON_ARCHFIEND];
 // In the Extra Deck, Synchro Summoned with Formula Synchron and Red Dragon Archfiend, on the field with another monster to
 // release for the one in the Graveyard, and Mono Synchron in the Deck with Effect Veiler (Level 1 Tuners) in the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[

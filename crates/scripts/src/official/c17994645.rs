@@ -7,6 +7,7 @@ use engine::constants::MSG_ATTACK;
 
 const ID: u32 = 17994645;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 // In the Extra Deck and on the field (Synchro Summoned from Hurricane, a Level 1 Tuner, and Key Mace, Level 1), attacked by
 // Elfnote Lucina.
 pub const SUPPORT: &[(u32, u16)] = &[

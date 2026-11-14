@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{EXTRA, MZONE};
 
 const ID: u32 = 19333131;
+
+pub const LISTED_SERIES: &[u16] = &[SET_NINJA];
 pub const XYZ_NUMBER: u32 = 12;
 
 // In the Extra Deck, Xyz Summoned with two of four Level 5 monsters.

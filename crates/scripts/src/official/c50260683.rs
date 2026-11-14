@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 50260683;
+
+pub const LISTED_SERIES: &[u16] = &[SET_CHRONOMALY];
 pub const XYZ_NUMBER: u32 = 36;
 
 struct Procedure;

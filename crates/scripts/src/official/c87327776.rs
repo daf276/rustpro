@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, MZONE};
 
 const ID: u32 = 87327776;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SALAMANGREAT];
 // In the Extra Deck, Xyz Summoned with two of four Level 3 Salamangreat monsters, with Salamangreat monsters in the Deck to
 // Special Summon, and Raging Phoenix in the Extra Deck to Link Summon with it and the FIRE Effect Monsters.
 pub const SUPPORT: &[(u32, u16)] = &[

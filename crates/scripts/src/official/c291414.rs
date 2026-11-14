@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE};
 
 const ID: u32 = 291414;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAJESTIC];
 pub const LISTED_NAMES: &[u32] = &[21159309];
 
 // Copies in the Deck to draw and to Special Summon as the Level 1 Dragon, with Ancient Fairy Life Dragon (a Level 8 Synchro Dragon) on the field.

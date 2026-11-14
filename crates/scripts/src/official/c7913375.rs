@@ -4,6 +4,7 @@ use crate::testing::{DECK, HAND, MZONE};
 
 const ID: u32 = 7913375;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GAIA_THE_FIERCE_KNIGHT];
 // Copies on the field, with Gaia The Fierce Knight and Level 5 Dragons (Curse of Dragon, Parrot Dragon) to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

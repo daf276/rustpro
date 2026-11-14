@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 71858682;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CENTUR_ION];
 // In the Extra Deck, Synchro Summoned with Ash Blossom & Joyous Spring, Mystical Elf and Orion the Battle King, with Primera in the Deck
 // to search and Trudea in the Graveyard to place.
 pub const SUPPORT: &[(u32, u16)] = &[

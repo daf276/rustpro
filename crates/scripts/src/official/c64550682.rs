@@ -5,6 +5,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 64550682;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SCRAP];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // In the hand with Scrap Synchron on the field and Scrap Recycler in the Graveyard to add.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (16449363, MZONE), (4334811, GRAVE), (4334811, GRAVE)];

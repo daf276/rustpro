@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 42160203;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPREME_KING_GATE, SET_SUPREME_KING_DRAGON];
 // On the field with Xyz Import to attach Sangan, or Xyz Summoned with two DARK Level 4 Pendulum Monsters (Darkwurm), with the
 // opponent's monsters to battle and Raigeki on the other side to send Darkwurm to the Extra Deck face-up for the Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[

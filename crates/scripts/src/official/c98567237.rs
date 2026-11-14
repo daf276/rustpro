@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 98567237;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FIENDSMITH];
 // With Fiendsmith's Lacrima to Fusion Summon from two Evil HERO Adusted Gold (LIGHT Fiends) and a LIGHT Fiend to search.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

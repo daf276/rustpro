@@ -4,6 +4,7 @@ use crate::testing::{EXTRA, MZONE};
 
 const ID: u32 = 34876719;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NUMBER];
 // On the field with Xyz materials, with Number 101, 104 and 106 in the Extra Deck to attach.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, EXTRA), (48739166, EXTRA), (2061963, EXTRA), (63746411, EXTRA)];
 

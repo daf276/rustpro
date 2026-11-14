@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 64998567;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DIABELL];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Two in the hand with Diabellze and Black Witch on the field and in the hand (to send them), Vengeance in the hand to banish them and Filia in the Deck.

@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 46033517;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MACHINA];
 // In the Graveyard to Special Summon itself by banishing two Level 7 Machines, and on the field against Mirror Force in the BP.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, GRAVE),

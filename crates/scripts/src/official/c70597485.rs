@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 70597485;
+
+pub const LISTED_SERIES: &[u16] = &[SET_MATERIACTOR];
+
 const EXAREPTOR: u32 = 37426272;
 
 // In the Extra Deck, Xyz Summoned with Level 3 monsters (Materiactor Exareptor, Nekogal #1, Mountain Warrior), with Exareptor in the

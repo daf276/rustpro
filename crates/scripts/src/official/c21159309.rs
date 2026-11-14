@@ -6,6 +6,7 @@ use crate::testing::{Check, MZONE, OPPONENT};
 
 const ID: u32 = 21159309;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAJESTIC];
 // Only a restriction on Synchro Summons, with no effect to resolve: on the field, with an attacker against it.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE | OPPONENT)];
 pub const CHECKS: &[Check] = &[Check::Message(MSG_ATTACK)];

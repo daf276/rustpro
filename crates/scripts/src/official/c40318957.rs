@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, PZONE};
 
 const ID: u32 = 40318957;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PERFORMAPAL, SET_MAGICIAN, SET_ODD_EYES];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Pendulum Zone and the hand to Normal Summon, with Supreme King Gate Magician (a Pendulum "Magician") in the Deck to add.

@@ -5,6 +5,7 @@ use engine::constants::MSG_ATTACK;
 
 const ID: u32 = 75840616;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BUJIN];
 // In the Extra Deck, Xyz Summoned with Level 4 Bujin Yamato, with more in the Deck to search; it attacks all of the opponent's monsters.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 37654623;
+
+pub const LISTED_SERIES: &[u16] = &[SET_BLITZCLIQUE];
+
 const TOKEN_MECH_BEAST: u32 = ID + 1;
 
 pub const LISTED_NAMES: &[u32] = &[TOKEN_MECH_BEAST];

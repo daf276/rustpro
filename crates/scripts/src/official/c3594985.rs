@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT, PZONE};
 
 const ID: u32 = 3594985;
+
+pub const LISTED_SERIES: &[u16] = &[SET_MAJESPECTER, SET_DRACOSLAYER];
 pub const PENDULUM_LEVEL: u32 = 4;
 
 // In the Pendulum Zone with Luster Pendulum (a Dracoslayer) in the other one, Xyz Summoned from the Extra Deck with Level 4 WIND

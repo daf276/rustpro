@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 61052897;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GENEX];
 // In hand with Genex Controllers on the field for the condition and the Synchro Summon of Arms of Genex Return Zero.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

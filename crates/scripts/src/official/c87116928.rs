@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 87116928;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CYBER_DRAGON];
 pub const MATERIAL_SETCODE: &[u16] = &[SET_CYBER, SET_CYBER_DRAGON];
 
 struct Materials;

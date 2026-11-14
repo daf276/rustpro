@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 11646785;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPER_QUANTUM];
 pub const LISTED_NAMES: &[u32] = &[85374678];
 
 // In the Extra Deck, Xyz Summoned with two Level 4 monsters (Hyosube, Water Omotics), and Super Quantum Green Layer and Red

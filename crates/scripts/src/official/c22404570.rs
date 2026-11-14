@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 22404570;
 
+pub const LISTED_SERIES: &[u16] = &[SET_POWER_PATRON];
 // Artmage Power Patron in hand and the Graveyard to Special Summon, with Nerva (Fusion), Junora (Synchro) and Jupiter (Xyz) on the
 // field for the three banishing options, and a monster and a Spell of the opponent to banish.
 pub const SUPPORT: &[(u32, u16)] = &[

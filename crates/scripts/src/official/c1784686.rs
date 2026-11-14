@@ -4,6 +4,7 @@ use crate::testing::{EXTRA, MZONE};
 
 const ID: u32 = 1784686;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DARK_MAGICIAN];
 // Dark Magician, and Fusion Monsters that list it (Red-Eyes Dark Dragoon, Dark Cavalry, Dark Magician of Destruction).
 pub const SUPPORT: &[(u32, u16)] = &[
     (CARD_DARK_MAGICIAN, MZONE),

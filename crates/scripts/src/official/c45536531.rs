@@ -4,6 +4,7 @@ use crate::testing::{DECK, HAND};
 
 const ID: u32 = 45536531;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TOON];
 pub const LISTED_NAMES: &[u32] = &[CARD_TOON_WORLD];
 
 // Copies in the hand, with Toon World and Toon World the Perfect World in the Deck to add or place.

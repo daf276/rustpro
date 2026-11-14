@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 11234702;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TG];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // A T.G. Level 4 or lower monster (T.G. Gear Zombie) in the Graveyard to revive, one on the field to change the Level of, and a

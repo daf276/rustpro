@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE, OPPONENT};
 
 const ID: u32 = 20568404;
 
+pub const LISTED_SERIES: &[u16] = &[SET_JURRAC];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // Two on the field, Uraby (Level 4 Dinosaur) and Jurrac Megalo (Level 1) in the Deck to send and to summon, and a strong
 // attacker on the opponent's side to destroy it in battle.

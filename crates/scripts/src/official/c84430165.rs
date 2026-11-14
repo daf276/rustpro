@@ -4,6 +4,7 @@ use crate::testing::{Check, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 84430165;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MARINCESS];
 // Set with Marincess Marbled Rock on the field to destroy a weak opponent's monster in battle.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, SZONE),

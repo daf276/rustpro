@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 67886895;
+
+pub const LISTED_SERIES: &[u16] = &[SET_BLUE_EYES];
+
 const GYGROUP: u64 = (ID as u64) << 16;
 
 pub const LISTED_NAMES: &[u32] = &[CARD_BLUEEYES_W_DRAGON];

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 74920585;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TEARLAMENTS];
 pub const LISTED_NAMES: &[u32] = &[CARD_VISAS_STARFROST];
 
 // Set with Merrli on the field to negate the opponent's Sangan, and in the Deck to be sent to the Graveyard by the mill of

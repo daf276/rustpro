@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 77765207;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CENTUR_ION];
 // With Centur-Ion monsters and Stand Up Centur-Ion! in the Deck to place or Set.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

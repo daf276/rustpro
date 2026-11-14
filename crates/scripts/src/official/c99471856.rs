@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 99471856;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CRYSTRON];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // On the field and in the Graveyard, with Crystron Smiger (Level 3) in the Deck to Synchro Summon with Accel Synchron (Level 5)
 // in the Extra Deck, and Accel Synchron on the field to destroy.

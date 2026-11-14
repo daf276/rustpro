@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE, OPPONENT};
 
 const ID: u32 = 4253484;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GLADIATOR];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // On the field after battle, with Gladiator Beast Andal in the Deck to summon and monsters of the opponent's to fight.
 pub const SUPPORT: &[(u32, u16)] = &[

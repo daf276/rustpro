@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 79621896;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARCHFIEND];
 pub const LISTED_NAMES: &[u32] = &[CARD_SUMMONED_SKULL];
 
 // In hand and on the field with Summoned Skull on the field and in the Deck, and Archfiend Soldier to Tribute.

@@ -6,6 +6,7 @@ use engine::constants::MSG_SELECT_EFFECTYN;
 
 const ID: u32 = 25341652;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DJINN];
 // In the Extra Deck, Xyz Summoned with two Level 4 monsters (Hyosube, Water Omotics), an opponent's Attack Position monster
 // (Elfnote Lucina) to turn face-down, and Raigeki in the opponent's hand to destroy a Djinn and replace it.
 pub const SUPPORT: &[(u32, u16)] = &[

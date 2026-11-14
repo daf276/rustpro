@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND};
 
 const ID: u32 = 56034579;
+
+pub const LISTED_SERIES: &[u16] = &[SET_GMX];
+
 const APPLIED_EXPERIMENT_55: u32 = 18795635;
 
 pub const LISTED_NAMES: &[u32] = &[APPLIED_EXPERIMENT_55];

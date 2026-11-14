@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 49460512;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 // In hand and on the field with Gale and Dark Hole to destroy Blackwings, and with Oroshi (Level 1 Tuner) beside it on the
 // field for Blackwing Armor Master (Level 7) in the Extra Deck.
 pub const SUPPORT: &[(u32, u16)] = &[

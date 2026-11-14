@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 58330108;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GANDORA];
 // On the field to use its effect, and in the hand to Special Summon with two Normal Monsters, with Gandora-G and Gandora-X in the
 // Graveyard (a third Gandora makes it banish from the Graveyard too) and the opponent's Sangan to remove.
 pub const SUPPORT: &[(u32, u16)] = &[

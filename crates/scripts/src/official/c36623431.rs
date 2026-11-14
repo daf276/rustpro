@@ -5,6 +5,7 @@ use crate::testing::{Check, GRAVE, HAND};
 
 const ID: u32 = 36623431;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KOAKI_MEIRU];
 // In the Graveyard, with Koa'ki Meiru Guardian in the hand as the Koa'ki Meiru monster to discard.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, GRAVE), (ID, GRAVE), (45041488, HAND), (45041488, HAND)];
 pub const CHECKS: &[Check] = &[

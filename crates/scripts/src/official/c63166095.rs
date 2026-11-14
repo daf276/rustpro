@@ -4,6 +4,7 @@ use crate::testing::{DECK, GRAVE, HAND};
 
 const ID: u32 = 63166095;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SKY_STRIKER];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // In the hand with Sky Striker cards in the Deck to search and Spells in the GY to enable the draw.
 pub const SUPPORT: &[(u32, u16)] = &[

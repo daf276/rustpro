@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 47946130;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GOUKI];
 // Link Summoned from three Gouki monsters (Gouki Guts and Gouki Machine Suprex), with Mage Power's targeting to negate.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

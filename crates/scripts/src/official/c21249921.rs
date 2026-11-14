@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 21249921;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRAGUNITY];
+
 // Barcha and Gae Dearg reuse it.
 pub struct Procedure;
 

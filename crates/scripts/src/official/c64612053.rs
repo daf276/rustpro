@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 64612053;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RESCUE_ACE];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand with Rescue-ACE Impulse to Normal Summon, and on the field with a copy of it, against the opponent's Ash Blossom and

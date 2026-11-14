@@ -4,6 +4,7 @@ use crate::testing::HAND;
 
 const ID: u32 = 32744558;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GENEX];
 // In the hand to Normal Summon, with Genex Controller, a Level 3 Normal Monster, and R-Genex Oracle in the hand.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (68505803, HAND), (68505803, HAND), (10178757, HAND)];
 

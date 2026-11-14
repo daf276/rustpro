@@ -5,6 +5,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, SZONE};
 
 const ID: u32 = 43871165;
+
+pub const LISTED_SERIES: &[u16] = &[SET_POWER_PATRON, SET_DOOMZ];
+
 const JUPITER: u32 = 68231287;
 
 pub const LISTED_NAMES: &[u32] = &[JUPITER];

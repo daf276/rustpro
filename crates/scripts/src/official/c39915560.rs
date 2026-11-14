@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 39915560;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PREDAPLANT];
 pub const COUNTER_LIST: &[u16] = &[COUNTER_PREDATOR];
 
 struct Materials;

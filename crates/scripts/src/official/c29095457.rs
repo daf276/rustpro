@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 29095457;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PRIMITE];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Mystical Elf (Normal Monster) in the hand to reveal, Primite Dragon Ether Beryl and a second copy in the Graveyard to Set,

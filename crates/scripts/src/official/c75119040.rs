@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 75119040;
+
+pub const LISTED_SERIES: &[u16] = &[SET_TINDANGLE];
+
 const BASE_GARDNA: u32 = 94365540;
 const TOKEN: u32 = ID + 1;
 

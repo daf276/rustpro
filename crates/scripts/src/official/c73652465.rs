@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 73652465;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 // On the field with two Level 3 Normal Monsters (Nekogal #1) for Blackwing Armor Master in the Extra Deck, and Gale to
 // Special Summon the hand copy beside.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 30114823;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CODE_TALKER];
 // Another in the hand is extra Link material for Code Talker.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, HAND), (53413628, EXTRA)];
 // EFFECT_EXTRA_MATERIAL.

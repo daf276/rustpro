@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 75878039;
+
+pub const LISTED_SERIES: &[u16] = &[SET_TELLARKNIGHT];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Satellarknight Unukalhai in the Deck to search.

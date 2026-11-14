@@ -8,6 +8,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 12081875;
+
+pub const LISTED_SERIES: &[u16] = &[SET_THUNDER_DRAGON];
+
 const THUNDER_DRAGON: u32 = 31786629;
 
 struct Procedure;

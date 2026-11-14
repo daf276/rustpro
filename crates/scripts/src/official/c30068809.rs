@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND};
 
 const ID: u32 = 30068809;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ADAMANCIPATOR];
 // In the hand and the GY, with Adamancipator Seeker in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, GRAVE), (48519867, DECK), (48519867, DECK)];
 pub const CHECKS: &[Check] = &[

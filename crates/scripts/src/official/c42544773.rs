@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 42544773;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAGISTUS];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In hand and in the Graveyard, a Magistus monster, Crowley, in the Deck to search or in the Graveyard to equip, Magistus

@@ -4,6 +4,7 @@ use crate::testing::{EXTRA, MZONE};
 
 const ID: u32 = 82944432;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NINJA];
 // In the Extra Deck, Xyz Summoned with two of four Level 4 Warriors.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

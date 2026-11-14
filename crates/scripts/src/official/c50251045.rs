@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 50251045;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SACRED_BEAST];
 // Sangan in the opponent's monster zone to be destroyed, Hamon on the field for the damage, and another in the hand to reveal
 // with a Sacred Beast Spell (Fallen Paradise of the Sacred Beasts) in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[

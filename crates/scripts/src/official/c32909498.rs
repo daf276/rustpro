@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 32909498;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KASHTIRA];
 // On the field and in the hand, Kashtira Unicorn to search, and Elfnote Lucina on the opponent's side for monster effects.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

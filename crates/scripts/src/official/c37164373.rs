@@ -4,6 +4,7 @@ use crate::testing::{EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 37164373;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MADOLCHE];
 // In the Extra Deck, Xyz Summoned with Madolche Chouxvalier, with Madolche Puddingcess in the Graveyard and the opponent's cards on the field.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

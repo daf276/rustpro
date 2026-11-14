@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 55794644;
 
+pub const LISTED_SERIES: &[u16] = &[SET_THE_AGENT];
 pub const LISTED_NAMES: &[u32] = &[CARD_SANCTUARY_SKY];
 // In the hand, banishing The Agent of Creation - Venus, and on the field with Mystical Shine Ball in the Graveyard to banish.
 pub const SUPPORT: &[(u32, u16)] = &[

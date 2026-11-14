@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 57916305;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WITCHCRAFTER];
 // With Witchcrafter Genni in the Deck to add, and on the field for the End Phase effect.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, GRAVE), (64756282, DECK), (64756282, DECK), (64756282, MZONE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(0), Check::ResolvesEffect(aux::stringid(ID, 0))];

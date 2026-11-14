@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT, PZONE};
 
 const ID: u32 = 48654267;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPREME_KING_GATE, SET_SUPREME_KING_DRAGON];
 pub const LISTED_NAMES: &[u32] = &[CARD_ZARC];
 // In the Extra Deck, Synchro Summoned with Performapal Odd-Eyes Synchron (a Pendulum Tuner) and Junoldo the Shadespirit Power Patron
 // (a DARK Pendulum Monster); in the Pendulum Zone to be Special Summoned by releasing Supreme King Dragon Darkwurm, with more

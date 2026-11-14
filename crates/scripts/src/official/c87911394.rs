@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 use engine::constants::MSG_ATTACK;
 
 const ID: u32 = 87911394;
+
+pub const LISTED_SERIES: &[u16] = &[SET_UTOPIA];
 pub const XYZ_NUMBER: u32 = 39;
 
 // In the Extra Deck, Xyz Summoned with Level 5 Normal Monsters, with the opponent's Elfnote Lucina and Ash Blossom to attack. The

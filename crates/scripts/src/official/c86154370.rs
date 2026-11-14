@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 86154370;
 
+pub const ROLL_DICE: bool = true;
+
 struct Procedure;
 
 impl SynchroProcedure for Procedure {
@@ -21,7 +23,7 @@ impl SynchroProcedure for Procedure {
 
 // In the Extra Deck, Synchro Summoned with Speedroid Darumaknocker (a Level 4 WIND Tuner) and Dragunity Knight - Trident (a Level 7 WIND
 // Synchro Monster), with WIND monsters in the GY to shuffle, the opponent's cards to destroy and a second Trident in the Extra Deck.
-// s.synchro_nt_required and s.roll_dice, which only cards that are not ported read, are left out.
+// s.synchro_nt_required, which only cards that are not ported read, is left out.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),
     (ID, EXTRA),

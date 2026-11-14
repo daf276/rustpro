@@ -6,6 +6,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 6798031;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RYZEAL];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand with Ryzeal Detonator and Ryzeal monsters in the Graveyard, and Raigeki to send the opponent's Sangan to the

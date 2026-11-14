@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 37279096;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARTMAGE, SET_DOOMZ, SET_ELFNOTE, SET_ARS_MAGNA, SET_POWER_PATRON, SET_MEDIUS];
 // In hand to activate, with Purification Power Patron on the field and Ars Magna and Medius monsters in the Deck to add; the Quick
 // Effects it allows are checked from the Ars Magna monsters.
 pub const SUPPORT: &[(u32, u16)] = &[

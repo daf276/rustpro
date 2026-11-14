@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 2091298;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CONSTELLAR];
 // On the field with Xyz Import to attach Sangan, Constellar Castor to Xyz Summon it, and the opponent's attackers to fight in the Damage Step.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

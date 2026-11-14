@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE};
 
 const ID: u32 = 47482043;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ANCIENT_GEAR];
 // With an empty field of yours and Ancient Gear Box in the Graveyard to Special Summon; no second copy, as it is unique.
 pub const SUPPORT: &[(u32, u16)] = &[(60953949, GRAVE), (60953949, GRAVE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

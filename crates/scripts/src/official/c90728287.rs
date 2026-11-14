@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 90728287;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARS_MAGNA, SET_POWER_PATRON];
 // In hand to activate and in the Graveyard to return Purification Power Patron, with Ars Magna monsters on the field and in the
 // Graveyard to banish and Sangan of the opponent to negate.
 pub const SUPPORT: &[(u32, u16)] = &[

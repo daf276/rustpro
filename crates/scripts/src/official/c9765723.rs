@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, SZONE};
 
 const ID: u32 = 9765723;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DD, SET_DARK_CONTRACT];
 // Set on the field and in the hand, with D/D Lance Soldier (a Fiend) in the hand to discard and on the field.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, SZONE), (ID, SZONE), (ID, HAND), (67322708, HAND), (67322708, MZONE)];
 pub const CHECKS: &[Check] = &[

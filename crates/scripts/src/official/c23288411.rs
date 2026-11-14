@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 23288411;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MEMENTO];
 // In the hand, in the Graveyard and on the field, with six different Mementotlan monsters in the Graveyard to shuffle five.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

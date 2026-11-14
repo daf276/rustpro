@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 38007649;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DOOMZ];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // In the hand and Set, with DoomZ monsters on the field, in the Deck, in the hand and in the Graveyard, and the opponent's
 // Mystical Space Typhoon to destroy it.

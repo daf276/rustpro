@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 54257392;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LIL_LA, SET_EVIL_TWIN];
 // In the hand and Graveyard beside Evil★Twin Lil-la (a Lil-la monster for the hand Special Summon, an Evil★Twin monster for the draw),
 // with the opponent's Elfnote Lucina to search from the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -3,6 +3,7 @@ use crate::prelude::*;
 
 const ID: u32 = 56651978;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ELFNOTE];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {

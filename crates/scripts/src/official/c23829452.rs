@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 23829452;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ARTMAGE];
+
 const NERVA: u32 = 53589300;
 
 struct Params;

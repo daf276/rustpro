@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 29296344;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ROKKET];
 // In the Extra Deck, Link Summoned from two Rokket monsters, destroying an opponent's Link Monster (Linguriboh) to Special Summon
 // Rokket monsters from the Graveyard, with Sangan in the hand to discard.
 pub const SUPPORT: &[(u32, u16)] = &[

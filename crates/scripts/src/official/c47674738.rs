@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 47674738;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ADAMANCIPATOR];
 // In the Extra Deck, Synchro Summoned with Angel Trumpeter (a Level 4 Tuner) and Doron (Level 2), with Adamancipator monsters
 // in the Deck to excavate and Stone Ogre Grotto (Rock) and Charcoal Inpachi (FIRE) in the Graveyard for the quick effect.
 pub const SUPPORT: &[(u32, u16)] = &[

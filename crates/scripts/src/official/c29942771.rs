@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 29942771;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NATURIA];
 // Naturia monsters in the Deck and Graveyard, and the opponent's Raigeki and Summons to react to.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

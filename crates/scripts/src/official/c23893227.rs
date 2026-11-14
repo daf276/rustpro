@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 23893227;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CYBER, SET_CYBERNETIC, SET_CYBER_DRAGON];
 // In the hand to Normal Summon and in the Graveyard, with a Cyber Dragon and Cyber Emergency in the Deck, and a monster of the opponent's.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

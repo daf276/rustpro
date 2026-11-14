@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 14824019;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SPELLBOOK];
 // In the hand to Normal Summon, with Spellbook Spells in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (23314220, DECK), (23314220, DECK), (89739383, DECK), (96677818, DECK)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

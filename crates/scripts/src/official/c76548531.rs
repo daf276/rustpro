@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 76548531;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NUMBER, SET_UMBRAL_HORROR];
 // In the hand and on the field with only Umbral Horror monsters, with non-Rock Umbral Horror monsters in the Deck to add, and Number 104:
 // Masquerade Vain (3 Level 4 materials) in the Extra Deck to be Xyz Summoned with V Umbral Horror and this card counting as two.
 pub const SUPPORT: &[(u32, u16)] = &[

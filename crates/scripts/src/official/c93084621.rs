@@ -6,6 +6,8 @@ use super::c67680512::{operation, target, thcon, thop, thtg};
 
 const ID: u32 = 93084621;
 
+pub const LISTED_SERIES: &[u16] = &[SET_UNCHAINED_SOUL];
+
 struct Procedure;
 
 impl LinkProcedure for Procedure {

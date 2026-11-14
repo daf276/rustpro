@@ -3,6 +3,8 @@ use crate::prelude::*;
 
 const ID: u32 = 25661743;
 
+pub const LISTED_SERIES: &[u16] = &[SET_POWER_PATRON];
+
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     let e1 = duel.create_effect(c);
     e1.set_description(duel, aux::stringid(ID, 0));

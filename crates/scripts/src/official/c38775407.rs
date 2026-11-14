@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 38775407;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MILLENNIUM];
 pub const LISTED_NAMES: &[u32] = &[CARD_MILLENNIUM_CROSS];
 // In the hand to place and Special Summon, Millennium Ankh in the hand to reveal, and Millennium Shield in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (CARD_MILLENNIUM_CROSS, HAND), (32012841, DECK), (32012841, DECK)];

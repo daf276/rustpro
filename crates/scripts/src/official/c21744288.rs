@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 21744288;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WITCHCRAFTER];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // On the field and in the Graveyard, with Pot of Greed and Dark Hole in the hand to discard and the other
 // "Witchcrafter" monsters in the Deck.

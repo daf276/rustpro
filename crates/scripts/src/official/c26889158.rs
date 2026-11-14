@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 26889158;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SALAMANGREAT];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Two copies in the hand, with Salamangreat Almiraj on the field and Dark Hole to send it to the GY. The send effect needs another

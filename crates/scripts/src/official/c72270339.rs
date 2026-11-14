@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 72270339;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SINFUL_SPOILS];
 // With Unchained Twins - Rakea on the field to destroy it, and Sinful Spoils Spells in the Deck to set.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (53624265, MZONE), (80845034, DECK), (66328392, DECK)];
 pub const CHECKS: &[Check] = &[

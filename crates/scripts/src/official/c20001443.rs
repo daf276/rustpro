@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 20001443;
+
+pub const LISTED_SERIES: &[u16] = &[SET_SWORDSOUL];
+
 const SWORDSOUL_GRANDMASTER_CHIXIAO: u32 = 69248256;
 const THE_GOLDEN_SWORDSOUL: u32 = 82489470;
 

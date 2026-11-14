@@ -6,6 +6,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 28642461;
 
+pub const LISTED_SERIES: &[u16] = &[SET_K9];
 // In the hand with K9-66b Lantern, a Level 5 monster, to reveal and Special Summon with, and K9-17 Izuna in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (55031170, HAND), (92248362, DECK), (92248362, DECK)];
 pub const CHECKS: &[Check] = &[

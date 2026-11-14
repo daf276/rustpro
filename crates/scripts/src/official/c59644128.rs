@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 59644128;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GOUKI];
 // Link Summoned from Gouki Guts and Gouki Machine Suprex, with Gouki Guts to destroy and face-down monsters to turn up.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

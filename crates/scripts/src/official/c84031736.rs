@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, SZONE};
 
 const ID: u32 = 84031736;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CLOWN_CREW];
 // Set and in the Graveyard, with Clown Crew Biancaviso in the hand to Tribute Summon by Tributing a Clown Crew Flair on the
 // field, one in the Deck to search with a different Level, and a Tribute Summoned monster to enable the first effect.
 pub const SUPPORT: &[(u32, u16)] = &[

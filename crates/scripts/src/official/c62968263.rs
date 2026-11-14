@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 62968263;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GALAXY_EYES, SET_NUMBER];
 pub const LISTED_NAMES: &[u32] = &[CARD_GALAXYEYES_P_DRAGON];
 
 // In the hand and on the field, with Galaxy-Eyes Cipher Dragon Xyz Summoned from two of them, whose detach cost sends one to the

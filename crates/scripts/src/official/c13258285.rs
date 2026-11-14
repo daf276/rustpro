@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 13258285;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PUNK];
+
 struct Params;
 
 impl FusionSummonParams for Params {

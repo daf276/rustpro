@@ -4,6 +4,7 @@ use crate::testing::{DECK, HAND, MZONE};
 
 const ID: u32 = 29253591;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRAGUNITY];
 // Dragunity Falchion in hand to equip a copy from the Deck to one on the field.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE), (ID, DECK), (ID, DECK), (8039562, HAND), (8039562, HAND)];
 

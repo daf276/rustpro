@@ -4,6 +4,7 @@ use engine::constants::MSG_WIN;
 use crate::prelude::*;
 use crate::testing::{Check, MZONE};
 
+pub const LISTED_SERIES: &[u16] = &[SET_FORBIDDEN_ONE];
 // The four limbs (Normal Monsters) on the field with it.
 pub const SUPPORT: &[(u32, u16)] = &[(7902349, MZONE), (8124921, MZONE), (44519536, MZONE), (70903634, MZONE)];
 // Every duel ends in MSG_WIN; the ones this card wins carry reason 0x21 (scenarios 5 and 10).

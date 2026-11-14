@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND};
 
 const ID: u32 = 19322865;
 
+pub const LISTED_SERIES: &[u16] = &[SET_EARTHBOUND];
 pub const LISTED_NAMES: &[u32] = &[71089030, 7473735];
 
 // In the hand to Normal Summon and in the Graveyard, with Earthbound Prison and Harmonic Synchro Fusion in the Deck and Graveyard to add.

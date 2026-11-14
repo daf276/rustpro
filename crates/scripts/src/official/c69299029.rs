@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, SZONE};
 
 const ID: u32 = 69299029;
 
+pub const LISTED_SERIES: &[u16] = &[SET_APOPHIS];
 pub const LISTED_NAMES: &[u32] = &[CARD_TEMPLE_OF_THE_KINGS];
 // In the hand to activate and Set Embodiment of Apophis from the Deck, with Set Traps for the Field Zone effect, and monsters
 // that mention Temple of the Kings (The Man with the Mark, Mystical Beast of Serket) in the Deck to search.

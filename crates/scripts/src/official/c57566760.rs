@@ -4,6 +4,7 @@ use crate::testing::{DECK, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 57566760;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MIKANKO];
 // In the Extra Deck, Xyz Summoned with two of four Ha-Re (Level 3 Mikanko), with Equip Spells in the Deck to add and the opponent's
 // monsters to attack.
 pub const SUPPORT: &[(u32, u16)] = &[

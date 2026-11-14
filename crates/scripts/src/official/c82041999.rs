@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 82041999;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PUNK];
 // Joruri-P.U.N.K. Dangerous Gabu in the Deck to search and set to target Sangan with.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

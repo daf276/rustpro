@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 41373230;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DOGMATIKA];
 pub const LISTED_NAMES: &[u32] = &[CARD_ALBAZ];
 
 struct Materials;

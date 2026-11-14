@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 27944249;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GUSTO];
 // Two copies on the field with Gusto monsters in the Graveyard, attacking the opponent's Sangans.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

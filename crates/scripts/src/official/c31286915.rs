@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 31286915;
 
+pub const LISTED_SERIES: &[u16] = &[SET_K9];
 // In the Extra Deck, Special Summoned by K9-X Forced Release over K9-66X "Jacks" (with Xyz Import to attach Sangan), with cards in the
 // opponent's Graveyard to shuffle and an opponent's monster effect to negate.
 pub const SUPPORT: &[(u32, u16)] = &[

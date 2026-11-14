@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 23187256;
+
+pub const LISTED_SERIES: &[u16] = &[SET_NUMBER];
 pub const XYZ_NUMBER: u32 = 93;
 
 // Number Xyz Monsters of the same Rank on the field and in the Extra Deck, Xyz Summoned over each other with Level 4 Normal

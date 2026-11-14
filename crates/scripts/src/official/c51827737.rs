@@ -4,6 +4,7 @@ use crate::testing::{GRAVE, MZONE};
 
 const ID: u32 = 51827737;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GENEX];
 // On the field, with a Genex Controller in the Graveyard to copy the name of.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (68505803, GRAVE)];
 

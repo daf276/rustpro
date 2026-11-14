@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, MZONE};
 
 const ID: u32 = 68464358;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ROKKET];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // On the field, with Rokket Loader in the Deck to Special Summon.

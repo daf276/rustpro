@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 33302589;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CONSTELLAR];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // Two on the field for Tellarknight Constellar Caduceus, and Dark Hole in the opponent's hand to negate.
 pub const SUPPORT: &[(u32, u16)] = &[

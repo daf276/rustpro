@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 54332792;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLUE_EYES];
 pub const LISTED_NAMES: &[u32] = &[CARD_BLUEEYES_W_DRAGON, ID];
 
 // In hand and on the field with Blue-Eyes White Dragon and a Tuner (Ash Blossom & Joyous Spring) on the field, more

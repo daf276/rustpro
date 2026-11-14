@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 58916810;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLITZCLIQUE];
 // In the hand and on the field, with a Thunder Normal Monster (LaLa Li-oon), Surge Blitzclique in the hand to destroy a
 // monster with, and a Blitzclique Spell (Blitzclique - Breakaway) in the Deck to send.
 pub const SUPPORT: &[(u32, u16)] = &[

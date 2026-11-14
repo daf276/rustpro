@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 66762372;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FIRE_FIST, SET_FIRE_FORMATION];
 // On the field, with Brotherhood of the Fire Fist - Buffalo (Level 4) in the Deck to summon, Tiger King in the Extra Deck
 // Xyz Summoned from Vorse Raider (Level 4 Beast-Warrior Normal Monster) with Fire Formation - Tenki in the Deck to Set, and
 // Raigeki and Elfnote Lucina on the opponent's side to destroy it in battle.

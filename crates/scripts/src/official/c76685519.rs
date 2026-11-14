@@ -4,6 +4,8 @@ use crate::testing::{Check, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 76685519;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ALTERGEIST];
+
 struct Procedure;
 
 impl LinkProcedure for Procedure {

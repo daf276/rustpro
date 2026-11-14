@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 67926903;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NUMBER];
 // In the Extra Deck, Xyz Summoned on Number C101, C104 or C107, with Numbers with effects in the GY to copy.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

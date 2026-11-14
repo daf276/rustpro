@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 95718355;
 
+pub const LISTED_SERIES: &[u16] = &[SET_REGENESIS];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand with Woodborg Inpachi (2500 DEF) to reveal, and on the field with the opponent's Raigeki to destroy it for the

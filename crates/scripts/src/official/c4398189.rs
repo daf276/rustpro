@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 4398189;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WHITE_FOREST];
 // In the hand to activate and one in a random zone, with Astellar of the White Forest on the field to protect and make a Tuner, and
 // Silvy of the White Forest in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, 0), (25592142, MZONE), (98385955, DECK)];

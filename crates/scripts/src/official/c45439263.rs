@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND};
 
 const ID: u32 = 45439263;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LAVAL];
 // In the hand, with three other Laval monsters in the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (2407147, GRAVE), (8041569, GRAVE), (15169262, GRAVE)];
 pub const CHECKS: &[Check] = &[Check::SpecialSummoned];

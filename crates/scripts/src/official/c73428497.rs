@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE};
 
 const ID: u32 = 73428497;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GEARGIA];
 // On the field with other Geargias on the field and in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE), (47687766, MZONE), (47687766, DECK), (47687766, DECK)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

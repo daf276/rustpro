@@ -4,6 +4,13 @@ use crate::testing::{Check, DECK, HAND, PZONE};
 
 const ID: u32 = 14513273;
 
+pub const LISTED_SERIES: &[u16] = &[
+    SET_SUPREME_KING_GATE,
+    SET_PENDULUM_DRAGON,
+    SET_XYZ_DRAGON,
+    SET_SYNCHRO_DRAGON,
+    SET_FUSION_DRAGON,
+];
 pub const LISTED_NAMES: &[u32] = &[ID, CARD_ZARC];
 // Only the Gate monsters Zero and Infinity (unported) satisfy the effects, and no ported card mentions Supreme King Z-ARC.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, PZONE), (ID, HAND), (ID, DECK)];

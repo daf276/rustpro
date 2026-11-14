@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 74627016;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TG];
 pub const LISTED_NAMES: &[u32] = &[ID + 1];
 
 // On the field with T.G. Screw Serpent (Level 4 Tuner), Synchro Summoning T.G. Wonder Magician (Level 5) with it.

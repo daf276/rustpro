@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 31991800;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAJESPECTER];
 // In the hand to Normal Summon, with copies in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, DECK), (ID, DECK)];
 pub const CHECKS: &[Check] = &[Check::Resolves];

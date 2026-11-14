@@ -6,6 +6,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 68663427;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARMORED_XYZ];
 // Tornado Dragon to equip to, and Xyz Armor Torpedo with two Level 3 Normal Monsters (Swordsman of Landstar) for the Xyz Summon.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

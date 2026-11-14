@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 69811710;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ORCUST, SET_WORLD_LEGACY];
 pub const LISTED_NAMES: &[u32] = &[TOKEN_WORLD_LEGACY];
 
 // In the hand and on the field, with copies in the Deck to send to the Graveyard (an Orcust card).

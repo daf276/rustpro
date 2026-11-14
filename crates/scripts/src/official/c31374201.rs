@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 31374201;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PLUNDER_PATROLL];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Plunder Patrollship Brann in the Extra Deck to summon and equip to, FIRE monsters on the opponent's side for its Attribute, Goldenhair in

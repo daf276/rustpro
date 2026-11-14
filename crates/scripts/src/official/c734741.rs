@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND};
 
 const ID: u32 = 734741;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BURNING_ABYSS];
 // Copies in the hand to Special Summon onto an empty field.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, HAND)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

@@ -6,6 +6,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 41069676;
 
+pub const LISTED_SERIES: &[u16] = &[SET_KEWL_TUNE];
 // Tuners on the field for the Synchro Summon, Kewl Tune monsters in the Graveyard to apply, and the opponent's Dark Hole to
 // chain to.
 pub const SUPPORT: &[(u32, u16)] = &[

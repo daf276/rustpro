@@ -4,6 +4,7 @@ use crate::testing::{DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 77913594;
 
+pub const LISTED_SERIES: &[u16] = &[SET_EXOSISTER];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand, with Exosister Elis (which lists Stella) in the Deck to search and Stella in the Graveyard and on the field.

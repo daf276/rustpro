@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, MZONE};
 
 const ID: u32 = 66574418;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RED_EYES];
 // On the field and in the Graveyard, with Red-Eyes Black Dragon in the Deck to Special Summon and in the Graveyard to return.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, GRAVE), (74677422, DECK), (74677422, DECK), (74677422, GRAVE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(0)];

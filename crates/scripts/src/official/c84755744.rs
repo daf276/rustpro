@@ -4,6 +4,7 @@ use crate::testing::{HAND, MZONE};
 
 const ID: u32 = 84755744;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SALAMANGREAT];
 // In the hand and on the field, with Salamangreat Gazelle in the hand to discard.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (ID, MZONE), (26889158, HAND), (26889158, HAND)];
 

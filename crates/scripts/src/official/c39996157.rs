@@ -5,6 +5,8 @@ use engine::constants::MSG_SELECT_EFFECTYN;
 
 const ID: u32 = 39996157;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CYBER_ANGEL];
+
 struct Params;
 
 impl RitualParams for Params {

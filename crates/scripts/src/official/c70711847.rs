@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 70711847;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DANGER];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // Two copies in the hand to discard and Special Summon, and Danger! Bigfoot! in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, DECK), (43316238, DECK), (43316238, DECK)];

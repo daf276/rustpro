@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 56465981;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SWORDSOUL];
 // Mystery Shell Dragon (a Wyrm) on the field to change the Level of and in the Deck to add with Phantasm Spiral Dragon, Chengying
 // (a Synchro Monster) on the field, and Pot of Desires to banish this card from the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[

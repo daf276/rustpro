@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 22446869;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MERMAIL];
 // In the hand with Atlantean Pikeman, a WATER Normal Monster, to discard, and Mermail Abysspike and Mermail Shadow Squad in
 // the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (26976414, HAND), (58471134, DECK), (53085623, DECK)];

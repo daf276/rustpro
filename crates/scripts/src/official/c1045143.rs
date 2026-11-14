@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND};
 
 const ID: u32 = 1045143;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GEARGIA];
 // Copies in the hand to Normal Summon and in the Graveyard (also Geargia) to summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, HAND), (ID, HAND), (ID, GRAVE), (ID, GRAVE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

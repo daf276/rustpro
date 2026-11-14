@@ -4,6 +4,7 @@ use crate::testing::GRAVE;
 
 const ID: u32 = 67300516;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RED_EYES];
 // In the Graveyard with Red-Eyes Black Dragon, a Normal Monster, to revive.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, GRAVE), (CARD_REDEYES_B_DRAGON, GRAVE), (CARD_REDEYES_B_DRAGON, GRAVE)];
 

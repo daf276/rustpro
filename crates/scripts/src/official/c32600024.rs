@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 32600024;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRAGONMAID];
 // In the hand to Normal Summon and on the field, with Dragonmaid Hospitality in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (78231355, DECK), (78231355, DECK)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 1))];

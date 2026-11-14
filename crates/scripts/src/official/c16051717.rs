@@ -6,6 +6,7 @@ use engine::ConditionFn;
 
 const ID: u32 = 16051717;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 // On the field and in the Extra Deck (Synchro Summoned from Gale, a Level 3 Tuner, and Zephyros, Level 4) with other Blackwing
 // monsters, against the opponent's monsters.
 pub const SUPPORT: &[(u32, u16)] = &[

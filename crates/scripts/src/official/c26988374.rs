@@ -4,6 +4,7 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 const ID: u32 = 26988374;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAGIKEY];
 // On the field with Xyz Import to attach Sangan, or Xyz Summoned with Level 8 Normal Monsters (Tri-Horned Dragon, Gogiga Gagagigo), with
 // Black Luster Soldier to attack the opponent's Sangan and Normal Monsters in the Graveyard for the attribute match.
 pub const SUPPORT: &[(u32, u16)] = &[

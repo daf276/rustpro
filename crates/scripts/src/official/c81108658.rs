@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 81108658;
 
+pub const LISTED_SERIES: &[u16] = &[SET_URSARCTIC];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // Blue-Eyes White Dragon in the hand to Tribute, Ursarctic Megapolar and Megatanus on the field, and cards in the opponent's
 // Graveyard to banish.

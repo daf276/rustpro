@@ -4,6 +4,7 @@ use crate::testing::{GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 96099959;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SABER];
 // X-Saber Anu Piranha on the field and strong monsters on the opponent's side to destroy them in battle.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, GRAVE),

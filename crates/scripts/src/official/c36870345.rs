@@ -5,6 +5,7 @@ use crate::testing::{Check, HAND, OPPONENT, SZONE};
 
 const ID: u32 = 36870345;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRAGUNITY];
 // Copies and Dragunity Phalanx in hand to Normal Summon and Special Summon, and the opponent's Mystical Space Typhoons to destroy the
 // equipped copy.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -6,6 +6,8 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 58858807;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TELLARKNIGHT, SET_CONSTELLAR];
+
 struct Procedure;
 
 impl XyzProcedure for Procedure {

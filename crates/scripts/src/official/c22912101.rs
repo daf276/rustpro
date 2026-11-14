@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 22912101;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLITZCLIQUE];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand and on the field, with a Thunder Normal Monster (LaLa Li-oon) and a monster to destroy, and another Blitzclique

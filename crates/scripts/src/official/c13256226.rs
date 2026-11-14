@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 13256226;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ELEMENTAL_HERO];
 pub const LISTED_NAMES: &[u32] = &[CARD_POLYMERIZATION];
 
 // Spirit of Neos in the hand against an attacking Sangan and on the field, with Polymerization and Elemental HERO Avian in the Deck.

@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 72321198;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARCANA_FORCE];
 pub const TOSS_COIN: bool = true;
 
 // Copies in the hand to reveal and Normal Summon, and one on the field, with monsters on both sides for the coin to destroy; the

@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 17377751;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 // In the Extra Deck, Synchro Summoned from Hurricane (a Level 1 Tuner) and Zephyros (Level 4), with Bora (Level 4) in the hand.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

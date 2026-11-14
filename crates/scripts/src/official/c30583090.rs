@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 30583090;
 
+pub const LISTED_SERIES: &[u16] = &[SET_HERO];
 pub const LISTED_NAMES: &[u32] = &[CARD_DARK_FUSION];
 
 // In the hand and on the field, with Evil HERO Dark Gaia on the field to Special Summon it, a HERO in the Deck for the cost,

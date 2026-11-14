@@ -4,6 +4,7 @@ use crate::testing::{DECK, HAND};
 
 const ID: u32 = 93437091;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLUE_EYES];
 pub const LISTED_NAMES: &[u32] = &[CARD_BLUEEYES_W_DRAGON, 23995346];
 
 // Blue-Eyes White Dragon, a Normal Monster, in the Deck: three copies to pick from.

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 99193444;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ATLANTEAN, SET_MERMAIL];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // In the hand with Atlantean Pikeman, a WATER Normal Monster, in the hand, on the field and in the Deck to pay the costs, and a
 // monster for the opponent to return.

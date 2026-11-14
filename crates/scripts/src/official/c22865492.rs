@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, MZONE};
 
 const ID: u32 = 22865492;
 
+pub const LISTED_SERIES: &[u16] = &[SET_HERO, SET_VISION_HERO];
 // In the Graveyard to place after damage, with a HERO to Tribute and Vision HERO Vyon and Faris in the Deck.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, GRAVE),

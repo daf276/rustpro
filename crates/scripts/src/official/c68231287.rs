@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 68231287;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DOOMZ];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Power Patron DoomZ and Junora the Power Patron of Tuning on the field to Xyz Summon it, Axe of Despair and another

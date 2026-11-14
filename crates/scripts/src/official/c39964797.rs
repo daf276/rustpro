@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 39964797;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CRYSTRON];
 // A copy on the field with Bat (a Level 1 Machine Normal Monster) and in the Extra Deck, with Accel Synchron (Level 5) in the
 // Extra Deck, Crystron Quan on the field and Crystron Smiger in the hand and Graveyard to Synchro Summon with it.
 pub const SUPPORT: &[(u32, u16)] = &[

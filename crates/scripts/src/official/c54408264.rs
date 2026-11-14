@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{GRAVE, HAND};
 
 const ID: u32 = 54408264;
+
+pub const LISTED_SERIES: &[u16] = &[SET_MAGIKEY];
+
 const MAGIKEY_MAFTEA: u32 = 99426088;
 
 pub const LISTED_NAMES: &[u32] = &[MAGIKEY_MAFTEA];

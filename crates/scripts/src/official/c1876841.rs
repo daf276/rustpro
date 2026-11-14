@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND};
 
 const ID: u32 = 1876841;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MORPHTRONIC];
 // Morphtronic Lantron to banish from the hand and to retrieve from the Grave, Morphtronic Accelerator in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[
     (76865611, HAND),

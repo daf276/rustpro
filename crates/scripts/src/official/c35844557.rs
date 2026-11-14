@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 35844557;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RYZEAL];
 // In the hand, Special Summoned with an Ice Ryzeal on the field or in the Graveyard, with LIGHT Pyro Ryzeal monsters in the
 // Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[

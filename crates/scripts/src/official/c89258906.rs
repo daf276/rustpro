@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 89258906;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 // Copies in the Deck, with Pot of Greed in hand to draw them.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, DECK), (ID, DECK), (ID, DECK), (55144522, HAND), (55144522, HAND)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

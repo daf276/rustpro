@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 11335209;
 
+pub const LISTED_SERIES: &[u16] = &[SET_HORUS];
 pub const LISTED_NAMES: &[u32] = &[CARD_KING_SARCOPHAGUS];
 
 // In the Graveyard with King's Sarcophagus on the field to return, a copy and Imsety, Glory of Horus, on the field, and

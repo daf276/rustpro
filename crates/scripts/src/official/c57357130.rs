@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 57357130;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SALAMANGREAT];
 // In the hand and Graveyard with Salamangreat Gazelle in the Graveyard, and Haniwa (a Normal Monster of 1000 ATK or less) for
 // Salamangreat Almiraj's Link Summon.
 pub const SUPPORT: &[(u32, u16)] = &[

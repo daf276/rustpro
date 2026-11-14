@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, PZONE};
 
 const ID: u32 = 39024589;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ABYSS_ACTOR];
 // On the field with Abyss Actors in both Pendulum Zones (Extras) and the hand to Special Summon, and to Pendulum Summon for the search.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

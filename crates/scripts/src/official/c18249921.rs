@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, SZONE};
 
 const ID: u32 = 18249921;
 
+pub const LISTED_SERIES: &[u16] = &[SET_VIRTUAL_WORLD, SET_VIRTUAL_WORLD_GATE];
 // In the hand and Graveyard, with Virtual World Gate - Qinglong and Virtual World Kyubi - Shenshen on the field and Virtual World
 // Mai-Hime - Lulu and Roshi - Laolao in the Graveyard to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[

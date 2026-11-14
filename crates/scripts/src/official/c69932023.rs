@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 69932023;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DRACOTAIL];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Attack Position monsters of both players, one of them from the Extra Deck, and a Dracotail monster in the Graveyard to place

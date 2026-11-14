@@ -91,15 +91,40 @@ fn closed_sky_filter(c: CardId, duel: &Duel) -> bool {
     !(c.has_flag_effect(duel, CLOSED_SKY_FLAG) && !c.get_card_target(duel).is_empty())
 }
 
-fn extracon(duel: &mut Duel, _: CardId, _: EffectId, tp: u8, sg: CardSet, _: CardSet, _: CardId, _: CardSet, _: i32) -> bool {
+fn extracon(duel: &mut Duel, _: CardId, _: EffectId, tp: u8, sg: CardSet, _: CardSet, lc: CardId, _: CardSet, _: i32) -> bool {
     let Some(curgroup) = duel.get_script_group(CURGROUP) else {
         return true;
     };
     let g = curgroup.filter(duel, closed_sky_filter, None);
-    let effs = duel.get_player_effect(tp, EFFECT_EXTRA_MATERIAL);
-    // Calling another card's extra material value registers effects, which a condition cannot.
-    unported!(duel, effs.iter().any(|eff| !eff.get_owner(duel).is_code(duel, ID)));
-    sg.intersection(g).len() <= 1
+    let mut max_count = 1;
+    let mut must_include = CardSet::default();
+    for eff in duel.get_player_effect(tp, EFFECT_EXTRA_MATERIAL) {
+        if eff.get_owner(duel).is_code(duel, ID) {
+            continue;
+        }
+        let Value::ExtraMaterial(value) = eff.get_value(duel) else {
+            unported!(duel, true);
+            continue;
+        };
+        if !value(
+            duel,
+            eff,
+            ExtraMaterialCall::Get {
+                summon_type: SUMMON_TYPE_LINK,
+                tp,
+                sc: lc,
+            },
+        )
+        .is_empty()
+        {
+            let handler = eff.get_handler(duel);
+            must_include.insert(handler);
+            if !sg.intersection(must_include).is_empty() || lc == handler {
+                max_count += 1;
+            }
+        }
+    }
+    sg.intersection(g).len() <= max_count
 }
 
 fn extraval(duel: &mut Duel, e: EffectId, call: ExtraMaterialCall) -> CardSet {

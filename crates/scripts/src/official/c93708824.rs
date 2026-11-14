@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 93708824;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ROSE_DRAGON];
 pub const LISTED_NAMES: &[u32] = &[ID, CARD_BLACK_ROSE_DRAGON];
 // In the hand and Graveyard, with Rose Dragons (Red Rose, White Rose) on the field for an opponent's Dark Hole to destroy, and
 // cards naming Black Rose Dragon (Red Rose Dragon, Blooming of the Darkest Rose) in the Deck to add.

@@ -4,6 +4,7 @@ use crate::testing::{GRAVE, MZONE};
 
 const ID: u32 = 37195861;
 
+pub const LISTED_SERIES: &[u16] = &[SET_HERO];
 // On the field with Elemental HERO Stratos in the GY to return to the hand.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (40044918, GRAVE), (40044918, MZONE)];
 

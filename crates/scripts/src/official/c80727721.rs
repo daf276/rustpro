@@ -4,6 +4,7 @@ use crate::testing::{GRAVE, MZONE};
 
 const ID: u32 = 80727721;
 
+pub const LISTED_SERIES: &[u16] = &[SET_JURRAC];
 // On the field, with Jurrac Megalo and Jurrac Dino (Level 4 or less) in the Graveyard to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (93170499, GRAVE), (17948378, GRAVE)];
 

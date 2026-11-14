@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 31425736;
 
+pub const LISTED_SERIES: &[u16] = &[SET_YUMMY];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand and the Graveyard, with Cooky★Yummy Way (a Level 2 Synchro) on the field to Special Summon it from the hand and

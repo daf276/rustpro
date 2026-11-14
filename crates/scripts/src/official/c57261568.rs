@@ -4,6 +4,7 @@ use crate::testing::{DECK, HAND, MZONE};
 
 const ID: u32 = 57261568;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FLOWER_CARDIAN];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // In the hand, Special Summoned by Tributing Flower Cardian Pine, with more in the Deck to draw.
 pub const SUPPORT: &[(u32, u16)] = &[

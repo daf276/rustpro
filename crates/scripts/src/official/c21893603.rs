@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 21893603;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WORLD_CHALICE];
 // Normal Summoned from the hand (a second copy in the Deck to search, a monster in the hand as cost), and in the Graveyard to return.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, DECK), (ID, GRAVE), (ID, MZONE), (32295838, HAND)];
 pub const CHECKS: &[Check] = &[

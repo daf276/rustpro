@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 25592142;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WHITE_FOREST];
 // On the field and in the Graveyard, with a Spell as its cost and Silvy of the White Forest in the Deck to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, GRAVE), (98385955, DECK), (98385955, DECK), (55144522, HAND)];
 pub const CHECKS: &[Check] = &[

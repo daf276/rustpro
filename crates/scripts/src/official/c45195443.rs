@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 45195443;
 
+pub const LISTED_SERIES: &[u16] = &[SET_HERO];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // Summoned from the hand with the Level 4 HERO Destiny HERO - Celestial in the hand to Special Summon, and on the field with Dark Hole
 // in the hand to destroy it and Celestial in the Graveyard to revive.

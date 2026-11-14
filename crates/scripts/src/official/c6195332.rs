@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 6195332;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TELLARKNIGHT, SET_CONSTELLAR];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Three copies in the Extra Deck, Xyz Summoned with three Level 7 Monsters (Slot Machine, Launcher Spider and Gaia the Fierce Knight).

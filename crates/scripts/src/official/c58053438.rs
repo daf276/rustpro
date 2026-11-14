@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 58053438;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DOMINUS];
 // Set or in the hand, to negate the effect of Snipe Hunter on the opponent's field, with a Trap in the Graveyard and Dominus Impulse
 // in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[

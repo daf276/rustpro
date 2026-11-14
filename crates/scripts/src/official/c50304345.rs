@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 50304345;
 
+pub const LISTED_SERIES: &[u16] = &[SET_HERO];
 // In the hand and on the field, with Destiny HERO - Malicious (Level 6) in the hand to Tribute Summon with it.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (9411399, HAND)];
 pub const CHECKS: &[Check] = &[Check::SpecialSummoned, Check::ResolvesEffect(aux::stringid(ID, 0))];

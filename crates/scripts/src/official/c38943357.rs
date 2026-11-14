@@ -4,6 +4,7 @@ use crate::testing::{DECK, HAND, MZONE};
 
 const ID: u32 = 38943357;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ENDYMION];
 pub const COUNTER_PLACE_LIST: &[u16] = &[COUNTER_SPELL];
 const SPELL_POWER_GRASP: u32 = 75014062;
 

@@ -4,6 +4,9 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 use engine::constants::MSG_SELECT_EFFECTYN;
 
 const ID: u32 = 88021907;
+
+pub const LISTED_SERIES: &[u16] = &[SET_MATHMECH];
+
 const SELECTED_EFFECTS: u8 = 0;
 
 // In the Extra Deck, Xyz Summoned with Level 4 Mathmechs (Diameter, Sigma, Nabla) and Normal Monsters (Jellyfish, Hyosube), with the

@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 15982593;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CENTUR_ION];
 // In the Extra Deck, Synchro Summoned with Ash Blossom & Joyous Spring, Mystical Elf and Orion the Battle King. No Normal
 // Monster or ported card is a non-Synchro "Centurion" monster, so the Continuous Trap placement never resolves.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, EXTRA), (14558127, MZONE), (15025844, MZONE), (2971090, MZONE)];

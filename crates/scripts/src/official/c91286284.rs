@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND};
 
 const ID: u32 = 91286284;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GOLD_PRIDE];
 // In the hand with Gold Pride monsters (Leon, Captain Carrie) in the hand and Graveyard to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (23512906, HAND), (23512906, GRAVE), (96305350, GRAVE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

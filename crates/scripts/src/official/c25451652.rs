@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 25451652;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DARKLORD];
 // In the hand to be Tribute Summoned with Prevent Rats, with Darklords (Gulgolet, Ixchel) in the Deck to Special Summon and
 // Elfnote Lucina in the opponent's monster zone.
 pub const SUPPORT: &[(u32, u16)] = &[

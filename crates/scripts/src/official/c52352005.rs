@@ -4,6 +4,8 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 52352005;
 
+pub const LISTED_SERIES: &[u16] = &[SET_X_SABER];
+
 struct Procedure;
 
 impl SynchroProcedure for Procedure {

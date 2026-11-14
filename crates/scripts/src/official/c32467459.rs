@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 32467459;
+
+pub const LISTED_SERIES: &[u16] = &[SET_SHADDOLL, SET_VOID];
+
 const SHADDOLL_CORE: u32 = 4904633;
 
 pub const MATERIAL_SETCODE: &[u16] = &[SET_SHADDOLL];

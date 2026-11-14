@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 42429678;
 
+pub const LISTED_SERIES: &[u16] = &[SET_IGNISTER];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand and on the field beside Wizard @Ignister (Level 4) with Wind Pegasus @Ignister in the Extra Deck to Synchro Summon, and Ignister monsters in the Deck to send.

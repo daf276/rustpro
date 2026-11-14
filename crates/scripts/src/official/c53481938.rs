@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 53481938;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ROKKET];
+
 const LOCATION_HAND_DECK_GRAVE_REMOVED: u32 = LOCATION_HAND | LOCATION_DECK | LOCATION_GRAVE | LOCATION_REMOVED;
 
 pub const LISTED_NAMES: &[u32] = &[ID];

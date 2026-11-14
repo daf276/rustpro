@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 29552709;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GUSTO];
 // In the Extra Deck, Synchro Summoned with Angel Trumpeter (a Level 4 Tuner) and Gusto Griffin (Level 2), with Gusto monsters in the
 // Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[

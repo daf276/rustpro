@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 27918365;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WORLD_LEGACY];
 // In the hand, to Special Summon to the zone a Link Monster (Haggard Lizardose, Cyber Dragon Sieger) points to. Its search needs a
 // "World Legacy" Spell/Trap, none of which is ported.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (9763474, MZONE), (46724542, MZONE)];

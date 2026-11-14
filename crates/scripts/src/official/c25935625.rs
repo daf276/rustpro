@@ -5,6 +5,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 25935625;
+
+pub const LISTED_SERIES: &[u16] = &[SET_YANG_ZING];
+
 const CHIWEN: u32 = 61488417;
 
 pub const LISTED_NAMES: &[u32] = &[ID];

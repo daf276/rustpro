@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 48829461;
+
+pub const LISTED_SERIES: &[u16] = &[SET_MALEFIC];
+
 const PARALLEL_GEAR: u32 = 74509280;
 
 pub const LISTED_NAMES: &[u32] = &[PARALLEL_GEAR];

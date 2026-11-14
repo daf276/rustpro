@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, MZONE, REMOVED};
 
 const ID: u32 = 78449284;
 
+pub const LISTED_SERIES: &[u16] = &[SET_THE_PHANTOM_KNIGHTS, SET_XYZ_DRAGON, SET_RANK_UP_MAGIC];
 // Doomed Soleret: two Level 3 DARK materials, the Deck monster to Special Summon and the banished one to add.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

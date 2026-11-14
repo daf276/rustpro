@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, MZONE};
 
 const ID: u32 = 47404795;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ABYSS_ACTOR];
+
 const FANTASTIC_THEATER: u32 = 77297908;
 
 pub const LISTED_NAMES: &[u32] = &[FANTASTIC_THEATER];

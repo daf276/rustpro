@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 4026187;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FAIRY_TAIL];
 pub const LISTED_NAMES: &[u32] = &[CARD_PRINCE_OF_FAIRIES];
 pub const MATERIAL_SETCODE: &[u16] = &[SET_FAIRY_TAIL];
 

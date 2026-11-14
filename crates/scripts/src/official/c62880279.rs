@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 62880279;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DODODO, SET_ZUBABA];
 // Dodododwarf Gogogoglove and Onomatokage (Dodododo monsters) in the Deck for the cost. The Zubaba search needs it to be detached
 // from an Xyz Monster as a cost, which no scenario reaches.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (59724555, DECK), (59724555, DECK), (55088578, DECK)];

@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 71921856;
+
+pub const LISTED_SERIES: &[u16] = &[SET_BATTLIN_BOXER];
 pub const XYZ_NUMBER: u32 = 79;
 
 // In the Extra Deck, Xyz Summoned with Level 4 Normal Monsters, Battlin' Boxers to attach and Special Summon, and Raigeki in the

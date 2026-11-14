@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 79985120;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RANK_UP_MAGIC, SET_RAIDRAPTOR];
 pub const LISTED_NAMES: &[u32] = &[81927732];
 
 struct Procedure;

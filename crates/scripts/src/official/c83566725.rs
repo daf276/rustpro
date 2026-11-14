@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 83566725;
 
+pub const LISTED_SERIES: &[u16] = &[SET_THE_PHANTOM_KNIGHTS];
 // Sangan, a Level 3 DARK monster, for the Level change; Umbrage Veil, a "The Phantom Knights" Trap to Set.
 pub const SUPPORT: &[(u32, u16)] = &[(26202165, MZONE), (ID, GRAVE), (ID, HAND), (ID, HAND), (85257384, DECK)];
 pub const CHECKS: &[Check] = &[

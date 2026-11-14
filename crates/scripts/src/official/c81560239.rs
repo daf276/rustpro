@@ -40,8 +40,6 @@ impl RitualParams for Params2 {
     }
 }
 
-pub const LISTED_NAMES: &[u32] = &[ID];
-
 // Ritual Monsters in the hand and Deck, with Aramasa on the field and Gogiga Gagagigo (Level 8 Reptile Normal Monster) in
 // the Deck and on the field to Tribute.
 pub const SUPPORT: &[(u32, u16)] = &[

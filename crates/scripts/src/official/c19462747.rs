@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 19462747;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 // In hand and on the field with Gale, whose Level it changes, and Dark Hole in hand to send it to the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (2009101, MZONE), (53129443, HAND)];
 pub const CHECKS: &[Check] = &[

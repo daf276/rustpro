@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 80250319;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GRAYDLE];
 // Copies in the hand to Normal Summon and in the Graveyard to revive, Graydle Slime in the Graveyard and Deck, Psychic Kappa, a
 // Level 2 Aqua, in the hand, and copies on the field to be destroyed in battle by the opponent's Elfnote Lucinas.
 pub const SUPPORT: &[(u32, u16)] = &[

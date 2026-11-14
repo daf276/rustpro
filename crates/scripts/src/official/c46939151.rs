@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND};
 
 const ID: u32 = 46939151;
 
+pub const LISTED_SERIES: &[u16] = &[SET_EARTHBOUND];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand to Normal Summon, with Earthbound Prisoner Stone Sweeper and Line Walker in the Deck and the Graveyard to Special Summon.

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 31531914;
 
+pub const LISTED_SERIES: &[u16] = &[SET_UNCHAINED];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Several in the hand to Normal Summon, a copy on the field and Dark Hole in the opponent's hand to destroy it, with Unchained

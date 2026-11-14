@@ -5,6 +5,7 @@ use engine::constants::MSG_CONFIRM_CARDS;
 
 const ID: u32 = 31562086;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RUNICK];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 struct Quickplay;

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 23599634;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ARTMAGE];
 pub const LISTED_NAMES: &[u32] = &[CARD_MEDIUS_THE_PURE];
 
 // In hand to activate and in the Graveyard to return Artmage Litera, with a second one in the Deck to Special Summon and a monster of

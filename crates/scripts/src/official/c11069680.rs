@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 11069680;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SYNCHRON];
 // In the hand to discard with Ash Blossom, a Tuner, for Junk Synchron in the Deck; on the field as Synchro material with
 // Junk Synchron for Junk Warrior, with Ash Blossom in the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[

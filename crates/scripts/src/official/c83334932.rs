@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 83334932;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPERHEAVY_SAMURAI];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // Copies in the hand to discard and on the field, with Superheavy Samurai Drum in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, MZONE), (87535691, DECK), (87535691, DECK)];

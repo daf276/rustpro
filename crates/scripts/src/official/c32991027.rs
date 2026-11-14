@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 32991027;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ICE_BARRIER];
 // In the hand with Mirror Mage of the Ice Barrier on the field and in the hand and Graveyard to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (9396662, MZONE), (9396662, HAND), (9396662, GRAVE)];
 pub const CHECKS: &[Check] = &[

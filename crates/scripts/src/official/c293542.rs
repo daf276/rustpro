@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 293542;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TG];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the hand to Special Summon after Sangan is Special Summoned, as the hand Synchro material T.G. Cyber Magician grants for T.G.

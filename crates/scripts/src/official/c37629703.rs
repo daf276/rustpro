@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, SZONE};
 
 const ID: u32 = 37629703;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LABRYNTH];
 // Twice in the hand, one to send and one to discard, and in the Graveyard, with Welcome Labrynth in the Deck to Set and
 // Normal Traps (Mirror Force, Trap Hole) Set to make a monster leave the field.
 pub const SUPPORT: &[(u32, u16)] = &[

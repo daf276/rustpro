@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 14761450;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PENGUIN];
 // Three copies in the hand and Normal Monsters to Set, with a Set monster on the field for the position change.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

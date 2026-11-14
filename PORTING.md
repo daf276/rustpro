@@ -224,6 +224,8 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   oracle's Lua errors (a nil index, an undefined function) is `unported!`; an erroring `chkc` check is `false`.
 - `s.listed_names` is `pub const LISTED_NAMES: &[u32]`, `mt.fit_monster` is `pub const FIT_MONSTER: &[u32]`,
   `s.material_setcode` is `pub const MATERIAL_SETCODE: &[u16]` (read by `ListsArchetypeAsMaterial`),
+  `s.listed_series` is `pub const LISTED_SERIES: &[u16]` (read by `ListsArchetype`), `s.roll_dice` is
+  `pub const ROLL_DICE: bool = true` (`official::roll_dice(code)`), both declared even when no ported card reads them,
   `s.dark_calling` is `pub const DARK_CALLING: bool = true` (read through `official::dark_calling(code)`),
   `s.xyz_number` is `pub const XYZ_NUMBER: u32` (`official::xyz_number(code)`), and a Synchro, Xyz or Link
   Monster's `s.material` is `pub const MATERIAL: &[u32]` (`official::material(code)`).

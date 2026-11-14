@@ -4,6 +4,7 @@ use crate::testing::{HAND, MZONE};
 
 const ID: u32 = 49633574;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FABLED];
 // On the field with Level 3 Fabled Kushano to Special Summon and Fabled Lurrie to send.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (97439806, HAND), (97439806, HAND), (97651498, HAND), (97651498, HAND)];
 

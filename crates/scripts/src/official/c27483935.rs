@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 27483935;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ANCIENT_GEAR];
 pub const LISTED_NAMES: &[u32] = &[CARD_ANCIENT_GEAR_GOLEM];
 
 // On the field, with Ancient Gear Golem in the hand (to Tribute Summon with Doron, or to send as cost) and in the Deck and

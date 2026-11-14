@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 42097666;
+
+pub const LISTED_SERIES: &[u16] = &[SET_BLUE_EYES];
+
 const MAUSOLEUM_OF_WHITE: u32 = 24382602;
 
 pub const LISTED_NAMES: &[u32] = &[MAUSOLEUM_OF_WHITE];

@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, SZONE};
 
 const ID: u32 = 34090915;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BYSTIAL];
 // On the field with Bystial Magnamhut in hand to banish the DARK Bystials in the Graveyard, which are also the ones to revive.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, SZONE),

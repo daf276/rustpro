@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 875572;
+
+pub const LISTED_SERIES: &[u16] = &[SET_MAGISTUS, SET_INVOKED];
+
 const ALEISTER_THE_INVOKER: u32 = 86120751;
 
 struct Params;

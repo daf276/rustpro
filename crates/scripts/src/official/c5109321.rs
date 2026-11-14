@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 5109321;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RB];
 // In the hand and Graveyard with R.B. monsters (Lambda Cannon in the Deck, VALCan Booster in the Extra Deck) to summon, and
 // Lambda Cannon on the field to be destroyed by the opponent's Dark Hole.
 pub const SUPPORT: &[(u32, u16)] = &[

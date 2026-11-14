@@ -5,6 +5,7 @@ use engine::constants::MSG_SELECT_EFFECTYN;
 
 const ID: u32 = 72867001;
 
+pub const LISTED_SERIES: &[u16] = &[SET_X_SABER, SET_SABER];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Extra Deck, Synchro Summoned with X-Saber Airbellum (Level 3 Tuner), Anu Piranha (Level 4) and Hard Armor (Level 3), with

@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 706925;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ATLANTEAN];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // On the field and in the Deck (sent to the Graveyard as the cost of Poseidra, the Storming Atlantean in the hand), with
 // Atlantean Pikeman, a WATER Normal Monster, to Special Summon and pay that cost, and a Set card of the opponent.

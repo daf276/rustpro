@@ -3,6 +3,8 @@ use crate::prelude::*;
 
 const ID: u32 = 46014517;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GOBLIN];
+
 struct Procedure;
 
 impl XyzProcedure for Procedure {

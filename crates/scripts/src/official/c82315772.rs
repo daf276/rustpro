@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 82315772;
 
+pub const LISTED_SERIES: &[u16] = &[SET_HERALDIC_BEAST];
 // In the hand beside two other Heraldic Beast monsters (Eale itself) on the field.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (ID, MZONE)];
 pub const CHECKS: &[Check] = &[Check::SpecialSummoned];

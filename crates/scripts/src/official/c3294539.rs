@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 3294539;
+
+pub const LISTED_SERIES: &[u16] = &[SET_RESONATOR];
+
 const CARD_CRIMSON_BLADER: u32 = 80321197;
 
 pub const LISTED_NAMES: &[u32] = &[CARD_CRIMSON_BLADER];

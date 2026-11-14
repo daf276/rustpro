@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 72700231;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAYAKASHI];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Graveyard and hand with Dakki (another Mayakashi) on the field and Skull Servant (a Zombie) in the Deck to send.

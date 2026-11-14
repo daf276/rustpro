@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, MZONE};
 
 const ID: u32 = 23720856;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GAGAGA, SET_ZUBABA, SET_DODODO, SET_GOGOGO];
 // Onomatokage (a Gagaga monster) on the field, and Dodododwarf Gogogoglove (Dododo and Gogogo) in the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, 0), (55088578, MZONE), (59724555, GRAVE), (59724555, GRAVE)];
 pub const CHECKS: &[Check] = &[

@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 1322368;
+
+pub const LISTED_SERIES: &[u16] = &[SET_SPYRAL];
+
 const SUPER_AGENT: u32 = 41091257;
 
 pub const LISTED_NAMES: &[u32] = &[SUPER_AGENT];

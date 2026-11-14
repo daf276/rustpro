@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, MZONE, SZONE};
 
 const ID: u32 = 55749927;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ROLAND];
 // Burstinatrix (a Level 3 FIRE Warrior) in the Deck to summon three of for Roland (a Synchro, destroyed), and Durendal in the Graveyard to banish.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, SZONE),

@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 601193;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BURNING_ABYSS];
 // In the Extra Deck, Synchro Summoned with Rubic (a Level 3 Tuner) and Bolt Penguin (Level 3), with Rubic in hand to discard, the
 // opponent's monsters (Sangan) to shuffle and its Raigeki and Dark Hole to destroy it.
 pub const SUPPORT: &[(u32, u16)] = &[

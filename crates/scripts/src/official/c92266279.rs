@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 92266279;
 
+pub const LISTED_SERIES: &[u16] = &[SET_AROMA];
 // In the hand and the Spell & Trap Zone, with Aroma monsters (Angelica, Rosalina, Bergamot) in the Deck to add and an opponent's
 // Sangan and Elfnote Lucina to attack for LP loss.
 pub const SUPPORT: &[(u32, u16)] = &[

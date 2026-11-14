@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE, OPPONENT, PZONE};
 
 const ID: u32 = 88412339;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ABYSS_ACTOR];
 // In the Pendulum Zone and on the field with copies in the Deck to place, and monsters of the opponent's.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, PZONE),

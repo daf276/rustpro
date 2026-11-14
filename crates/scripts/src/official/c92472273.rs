@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 92472273;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DOOMZ];
 // In the hand, with DoomZ VII Seven - Elara on the field to destroy, Axe of Despair in the Deck to equip, and DoomZ XII End -
 // Drastrius in the Extra Deck to attach it to.
 pub const SUPPORT: &[(u32, u16)] = &[

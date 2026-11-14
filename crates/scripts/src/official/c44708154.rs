@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 44708154;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PUNK];
 // In the Extra Deck, Synchro Summoned with Dragon Core Hexer (a Level 8 Tuner) and three Niwatori (Level 3), with Level 3 Psychics
 // (Stinger the Electric Expeller, Ukiyoe-P.U.N.K. Sharakusai) in the Graveyard to count and revive, and the opponent's Sangan.
 pub const SUPPORT: &[(u32, u16)] = &[

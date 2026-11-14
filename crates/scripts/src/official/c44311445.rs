@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 44311445;
+
+pub const LISTED_SERIES: &[u16] = &[SET_MADOLCHE];
+
 const PUDDINGCESS: u32 = 74641045;
 
 pub const LISTED_NAMES: &[u32] = &[PUDDINGCESS];

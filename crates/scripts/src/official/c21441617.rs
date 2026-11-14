@@ -5,6 +5,7 @@ use crate::testing::{Check, GRAVE};
 
 const ID: u32 = 21441617;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ORCUST];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Graveyard, with Girsu there to Special Summon.

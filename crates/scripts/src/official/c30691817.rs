@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, MZONE};
 
 const ID: u32 = 30691817;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MARINCESS];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 struct Procedure;

@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND};
 
 const ID: u32 = 14513016;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RITUAL_BEAST];
 // In the hand to Normal Summon, with copies and Ritual Beast monsters to use the extra Normal Summon on.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (88123329, HAND), (88123329, HAND)];
 // The only effect is continuous and forms no chain link: its Normal Summon is what grants the extra one.

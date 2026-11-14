@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 36668118;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ROKKET];
 // In the hand, with Rokket Loaders (Rokket monsters) in the hand and GY to summon, and the opponent's monsters outnumbering ours.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

@@ -4,6 +4,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND};
 
 const ID: u32 = 26700718;
+
+pub const LISTED_SERIES: &[u16] = &[SET_DIABELLSTAR];
+
 const DIABELLSTAR_THE_BLACK_WITCH: u32 = 72270339;
 
 // In the hand and the Graveyard, with Diabellstar the Black Witch in the Deck and Graveyard to place and Special Summon.

@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, MZONE};
 
 const ID: u32 = 25538345;
+
+pub const LISTED_SERIES: &[u16] = &[SET_PHANTOM_KNIGHTS];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // Doomed Soleret (to send from the Deck, and from the GY to banish), Sangan (the Level 3 DARK monster it targets).

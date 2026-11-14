@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 16449363;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SYNCHRON, SET_WARRIOR];
 pub const LISTED_NAMES: &[u32] = &[CARD_JUNK_WARRIOR];
 // A copy in the hand as Synchro material and one in the Graveyard, Junk Warrior in the Extra Deck (Kojikocy, a
 // Level 4 Normal Monster, as the other material) and on the field, and Dark Hole in the opponent's hand.

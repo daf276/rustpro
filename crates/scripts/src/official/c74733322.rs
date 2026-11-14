@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 74733322;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ARTMAGE];
+
 // s.declared_names[tp], the codes at this key plus tp * 0x100 plus their index and their count at index 0xff.
 const DECLARED_NAMES: u64 = (ID as u64) << 16;
 const COUNT: u64 = 0xff;

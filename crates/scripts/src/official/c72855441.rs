@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 72855441;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLUE_EYES];
 // Normal Summoned with a Level 1 LIGHT Tuner (Lunar Rabbit Omajinai) and Blue-Eyes White Dragons in the hand.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

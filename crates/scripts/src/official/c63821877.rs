@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 63821877;
 
+pub const LISTED_SERIES: &[u16] = &[SET_THE_PHANTOM_KNIGHTS, SET_PHANTOM_KNIGHTS];
 // Two copies as Xyz material for Break Sword and Malevolent Scythe, and Doomed Soleret in the Deck to send.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

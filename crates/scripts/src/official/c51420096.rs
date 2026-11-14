@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, MZONE};
 
 const ID: u32 = 51420096;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ADAMANCIPATOR];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // Special Summoned from the Deck by the excavating Adamancipator monsters, with Adamancipator Mates to add and a Rock Synchro in the GY.
 // Special Summoned from the Deck by the excavation of the Adamancipator monsters, with Adamancipator Mates in the Deck to add, and in the GY with a Rock Synchro Monster.

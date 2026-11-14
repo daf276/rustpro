@@ -4,6 +4,8 @@ use crate::testing::{HAND, MZONE};
 
 const ID: u32 = 36849933;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MEGALITH];
+
 struct Params;
 
 impl RitualParams for Params {

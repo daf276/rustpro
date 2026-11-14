@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 77103950;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TEARLAMENTS];
 pub const LISTED_NAMES: &[u32] = &[CARD_VISAS_STARFROST];
 
 // In the hand, with Tearlaments monsters in the Deck to search and on the field to hit.

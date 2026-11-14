@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 26964762;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DESTINY_HERO];
 // In the hand with Destiny HERO monsters (Malicious, Denier) in the GY, a Normal Spell in each Deck, and a Spell to
 // activate while it is on the field.
 pub const SUPPORT: &[(u32, u16)] = &[

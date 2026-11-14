@@ -4,6 +4,8 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 68831625;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DOOMZ];
+
 struct Procedure;
 
 impl EquipProcedure for Procedure {}

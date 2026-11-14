@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 98931282;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DESTINY_HERO];
 pub const LISTED_NAMES: &[u32] = &[CARD_POLYMERIZATION];
 
 // Copies in the hand and Graveyard, Destiny HERO - Dogma (Level 8) in the hand to Special Summon with Malicious and Denier on the

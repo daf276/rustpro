@@ -5,6 +5,8 @@ use engine::constants::MSG_EQUIP;
 
 const ID: u32 = 44133040;
 
+pub const LISTED_SERIES: &[u16] = &[SET_EVIL_EYE];
+
 struct Procedure;
 
 impl EquipProcedure for Procedure {

@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 93294363;
 
+pub const LISTED_SERIES: &[u16] = &[SET_HECAHANDS];
 // In the hand and Set, with Hecahands Gaigas on the field to negate the monster effects of the opponent's Sangan and Mulcharmy
 // Fuwalos.
 pub const SUPPORT: &[(u32, u16)] = &[

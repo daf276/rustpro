@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 71612253;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DD, SET_DARK_CONTRACT];
 // Xyz Summoned from the Extra Deck with two Level 5 monsters (Orion the Battle King, Leo Wizard), after the opponent's Hinotama burned
 // its controller; D/D Orthros in the Deck for the to-Graveyard effect. The alternative Xyz Summon needs a Rank 4 D/D/D Xyz Monster, none ported.
 pub const SUPPORT: &[(u32, u16)] = &[

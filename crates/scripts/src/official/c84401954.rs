@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 84401954;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLITZCLIQUE];
 pub const LISTED_NAMES: &[u32] = &[CARD_HIDEOUT_IN_THE_SKY_COULOMB];
 // In the hand with a Thunder Normal Monster (LaLa Li-oon), a copy on the field, and Blitzclique Spells in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (9430387, HAND), (64049762, DECK), (433377, DECK)];

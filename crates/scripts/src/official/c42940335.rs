@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 42940335;
+
+pub const LISTED_SERIES: &[u16] = &[SET_MIMIGHOUL];
+
 const MIMIGHOUL_MASTER: u32 = 55537983;
 
 pub const LISTED_NAMES: &[u32] = &[MIMIGHOUL_MASTER];

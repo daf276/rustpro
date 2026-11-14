@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 40844552;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NORDIC];
 pub const LISTED_NAMES: &[u32] = &[40844553];
 // Normal Summoned with an empty field against Giant Soldier of Stone, banishing Garmr and Tyr from the hand.
 pub const SUPPORT: &[(u32, u16)] = &[

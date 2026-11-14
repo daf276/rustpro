@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 32289031;
 
+pub const LISTED_SERIES: &[u16] = &[SET_TELLARKNIGHT, SET_CONSTELLAR];
 // Xyz Summoned from the Extra Deck with three Level 4 monsters (Luster Dragon), with Satellarknight Deneb in the Deck to search and
 // Alexandrite Dragon (LIGHT) in hand to Normal Summon. The Special Summon needs the card sent to the Graveyard from off the field, and
 // nothing ported sends it from the Extra Deck.

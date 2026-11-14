@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 29601381;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SPRINGANS];
 // Copies in the hand and Graveyard to attach, and on the field to detach, to Springans Merrymaker, Xyz Summoned from Springans Kitt, with Sangan
 // on the opponent's side to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[

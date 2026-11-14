@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, MZONE};
 
 const ID: u32 = 62714453;
 
+pub const LISTED_SERIES: &[u16] = &[SET_URSARCTIC];
 // On the field with Ursarctic Megabilis (Level 8) to Tribute and Ursarctic Septentrion and Grand Chariot (Level 7) in the Extra Deck;
 // also in the Extra Deck, Special Summoned by sending Gusto Egul (a Level 1 Tuner) and Gusto Griffin (Level 2) to the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[

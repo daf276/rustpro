@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 62104532;
 
+pub const LISTED_SERIES: &[u16] = &[SET_THE_PHANTOM_KNIGHTS, SET_XYZ_DRAGON];
 // Doomed Soleret (to revive), Break Sword (the DARK Xyz Monster) and Raider's Knight (the Rank 4 "The Phantom Knights" Xyz
 // Monster). No ported Xyz Monster it can summon has a rum_limit, so that check is left out.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (83566725, GRAVE), (62709239, MZONE), (28781003, EXTRA)];

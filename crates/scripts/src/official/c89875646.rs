@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, OPPONENT};
 
 const ID: u32 = 89875646;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ROKKET];
 // In the hand with Dragons and a Field Spell (Zombie World) in the GY, Rokket Caliber in the Deck, and monsters in the opponent's GY.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

@@ -4,6 +4,8 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 35606858;
 
+pub const ROLL_DICE: bool = true;
+
 struct Procedure;
 
 impl LinkProcedure for Procedure {

@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 48736598;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CODEBREAKER];
 // Codebreaker Virus Swordsmen on the field, whose vertical arrows make a mutual link with it when it is Link Summoned
 // or revived by Monster Reborn, Zero Days to Special Summon from the hand and Graveyard, and the opponent's face-down
 // Spells for its second effect to destroy.

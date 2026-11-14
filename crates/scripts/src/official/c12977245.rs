@@ -5,6 +5,7 @@ use engine::constants::MSG_ATTACK;
 
 const ID: u32 = 12977245;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ALTERGEIST];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // On the field with Altergeist Malwisp to be protected, against the opponent's attackers.

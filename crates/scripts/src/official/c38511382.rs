@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT, SZONE};
 
 const ID: u32 = 38511382;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DIABELLSTAR, SET_SINFUL_SPOILS];
 // Set, in the hand and in the Graveyard, with Diabellstar the Black Witch in the hand and on the field to send, and Sinful Spoils
 // Spells and the opponent's Ash Blossom to chain to.
 pub const SUPPORT: &[(u32, u16)] = &[

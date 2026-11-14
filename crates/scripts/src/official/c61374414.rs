@@ -6,6 +6,7 @@ use super::c34876719::is_number_10x;
 
 const ID: u32 = 61374414;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NUMBER];
 pub const LISTED_NAMES: &[u32] = &[34876719];
 
 // On the field with Xyz materials, with N.As.H. Knight and Numbers 101, 104, 106 and 107 in the Extra Deck.

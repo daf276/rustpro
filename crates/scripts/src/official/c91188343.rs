@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 91188343;
+
+pub const LISTED_SERIES: &[u16] = &[SET_THE_AGENT];
+
 const MASTER_HYPERION: u32 = 55794644;
 
 pub const LISTED_NAMES: &[u32] = &[ID, CARD_SANCTUARY_SKY, MASTER_HYPERION];

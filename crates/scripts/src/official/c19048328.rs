@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 19048328;
 
+pub const LISTED_SERIES: &[u16] = &[SET_YANG_ZING];
 // In the Extra Deck, Synchro Summoned with Chiwen (LIGHT) and Phantasm Spiral Dragon, with a Tuner and Wyrm Normal Monsters
 // in the Deck, and Dark Hole and Raigeki with a LIGHT Wyrm on the opponent's side to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[

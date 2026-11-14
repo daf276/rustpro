@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 87112784;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DARKLORD];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // In the hand, with Darklords (Gulgolet, Ixchel) in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (84031359, DECK), (84031359, DECK), (52840267, DECK)];

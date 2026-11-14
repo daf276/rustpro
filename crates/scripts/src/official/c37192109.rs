@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 37192109;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PSY_FRAME];
 // In the Extra Deck, Synchro Summoned with PSY-Framegear Alpha (a Level 1 Tuner) and PSY-Frame Driver (Level 6), with PSY-Frame cards in
 // the Graveyard to add and the opponent's Special Summoned monsters (Iron Chain Dragon) to banish.
 pub const SUPPORT: &[(u32, u16)] = &[

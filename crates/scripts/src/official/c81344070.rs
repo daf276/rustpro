@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 81344070;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PLUNDER_PATROLL];
 // Whitebeard, the Plunder Patroll Helm in the hand to send to the Graveyard as the cost, and copies in the Graveyard and hand.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, GRAVE), (31374201, HAND), (31374201, MZONE)];
 pub const CHECKS: &[Check] = &[

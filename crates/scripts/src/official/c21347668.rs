@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 21347668;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PURRELY];
 // In the hand, and with Epurrely Noir on the field to attach it and with Sangan on the opponent's side to be turned.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (62592805, MZONE), (26202165, MZONE | OPPONENT)];
 pub const CHECKS: &[Check] = &[

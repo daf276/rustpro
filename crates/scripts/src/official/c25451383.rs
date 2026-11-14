@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND};
 
 const ID: u32 = 25451383;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BRANDED];
 pub const LISTED_NAMES: &[u32] = &[CARD_ALBAZ];
 
 // In the hand and the Graveyard, with Fallen of Albaz in the hand to Special Summon it and in the Deck to shuffle it into the Deck, and Branded Spells in the Deck.

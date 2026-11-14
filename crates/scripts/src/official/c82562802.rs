@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 82562802;
 
+pub const LISTED_SERIES: &[u16] = &[SET_CYBERDARK];
 // In the hand with Cyberdark Realms in the Deck to search, and in the Graveyard to be equipped by Cyberdark Horn, with Cyber End Dragon in
 // the Extra Deck to send and Cyber Dragons of the opponent's to battle.
 pub const SUPPORT: &[(u32, u16)] = &[

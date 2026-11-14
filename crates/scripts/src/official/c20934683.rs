@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND};
 
 const ID: u32 = 20934683;
 
+pub const LISTED_SERIES: &[u16] = &[SET_AZAMINA, SET_SINFUL_SPOILS];
 // A copy in the Graveyard to banish and Elzette (an Azamina monster) there to Special Summon, WANTED: Seeker of Sinful Spoils in
 // the hand to send, and the Azamina Mu Rcielago Fusion Monster in the Extra Deck, with Jongleur-Ghoul Illusionist (an Illusion
 // Normal Monster) and Mystical Elf (a LIGHT Spellcaster) in the hand as its materials.

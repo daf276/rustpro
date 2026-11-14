@@ -6,6 +6,7 @@ use crate::testing::{Check, DECK, EXTRA, HAND, MZONE};
 
 const ID: u32 = 39513225;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NUMBER, SET_UMBRAL_HORROR];
 // In the hand, with Thousand Umbral Horror and V Umbral Horror in the Deck to add, and Number 39: Utopia the Envoy of Light
 // (Rank 4) Xyz Summoned with Mystical Elf and Flying Kamakiri #2 for the End Phase damage.
 pub const SUPPORT: &[(u32, u16)] = &[

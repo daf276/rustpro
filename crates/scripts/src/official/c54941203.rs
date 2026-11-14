@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, GRAVE, HAND, PZONE};
 
 const ID: u32 = 54941203;
+
+pub const LISTED_SERIES: &[u16] = &[SET_MAGICIAN];
+
 const STARGAZER_MAGICIAN: u32 = 94415058;
 
 // Two Magician scales (Stargazer Magician) to Special Summon it from the hand and the Graveyard.

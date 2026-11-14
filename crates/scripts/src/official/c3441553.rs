@@ -5,6 +5,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT, REMOVED};
 
 const ID: u32 = 3441553;
+
+pub const LISTED_SERIES: &[u16] = &[SET_SACRED_BEAST];
+
 const CARD_ILLUSION_GATE: u32 = 33017964;
 const CHOICE: u8 = 0;
 const EVENT_VALUE: u8 = 1;

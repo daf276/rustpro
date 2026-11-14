@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, EXTRA, MZONE, OPPONENT};
 
 const ID: u32 = 91397409;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PENGUIN];
 // In the Extra Deck, Synchro Summoned with Glacial Beast Polar Penguin (a Level 3 Tuner) and Bolt Penguin (Level 3), with Penguins in
 // the Deck to Set and Sangan on the opponent's side to activate a monster effect.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 85482105;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SPEEDROID, SET_CLEAR_WING];
 // Speedroid Terrortop and Speedroid Scratch (a Speedroid Spell) in the Deck, Clear Wing Synchro Dragon on the field, Raigeki to send it to the GY.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

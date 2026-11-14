@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 24689197;
 
+pub const LISTED_SERIES: &[u16] = &[SET_AROMA];
 // Aromage Bergamot on the field to gain LP from and in the Deck to Special Summon, and copies in the hand to Normal Summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (85967160, MZONE), (85967160, DECK), (85967160, DECK)];
 pub const CHECKS: &[Check] = &[

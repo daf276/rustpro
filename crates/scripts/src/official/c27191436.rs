@@ -3,6 +3,8 @@ use crate::prelude::*;
 use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 27191436;
+
+pub const LISTED_SERIES: &[u16] = &[SET_ELEMENTAL_HERO];
 pub const LISTED_NAMES: &[u32] = &[58932615];
 
 // In the hand with Elemental HERO Burstinatrix on the field and Elemental HERO Avian to return.

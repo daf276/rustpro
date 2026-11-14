@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 85672957;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MASKED_HERO, SET_CHANGE];
 pub const LISTED_NAMES: &[u32] = &[21143940];
 // Special Summoned with Mask Change from the Extra Deck by sending Elemental HERO Burstinatrix (FIRE), with Masked HERO Dark Law
 // in the Graveyard to revive and a second Mask Change in the Graveyard to Set.

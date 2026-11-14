@@ -4,6 +4,7 @@ use crate::testing::{GRAVE, HAND};
 
 const ID: u32 = 26372118;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RESCUE_ACE];
 pub const LISTED_NAMES: &[u32] = &[CARD_R_ACE_HYDRANT];
 // In the hand, with Rescue-ACE Impulse in the Graveyard to add.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (38339996, GRAVE), (38339996, GRAVE)];

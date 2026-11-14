@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 70226289;
 
+pub const LISTED_SERIES: &[u16] = &[SET_WITCHCRAFTER];
 // In the hand and the Graveyard, with Witchcrafter Genni and Schmietta in the hand to summon and on the field to recycle it.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

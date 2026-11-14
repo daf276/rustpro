@@ -5,6 +5,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 14970113;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ZOODIAC];
 // In the Extra Deck, Xyz Summoned with Level 4 Normal Monsters (Prevent Rat, Kojikocy, Uraby) or over Zoodiac Boarbow on the field,
 // and Zoodiac Boarbow in the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[

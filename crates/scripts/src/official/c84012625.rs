@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 84012625;
 
+pub const LISTED_SERIES: &[u16] = &[SET_STARDUST];
 // With Stardust Dragon to tribute, against the opponent's Raigeki, and a second copy in the Graveyard to banish instead.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

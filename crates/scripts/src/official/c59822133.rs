@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, GRAVE, MZONE, OPPONENT};
 
 const ID: u32 = 59822133;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLUE_EYES];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Extra Deck, Synchro Summoned from Mono Synchron and Blue-Eyes White Dragon, with Blue-Eyes Ultimate Spirit Dragon as

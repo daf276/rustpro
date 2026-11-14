@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE};
 
 const ID: u32 = 57835716;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ORCUST];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Graveyard, with Orcust monsters in the Deck to Special Summon.

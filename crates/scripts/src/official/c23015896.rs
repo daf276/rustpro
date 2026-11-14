@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE, OPPONENT};
 
 const ID: u32 = 23015896;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FIRE_KING];
 // One on the field, destroyed by Raigeki to return in the Standby Phase, and Sacred Fire King Garunix in the Deck to summon.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

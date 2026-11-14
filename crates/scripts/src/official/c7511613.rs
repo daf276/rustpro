@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, EXTRA, GRAVE, MZONE};
 
 const ID: u32 = 7511613;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RYZEAL];
 // In the Extra Deck, Xyz Summoned with Ryzeal monsters on the field, with others in the Graveyard to attach and in the Deck
 // to add.
 pub const SUPPORT: &[(u32, u16)] = &[

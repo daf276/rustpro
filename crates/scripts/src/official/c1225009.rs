@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, SZONE};
 
 const ID: u32 = 1225009;
 
+pub const LISTED_SERIES: &[u16] = &[SET_LABRYNTH];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // On the field with Big Welcome Labrynth Set to return it to the hand, Arias in the Deck to search and in the hand to summon,

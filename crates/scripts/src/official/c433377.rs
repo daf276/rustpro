@@ -6,6 +6,7 @@ use crate::testing::{Check, GRAVE, HAND, SZONE};
 
 const ID: u32 = 433377;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLITZCLIQUE];
 // Two copies on the field and one in the GY, a Thunder Normal Monster (LaLa Li-oon) in the hand to Special Summon and in the GY to add, and Surge
 // Blitzclique in the hand to destroy a card with.
 pub const SUPPORT: &[(u32, u16)] = &[

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 45171524;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MITSURUGI];
 // Aramasa (Reptile) on the field to Tribute and in the Deck, Graveyard and hand to add and Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, HAND),

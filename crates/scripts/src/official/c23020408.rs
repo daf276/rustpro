@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND};
 
 const ID: u32 = 23020408;
 
+pub const LISTED_SERIES: &[u16] = &[SET_PALLADIUM];
 pub const LISTED_NAMES: &[u32] = &[CARD_DARK_MAGICIAN, CARD_DARK_MAGICIAN_GIRL, ID];
 
 // In hand with Dark Magician in the Deck to place, and in the Graveyard with both Dark Magicians there to draw.

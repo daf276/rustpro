@@ -4,6 +4,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 84343351;
+
+pub const LISTED_SERIES: &[u16] = &[SET_CLEAR_WING];
+
 const CLEAR_WING_SYNCHRO_DRAGON: u32 = 82044279;
 
 pub const LISTED_NAMES: &[u32] = &[CLEAR_WING_SYNCHRO_DRAGON];

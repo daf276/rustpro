@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 61888819;
+
+pub const LISTED_SERIES: &[u16] = &[SET_LSWARM];
+
 // 0x60 for your Extra Monster Zones, 0x60 << 16 for your opponent's.
 const ALL_EMZ: u32 = 0x600060;
 

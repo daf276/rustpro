@@ -4,6 +4,7 @@ use crate::testing::{HAND, MZONE};
 
 const ID: u32 = 10591919;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MORPHTRONIC];
 // On the field with Level 4 Morphtronic Videon and Radion in the hand to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE), (84592800, HAND), (55119278, HAND)];
 

@@ -4,6 +4,7 @@ use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 65626958;
 
+pub const LISTED_SERIES: &[u16] = &[SET_NORDIC];
 pub const LISTED_NAMES: &[u32] = &[ID];
 // In the hand with more Nordic monsters, and on the field with Valkyrie of the Nordic Ascendant in the Graveyard.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (ID, MZONE), (40844552, GRAVE), (40844552, GRAVE)];

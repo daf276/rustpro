@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, GRAVE, HAND, MZONE};
 
 const ID: u32 = 64049762;
+
+pub const LISTED_SERIES: &[u16] = &[SET_BLITZCLIQUE];
+
 // The field of its chain data table.
 const CHOICE: u8 = 0;
 

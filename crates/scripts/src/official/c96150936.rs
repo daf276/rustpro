@@ -5,6 +5,8 @@ use engine::constants::MSG_SELECT_EFFECTYN;
 
 const ID: u32 = 96150936;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MADOLCHE];
+
 struct Procedure;
 
 impl LinkProcedure for Procedure {

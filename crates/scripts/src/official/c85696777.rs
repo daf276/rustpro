@@ -5,6 +5,7 @@ use engine::constants::MSG_SELECT_EFFECTYN;
 
 const ID: u32 = 85696777;
 
+pub const LISTED_SERIES: &[u16] = &[SET_HARPIE];
 // Link Summoned from two WIND monsters, with Spell/Trap cards to destroy in its place and Dark Hole in the opponent's hand.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),

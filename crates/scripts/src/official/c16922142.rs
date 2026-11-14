@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 16922142;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RADIANT_TYPHOON];
 pub const LISTED_NAMES: &[u32] = &[ID, CARD_MYSTICAL_SPACE_TYPHOON];
 // A copy and Mystical Space Typhoon (a Quick-Play Spell) in the hand, and Mystical Space Typhoon and Radiant Typhoon Swen in
 // the Deck to search.

@@ -5,6 +5,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 7293697;
+
+pub const LISTED_SERIES: &[u16] = &[SET_TOON];
+
 // Per player, the count of original codes banished this turn, then the codes.
 const BANISHED_NAMES: u64 = (ID as u64) << 16;
 

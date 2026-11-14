@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, HAND, MZONE};
 
 const ID: u32 = 15141103;
 
+pub const LISTED_SERIES: &[u16] = &[SET_DARK_TUNER];
 // In the hand and on the field with Dark Tuner Nightmare Hand to Normal Summon, Overdrive (Level 4) as the non-Tuner to Tribute with
 // Dark Diviner (Level 4) in the Extra Deck, and a Level 4 Normal Monster as the other Tribute.
 pub const SUPPORT: &[(u32, u16)] = &[

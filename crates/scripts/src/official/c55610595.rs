@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 55610595;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BLACKWING];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // On the field, with Dark Hole in hand to destroy it and Blackwings in the Deck to search.

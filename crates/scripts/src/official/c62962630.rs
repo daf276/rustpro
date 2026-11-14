@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 62962630;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BRANDED];
 // In the hand to search with a Branded Spell/Trap in the Deck, and in the Graveyard with a Fusion Monster of Albion to be
 // destroyed by the opponent's Snipe Hunter, with a monster of theirs to negate.
 pub const SUPPORT: &[(u32, u16)] = &[

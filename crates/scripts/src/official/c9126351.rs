@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE};
 
 const ID: u32 = 9126351;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FROG];
 // In the hand and on the field, with Psychic Kappa, a WATER Normal Monster, in the hand to discard and Turu-Purun, a WATER
 // Level 2 Aqua Normal Monster, in the Deck to send. No other "Frog" is ported, so the extra Normal Summon has no beneficiary.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, MZONE), (7892180, HAND), (59053232, DECK), (59053232, DECK)];

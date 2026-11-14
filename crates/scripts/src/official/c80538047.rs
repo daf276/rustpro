@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND};
 
 const ID: u32 = 80538047;
 
+pub const LISTED_SERIES: &[u16] = &[SET_RADIANT_TYPHOON];
 pub const LISTED_NAMES: &[u32] = &[CARD_MYSTICAL_SPACE_TYPHOON];
 // A copy in the hand, and Mystical Space Typhoon in the Deck to search.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (CARD_MYSTICAL_SPACE_TYPHOON, DECK)];

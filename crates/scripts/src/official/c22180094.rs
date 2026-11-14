@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 22180094;
 
+pub const LISTED_SERIES: &[u16] = &[SET_S_FORCE];
 // With S-Force monsters in the hand to banish and in the Deck to Special Summon, and opponent's monsters to attack.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

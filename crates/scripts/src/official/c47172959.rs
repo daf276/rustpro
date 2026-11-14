@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, EXTRA, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 47172959;
+
+pub const LISTED_SERIES: &[u16] = &[SET_YUBEL];
+
 const BATTLED_MONSTER: u8 = 0;
 const ATK_ON_FIELD: u8 = 1;
 

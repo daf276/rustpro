@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 46239604;
+
+pub const LISTED_SERIES: &[u16] = &[SET_FROG];
+
 const DES_FROG: u32 = 84451804;
 
 pub const LISTED_NAMES: &[u32] = &[ID, DES_FROG];

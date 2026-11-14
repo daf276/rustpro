@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, GRAVE, HAND};
 
 const ID: u32 = 12369277;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPER_QUANT];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // White Layer (another "Super Quant" monster) in the Deck to search and in the Graveyard to shuffle back; with copies in the hand to Summon.

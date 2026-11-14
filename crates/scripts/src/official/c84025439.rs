@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 84025439;
 
+pub const LISTED_SERIES: &[u16] = &[SET_SUPER_QUANT, SET_SUPER_QUANTAL_MECH_BEAST];
 // On the field with Xyz Import to attach two different opponent's monsters (Sangan, Dragon Rebellion) for the shuffle. The
 // revive needs a third Super Quantal Mech Beast Xyz Monster, whose ports are in another batch, so it is only reported.
 pub const SUPPORT: &[(u32, u16)] = &[

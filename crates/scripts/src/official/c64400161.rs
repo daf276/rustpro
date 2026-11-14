@@ -5,6 +5,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 64400161;
 
+pub const LISTED_SERIES: &[u16] = &[SET_FUR_HIRE];
 // In the hand with Fur Hire monsters in the Deck to search and five different ones on the field.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, 0),

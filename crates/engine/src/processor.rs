@@ -3374,7 +3374,7 @@ impl Duel {
                 self.player[0].disabled_location = 0;
                 self.player[1].disabled_location = 0;
                 arg.disfield_effects.clear();
-                for effect in self.filter_field_effect(EFFECT_DISABLE_FIELD) {
+                for effect in self.filter_field_effect_mut(EFFECT_DISABLE_FIELD) {
                     let value = self.get_own_value(effect) as u32;
                     if value != 0 && !self.effects[effect].is_flag(EFFECT_FLAG_REPEAT) {
                         self.player[0].disabled_location |= value & 0xff7f;

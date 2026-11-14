@@ -2020,6 +2020,17 @@ impl Duel {
         self.filter_field_effect_lookup(code)
     }
 
+    // filter_field_effect where conditions may write; the core steps past each effect before its condition, which may reset it.
+    pub(crate) fn filter_field_effect_mut(&mut self, code: u32) -> EffectSet {
+        if !self.field_effects.registry.has_code(code) {
+            return EffectSet::default();
+        }
+        let registered: EffectSet = self.field_effects.registry.equal_range(Container::Aura, None, code).collect();
+        let mut effects: EffectSet = registered.into_iter().filter(|&effect| self.is_available_mut(effect)).collect();
+        effects.sort_by_key(|&effect| self.effects.id(effect));
+        effects
+    }
+
     fn filter_field_effect_lookup<S: FromIterator<EffectId> + DerefMut<Target = [EffectId]>>(&self, code: u32) -> S {
         let mut effects: S = self
             .field_effects

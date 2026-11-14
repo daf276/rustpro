@@ -565,7 +565,7 @@ impl Duel {
         let previously = self.player[0].disabled_location | (self.player[1].disabled_location << 16);
         self.player[0].disabled_location = 0;
         self.player[1].disabled_location = 0;
-        for effect in self.filter_field_effect(EFFECT_DISABLE_FIELD) {
+        for effect in self.filter_field_effect_mut(EFFECT_DISABLE_FIELD) {
             let value = self.get_own_value(effect) as u32;
             self.player[0].disabled_location |= value & 0xff7f;
             self.player[1].disabled_location |= (value >> 16) & 0xff7f;

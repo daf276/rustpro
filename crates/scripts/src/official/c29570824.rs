@@ -34,7 +34,7 @@ pub const CHECKS: &[Check] = &[
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     register_counter(duel, c);
     register_reveal::<ID>(duel, c);
-    register_set_summon::<ID>(duel, c);
+    register_set_summon::<ID, 1>(duel, c);
     let e4 = flip_quick::<ID>(duel, c, CATEGORY_TOHAND + CATEGORY_SEARCH, 0);
     e4.set_condition(duel, |duel, a| {
         a.e.get_handler(duel).is_facedown(duel)

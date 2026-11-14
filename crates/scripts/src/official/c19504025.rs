@@ -1,26 +1,28 @@
 // Enneacraft Reset
 use crate::prelude::*;
-use crate::testing::{Check, GRAVE, HAND, MZONE, OPPONENT, PZONE};
+use crate::testing::{Check, DECK, GRAVE, HAND, MZONE, OPPONENT, PZONE};
 
 const ID: u32 = 19504025;
 
 pub const LISTED_NAMES: &[u32] = &[17621695];
 pub const LISTED_SERIES: &[u16] = &[SET_ENNEACRAFT];
 
-// In the GY with Trito Enneacraft face-up on the field and in a Pendulum Zone, and the opponent's Pot of Greed to activate.
+// In the hand and GY with Enneapolis in the Deck, Trito Enneacraft on the field and in a Pendulum Zone, and the opponent's Pot of Greed.
 pub const SUPPORT: &[(u32, u16)] = &[
+    (ID, HAND),
     (ID, GRAVE),
     (ID, GRAVE),
+    (17621695, DECK),
+    (17621695, DECK),
     (44716748, MZONE),
     (44716748, MZONE),
     (44716748, PZONE),
     (55144522, HAND | OPPONENT),
     (55144522, HAND | OPPONENT),
 ];
-// Enneapolis, which the activation places or needs, is not ported on this branch.
 pub const CHECKS: &[Check] = &[
+    Check::ResolvesEffect(aux::stringid(ID, 0)),
     Check::ResolvesEffect(aux::stringid(ID, 1)),
-    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 0))),
 ];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {

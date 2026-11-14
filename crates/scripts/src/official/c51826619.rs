@@ -9,9 +9,10 @@ const ID: u32 = 51826619;
 pub const LISTED_SERIES: &[u16] = &[SET_MAGNET_WARRIOR];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
-// On the field with the Normal Magnet Warriors besides it and in the GY to return, and the opponent's Dark Hole to send it there.
-// A second copy on the field would reach the core's per-effect attack target choice, which is not ported.
+// Two on the field with the Normal Magnet Warriors besides them and in the GY to return, and the opponent's Dark Hole to send
+// them there.
 pub const SUPPORT: &[(u32, u16)] = &[
+    (ID, MZONE),
     (ID, MZONE),
     (99785935, MZONE),
     (39256679, GRAVE),

@@ -28,7 +28,7 @@ pub const CHECKS: &[Check] = &[
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     register_counter(duel, c);
     register_destroy::<ID>(duel, c);
-    register_set_summon::<ID>(duel, c);
+    register_set_summon::<ID, 1>(duel, c);
     let property = EFFECT_FLAG_DAMAGE_STEP + EFFECT_FLAG_DAMAGE_CAL;
     let e4 = flip_quick::<ID>(duel, c, CATEGORY_NEGATE + CATEGORY_DESTROY, property);
     e4.set_condition(duel, negcon);

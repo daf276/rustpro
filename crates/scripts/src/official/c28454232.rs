@@ -27,13 +27,13 @@ pub const CHECKS: &[Check] = &[
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     register_counter(duel, c);
     register_destroy::<ID>(duel, c);
-    register_set_summon::<ID>(duel, c);
+    register_set_summon::<ID, 1>(duel, c);
     let e4 = flip_quick::<ID>(duel, c, CATEGORY_DISABLE + CATEGORY_REMOVE, 0);
     e4.set_condition(duel, discon);
     e4.set_target(duel, distg);
     e4.set_operation(duel, disop);
     c.register_effect(duel, e4);
-    register_flip_flag::<ID>(duel, c);
+    register_flip_flag::<ID, 3>(duel, c);
     let e5b = duel.create_effect(c);
     e5b.set_type(duel, EFFECT_TYPE_FIELD);
     e5b.set_property(duel, EFFECT_FLAG_IGNORE_IMMUNE + EFFECT_FLAG_SET_AVAILABLE);
@@ -130,9 +130,9 @@ fn destg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bo
 }
 
 // The Special Summon from the hand in face-down Defense Position every Enneacraft Pendulum Monster has.
-pub fn register_set_summon<const ID: u32>(duel: &mut Duel, c: CardId) {
+pub fn register_set_summon<const ID: u32, const DESCRIPTION: u64>(duel: &mut Duel, c: CardId) {
     let e3 = duel.create_effect(c);
-    e3.set_description(duel, aux::stringid(ID, 1));
+    e3.set_description(duel, aux::stringid(ID, DESCRIPTION));
     e3.set_category(duel, CATEGORY_SPECIAL_SUMMON + CATEGORY_SET);
     e3.set_type(duel, EFFECT_TYPE_IGNITION);
     e3.set_range(duel, LOCATION_HAND);
@@ -164,7 +164,7 @@ fn spcost<const ID: u32>(duel: &mut Duel, a: &Args, chk: i32) -> Script<bool> {
     Ok(false)
 }
 
-fn set_filter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
+pub fn set_filter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
     c.is_can_be_special_summoned_full(duel, e, 0, tp, false, false, POS_FACEDOWN_DEFENSE, tp, 0xff)
 }
 
@@ -196,7 +196,7 @@ pub fn flip_quick<const ID: u32>(duel: &mut Duel, c: CardId, category: u64, prop
 }
 
 // The flag that marks the Level 9 Enneacraft monsters flipped face-up, which their lasting effects check.
-pub fn register_flip_flag<const ID: u32>(duel: &mut Duel, c: CardId) {
+pub fn register_flip_flag<const ID: u32, const DESCRIPTION: u64>(duel: &mut Duel, c: CardId) {
     let e5a = duel.create_effect(c);
     e5a.set_type(duel, EFFECT_TYPE_SINGLE + EFFECT_TYPE_CONTINUOUS);
     e5a.set_property(duel, EFFECT_FLAG_CANNOT_DISABLE);
@@ -204,7 +204,7 @@ pub fn register_flip_flag<const ID: u32>(duel: &mut Duel, c: CardId) {
     e5a.set_operation(duel, |duel, a| {
         let reset = RESET_EVENT | RESETS_STANDARD;
         a.e.get_handler(duel)
-            .register_flag_effect_full(duel, ID, reset, EFFECT_FLAG_CLIENT_HINT, 1, 0, aux::stringid(ID, 3));
+            .register_flag_effect_full(duel, ID, reset, EFFECT_FLAG_CLIENT_HINT, 1, 0, aux::stringid(ID, DESCRIPTION));
         Ok(())
     });
     c.register_effect(duel, e5a);

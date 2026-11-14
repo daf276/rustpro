@@ -8,7 +8,7 @@ use crate::chain::{AddChain, Execute, ExecuteKind, SolveChain, SolveContinuous};
 use crate::constants::*;
 use crate::duel::{Duel, IdleMemo};
 use crate::effect::{Chain, Container, EffectId, Event, Value};
-use crate::field::PerPlayer;
+use crate::field::{Cards16, MustAttackMap, PerPlayer};
 use crate::hash::{Keyed, Refs};
 use crate::operations::{
     ChangePos, Damage, Destroy, DestroyReplace, DiscardDeck, Draw, Equip, FlipSummon, GetControl, MonsterSet, MoveToField,
@@ -236,7 +236,7 @@ pub struct DamageStep {
     pub cards_destroyed_by_battle: Option<CardSet>,
 }
 
-// `forced_attack` (Duel.ForceAttack), the damage change effect and must_attack_map come with the cards that use them.
+// `forced_attack` (Duel.ForceAttack) and the damage change effect come with the cards that use them.
 #[derive(Debug, Clone, Default)]
 pub struct BattleCommand {
     pub step: u16,
@@ -250,6 +250,7 @@ pub struct BattleCommand {
     pub reason_player: u8,
     pub cards_destroyed_by_battle: Option<CardSet>,
     pub reason_card: Option<CardId>,
+    pub must_attack_map: MustAttackMap,
 }
 
 // Relay duels are unsupported, so no player ever needs recharging.
@@ -1777,7 +1778,7 @@ impl Duel {
         }
     }
 
-    // One attack, from its declaration to the end of its damage step; step 16 (EFFECT_MUST_ATTACK_MONSTER) is not ported.
+    // One attack, from its declaration to the end of its damage step.
     fn process_attack(&mut self, arg: &mut BattleCommand, attacker: CardId) -> bool {
         let turn_player = self.infos.turn_player;
         let attack_target = self.core.attack_target;
@@ -1798,6 +1799,8 @@ impl Duel {
                 self.return_cards.clear();
                 let (targets, info) = self.field_get_attack_target_info(attacker, self.core.chain_attack, true);
                 self.core.select_cards = targets;
+                arg.must_attack_map = info.must_attack_map;
+                let must_effects = arg.must_attack_map.chunk_by(|(left, _), (right, _)| left == right).count();
                 // EFFECT_PATRICIAN_OF_DARKNESS hands the choices to the opponent, as do several effects of EFFECT_MUST_ATTACK_MONSTER.
                 let patrician = self
                     .is_player_affected_by_effect(turn_player, EFFECT_PATRICIAN_OF_DARKNESS)
@@ -1824,15 +1827,17 @@ impl Duel {
                     arg.step = 6;
                     return false;
                 }
-                if !(patrician || (info.atype == 3 && info.must_effects != 1)) {
+                if !(patrician || (info.atype == 3 && must_effects != 1)) {
                     self.select_attack_target(false);
                 } else if let (1, Some(&only)) = (self.core.select_cards.len(), self.core.select_cards.first()) {
                     self.return_cards.list.push(only);
                 } else {
                     self.hint_selection(attacker);
                     self.select_attack_target(true);
-                    // An effect that makes it attack several monsters sends the choice on to step 16.
-                    unported!(self, (!patrician && info.must_pairs != info.must_effects).then_some(attacker));
+                    if !patrician && arg.must_attack_map.len() != must_effects {
+                        arg.step = 15;
+                        return false;
+                    }
                 }
                 arg.step = 5;
                 false
@@ -1863,6 +1868,30 @@ impl Duel {
                 };
                 self.core.attack_target = target;
                 self.core.pre_field[1] = target.map_or(0, |target| self.cards[target].fieldid_r);
+                false
+            }
+            16 => {
+                // The opponent's pick names one EFFECT_MUST_ATTACK_MONSTER effect; the turn player picks among that effect's monsters.
+                let selected = self.return_cards.list.first().copied();
+                let effect = arg
+                    .must_attack_map
+                    .iter()
+                    .find(|&&(_, card)| Some(card) == selected)
+                    .map(|&(effect, _)| effect);
+                let targets: Cards16 = arg
+                    .must_attack_map
+                    .iter()
+                    .filter(|&&(must, _)| Some(must) == effect)
+                    .map(|&(_, card)| card)
+                    .collect();
+                if targets.len() < 2 {
+                    self.core.attack_target = selected;
+                    self.core.pre_field[1] = selected.map_or(0, |selected| self.cards[selected].fieldid_r);
+                } else {
+                    self.core.select_cards = targets;
+                    self.select_attack_target(false);
+                }
+                arg.step = 5;
                 false
             }
             7 => {

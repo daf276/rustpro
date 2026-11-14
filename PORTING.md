@@ -100,6 +100,9 @@ three cards from a fixed set (the Elfnote deck and the classic cards), then rand
   `CardHint` counts by the hinted card, so a hint on another card never counts (a BE_MATERIAL effect hinting the
   summoned monster is one). `SZONE` often sets a Trap face-down:
   a cost needing several face-up Traps needs five or more copies.
+- A Pendulum Monster's activation in the Pendulum Zone satisfies the default `Resolves`, so a Pendulum with effects
+  checks them with `ResolvesEffect(0)` or `ResolvesEffect(aux::stringid(ID, n))`.
+- An ATK/DEF value computed from the card is `Value::Card(fn)`; `set_value` with a closure does not compile there.
 - `Report` is only for a path no `SUPPORT` can reach (say why in one comment line), never for a reachable one that
   is merely rare. An effect needing an empty hand is one: the opening hand is always drawn.
 - A continuous effect with an operation forms no chain link, so `ResolvesEffect` never counts it: check what it does

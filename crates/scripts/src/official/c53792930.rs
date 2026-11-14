@@ -51,16 +51,16 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
         let ge1 = duel.create_effect(c);
         ge1.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
         ge1.set_code(duel, EVENT_BATTLED);
-        ge1.set_operation(duel, checkop);
+        ge1.set_operation(duel, checkop::<ID>);
         duel.register_effect(ge1, 0);
     });
 }
 
-fn checkop(duel: &mut Duel, _: &Args) -> Script<()> {
+pub fn checkop<const CODE: u32>(duel: &mut Duel, _: &Args) -> Script<()> {
     let (bc0, bc1) = duel.get_battle_monster(0);
     for (tp, bc) in [(0, bc0), (1, bc1)] {
         if bc.is_some_and(|bc| bc.is_set_card(duel, &[SET_K9])) {
-            duel.register_flag_effect(tp, ID, RESET_PHASE | PHASE_END, 0, 1);
+            duel.register_flag_effect(tp, CODE, RESET_PHASE | PHASE_END, 0, 1);
         }
     }
     Ok(())
@@ -82,7 +82,7 @@ fn tgfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8) -> bool {
         )
 }
 
-fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8, mc: CardId, code: u32) -> bool {
+pub fn spfilter(c: CardId, duel: &Duel, e: EffectId, tp: u8, mc: CardId, code: u32) -> bool {
     mc.is_type_full(duel, TYPE_XYZ, Some(c), SUMMON_TYPE_XYZ.into(), tp)
         && c.is_set_card(duel, &[SET_K9])
         && !c.is_code(duel, code)
@@ -141,7 +141,7 @@ fn activate(duel: &mut Duel, a: &Args) -> Script<()> {
     Ok(())
 }
 
-fn settg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+pub fn settg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
     let c = a.e.get_handler(duel);
     if chk == 0 {
         return Ok(c.is_ssetable(duel));
@@ -150,7 +150,7 @@ fn settg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool>
     Ok(false)
 }
 
-fn setop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn setop(duel: &mut Duel, a: &Args) -> Script<()> {
     let c = a.e.get_handler(duel);
     if c.is_relate_to_effect(duel, a.e) && c.is_ssetable(duel) {
         duel.sset(a.tp, c)?;

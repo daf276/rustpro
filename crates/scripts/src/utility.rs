@@ -3132,7 +3132,7 @@ impl Infernoid {
     }
 }
 
-// Effect.CreateMysteruneQPEffect's parameters (`uniqueop` returns whether to banish); uniquecode and a rmcount function have no caller.
+// Effect.CreateMysteruneQPEffect's parameters (`uniqueop` returns whether to banish); a rmcount function has no caller.
 pub trait MysteruneQuickPlay {
     const ID: u32;
     const UNIQUECAT: u64;
@@ -3149,12 +3149,49 @@ pub struct Mysterune;
 
 impl Mysterune {
     pub fn create_qp_effect<P: MysteruneQuickPlay>(duel: &mut Duel, c: CardId) -> EffectId {
+        let e1 = Mysterune::activation::<P>(duel, c);
+        e1.set_target(duel, Mysterune::choicetg::<P>);
+        e1
+    }
+
+    // CreateMysteruneQPEffect with a uniquecode: the unique effect activated on `uniquecode`, then the Special Summon effect.
+    pub fn create_qp_effects<P: MysteruneQuickPlay>(duel: &mut Duel, c: CardId, uniquecode: u32) -> (EffectId, EffectId) {
+        let e1 = Mysterune::activation::<P>(duel, c);
+        let e0 = duel.create_effect(c);
+        e0.set_description(duel, aux::stringid(P::ID, 0));
+        e0.set_category(duel, P::UNIQUECAT | CATEGORY_REMOVE);
+        e0.set_type(duel, EFFECT_TYPE_ACTIVATE);
+        e0.set_code(duel, uniquecode);
+        e0.set_count_limit_full(duel, 1, P::ID, EFFECT_COUNT_CODE_OATH);
+        if let Some(property) = P::UNIQUEPROP {
+            e0.set_property(duel, property);
+        }
+        e0.set_target(duel, |duel, a, chk, chkc| {
+            if chkc.is_some() {
+                return P::uniquetg(duel, a, chk, chkc);
+            }
+            Mysterune::rmtg::<P>(duel, a, chk)
+        });
+        e0.set_operation(duel, Mysterune::rmop::<P>);
+        e1.set_description(duel, aux::stringid(P::ID, 1));
+        e1.set_category(duel, CATEGORY_SPECIAL_SUMMON);
+        e1.set_target(duel, |duel, a, chk, _| {
+            if chk == 0 {
+                return Ok(Mysterune::sptg(duel, a, chk));
+            }
+            duel.hint(HINT_OPSELECTED, 1 - a.tp, a.e.get_description(duel));
+            Ok(Mysterune::sptg(duel, a, chk))
+        });
+        e1.set_operation(duel, Mysterune::spop);
+        (e0, e1)
+    }
+
+    fn activation<P: MysteruneQuickPlay>(duel: &mut Duel, c: CardId) -> EffectId {
         let e1 = duel.create_effect(c);
         e1.set_type(duel, EFFECT_TYPE_ACTIVATE);
         e1.set_code(duel, EVENT_FREE_CHAIN);
         e1.set_hint_timing(duel, 0, TIMINGS_CHECK_MONSTER + TIMING_END_PHASE);
         e1.set_count_limit_full(duel, 1, P::ID, EFFECT_COUNT_CODE_OATH);
-        e1.set_target(duel, Mysterune::choicetg::<P>);
         e1
     }
 

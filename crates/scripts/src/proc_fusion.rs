@@ -88,6 +88,11 @@ pub trait FusionSummonParams {
         c.is_able_to_grave(duel)
     }
 
+    // matfilter with the chk it gets (0 in the target, 1 in the operation), for one that reads it.
+    fn matfilter_chk(c: CardId, duel: &Duel, e: EffectId, tp: u8, _chk: u32) -> bool {
+        Self::matfilter(c, duel, e, tp)
+    }
+
     // extrafil(e, tp, mg): the extra materials and the additional check.
     fn extrafil(_duel: &Duel, _e: EffectId, _tp: u8, _mg: CardSet) -> (Option<CardSet>, Option<FusionCheck>) {
         (None, None)
@@ -997,10 +1002,11 @@ impl Fusion {
         duel: &mut Duel,
         e: EffectId,
         tp: u8,
+        chk: u32,
         extra_group: impl Fn(&Duel, CardSet) -> CardSet,
     ) -> (CardSet, CardSet, Option<CardSet>, Option<FusionCheck>) {
         let fmg_all = duel.get_fusion_material(tp);
-        let mut mg1 = fmg_all.filter(duel, |c, duel| P::matfilter(c, duel, e, tp), None);
+        let mut mg1 = fmg_all.filter(duel, |c, duel| P::matfilter_chk(c, duel, e, tp, chk), None);
         let efmg = fmg_all.filter(duel, extra_mat_eff, None);
         // An effect whose label object replaces extrafil (c86758746) is not ported.
         let extra_feff = efmg.get_first().and_then(|c| get_extra_mat_eff(duel, c, None));
@@ -1028,7 +1034,7 @@ impl Fusion {
             let can_be_material = |c: CardId, duel: &Duel| c.is_can_be_fusion_material(duel, None, value);
             let not_immune = |c: CardId, duel: &Duel| !c.is_immune_to_effect(duel, e);
             let extra_group = |duel: &Duel, g: CardSet| g.filter(duel, can_be_material, None).filter(duel, not_immune, None);
-            let (mut mg1, mut efmg, _, check_addition) = Fusion::summon_materials::<P>(duel, e, tp, extra_group);
+            let (mut mg1, mut efmg, _, check_addition) = Fusion::summon_materials::<P>(duel, e, tp, 0, extra_group);
             if gc.is_some_and(|gc| !mg1.includes(gc)) {
                 set_extra_group(duel, None);
                 return Ok(false);
@@ -1069,7 +1075,7 @@ impl Fusion {
             c.is_can_be_fusion_material(duel, None, value) && !c.is_immune_to_effect(duel, e) && aux::nvfilter(c, duel)
         };
         let extra_group = |duel: &Duel, g: CardSet| g.filter(duel, material_filter, None);
-        let (mut mg1, mut efmg, extragroup, check_addition) = Fusion::summon_materials::<P>(duel, e, tp, extra_group);
+        let (mut mg1, mut efmg, extragroup, check_addition) = Fusion::summon_materials::<P>(duel, e, tp, 1, extra_group);
         mg1.keep_matching(duel, material_filter, None);
         let forced_mat_validity = |c: CardId, duel: &Duel| match c == e.get_handler(duel) {
             true => !c.is_relate_to_effect(duel, e),

@@ -1,15 +1,22 @@
 // Darklord Ixchel
 use crate::prelude::*;
-use crate::testing::{Check, HAND};
+use crate::testing::{Check, GRAVE, HAND, MZONE};
 
 const ID: u32 = 52840267;
 
 pub const LISTED_SERIES: &[u16] = &[SET_DARKLORD];
-// In the hand with Darklord Desire to discard. No Darklord Spell/Trap is ported yet, so the second effect never has a target.
-pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (55690251, HAND), (55690251, HAND)];
+// In the hand with Darklord Desire to discard, and on the field with Darklord Contact and Gulgolet in the GY to copy.
+pub const SUPPORT: &[(u32, u16)] = &[
+    (ID, HAND),
+    (55690251, HAND),
+    (55690251, HAND),
+    (ID, MZONE),
+    (14517422, GRAVE),
+    (84031359, GRAVE),
+];
 pub const CHECKS: &[Check] = &[
     Check::ResolvesEffect(aux::stringid(ID, 0)),
-    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 1))),
+    Check::ResolvesEffect(aux::stringid(ID, 1)),
 ];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
@@ -62,7 +69,7 @@ fn cpfilter(c: CardId, duel: &Duel) -> bool {
         && c.check_activate_effect(duel, false, true).is_some()
 }
 
-fn cptg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bool> {
+pub fn cptg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<bool> {
     let tp = a.tp;
     if let Some(chkc) = chkc {
         return Ok(chkc.is_location(duel, LOCATION_GRAVE) && chkc.is_controler(duel, tp) && cpfilter(chkc, duel));
@@ -76,12 +83,9 @@ fn cptg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<boo
     Ok(false)
 }
 
-fn cpop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let tc = duel.get_first_target();
-    if !tc.is_some_and(|tc| tc.is_relate_to_effect(duel, a.e)) {
-        return Ok(());
+pub fn cpop(duel: &mut Duel, a: &Args) -> Script<()> {
+    match duel.get_first_target() {
+        Some(tc) if tc.is_relate_to_effect(duel, a.e) => super::c10136446::copy(duel, a, tc),
+        _ => Ok(()),
     }
-    // Copying the Spell/Trap's effect (CheckActivateEffect with copy_info) is left out until a Darklord Spell/Trap is ported.
-    unported!(duel, true);
-    Ok(())
 }

@@ -2,11 +2,14 @@
 use engine::{Operation, Target};
 
 use crate::prelude::*;
-use crate::testing::{Check, EXTRA, HAND, MZONE};
+use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE};
 
 const ID: u32 = 10136446;
 
 pub const LISTED_SERIES: &[u16] = &[SET_DARKLORD];
+
+const DARKLORD_CONTACT: u32 = 14517422;
+const DARKLORD_REBELLION: u32 = 50501121;
 
 struct Materials;
 
@@ -16,8 +19,8 @@ impl FusionMix for Materials {
     const MATERIALS: &'static [FusionMaterial] = &[FusionMaterial::Filter(matfilter); 2];
 }
 
-// In the Extra Deck, Fusion Summoned by Polymerization with Darklord Gulgolet and Ixchel. No Darklord Spell or Trap is
-// ported, so the Set and the copy of a Graveyard card have nothing to find.
+// In the Extra Deck, Fusion Summoned by Polymerization with Darklord Gulgolet and Ixchel, with Darklord Contact and
+// Rebellion in the Deck to Set; on the field with Contact and Gulgolet in the GY to copy.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),
     (CARD_POLYMERIZATION, HAND),
@@ -25,11 +28,17 @@ pub const SUPPORT: &[(u32, u16)] = &[
     (84031359, MZONE),
     (52840267, HAND),
     (52840267, MZONE),
+    (ID, MZONE),
+    (DARKLORD_CONTACT, GRAVE),
+    (84031359, GRAVE),
+    (DARKLORD_CONTACT, DECK),
+    (DARKLORD_REBELLION, DECK),
+    (DARKLORD_REBELLION, DECK),
 ];
 pub const CHECKS: &[Check] = &[
     Check::SpecialSummoned,
-    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 0))),
-    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 1))),
+    Check::ResolvesEffect(aux::stringid(ID, 0)),
+    Check::ResolvesEffect(aux::stringid(ID, 1)),
 ];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
@@ -131,11 +140,16 @@ fn copytg(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<b
 }
 
 fn copyop(duel: &mut Duel, a: &Args) -> Script<()> {
-    let (e, tp) = (a.e, a.tp);
     let Some(tc) = duel.get_first_target() else { return Ok(()) };
-    if !tc.is_relate_to_effect(duel, e) {
+    if !tc.is_relate_to_effect(duel, a.e) {
         return Ok(());
     }
+    copy(duel, a, tc)
+}
+
+// The rest of the copy operation, which Darklord Ixchel and Tezcatlipoca write the same way.
+pub fn copy(duel: &mut Duel, a: &Args, tc: CardId) -> Script<()> {
+    let (e, tp) = (a.e, a.tp);
     let Some(te) = tc.check_activate_effect(duel, false, true) else {
         return Ok(());
     };

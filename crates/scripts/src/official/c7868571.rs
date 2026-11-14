@@ -1,12 +1,12 @@
 // Metalfoes Silverd
 use crate::prelude::*;
-use crate::testing::{Check, MZONE};
+use crate::testing::{Check, DECK, MZONE, PZONE};
 
 const ID: u32 = 7868571;
 
-pub const SUPPORT: &[(u32, u16)] = &[(ID, MZONE), (ID, MZONE)];
-// Its effect needs a Metalfoes Spell/Trap in the Deck, and none is ported.
-pub const CHECKS: &[Check] = &[Check::Report(&Check::Resolves)];
+// In the Pendulum Zone, with a monster on the field to destroy and Metalfoes Fusion (a Metalfoes Spell) in the Deck to Set.
+pub const SUPPORT: &[(u32, u16)] = &[(ID, PZONE), (ID, MZONE), (73594093, DECK), (73594093, DECK), (73594093, DECK)];
+pub const CHECKS: &[Check] = &[Check::ResolvesEffect(0)];
 
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     Pendulum::add_procedure(duel, c);

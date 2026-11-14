@@ -74,6 +74,27 @@ pub fn is_type(duel: &Duel, ch: u8, card_type: u32) -> bool {
     is_triggering_type(duel, ch, card_type)
 }
 
+// Chain.GetType, nil without a chain; falls back like is_setcode.
+pub fn get_type(duel: &Duel, ch: u8) -> Option<u32> {
+    if duel.get_current_chain() == 0 {
+        return None;
+    }
+    let eff = duel.get_chain_info::<Option<EffectId>>(ch, CHAININFO_TRIGGERING_EFFECT)?;
+    if eff.is_has_property(duel, EFFECT_FLAG_FIELD_ONLY) {
+        return properties_card(duel, eff).map(|card| card.get_type(duel));
+    }
+    let ec = eff.get_handler(duel);
+    if ec.is_relate_to_effect(duel, eff) && ec.is_faceup(duel) {
+        return Some(ec.get_type(duel));
+    }
+    duel.get_chain_info::<Option<u32>>(ch, CHAININFO_TRIGGERING_TYPE)
+}
+
+// Chain.IsCompositeType, false for nil.
+pub fn is_composite_type(duel: &Duel, ch: u8, card_type: u32) -> bool {
+    get_type(duel, ch).is_some_and(|chain_type| chain_type & card_type == card_type)
+}
+
 // Chain.IsCode, false for nil; falls back like is_setcode, to the triggering code and its alias.
 pub fn is_code(duel: &Duel, ch: u8, codes: &[u32]) -> bool {
     if duel.get_current_chain() == 0 {

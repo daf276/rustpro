@@ -5,6 +5,8 @@ use engine::constants::MSG_FIELD_DISABLED;
 
 const ID: u32 = 32224143;
 
+pub const LISTED_SERIES: &[u16] = &[SET_GHOSTRICK];
+
 struct Procedure;
 
 impl XyzProcedure for Procedure {

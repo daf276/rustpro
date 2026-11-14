@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 22009013;
 
+pub const LISTED_SERIES: &[u16] = &[SET_STEELSWARM];
 // Copies in the hand to Tribute Summon with Steelswarm Sting (a Steelswarm) on the field.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, HAND), (ID, HAND), (35618486, MZONE), (35618486, MZONE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

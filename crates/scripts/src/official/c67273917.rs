@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, PZONE};
 
 const ID: u32 = 67273917;
 
+pub const LISTED_SERIES: &[u16] = &[SET_IGKNIGHT];
 // In the Pendulum Zone with another Igknight (Igknight Crusader), and Igknight Gallant (a FIRE Warrior) in the Deck to add.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, PZONE), (61639289, PZONE), (96802306, DECK), (96802306, DECK)];
 

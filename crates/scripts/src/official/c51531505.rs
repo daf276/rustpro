@@ -4,6 +4,7 @@ use crate::testing::{Check, HAND, OPPONENT, PZONE, SZONE};
 
 const ID: u32 = 51531505;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAGICIAN];
 // In the Pendulum Zone with another Magician (Dragonpulse Magician) and Pendulum Monsters in the hand to discard, and the opponent's
 // Spells and Traps (Deck Lockdown) to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[

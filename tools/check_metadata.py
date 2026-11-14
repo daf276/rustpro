@@ -81,7 +81,9 @@ def rust_metadata(code, constants):
 
 def read(field, metadata):
     default = None if field in NUMBERS else frozenset() if field in LISTS else False
-    return metadata.get(field if field in metadata else FALLBACK.get(field), (None, default))[1], default
+    value = metadata.get(field if field in metadata else FALLBACK.get(field), (None, default))[1]
+    # Card.ListsArchetype compares with ==, so a card code in listed_series (c31086840) can never match a setcode.
+    return (frozenset(v for v in value if v <= 0xFFFF) if field == "listed_series" else value), default
 
 
 def main():

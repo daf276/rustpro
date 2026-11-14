@@ -4,6 +4,7 @@ use crate::testing::{Check, EXTRA, MZONE, PZONE};
 
 const ID: u32 = 70026064;
 
+pub const LISTED_SERIES: &[u16] = &[SET_BUJIN];
 // In the Pendulum Zone, with Bujintei Kagutsuchi and Bujinki Amaterasu (Bujin Xyz Monsters) face-up on the field and Bujintei
 // Tsukuyomi and Bujintei Susanowo (other Bujin Xyz Monsters) in the Extra Deck to be Xyz Summoned.
 pub const SUPPORT: &[(u32, u16)] = &[

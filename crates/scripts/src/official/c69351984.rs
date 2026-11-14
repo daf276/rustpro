@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, MZONE, PZONE};
 
 const ID: u32 = 69351984;
 
+pub const LISTED_SERIES: &[u16] = &[SET_METALFOES];
 // In the Pendulum Zone, with a monster on the field to destroy and Metalfoes Fusion (a Metalfoes Spell) in the Deck to Set.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, PZONE), (ID, MZONE), (73594093, DECK), (73594093, DECK), (73594093, DECK)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(0)];

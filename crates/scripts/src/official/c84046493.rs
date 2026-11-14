@@ -4,10 +4,10 @@ use crate::testing::{Check, PZONE};
 
 const ID: u32 = 84046493;
 
+pub const ROLL_DICE: bool = true;
 pub const SUPPORT: &[(u32, u16)] = &[(ID, PZONE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];
 
-// s.roll_dice, which only cards that are not ported read, is left out.
 pub fn initial_effect(duel: &mut Duel, c: CardId) {
     Pendulum::add_procedure(duel, c);
     let e1 = duel.create_effect(c);

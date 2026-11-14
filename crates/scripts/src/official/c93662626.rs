@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, PZONE};
 
 const ID: u32 = 93662626;
 
+pub const LISTED_SERIES: &[u16] = &[SET_IGKNIGHT];
 // In the Pendulum Zone with a copy (an Igknight) and copies in the Deck (Warrior FIRE) to add.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, PZONE), (ID, PZONE), (ID, DECK), (ID, DECK)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(0)];

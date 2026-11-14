@@ -5,6 +5,7 @@ use crate::testing::{Check, HAND, MZONE, OPPONENT, PZONE};
 
 const ID: u32 = 15146890;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MAGICIAN];
 // In the Pendulum Zone with another Magician (Dragonpit Magician) and Pendulum Monsters in the hand to discard, and monsters on the
 // field to destroy.
 pub const SUPPORT: &[(u32, u16)] = &[

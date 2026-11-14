@@ -3,6 +3,9 @@ use crate::prelude::*;
 use crate::testing::{Check, HAND, MZONE, PZONE};
 
 const ID: u32 = 51194046;
+
+pub const LISTED_SERIES: &[u16] = &[SET_QLI];
+
 const TRIBUTE_COUNT: u64 = (ID as u64) << 16;
 
 // In the Pendulum Zone, with Qliphort Scouts (Level 5 Qli) on the field to Tribute for Qliphort Monolith and Scouts in the hand.

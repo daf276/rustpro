@@ -4,6 +4,8 @@ use crate::testing::{Check, GRAVE};
 
 const ID: u32 = 73594093;
 
+pub const LISTED_SERIES: &[u16] = &[SET_METALFOES];
+
 struct Params;
 
 impl FusionSummonParams for Params {

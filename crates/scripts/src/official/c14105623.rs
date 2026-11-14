@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, HAND, MZONE, OPPONENT, PZONE};
 
 const ID: u32 = 14105623;
 
+pub const LISTED_SERIES: &[u16] = &[SET_ODD_EYES];
 // In the Pendulum Zone, with copies on the field (Odd-Eyes) destroyed by the opponent's Dark Hole and copies in the Deck to Special Summon.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, PZONE),

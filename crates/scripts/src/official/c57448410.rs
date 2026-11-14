@@ -4,6 +4,7 @@ use crate::testing::{Check, MZONE, PZONE};
 
 const ID: u32 = 57448410;
 
+pub const LISTED_SERIES: &[u16] = &[SET_MATERIACTOR];
 // In the Pendulum Zone, with Materiactor Xyz Monsters on the field to attach to.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, PZONE), (70597485, MZONE), (72409226, MZONE)];
 pub const CHECKS: &[Check] = &[Check::ResolvesEffect(aux::stringid(ID, 0))];

@@ -4,6 +4,7 @@ use crate::testing::{Check, DECK, PZONE};
 
 const ID: u32 = 65518099;
 
+pub const LISTED_SERIES: &[u16] = &[SET_QLI];
 pub const LISTED_NAMES: &[u32] = &[ID];
 
 // In the Pendulum Zone, with Qliphort Monolith (a Qli) in the Deck to add.

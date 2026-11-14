@@ -6,6 +6,7 @@ use crate::testing::{Check, HAND, MZONE};
 
 const ID: u32 = 26722601;
 
+pub const LISTED_SERIES: &[u16] = &[SET_STEELSWARM];
 // On the field, with Steelswarm Moth in the hand to Tribute Summon with Steelswarm Sting, and cards to summon or set again.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, MZONE),

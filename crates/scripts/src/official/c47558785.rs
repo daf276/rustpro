@@ -1,10 +1,10 @@
 // Mild Turkey
-// s.roll_dice, which only cards that are not ported read, is left out.
 use crate::prelude::*;
 use crate::testing::PZONE;
 
 const ID: u32 = 47558785;
 
+pub const ROLL_DICE: bool = true;
 // In the Pendulum Zone, whose Scale a die roll lowers.
 pub const SUPPORT: &[(u32, u16)] = &[(ID, PZONE)];
 

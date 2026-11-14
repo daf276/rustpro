@@ -2345,7 +2345,10 @@ impl CardUtility for CardId {
     }
 
     fn lists_code(self, duel: &Duel, code: u32) -> bool {
-        crate::official::listed_names(self.get_original_code(duel)).contains(&code)
+        let original = self.get_original_code(duel);
+        crate::official::listed_names(original)
+            .or_else(|| crate::official::fit_monster(original))
+            .is_some_and(|listed| listed.contains(&code))
     }
 
     fn xyz_number(self, duel: &Duel) -> Option<u32> {
@@ -2385,6 +2388,7 @@ impl CardUtility for CardId {
 
     fn lists_code_with_archetype(self, duel: &Duel, setcodes: &[u16]) -> bool {
         crate::official::listed_names(self.get_original_code(duel))
+            .unwrap_or_default()
             .iter()
             .flat_map(|&code| duel.get_card_setcode_from_code(code))
             .any(|to_match| setcodes.iter().any(|&setcode| match_setcode(setcode, to_match)))

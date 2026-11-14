@@ -357,19 +357,26 @@ pub mod aux {
 
     // Auxiliary.GetMMZonesPointedTo(player) with the default filter, locations and target player.
     pub fn get_mm_zones_pointed_to(duel: &Duel, player: u8) -> u32 {
-        get_mm_zones_pointed_to_full(duel, player, TRUE)
+        get_mm_zones_pointed_to_full(duel, player, TRUE, LOCATION_MZONE, LOCATION_MZONE, player)
     }
 
     // Auxiliary.GetMMZonesPointedTo with a by_filter the Link Monsters must also satisfy.
-    pub fn get_mm_zones_pointed_to_full(duel: &Duel, player: u8, filter: impl Fn(CardId, &Duel) -> bool) -> u32 {
+    pub fn get_mm_zones_pointed_to_full(
+        duel: &Duel,
+        player: u8,
+        filter: impl Fn(CardId, &Duel) -> bool,
+        player_location: u32,
+        oppo_location: u32,
+        target_player: u8,
+    ) -> u32 {
         let links = duel.get_matching_group(
             |c, duel| c.is_faceup(duel) && c.is_type(duel, TYPE_LINK) && filter(c, duel),
             player,
-            LOCATION_MZONE,
-            LOCATION_MZONE,
+            player_location,
+            oppo_location,
             None,
         );
-        links.get_bitwise_or(duel, |c, duel| u64::from(c.get_linked_zone_full(duel, player))) as u32 & ZONES_MMZ
+        links.get_bitwise_or(duel, |c, duel| u64::from(c.get_linked_zone_full(duel, target_player))) as u32 & ZONES_MMZ
     }
 
     pub fn necro_valley_filter(filter: impl Fn(CardId, &Duel) -> bool) -> impl Fn(CardId, &Duel) -> bool {

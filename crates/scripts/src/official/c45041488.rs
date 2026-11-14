@@ -24,7 +24,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_count_limit(duel, 1, 0);
     e1.set_range(duel, LOCATION_MZONE);
     e1.set_condition(duel, |duel, a| duel.is_turn_player(a.tp));
-    e1.set_operation(duel, mtop);
+    e1.set_operation(duel, |duel, a| upkeep(duel, a, ID, RACE_ROCK, true));
     c.register_effect(duel, e1);
     let e2 = duel.create_effect(c);
     e2.set_description(duel, aux::stringid(ID, 3));
@@ -44,20 +44,26 @@ fn cfilter1(c: CardId, duel: &Duel) -> bool {
     c.is_code(duel, 36623431) && c.is_able_to_grave_as_cost(duel)
 }
 
-fn cfilter2(c: CardId, duel: &Duel) -> bool {
-    c.is_monster(duel) && c.is_race(duel, RACE_ROCK) && !c.is_public(duel)
-}
-
-fn mtop(duel: &mut Duel, a: &Args) -> Script<()> {
+// The Koa'ki Meiru End Phase upkeep: send Iron Core, reveal a monster of `race` or destroy the card; `hint` for the scripts that
+// send an empty selection hint first.
+pub fn upkeep(duel: &mut Duel, a: &Args, id: u32, race: u64, hint: bool) -> Script<()> {
     let (c, tp) = (a.e.get_handler(duel), a.tp);
     duel.hint_selection(c);
     let g1 = duel.get_matching_group(cfilter1, tp, LOCATION_HAND, 0, None);
-    let g2 = duel.get_matching_group(cfilter2, tp, LOCATION_HAND, 0, None);
-    duel.hint(HINT_SELECTMSG, tp, 0);
+    let g2 = duel.get_matching_group(
+        |c, duel| c.is_monster(duel) && c.is_race(duel, race) && !c.is_public(duel),
+        tp,
+        LOCATION_HAND,
+        0,
+        None,
+    );
+    if hint {
+        duel.hint(HINT_SELECTMSG, tp, 0);
+    }
     let options = [
-        (!g1.is_empty(), aux::stringid(ID, 0)),
-        (!g2.is_empty(), aux::stringid(ID, 1)),
-        (true, aux::stringid(ID, 2)),
+        (!g1.is_empty(), aux::stringid(id, 0)),
+        (!g2.is_empty(), aux::stringid(id, 1)),
+        (true, aux::stringid(id, 2)),
     ];
     match duel.select_effect(tp, &options)? {
         Some(1) => {
@@ -84,7 +90,7 @@ fn condition(duel: &Duel, a: &Args) -> bool {
         && duel.is_chain_negatable(a.ev as u8)
 }
 
-fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn operation(duel: &mut Duel, a: &Args) -> Script<()> {
     let Some(re) = a.re else { return Ok(()) };
     if duel.negate_activation(a.ev as u8) && re.get_handler(duel).is_relate_to_effect(duel, re) {
         duel.destroy(a.eg.unwrap_or_default(), REASON_EFFECT)?;

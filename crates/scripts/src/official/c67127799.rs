@@ -27,9 +27,11 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     e1.set_value(
         duel,
         Value::SpSummonProcedure(|duel, _, c| {
+            let tp = c.get_controler(duel);
+            let dark = |c: CardId, duel: &Duel| c.is_attribute(duel, ATTRIBUTE_DARK);
             (
                 0,
-                aux::get_mm_zones_pointed_to_full(duel, c.get_controler(duel), |c, duel| c.is_attribute(duel, ATTRIBUTE_DARK)) as i32,
+                aux::get_mm_zones_pointed_to_full(duel, tp, dark, LOCATION_MZONE, LOCATION_MZONE, tp) as i32,
             )
         }),
     );

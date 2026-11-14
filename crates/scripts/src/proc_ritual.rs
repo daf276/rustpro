@@ -1,4 +1,4 @@
-// Port of proc_ritual.lua; customoperation, specificmatfilter, requirementfunc and self have no ported caller.
+// Port of proc_ritual.lua; customoperation, specificmatfilter and self have no ported caller.
 use std::marker::PhantomData;
 
 use engine::{Args, CardId, CardSet, Duel, EffectId, Script, Value};
@@ -17,6 +17,8 @@ pub trait RitualParams {
     const LOCATION: Option<u32> = None;
     const SUMPOS: u32 = POS_FACEUP;
     const FORCEDSELECTION: Option<ForcedSelection> = None;
+    // requirementfunc(c, sc), what a material c counts for towards the Ritual Monster sc; nil is its Ritual level.
+    const REQUIREMENTFUNC: Option<fn(CardId, &Duel, CardId) -> u32> = None;
 
     fn filter(_c: CardId, _duel: &Duel) -> bool {
         true
@@ -151,7 +153,7 @@ impl Ritual {
 
     // The materials Target and Operation start from, mg and mg2 after Ritual.CheckMatFilter.
     fn materials<P: RitualParams>(duel: &Duel, e: EffectId, tp: u8) -> (CardSet, CardSet) {
-        let mut mg = duel.get_ritual_material(tp, true);
+        let mut mg = duel.get_ritual_material(tp, P::REQUIREMENTFUNC.is_none());
         let mut mg2 = P::extrafil(duel, e, tp).unwrap_or_default();
         let extra_eff_g = mg.filter(duel, |c, duel| c.is_has_effect(duel, EFFECT_EXTRA_RITUAL_MATERIAL).is_some(), None);
         let extra_release = |c: CardId, duel: &Duel| c.is_controler(duel, 1 - tp) && c.is_has_effect(duel, EFFECT_EXTRA_RELEASE).is_some();
@@ -184,7 +186,7 @@ impl Ritual {
         let mut mg = m.filter(duel, |mc, duel| mc.is_can_be_ritual_material(duel, Some(c)), Some(c.into()));
         mg.merge(m2.difference(c.into()));
         Ritual::keep_mat_filter(duel, &mut mg, c, tp);
-        let check = Ritual::check(c, lv, forcedselection, lvtype, e, tp);
+        let check = Ritual::check::<P>(c, lv, forcedselection, lvtype, e, tp);
         let res = aux::select_unselect_group_check(duel, mg, 1, lv as usize, &check);
         duel.set_ritual_summoning_level(None);
         res
@@ -197,8 +199,13 @@ impl Ritual {
         }
     }
 
-    fn sum_check(duel: &Duel, sg: CardSet, sc: CardId, lv: u32, lvtype: u32) -> bool {
-        let level = |c: CardId, duel: &Duel| c.get_ritual_level(duel, sc);
+    // requirementfunc or Card.GetRitualLevel.
+    fn requirement<P: RitualParams>(c: CardId, duel: &Duel, sc: CardId) -> u32 {
+        P::REQUIREMENTFUNC.map_or_else(|| c.get_ritual_level(duel, sc), |requirementfunc| requirementfunc(c, duel, sc))
+    }
+
+    fn sum_check<P: RitualParams>(duel: &Duel, sg: CardSet, sc: CardId, lv: u32, lvtype: u32) -> bool {
+        let level = |c: CardId, duel: &Duel| Ritual::requirement::<P>(c, duel, sc);
         if lvtype == RITPROC_EQUAL {
             return sg.check_with_sum_equal(duel, level, lv, sg.len(), sg.len());
         }
@@ -207,7 +214,7 @@ impl Ritual {
     }
 
     // Ritual.Check, as the rescon of aux.SelectUnselectGroup.
-    fn check(
+    fn check<P: RitualParams>(
         sc: CardId,
         lv: u32,
         forcedselection: Option<ForcedSelection>,
@@ -216,7 +223,9 @@ impl Ritual {
         tp: u8,
     ) -> impl Fn(&Duel, CardSet, CardSet, Option<CardId>) -> (bool, bool) {
         move |duel, sg, _, c| {
-            let level = |c: CardId, duel: &Duel| i64::from(Ritual::check_additional_level(c, duel, sc));
+            let level = |c: CardId, duel: &Duel| {
+                i64::from(P::REQUIREMENTFUNC.map_or_else(|| Ritual::check_additional_level(c, duel, sc), |f| f(c, duel, sc)))
+            };
             let mut sum = sg.get_sum(duel, level);
             if lvtype != RITPROC_EQUAL {
                 sum -= c.map_or(0, |c| level(c, duel));
@@ -233,13 +242,13 @@ impl Ritual {
                     true => duel.get_location_count_from_ex(tp, tp, Some(sg), sc),
                     false => duel.get_mzone_count_full(tp, Some(sg), tp, LOCATION_REASON_TOFIELD, 0xff),
                 };
-                res = Ritual::sum_check(duel, sg, sc, lv, lvtype) && count > 0;
+                res = Ritual::sum_check::<P>(duel, sg, sc, lv, lvtype) && count > 0;
             }
             (res, stop)
         }
     }
 
-    fn finishcon(
+    fn finishcon<P: RitualParams>(
         sc: CardId,
         lv: u32,
         forcedselection: Option<ForcedSelection>,
@@ -251,7 +260,7 @@ impl Ritual {
             if forcedselection.is_some_and(|forcedselection| !forcedselection(duel, e, tp, sg, sc).0) {
                 return (false, false);
             }
-            (Ritual::sum_check(duel, sg, sc, lv, lvtype), false)
+            (Ritual::sum_check::<P>(duel, sg, sc, lv, lvtype), false)
         }
     }
 
@@ -286,14 +295,14 @@ impl Ritual {
         Ritual::keep_mat_filter(duel, &mut mg, tc, tp);
         let mat = if ft > 0 && func.is_none() {
             duel.hint(HINT_SELECTMSG, tp, HINTMSG_RELEASE);
-            let level = |c: CardId, duel: &Duel| c.get_ritual_level(duel, tc);
+            let level = |c: CardId, duel: &Duel| Ritual::requirement::<P>(c, duel, tc);
             match LVTYPE {
                 RITPROC_EQUAL => mg.select_with_sum_equal(duel, tp, level, lv, 1, mg.len() as i32)?,
                 _ => mg.select_with_sum_greater(duel, tp, level, lv)?,
             }
         } else {
-            let check = Ritual::check(tc, lv, func, LVTYPE, e, tp);
-            let finishcon = Ritual::finishcon(tc, lv, func, LVTYPE, e, tp);
+            let check = Ritual::check::<P>(tc, lv, func, LVTYPE, e, tp);
+            let finishcon = Ritual::finishcon::<P>(tc, lv, func, LVTYPE, e, tp);
             aux::select_unselect_group_full(duel, mg, 1, lv as usize, &check, tp, HINTMSG_RELEASE, Some(&finishcon), false)?
         };
         let extra_eff_g = mat.filter(duel, |c, duel| c.is_has_effect(duel, EFFECT_EXTRA_RITUAL_MATERIAL).is_some(), None);

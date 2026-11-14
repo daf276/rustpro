@@ -1,4 +1,5 @@
 // Igknight Margrave
+use crate::prelude::SET_IGKNIGHT;
 use crate::testing::{Check, DECK, PZONE};
 
 const ID: u32 = 50407691;

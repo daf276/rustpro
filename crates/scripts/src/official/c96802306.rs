@@ -1,4 +1,5 @@
 // Igknight Gallant
+use crate::prelude::SET_IGKNIGHT;
 use crate::testing::{Check, DECK, PZONE};
 
 const ID: u32 = 96802306;

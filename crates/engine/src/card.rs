@@ -3015,10 +3015,10 @@ impl Duel {
             return true;
         }
         let limits = self.filter_effect(card, EFFECT_CANNOT_BE_XYZ_MATERIAL, true);
-        if limits
-            .into_iter()
-            .any(|effect| self.get_value(effect, scard.unwrap_or_default()) != 0)
-        {
+        if limits.into_iter().any(|effect| match self.effects[effect].value {
+            Value::OptionalCard(value) => self.call_script(|duel| value(duel, effect, scard)) != 0,
+            _ => self.get_value(effect, scard.unwrap_or_default()) != 0,
+        }) {
             return false;
         }
         !self.is_forbidden_material(card, scard, SUMMON_TYPE_XYZ.into(), playerid)

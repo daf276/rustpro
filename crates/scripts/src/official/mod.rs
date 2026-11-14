@@ -96,6 +96,13 @@ pub fn assault_mode(code: u32) -> Option<u32> {
     lookup(&ASSAULT_MODE, code)
 }
 
+pub type MatFilter = fn(engine::CardId, &engine::Duel, u8) -> bool;
+
+// s.mat_filter(c, tp), which Ritual.Filter and Ritual.Operation apply to the materials of the Ritual Monster.
+pub fn mat_filter(code: u32) -> Option<MatFilter> {
+    lookup(&MAT_FILTER, code)
+}
+
 // s.pendulum_level, which Pendulum.Filter reads in place of the card's Level.
 pub fn pendulum_level(code: u32) -> Option<u32> {
     lookup(&PENDULUM_LEVEL, code)

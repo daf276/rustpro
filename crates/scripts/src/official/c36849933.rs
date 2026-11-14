@@ -6,7 +6,7 @@ const ID: u32 = 36849933;
 
 pub const LISTED_SERIES: &[u16] = &[SET_MEGALITH];
 
-struct Params;
+pub struct Params;
 
 impl RitualParams for Params {
     const FORCEDSELECTION: Option<ForcedSelection> = Some(|duel, e, _, g, _| (g.is_contains(e.get_handler(duel)), false));

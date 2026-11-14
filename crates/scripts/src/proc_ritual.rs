@@ -22,6 +22,11 @@ pub trait RitualParams {
         true
     }
 
+    // filter, for one that reads the handler the Lua closure captures.
+    fn filter_with_effect(c: CardId, duel: &Duel, _e: EffectId) -> bool {
+        Self::filter(c, duel)
+    }
+
     // lv, a level or a function of the Ritual Monster; nil is its level.
     fn lv(c: CardId, duel: &Duel) -> u32 {
         c.get_level(duel)
@@ -169,7 +174,7 @@ impl Ritual {
         forcedselection: Option<ForcedSelection>,
     ) -> bool {
         if !(c.is_original_type(duel, TYPE_RITUAL) && c.is_original_type(duel, TYPE_MONSTER))
-            || !P::filter(c, duel)
+            || !P::filter_with_effect(c, duel, e)
             || !c.is_can_be_special_summoned_full(duel, e, SUMMON_TYPE_RITUAL, tp, false, true, P::SUMPOS, tp, 0xff)
         {
             return false;
@@ -178,10 +183,18 @@ impl Ritual {
         duel.set_ritual_summoning_level(Some(lv));
         let mut mg = m.filter(duel, |mc, duel| mc.is_can_be_ritual_material(duel, Some(c)), Some(c.into()));
         mg.merge(m2.difference(c.into()));
+        Ritual::keep_mat_filter(duel, &mut mg, c, tp);
         let check = Ritual::check(c, lv, forcedselection, lvtype, e, tp);
         let res = aux::select_unselect_group_check(duel, mg, 1, lv as usize, &check);
         duel.set_ritual_summoning_level(None);
         res
+    }
+
+    // mg:Match(c.mat_filter, c, tp), when the Ritual Monster c's script has a mat_filter.
+    fn keep_mat_filter(duel: &Duel, mg: &mut CardSet, c: CardId, tp: u8) {
+        if let Some(mat_filter) = crate::official::mat_filter(c.get_original_code(duel)) {
+            mg.keep_matching(duel, |mc, duel| mat_filter(mc, duel, tp), Some(c.into()));
+        }
     }
 
     fn sum_check(duel: &Duel, sg: CardSet, sc: CardId, lv: u32, lvtype: u32) -> bool {
@@ -270,6 +283,7 @@ impl Ritual {
         duel.set_ritual_summoning_level(Some(lv));
         mg.keep_matching(duel, |c, duel| c.is_can_be_ritual_material(duel, Some(tc)), Some(tc.into()));
         mg.merge(mg2.difference(tc.into()));
+        Ritual::keep_mat_filter(duel, &mut mg, tc, tp);
         let mat = if ft > 0 && func.is_none() {
             duel.hint(HINT_SELECTMSG, tp, HINTMSG_RELEASE);
             let level = |c: CardId, duel: &Duel| c.get_ritual_level(duel, tc);

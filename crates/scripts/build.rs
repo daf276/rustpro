@@ -36,8 +36,9 @@ const COUNT_ONLY: [&str; 4] = [
 // Identifiers that check or change battle positions, besides those ending in `_pos`.
 const POSITION_WORDS: [&str; 4] = ["position", "POSITION", "POSCHANGE", "CHANGE_POS"];
 // The consts the registry reads from a card file, found only as `pub const NAME:` at a line's start, and their types.
-const METADATA: [(&str, &str); 13] = [
+const METADATA: [(&str, &str); 14] = [
     ("SUPPORT", "&[(u32,u16)]"),
+    ("MAT_FILTER", "fn(CardId,&Duel,u8)->bool"),
     ("CHECKS", "&[Check]"),
     ("LISTED_NAMES", "&[u32]"),
     ("LISTED_SERIES", "&[u16]"),
@@ -102,7 +103,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
     }
     writeln!(out, "];")?;
-    let tables: [(&str, &[&str], &str); 13] = [
+    let tables: [(&str, &[&str], &str); 14] = [
+        ("MAT_FILTER", &["MAT_FILTER"], "MatFilter"),
         ("LISTED_NAMES", &["LISTED_NAMES"], "&[u32]"),
         ("FIT_MONSTER", &["FIT_MONSTER"], "&[u32]"),
         ("LISTED_SERIES", &["LISTED_SERIES"], "&[u16]"),

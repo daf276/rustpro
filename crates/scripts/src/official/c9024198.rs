@@ -1,6 +1,6 @@
 // D/D/D Abyss King Gilgamesh
 use crate::prelude::*;
-use crate::testing::{Check, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
+use crate::testing::{Check, DECK, EXTRA, GRAVE, HAND, MZONE, OPPONENT};
 
 const ID: u32 = 9024198;
 
@@ -16,8 +16,8 @@ impl LinkProcedure for Procedure {
     }
 }
 
-// Link Summoned from D/D/D Xyz Monsters, with the opponent's Raigeki to destroy it and a D/D/D in the Graveyard to summon. The first
-// effect needs two different D/D Pendulum Monsters in the Deck, and none is ported.
+// Link Summoned from D/D/D Xyz Monsters, with the opponent's Raigeki to destroy it and a D/D/D in the Graveyard to summon; D/D
+// Savant Thomas and D/D/D Chaos King Apocalypse in the Deck to place.
 pub const SUPPORT: &[(u32, u16)] = &[
     (ID, EXTRA),
     (ID, EXTRA),
@@ -29,9 +29,13 @@ pub const SUPPORT: &[(u32, u16)] = &[
     (51497409, GRAVE),
     (12580477, HAND | OPPONENT),
     (53129443, HAND | OPPONENT),
+    (41546, DECK),
+    (41546, DECK),
+    (83303851, DECK),
+    (83303851, DECK),
 ];
 pub const CHECKS: &[Check] = &[
-    Check::Report(&Check::ResolvesEffect(aux::stringid(ID, 0))),
+    Check::ResolvesEffect(aux::stringid(ID, 0)),
     Check::ResolvesEffect(aux::stringid(ID, 1)),
 ];
 

@@ -1181,7 +1181,16 @@ impl Duel {
                     return true;
                 }
                 if reason & REASON_RDAMAGE == 0 {
-                    unported!(self, self.filter_player_effect(playerid, EFFECT_REVERSE_DAMAGE, true));
+                    for effect in self.filter_player_effect(playerid, EFFECT_REVERSE_DAMAGE, true) {
+                        if self.check_value_reverse_damage(effect, arg.reason_effect, reason, reason_player) {
+                            // A recovery in steps waits for Duel.RDComplete, which [Recover] does not carry.
+                            unported!(self, arg.is_step.then_some(effect));
+                            let reason = (reason & REASON_RRECOVER) | REASON_RDAMAGE | REASON_EFFECT;
+                            self.field_recover(arg.reason_effect, reason, reason_player, playerid, amount);
+                            arg.step = 2;
+                            return false;
+                        }
+                    }
                 }
                 let mut playerid = playerid;
                 for effect in self.filter_player_effect(playerid, EFFECT_REFLECT_DAMAGE, true) {
@@ -1287,6 +1296,10 @@ impl Duel {
             }
             2 => {
                 self.returns.set_u32(0, amount);
+                true
+            }
+            3 => {
+                self.returns.set_u32(0, 0);
                 true
             }
             _ => true,

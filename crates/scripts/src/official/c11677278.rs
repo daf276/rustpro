@@ -71,36 +71,49 @@ fn effop(duel: &mut Duel, a: &Args) -> Script<()> {
     Ok(())
 }
 
-fn can_set_to_opponent(duel: &Duel, e: EffectId, tp: u8) -> bool {
+pub fn can_set_to_opponent(duel: &Duel, e: EffectId, tp: u8) -> bool {
     duel.get_location_count_full(1 - tp, LOCATION_MZONE, tp, LOCATION_REASON_TOFIELD, 0xff) > 0
         && e.get_handler(duel)
             .is_can_be_special_summoned_full(duel, e, 0, tp, false, false, POS_FACEDOWN_DEFENSE, 1 - tp, 0xff)
 }
 
-fn can_summon_to_self(duel: &Duel, e: EffectId, tp: u8) -> bool {
-    duel.get_field_group_count(tp, 0, LOCATION_MZONE) > 0
+fn can_summon_to_self(duel: &Duel, e: EffectId, tp: u8, condition: fn(&Duel, u8) -> bool) -> bool {
+    condition(duel, tp)
         && duel.get_location_count(tp, LOCATION_MZONE) > 0
         && e.get_handler(duel).is_can_be_special_summoned(duel, e, 0, tp, false, false)
 }
 
+fn opponent_controls_monster(duel: &Duel, tp: u8) -> bool {
+    duel.get_field_group_count(tp, 0, LOCATION_MZONE) > 0
+}
+
 fn selfsptg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+    selfsptg_with(duel, a, chk, opponent_controls_monster)
+}
+
+fn selfspop(duel: &mut Duel, a: &Args) -> Script<()> {
+    selfspop_with(duel, a, ID, opponent_controls_monster)
+}
+
+// The hand effect of the Mimighoul monsters that can also Special Summon themselves to their controller's field on a condition.
+pub fn selfsptg_with(duel: &mut Duel, a: &Args, chk: i32, condition: fn(&Duel, u8) -> bool) -> Script<bool> {
     let (e, tp) = (a.e, a.tp);
     if chk == 0 {
-        return Ok(can_set_to_opponent(duel, e, tp) || can_summon_to_self(duel, e, tp));
+        return Ok(can_set_to_opponent(duel, e, tp) || can_summon_to_self(duel, e, tp, condition));
     }
     duel.set_operation_info(0, CATEGORY_SPECIAL_SUMMON, Some(e.get_handler(duel).into()), 1, tp, 0);
     Ok(false)
 }
 
-fn selfspop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn selfspop_with(duel: &mut Duel, a: &Args, id: u32, condition: fn(&Duel, u8) -> bool) -> Script<()> {
     let (e, tp) = (a.e, a.tp);
     let c = e.get_handler(duel);
     if !c.is_relate_to_effect(duel, e) {
         return Ok(());
     }
-    let (b1, b2) = (can_set_to_opponent(duel, e, tp), can_summon_to_self(duel, e, tp));
+    let (b1, b2) = (can_set_to_opponent(duel, e, tp), can_summon_to_self(duel, e, tp, condition));
     let op = if b1 && b2 {
-        duel.select_effect(tp, &[(b1, aux::stringid(ID, 3)), (b2, aux::stringid(ID, 4))])?
+        duel.select_effect(tp, &[(b1, aux::stringid(id, 3)), (b2, aux::stringid(id, 4))])?
     } else {
         Some(if b1 || !b2 { 1 } else { 2 })
     };

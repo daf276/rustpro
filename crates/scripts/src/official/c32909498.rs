@@ -55,7 +55,7 @@ pub fn initial_effect(duel: &mut Duel, c: CardId) {
     c.register_effect(duel, e4);
 }
 
-fn spcon(duel: &Duel, a: &Args) -> bool {
+pub fn spcon(duel: &Duel, a: &Args) -> bool {
     let tp = a.e.get_handler_player(duel);
     a.c.is_none() || (duel.get_field_group_count(tp, LOCATION_MZONE, 0) == 0 && duel.get_location_count(tp, LOCATION_MZONE) > 0)
 }
@@ -97,6 +97,6 @@ fn rmop(duel: &mut Duel, a: &Args) -> Script<()> {
     Ok(())
 }
 
-fn rmeffcon(duel: &Duel, a: &Args) -> bool {
+pub fn rmeffcon(duel: &Duel, a: &Args) -> bool {
     a.ep == 1 - a.tp && a.re.is_some_and(|re| re.is_monster_effect(duel))
 }

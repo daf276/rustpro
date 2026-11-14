@@ -87,7 +87,7 @@ fn posfilter(c: CardId, duel: &Duel) -> bool {
     c.is_facedown(duel) && c.is_can_change_position(duel)
 }
 
-fn postg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
+pub fn postg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool> {
     let tp = a.tp;
     if chk == 0 {
         return Ok(duel.is_existing_matching_card(posfilter, tp, LOCATION_MZONE, LOCATION_MZONE, 1, None));
@@ -96,7 +96,7 @@ fn postg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool>
     Ok(false)
 }
 
-fn posop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn posop(duel: &mut Duel, a: &Args) -> Script<()> {
     let tp = a.tp;
     duel.hint(HINT_SELECTMSG, tp, HINTMSG_POSCHANGE);
     let g = duel.select_matching_card(tp, posfilter, tp, LOCATION_MZONE, LOCATION_MZONE, 1, 1, None)?;

@@ -942,6 +942,7 @@ impl Duel {
                     self.dec_count(effect, self.cards[handler].current.controler);
                     match self.effects[effect].value {
                         Value::Activation(value) => value(self, effect, chain.triggering_effect),
+                        Value::Int(_) => {}
                         _ => misread!(self, "an activation condition"),
                     }
                 }

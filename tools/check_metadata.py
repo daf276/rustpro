@@ -56,6 +56,7 @@ def call_arguments(text, start):
 def lua_metadata(code, constants):
     text = lua_script(code).read_text(encoding="utf-8")
     found = dict(re.findall(r"^\s*s\.(\w+)\s*=\s*(.*?)\s*(?:--.*)?$", text, re.M))
+    found = {field: found.get(value[2:], value) if value.startswith("s.") else value for field, value in found.items()}
     ritual = RITUAL_CODE.search(text)
     if ritual and "fit_monster" not in found:
         found["fit_monster"] = "{" + ",".join(call_arguments(text, ritual.end())[3 if ritual[1] else 4:]) + "}"

@@ -728,8 +728,14 @@ pub mod aux {
     }
 
     // Group.CheckDifferentProperty: whether the cards can each take a different one of the properties f returns.
-    pub fn check_different_property(duel: &Duel, g: CardSet, f: &dyn Fn(CardId, &Duel) -> Vec<u32>) -> bool {
-        fn checkrec(duel: &Duel, c: CardId, g: CardSet, taken: &mut Vec<u32>, f: &dyn Fn(CardId, &Duel) -> Vec<u32>) -> bool {
+    pub fn check_different_property<T: PartialEq + Copy>(duel: &Duel, g: CardSet, f: &dyn Fn(CardId, &Duel) -> Vec<T>) -> bool {
+        fn checkrec<T: PartialEq + Copy>(
+            duel: &Duel,
+            c: CardId,
+            g: CardSet,
+            taken: &mut Vec<T>,
+            f: &dyn Fn(CardId, &Duel) -> Vec<T>,
+        ) -> bool {
             for prop in f(c, duel) {
                 if taken.contains(&prop) {
                     continue;

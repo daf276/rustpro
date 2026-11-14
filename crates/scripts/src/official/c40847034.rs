@@ -9,7 +9,7 @@ const ID: u32 = 40847034;
 
 pub const LISTED_SERIES: &[u16] = &[SET_KEWL_TUNE];
 
-// The fields of e:GetChainData(); the effect is kept as its index among the target's own effects.
+// The fields of e:GetChainData().
 const TARGET_CARD: u8 = 0;
 const TARGET_EFFECT: u8 = 1;
 
@@ -116,8 +116,8 @@ fn target(duel: &mut Duel, a: &Args, chk: i32, chkc: Option<CardId>) -> Script<b
         }
     }
     e.set_chain_data_group(duel, TARGET_CARD, tc.into());
-    if let Some(index) = eff.and_then(|eff| tc.get_own_effects(duel).into_iter().position(|own| own == eff)) {
-        e.set_chain_data(duel, TARGET_EFFECT, index as i64);
+    if let Some(eff) = eff {
+        e.set_chain_data_effect(duel, TARGET_EFFECT, eff);
     }
     e.set_category(duel, CATEGORY_TOHAND);
     duel.set_operation_info(0, CATEGORY_TOHAND, Some(tc.into()), 1, tp, 0);
@@ -131,10 +131,7 @@ fn activate(duel: &mut Duel, a: &Args) -> Script<()> {
         && tc.is_relate_to_effect(duel, e)
     {
         let mut break_chk = false;
-        let te = e
-            .get_chain_data(duel, TARGET_EFFECT)
-            .and_then(|index| tc.get_own_effects(duel).into_iter().nth(index as usize));
-        if let Some(te) = te {
+        if let Some(te) = e.get_chain_data_effect(duel, TARGET_EFFECT) {
             let op = te.get_operation(duel);
             unported!(
                 duel,

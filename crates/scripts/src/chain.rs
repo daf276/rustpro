@@ -104,6 +104,8 @@ pub trait EffectChain: Copy {
     fn set_chain_data(self, duel: &mut Duel, slot: u8, value: i64);
     fn get_chain_data_group(self, duel: &Duel, slot: u8) -> Option<CardSet>;
     fn set_chain_data_group(self, duel: &mut Duel, slot: u8, group: CardSet);
+    fn get_chain_data_effect(self, duel: &Duel, slot: u8) -> Option<EffectId>;
+    fn set_chain_data_effect(self, duel: &mut Duel, slot: u8, effect: EffectId);
     fn is_card_setcode(self, duel: &Duel, setcode: u16) -> bool;
     fn is_card_attribute(self, duel: &Duel, attribute: u32) -> bool;
     fn is_card_summon_location(self, duel: &Duel, location: u32) -> bool;
@@ -130,6 +132,16 @@ impl EffectChain for EffectId {
     fn set_chain_data_group(self, duel: &mut Duel, slot: u8, group: CardSet) {
         let key = chain_data_key(duel, self, slot);
         duel.set_script_group(key, Some(group));
+    }
+
+    // Kept by its index, which no other effect takes before the chain ends, as deleted slots are freed only at a turn's start.
+    fn get_chain_data_effect(self, duel: &Duel, slot: u8) -> Option<EffectId> {
+        let index = self.get_chain_data(duel, slot)?;
+        duel.effect_at(usize::try_from(index).ok()?)
+    }
+
+    fn set_chain_data_effect(self, duel: &mut Duel, slot: u8, effect: EffectId) {
+        self.set_chain_data(duel, slot, effect.index() as i64);
     }
 
     fn is_card_setcode(self, duel: &Duel, setcode: u16) -> bool {

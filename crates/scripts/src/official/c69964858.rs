@@ -148,7 +148,7 @@ fn efftg(duel: &mut Duel, a: &Args, chk: i32, _: Option<CardId>) -> Script<bool>
             }
             e.set_category(duel, 0);
             duel.clear_operation_info(0);
-            e.set_chain_data(duel, TARGET_EFFECT, te.index() as i64);
+            e.set_chain_data_effect(duel, TARGET_EFFECT, te);
         }
         _ => {}
     }
@@ -160,10 +160,9 @@ fn effop(duel: &mut Duel, a: &Args) -> Script<()> {
     match Cost::get_choice(duel, e) {
         Some(1) => stock::search(duel, a, thfilter, LOCATION_DECK)?,
         Some(2) => {
-            let te = e
-                .get_chain_data(duel, TARGET_EFFECT)
-                .and_then(|index| duel.effect_at(index as usize));
-            let Some(te) = te else { return Ok(()) };
+            let Some(te) = e.get_chain_data_effect(duel, TARGET_EFFECT) else {
+                return Ok(());
+            };
             let op = te.get_operation(duel);
             unported!(duel, !matches!(op, None | Some(Operation::Event(_) | Operation::Promptless(_))));
             if let Some(Operation::Event(op) | Operation::Promptless(op)) = op {

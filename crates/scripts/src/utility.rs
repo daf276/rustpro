@@ -87,6 +87,11 @@ pub mod aux {
         duel.get_turn_count() != c.get_turn_id(duel) || c.is_reason(duel, REASON_RETURN)
     }
 
+    pub fn gbspcon(duel: &Duel, a: &Args) -> bool {
+        let st = a.e.get_handler(duel).get_summon_type(duel);
+        (SUMMON_TYPE_SPECIAL + 100..SUMMON_TYPE_SPECIAL + 150).contains(&st)
+    }
+
     pub fn seqmovcon(duel: &Duel, a: &Args) -> bool {
         a.e.get_handler(duel).check_adjacent(duel)
     }

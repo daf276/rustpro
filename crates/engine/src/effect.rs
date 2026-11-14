@@ -283,6 +283,8 @@ pub enum Value {
     CostReplace(fn(&Duel, EffectId, CostReplaceCall) -> bool),
     // value(tc, c, tp) of the effect aux.AddZWEquipLimit registers, read only by the Utopia Ray monsters that equip a ZW card.
     ZwEquip(fn(&Duel, CardId, CardId, u8) -> bool),
+    // value(e, tp, eg, ep, ev, re, r, rp): the zones an EFFECT_FLAG_LIMIT_ZONE activation may place the card in.
+    ActivateZone(fn(&Duel, &Args) -> i32),
 }
 
 // What Cost.Replaceable passes an EFFECT_COST_REPLACE value besides the replacing effect.
@@ -1212,7 +1214,7 @@ impl Duel {
         let allowed = if peffect.is_flag(EFFECT_FLAG_FIELD_ONLY) {
             self.get_owner_player(effect) == playerid || peffect.is_flag(EFFECT_FLAG_BOTH_SIDE)
         } else if effect_type & EFFECT_TYPE_ACTIVATE != 0 {
-            self.is_activateable_activate(effect, playerid, neglect_loc)
+            self.is_activateable_activate(effect, playerid, event, neglect_loc)
         } else if effect_type & EFFECT_TYPE_CONTINUOUS == 0 {
             self.is_activateable_trigger(effect, playerid, neglect_faceup)
         } else {
@@ -1239,7 +1241,7 @@ impl Duel {
     }
 
     // is_activateable for EFFECT_TYPE_ACTIVATE: zones, and the cards activated from the hand or the turn they were set.
-    fn is_activateable_activate(&mut self, effect: EffectId, playerid: u8, neglect_loc: bool) -> bool {
+    fn is_activateable_activate(&mut self, effect: EffectId, playerid: u8, event: &Event, neglect_loc: bool) -> bool {
         let peffect = &self.effects[effect];
         let handler = peffect.handler.unwrap_or_default();
         let card = self.cards[handler];
@@ -1255,14 +1257,21 @@ impl Duel {
         }
         let peffect = &self.effects[effect];
         let limit_zone = peffect.is_flag(EFFECT_FLAG_LIMIT_ZONE);
-        // The zone function of EFFECT_FLAG_LIMIT_ZONE (get_value with the event) comes with the cards that set it.
-        unported!(
-            self,
-            (limit_zone && data_type & (TYPE_FIELD | TYPE_PENDULUM) == 0).then_some(effect)
-        );
         let value = peffect.int_value();
+        let zone_limited = limit_zone && data_type & (TYPE_FIELD | TYPE_PENDULUM) == 0;
+        let zone = if zone_limited {
+            self.get_activate_zone(effect, playerid, event)
+        } else {
+            0xff
+        };
+        if zone == 0 {
+            return false;
+        }
         if card.current.location == LOCATION_SZONE {
             if card.is_position(POS_FACEUP) || card.equiping_target.is_some() {
+                return false;
+            }
+            if zone_limited && zone & (1u32 << card.current.sequence) == 0 {
                 return false;
             }
         } else if !((data_type & TYPE_FIELD != 0 && !limit_zone && value <= 0)
@@ -1276,7 +1285,7 @@ impl Duel {
             } else if data_type & TYPE_PENDULUM != 0 || (!limit_zone && value & i32::from(LOCATION_PZONE) != 0) {
                 self.is_location_useable(playerid, LOCATION_PZONE, 0) || self.is_location_useable(playerid, LOCATION_PZONE, 1)
             } else {
-                self.get_useable_count(Some(handler), playerid, LOCATION_SZONE, playerid, LOCATION_REASON_TOFIELD, 0xff)
+                self.get_useable_count(Some(handler), playerid, LOCATION_SZONE, playerid, LOCATION_REASON_TOFIELD, zone)
                     .0
                     > 0
             };
@@ -1567,6 +1576,7 @@ impl Duel {
             | Value::ExtraMaterial(_)
             | Value::CostReplace(_)
             | Value::ZwEquip(_)
+            | Value::ActivateZone(_)
             | Value::Own(_) => misread!(self, "a value"),
         }
     }
@@ -1590,6 +1600,14 @@ impl Duel {
             Value::Int(_) | Value::Values(_) => peffect.int_value(),
             Value::Own(value) => value(self, effect),
             _ => misread!(self, "a value"),
+        }
+    }
+
+    // effect::get_value(7) of an EFFECT_FLAG_LIMIT_ZONE activation, called with the player and the event.
+    pub(crate) fn get_activate_zone(&self, effect: EffectId, playerid: u8, event: &Event) -> u32 {
+        match self.effects[effect].value {
+            Value::ActivateZone(value) => self.call_script(|duel| value(duel, &Args::event(effect, playerid, event))) as u32,
+            _ => self.effects[effect].int_value() as u32,
         }
     }
 

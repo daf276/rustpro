@@ -72,32 +72,32 @@ fn spop(duel: &mut Duel, a: &Args) -> Script<()> {
     e3.set_count_limit(duel, 1, 0);
     e3.set_label(duel, fid.into());
     e3.set_label_object_group(duel, Some(sg));
-    e3.set_condition_mut(duel, descon);
-    e3.set_operation(duel, desop);
+    e3.set_condition_mut(duel, descon::<ID>);
+    e3.set_operation(duel, desop::<ID>);
     duel.register_effect(e3, tp);
     Ok(())
 }
 
-fn desfilter(c: CardId, duel: &Duel, fid: i64) -> bool {
-    c.get_flag_effect_label(duel, ID) == Some(fid)
+fn desfilter<const CODE: u32>(c: CardId, duel: &Duel, fid: i64) -> bool {
+    c.get_flag_effect_label(duel, CODE) == Some(fid)
 }
 
-fn descon(duel: &mut Duel, a: &Args) -> bool {
+pub fn descon<const CODE: u32>(duel: &mut Duel, a: &Args) -> bool {
     let fid = a.e.get_label(duel);
     let g = a.e.get_label_object_group(duel).unwrap_or_default();
-    if !g.is_exists(duel, |c, duel| desfilter(c, duel, fid), 1, None) {
+    if !g.is_exists(duel, |c, duel| desfilter::<CODE>(c, duel, fid), 1, None) {
         a.e.reset(duel);
         return false;
     }
     true
 }
 
-fn desop(duel: &mut Duel, a: &Args) -> Script<()> {
+pub fn desop<const CODE: u32>(duel: &mut Duel, a: &Args) -> Script<()> {
     let fid = a.e.get_label(duel);
     let g =
         a.e.get_label_object_group(duel)
             .unwrap_or_default()
-            .filter(duel, |c, duel| desfilter(c, duel, fid), None);
+            .filter(duel, |c, duel| desfilter::<CODE>(c, duel, fid), None);
     duel.destroy(g, REASON_EFFECT)?;
     Ok(())
 }

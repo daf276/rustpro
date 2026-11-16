@@ -9,7 +9,7 @@ use crate::field::{FieldInfo, PerPlayer, PlayerInfo, Processor, Relations, Retur
 use crate::list::List;
 use crate::processor::{OcgStatus, Startup, Unit};
 use crate::rng::Xoshiro256StarStar;
-use crate::script::{FusionCheck, Library, Replay, SynchroCheck};
+use crate::script::{FusionCheck, Hold, Library, Replay, SynchroCheck};
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum DuelError {
@@ -437,6 +437,7 @@ impl Duel {
         let mut units = std::mem::take(&mut self.core.units);
         let status = loop {
             if self.result.is_some() {
+                self.replay.hold = Hold::Off;
                 break Some(Status::End);
             }
             self.next_unit(&mut units);
@@ -448,6 +449,10 @@ impl Duel {
             match status {
                 OcgStatus::Awaiting => break Some(Status::Awaiting),
                 OcgStatus::End => break Some(Status::End),
+                OcgStatus::Continue if self.replay.hold == Hold::Reached => {
+                    self.replay.hold = Hold::Off;
+                    break Some(Status::Awaiting);
+                }
                 OcgStatus::Continue => {}
             }
         };

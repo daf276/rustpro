@@ -137,6 +137,7 @@ pub struct Replay {
     // The running functions' effects and players, innermost last, restored as the reason after an action's units ran.
     pub stack: List<(EffectId, u8), 4>,
     pub passing: Passing,
+    pub hold: Hold,
 }
 
 clone_by_field!(Replay {
@@ -150,7 +151,8 @@ clone_by_field!(Replay {
     apart,
     interrupted,
     stack,
-    passing
+    passing,
+    hold
 });
 
 // The turn [Duel::pass_turn] passes and the answers it gave so far; a copy is not inside that call.
@@ -161,6 +163,15 @@ impl Clone for Passing {
     fn clone(&self) -> Self {
         Self::default()
     }
+}
+
+// [Duel::hold_idle]: armed for a player's next idle prompt, then reached, which stops the run.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Hold {
+    #[default]
+    Off,
+    Armed(u8),
+    Reached,
 }
 
 pub type Snapshot = Arc<Mutex<Duel>>;

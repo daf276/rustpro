@@ -3,7 +3,7 @@ use std::io::Write;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use diff::{Vendor, each_state, records, scenario_records};
-use engine::{Action, BattleCommand, Duel, IdleCommand, Observation, Prompt, Status};
+use engine::{Action, BattleCommand, Duel, IdleCommand, Observation, Position, Prompt, Status};
 use fiber::Fiber;
 use rayon::prelude::*;
 
@@ -15,6 +15,10 @@ type Played = (Seen, Vec<u8>, Vec<u8>, Option<(u8, u8)>);
 // Turns are passed from every STEP-th prompt of a record, then played on for ONWARD decisions.
 const STEP: usize = 7;
 const ONWARD: usize = 40;
+// A hold is checked from every HOLD_STEP-th prompt, every TO_END-th of those passed to the end of the duel, at most TURNS turns.
+const HOLD_STEP: usize = 21;
+const TO_END: usize = 5;
+const TURNS: usize = 200;
 const PASSES: [Action; 5] = [
     Action::Chain(None),
     Action::IdleCommand(IdleCommand::ToEnd),
@@ -119,4 +123,68 @@ fn should_pass_the_turn_as_passing_one_prompt_at_a_time() {
     let counted = format!("{passes} passes, {from_waiting} from a waiting function, {through_waiting} answering one");
     writeln!(std::io::stdout(), "{counted}").unwrap();
     assert!(from_waiting * 20 > passes && through_waiting * 20 > passes, "{counted}");
+}
+
+// Passes up to `turns` times to the other player's first idle prompt after the turn, holding it first if `hold`, then opens
+// it: the position, the whole duel as debug-printed (effect ids and the field id counter included), and its play on; also
+// whether a hold stopped the duel.
+fn pass_to_idle(duel: &Duel, turns: usize, hold: bool) -> Result<(Position, String, Played, bool)> {
+    let mut copy = duel.clone();
+    copy.set_trace(true);
+    let (mut duel, mut actions, mut held) = (Fiber::new(copy), Vec::new(), false);
+    duel.process();
+    for _ in 0..turns {
+        if duel.result().is_some() {
+            break;
+        }
+        let player = 1 - duel.turn_player();
+        if hold {
+            duel.hold_idle(player);
+        }
+        duel.pass_turn(&mut actions);
+        while let Some(prompt) = duel.prompt()
+            && prompt != (Prompt::IdleCommand { player })
+            && let Some(action) = duel.pass_action()
+        {
+            duel.apply(action)?;
+            actions.push(action);
+        }
+        held |= duel.prompt().is_none() && duel.result().is_none();
+    }
+    let status = duel.process();
+    let (position, printed) = (duel.position(), format!("{:?}", *duel));
+    Ok((position, printed, played_on(&mut duel, status, actions)?, held))
+}
+
+#[test]
+fn should_open_a_held_idle_prompt_as_passing_up_to_it() {
+    let elfnote = Vendor::leak(Vendor::elfnote).unwrap();
+    let scenarios = Vendor::leak(Vendor::scenarios).unwrap();
+    let [passes, holds] = [AtomicUsize::new(0), AtomicUsize::new(0)];
+    for (vendor, records) in [
+        (elfnote, records(elfnote, 0..20).unwrap()),
+        (scenarios, scenario_records(scenarios).unwrap()),
+    ] {
+        records.par_iter().enumerate().for_each(|(record_index, record)| {
+            each_state(vendor, record, |duel, index| {
+                if index % HOLD_STEP != 0 {
+                    return Ok(());
+                }
+                let turns = if index % (HOLD_STEP * TO_END) == 0 { TURNS } else { 1 };
+                let (position, printed, played, _) = pass_to_idle(duel, turns, false)?;
+                let (held_position, held_printed, held_played, held) = pass_to_idle(duel, turns, true)?;
+                if held_position != position || held_printed != printed || held_played != played {
+                    return Err(format!("at prompt {index}, passing {turns} turns: the held pass differs").into());
+                }
+                passes.fetch_add(1, Ordering::Relaxed);
+                holds.fetch_add(usize::from(held), Ordering::Relaxed);
+                Ok(())
+            })
+            .map_err(|error| format!("record {record_index}: {error}"))
+            .unwrap();
+        });
+    }
+    let [passes, holds] = [passes, holds].map(AtomicUsize::into_inner);
+    writeln!(std::io::stdout(), "{holds} of {passes} passes held an idle prompt").unwrap();
+    assert!(holds * 2 > passes, "{holds} of {passes} passes held an idle prompt");
 }

@@ -7,6 +7,7 @@ use crate::duel::{Duel, Status};
 use crate::list::List;
 use crate::playerop::sum_halves;
 use crate::processor::{AnnounceNumber, SelectOption, SelectSum, Unit};
+use crate::script::Hold;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Prompt {
@@ -690,6 +691,13 @@ impl Duel {
             return Some(Status::End);
         }
         (self.prompt().is_some() && !self.answer_passing()).then_some(Status::Awaiting)
+    }
+
+    // Stops the run where `player`'s next idle prompt would list its options, the duel waiting without a prompt; [Duel::process]
+    // lists them and opens the prompt as the run would have. A pass to that prompt then skips lists no one asks for. The hold
+    // ends with the duel.
+    pub fn hold_idle(&mut self, player: u8) {
+        self.replay.hold = Hold::Armed(player);
     }
 
     pub fn end_pass(&mut self, actions: &mut Vec<Action>) {

@@ -16,10 +16,12 @@ use crate::operations::{
     SendToReplace, SpSummon, SpSummonRule, SpSummonStep, SpellSet, SpellSetGroup, SummonRule, SwapControl, TossCoin, TossDice,
     TrapMonsterAdjust, XyzOverlay,
 };
-use crate::script::Procedure;
+use crate::script::{Hold, Procedure};
 
 // P::restart: the step counter wraps to 0 when the processor increments it.
 pub const RESTART: u16 = u16::MAX;
+// IdleCommand's step past the core's that lists the options of a prompt held before listing them ([Duel::hold_idle]).
+const HELD_IDLE: u16 = 14;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OcgStatus {
@@ -453,7 +455,11 @@ impl Duel {
 
     // After a step: a unit to run first, the end of the duel, or a script function left at a prompt.
     fn steps_end(&self) -> bool {
-        !self.core.subunits.is_empty() || self.result.is_some() || self.replay.prompt.is_some() || self.replay.interrupted
+        !self.core.subunits.is_empty()
+            || self.result.is_some()
+            || self.replay.prompt.is_some()
+            || self.replay.interrupted
+            || self.replay.hold == Hold::Reached
     }
 
     // Flip effects of the damage step wait until damage calculation, then trigger before the others.
@@ -1310,6 +1316,78 @@ impl Duel {
         }
     }
 
+    fn list_idle_options(&mut self, turn_player: u8) {
+        self.collect_command_activations(false);
+        // Until the memo closes below, the duel is only read: every check takes `&self`.
+        self.open_idle_memo();
+        self.core.summonable_cards.clear();
+        let mzone = self.player[turn_player].list_mzone;
+        for card in self.player[turn_player]
+            .list_hand
+            .clone()
+            .into_iter()
+            .chain(mzone.into_iter().flatten())
+        {
+            if self.is_can_be_summoned(card, turn_player, false, None, 0, 0x1f) {
+                self.core.summonable_cards.push(card);
+            }
+        }
+        self.core.spsummonable_cards.clear();
+        for effect in self.filter_field_effect_list::<64>(EFFECT_SPSUMMON_PROC) {
+            let card = self.get_handler(effect);
+            let controler = self.cards[card].current.controler;
+            if self.check_count_limit(effect, controler)
+                && controler == turn_player
+                && self.is_special_summonable(
+                    card,
+                    turn_player,
+                    0,
+                    Procedure {
+                        card,
+                        ..Procedure::default()
+                    },
+                )
+            {
+                self.core.spsummonable_cards.push(card);
+            }
+        }
+        for effect in self.filter_field_effect(EFFECT_SPSUMMON_PROC_G) {
+            let card = self.get_handler(effect);
+            if !self.check_count_limit(effect, turn_player)
+                || (self.cards[card].current.controler != turn_player && !self.effects[effect].is_flag(EFFECT_FLAG_BOTH_SIDE))
+            {
+                continue;
+            }
+            if self.check_procedure_condition(card, effect) {
+                self.core.spsummonable_cards.push(card);
+            }
+        }
+        self.core.repositionable_cards.clear();
+        for card in mzone.into_iter().flatten() {
+            let target = &self.cards[card];
+            if (target.is_position(POS_FACEUP | POS_FACEDOWN_ATTACK) && self.is_capable_change_position(card, turn_player))
+                || (target.is_position(POS_FACEDOWN) && self.is_can_be_flip_summoned(card, turn_player))
+            {
+                self.core.repositionable_cards.push(card);
+            }
+        }
+        self.core.msetable_cards.clear();
+        self.core.ssetable_cards.clear();
+        for card in self.player[turn_player].list_hand.clone() {
+            if self.is_setable_mzone(card, turn_player, false, None, 0, 0x1f) {
+                self.core.msetable_cards.push(card);
+            }
+            if self.is_setable_szone(card, turn_player, false) {
+                self.core.ssetable_cards.push(card);
+            }
+        }
+        self.idle_memo = IdleMemo::default();
+        self.emplace_process(SelectIdleCmd {
+            playerid: turn_player,
+            ..SelectIdleCmd::default()
+        });
+    }
+
     fn process_idle_command(&mut self, arg: &mut IdleCommand) -> bool {
         let turn_player = self.infos.turn_player;
         let phase = self.infos.phase;
@@ -1364,75 +1442,13 @@ impl Duel {
                     self.returns.set_i32(0, 7);
                     return false;
                 }
-                self.collect_command_activations(false);
-                // Until the memo closes below, the duel is only read: every check takes `&self`.
-                self.open_idle_memo();
-                self.core.summonable_cards.clear();
-                let mzone = self.player[turn_player].list_mzone;
-                for card in self.player[turn_player]
-                    .list_hand
-                    .clone()
-                    .into_iter()
-                    .chain(mzone.into_iter().flatten())
-                {
-                    if self.is_can_be_summoned(card, turn_player, false, None, 0, 0x1f) {
-                        self.core.summonable_cards.push(card);
-                    }
+                // Not with pending resets, which resuming would run before the lists instead of after.
+                if self.replay.hold == Hold::Armed(turn_player) && self.pending_resets.get_mut().is_empty() {
+                    self.replay.hold = Hold::Reached;
+                    arg.step = HELD_IDLE - 1;
+                    return false;
                 }
-                self.core.spsummonable_cards.clear();
-                for effect in self.filter_field_effect_list::<64>(EFFECT_SPSUMMON_PROC) {
-                    let card = self.get_handler(effect);
-                    let controler = self.cards[card].current.controler;
-                    if self.check_count_limit(effect, controler)
-                        && controler == turn_player
-                        && self.is_special_summonable(
-                            card,
-                            turn_player,
-                            0,
-                            Procedure {
-                                card,
-                                ..Procedure::default()
-                            },
-                        )
-                    {
-                        self.core.spsummonable_cards.push(card);
-                    }
-                }
-                for effect in self.filter_field_effect(EFFECT_SPSUMMON_PROC_G) {
-                    let card = self.get_handler(effect);
-                    if !self.check_count_limit(effect, turn_player)
-                        || (self.cards[card].current.controler != turn_player && !self.effects[effect].is_flag(EFFECT_FLAG_BOTH_SIDE))
-                    {
-                        continue;
-                    }
-                    if self.check_procedure_condition(card, effect) {
-                        self.core.spsummonable_cards.push(card);
-                    }
-                }
-                self.core.repositionable_cards.clear();
-                for card in mzone.into_iter().flatten() {
-                    let target = &self.cards[card];
-                    if (target.is_position(POS_FACEUP | POS_FACEDOWN_ATTACK) && self.is_capable_change_position(card, turn_player))
-                        || (target.is_position(POS_FACEDOWN) && self.is_can_be_flip_summoned(card, turn_player))
-                    {
-                        self.core.repositionable_cards.push(card);
-                    }
-                }
-                self.core.msetable_cards.clear();
-                self.core.ssetable_cards.clear();
-                for card in self.player[turn_player].list_hand.clone() {
-                    if self.is_setable_mzone(card, turn_player, false, None, 0, 0x1f) {
-                        self.core.msetable_cards.push(card);
-                    }
-                    if self.is_setable_szone(card, turn_player, false) {
-                        self.core.ssetable_cards.push(card);
-                    }
-                }
-                self.idle_memo = IdleMemo::default();
-                self.emplace_process(SelectIdleCmd {
-                    playerid: turn_player,
-                    ..SelectIdleCmd::default()
-                });
+                self.list_idle_options(turn_player);
                 false
             }
             1 => {
@@ -1588,6 +1604,11 @@ impl Duel {
                 }
                 self.cards[target].set_status(STATUS_FORM_CHANGED, true);
                 arg.step = RESTART;
+                false
+            }
+            HELD_IDLE => {
+                self.list_idle_options(turn_player);
+                arg.step = 0;
                 false
             }
             _ => true,

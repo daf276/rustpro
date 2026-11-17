@@ -410,14 +410,7 @@ impl Duel {
                     .filter(|&index| self.is_legal_counter_pick(counter_type, count, index))
                     .map(Action::Card),
             ),
-            Prompt::AnnounceCard { .. } => {
-                let cards = self.database.into_iter().flat_map(|database| database.cards());
-                actions.extend(
-                    cards
-                        .filter(|card| self.is_declarable(card.code))
-                        .map(|card| Action::Code(card.code)),
-                );
-            }
+            Prompt::AnnounceCard { .. } => actions.extend(self.declarable_codes().iter().copied().map(Action::Code)),
         }
     }
 

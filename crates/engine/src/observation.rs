@@ -502,12 +502,10 @@ impl Duel {
             })
             .collect();
         known.sort_unstable();
-        let declarable = || {
-            let codes = self.database.into_iter().flat_map(|database| database.cards());
-            codes.map(|card| card.code).filter(|&code| self.is_declarable(code))
-        };
-        let mut known_declarable = declarable().filter(|code| known.binary_search(code).is_ok()).peekable();
-        let fallback = known_declarable.peek().is_none().then(declarable).into_iter().flatten();
+        let codes = self.declarable_codes();
+        let declarable = codes.iter().copied();
+        let mut known_declarable = declarable.clone().filter(|code| known.binary_search(code).is_ok()).peekable();
+        let fallback = known_declarable.peek().is_none().then_some(declarable).into_iter().flatten();
         actions.extend(known_declarable.chain(fallback).take(MAX_DECLARED_CODES).map(Action::Code));
     }
 

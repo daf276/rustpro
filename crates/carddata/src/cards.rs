@@ -1,6 +1,7 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 #[cfg(feature = "cdb")]
 use std::path::Path;
+use std::sync::{Arc, PoisonError, RwLock};
 
 #[cfg(feature = "cdb")]
 use rusqlite::{Connection, OpenFlags, Row};
@@ -170,12 +171,14 @@ impl Card {
 #[derive(Debug, Default)]
 pub struct CardDatabase {
     cards: BTreeMap<u32, Card>,
+    declarable: RwLock<HashMap<Vec<u64>, Arc<[u32]>>>,
 }
 
 impl FromIterator<Card> for CardDatabase {
     fn from_iter<I: IntoIterator<Item = Card>>(cards: I) -> Self {
         Self {
             cards: cards.into_iter().map(|card| (card.code, card)).collect(),
+            ..Self::default()
         }
     }
 }
@@ -205,7 +208,7 @@ impl CardDatabase {
                 cards.insert(card.code, card);
             }
         }
-        Ok(Self { cards })
+        Ok(Self { cards, ..Self::default() })
     }
 
     pub fn get(&self, code: u32) -> Option<&Card> {
@@ -214,6 +217,17 @@ impl CardDatabase {
 
     pub fn cards(&self) -> impl Iterator<Item = &Card> {
         self.cards.values()
+    }
+
+    // The codes of the cards [Card::is_declarable] passes, in code order, scanned once per filter and shared by every duel.
+    pub fn declarable(&self, opcodes: &[u64]) -> Arc<[u32]> {
+        if let Some(codes) = self.declarable.read().unwrap_or_else(PoisonError::into_inner).get(opcodes) {
+            return codes.clone();
+        }
+        let declarable = self.cards().filter(|card| card.is_declarable(opcodes));
+        let codes: Arc<[u32]> = declarable.map(|card| card.code).collect();
+        let mut cache = self.declarable.write().unwrap_or_else(PoisonError::into_inner);
+        cache.entry(opcodes.to_vec()).or_insert(codes).clone()
     }
 }
 
@@ -225,4 +239,37 @@ fn binary(stack: &mut Vec<i64>, operator: impl Fn(i64, i64) -> i64) -> Option<i6
         return None;
     };
     Some(operator(left, right))
+}
+
+#[cfg(all(test, feature = "cdb"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_declare_the_codes_a_scan_declares_and_share_them_on_repeated_use() {
+        let cards = CardDatabase::load(&crate::vendor().join("BabelCDB")).unwrap();
+        let [monster, extra, any] = [TYPE_MONSTER, TYPE_EXTRA, TYPE_MONSTER | TYPE_SPELL | TYPE_TRAP].map(u64::from);
+        let programs: [&[u64]; 10] = [
+            &[],
+            &[any, OPCODE_ISTYPE],
+            &[extra, OPCODE_ISTYPE, OPCODE_NOT],
+            &[monster, OPCODE_ISTYPE, OPCODE_ALLOW_ALIASES, OPCODE_ALLOW_TOKENS],
+            &[74733322, OPCODE_ISCODE, 78734254, OPCODE_ISCODE, OPCODE_OR],
+            &[0x1c7, OPCODE_ISSETCARD, monster, OPCODE_ISTYPE, OPCODE_NOT, OPCODE_AND],
+            &[OPCODE_GETATTRIBUTE, 0x20, OPCODE_BAND, OPCODE_GETRACE, OPCODE_BOR],
+            &[OPCODE_GETCODE, 7, OPCODE_DIV, 3, OPCODE_LSHIFT, 1, OPCODE_BAND],
+            &[OPCODE_ADD, OPCODE_GETTYPE, 2, OPCODE_MUL, OPCODE_NEG, OPCODE_BNOT],
+            &[monster, OPCODE_ISTYPE, monster, OPCODE_ISTYPE],
+        ];
+        for opcodes in programs {
+            let scanned: Vec<u32> = cards
+                .cards()
+                .filter(|card| card.is_declarable(opcodes))
+                .map(|card| card.code)
+                .collect();
+            let declarable = cards.declarable(opcodes);
+            assert_eq!(&*declarable, scanned.as_slice(), "{opcodes:x?}");
+            assert!(Arc::ptr_eq(&declarable, &cards.declarable(opcodes)), "{opcodes:x?}");
+        }
+    }
 }

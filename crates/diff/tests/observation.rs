@@ -1,14 +1,16 @@
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::error::Error;
 use std::io::Write;
 use std::time::Instant;
 
 use carddata::{Deck, TYPE_EXTRA, TYPE_MONSTER};
 use diff::{
-    DiffError, Vendor, diff_duel, diff_duel_probed, diff_scenario_probed, each_state, median, records, sampled_cards, scenario_records,
+    DiffError, SCENARIOS, Vendor, diff_duel, diff_duel_probed, diff_scenario, diff_scenario_probed, each_state, median, records,
+    sampled_cards, scenario_records,
 };
 use engine::constants::*;
 use engine::{Action, DeterminizeError, Duel, DuelRecord, PlacedCard, Position, Prompt, SeenCard, Status, Xoshiro256StarStar};
+use oracle::{Message, frames, parse};
 use rand::rngs::StdRng;
 use rand::seq::{IndexedRandom, SliceRandom};
 use rand::{Rng, SeedableRng};
@@ -298,6 +300,44 @@ fn should_show_what_the_core_marks_public() {
     let cards = sampled_cards().into_par_iter();
     let scenarios = cards.map(|code| diff_scenario_probed(scenarios, code, 0, &mut probe_observations).map(drop));
     scenarios.collect::<std::result::Result<(), DiffError>>().unwrap();
+}
+
+// The cards whose ported scripts call Duel::announce_card.
+const DECLARING_CARDS: [u32; 12] = [
+    15800838, 28776350, 34298391, 41488249, 43711255, 49299410, 56506740, 64964750, 65681983, 74733322, 92501449, 98715423,
+];
+
+// The filters of the record's card declarations, at each of which the duel and a clone list the codes a scan declares.
+fn declaration_filters(vendor: &'static Vendor, record: &DuelRecord) -> Result<Vec<Vec<u64>>> {
+    let mut duel = Duel::from_position(&record.position, &vendor.cards, &LIBRARY, record.seed)?;
+    duel.set_trace(true);
+    duel.process();
+    let mut filters = Vec::new();
+    for &action in &record.actions {
+        let trace = duel.take_trace();
+        if let Some(Message::Prompt(oracle::Prompt::AnnounceCard { opcodes, .. })) = frames(&trace).last().map(parse).transpose()? {
+            let scanned = vendor.cards.cards().filter(|card| card.is_declarable(&opcodes));
+            let scanned: Vec<Action> = scanned.map(|card| Action::Code(card.code)).collect();
+            if duel.legal_actions() != scanned || duel.clone().legal_actions() != scanned {
+                return Err(format!("{opcodes:x?} lists other codes than a scan").into());
+            }
+            filters.push(opcodes);
+        }
+        duel.apply(action)?;
+    }
+    Ok(filters)
+}
+
+#[test]
+fn should_list_the_codes_a_scan_declares_at_every_recorded_card_declaration() {
+    let vendor = Vendor::leak(Vendor::scenarios).unwrap();
+    let scenarios = DECLARING_CARDS
+        .into_par_iter()
+        .flat_map(|card| (0..SCENARIOS).into_par_iter().map(move |index| (card, index)));
+    let filters = scenarios.map(|(card, index)| declaration_filters(vendor, &diff_scenario(vendor, card, index)?.record));
+    let filters: BTreeSet<Vec<u64>> = filters.collect::<Result<Vec<_>>>().unwrap().into_iter().flatten().collect();
+    writeln!(std::io::stdout(), "{} card declaration filters", filters.len()).unwrap();
+    assert!(filters.len() >= DECLARING_CARDS.len(), "{} card declaration filters", filters.len());
 }
 
 // Median times per state of Elfnote mirror matches at every STEP-th action (single thread).

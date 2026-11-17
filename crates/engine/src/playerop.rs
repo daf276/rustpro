@@ -1,4 +1,6 @@
 // Ports of playerop.cpp; DUEL_SIMPLE_AI is unsupported.
+use std::sync::Arc;
+
 use crate::buffer::Message;
 use crate::card::{CardId, LocInfo};
 use crate::constants::*;
@@ -285,6 +287,11 @@ impl Duel {
     pub(crate) fn is_declarable(&self, code: u32) -> bool {
         let card = self.database.and_then(|database| database.get(code));
         card.is_some_and(|card| card.is_declarable(&self.core.select_options))
+    }
+
+    pub(crate) fn declarable_codes(&self) -> Arc<[u32]> {
+        let codes = self.database.map(|database| database.declarable(&self.core.select_options));
+        codes.unwrap_or_default()
     }
 
     // The answer is the new position of each card, one byte per card.

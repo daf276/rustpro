@@ -1,7 +1,9 @@
+use std::cell::Cell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::num::{NonZeroU16, NonZeroU64};
 use std::ops::{Deref, Index, IndexMut};
+use std::sync::atomic::AtomicU64;
 
 use carddata::Card as CardData;
 
@@ -154,23 +156,82 @@ impl FromIterator<CardId> for CardSet {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct Cards {
     list: Vec<Card>,
+    // Per card, a number no other version of any card had, so that cards with equal stamps are equal across duels.
+    stamps: Vec<Cell<u64>>,
     scratch: Card,
+    // The cards changed since they were last stamped.
     changed: Marks<{ MAX_CARDS / 64 }>,
 }
 
-clone_by_field!(Cards { list, scratch, changed });
+// Without the stamps, which depend on the order duels were copied in.
+impl std::fmt::Debug for Cards {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Cards").field("list", &self.list).finish()
+    }
+}
+
+// A number above 0 that no call returns twice on any thread; threads take ranges, so that they rarely share a counter.
+fn next_block() -> u64 {
+    const RANGE: u64 = 1 << 16;
+    static RANGES: AtomicU64 = AtomicU64::new(1);
+    thread_local! {
+        static NEXT: Cell<u64> = const { Cell::new(0) };
+    }
+    NEXT.with(|next| {
+        let block = match next.get() {
+            0 => RANGES.fetch_add(1, std::sync::atomic::Ordering::Relaxed) * RANGE,
+            block => block,
+        };
+        next.set(if (block + 1).is_multiple_of(RANGE) { 0 } else { block + 1 });
+        block
+    })
+}
+
+impl Clone for Cards {
+    fn clone(&self) -> Self {
+        self.stamp();
+        Self {
+            list: self.list.clone(),
+            stamps: self.stamps.clone(),
+            scratch: self.scratch,
+            changed: Marks::default(),
+        }
+    }
+
+    // Copies only the cards whose stamps differ: duels copied from one another share those of the cards neither changed since.
+    fn clone_from(&mut self, source: &Self) {
+        source.stamp();
+        // Stamp 0 is never handed out, so the cards changed here are copied.
+        self.changed
+            .take()
+            .filter_map(|index| self.stamps.get(index))
+            .for_each(|stamp| stamp.set(0));
+        let common = self.list.len().min(source.list.len());
+        self.list.truncate(common);
+        self.stamps.truncate(common);
+        for ((to, mine), (from, theirs)) in self.list.iter_mut().zip(&self.stamps).zip(source.list.iter().zip(&source.stamps)) {
+            if mine != theirs {
+                *to = *from;
+                mine.set(theirs.get());
+            }
+        }
+        self.list.extend_from_slice(source.list.get(common..).unwrap_or_default());
+        self.stamps.extend_from_slice(source.stamps.get(common..).unwrap_or_default());
+    }
+}
 
 impl Cards {
-    // `source` must have been equal apart from the cards either changed since they last synced.
-    pub fn sync_from(&mut self, source: &Self) {
-        self.list.truncate(source.list.len());
-        self.list.extend_from_slice(source.list.get(self.list.len()..).unwrap_or_default());
-        for index in self.changed.take_with(&source.changed) {
-            if let (Some(to), Some(from)) = (self.list.get_mut(index), source.list.get(index)) {
-                *to = *from;
+    fn stamp(&self) {
+        let mut changed = self.changed.take().peekable();
+        if changed.peek().is_some() {
+            let block = next_block() * MAX_CARDS as u64;
+            for index in changed {
+                if let Some(stamp) = self.stamps.get(index) {
+                    stamp.set(block + index as u64);
+                }
             }
         }
     }
@@ -179,10 +240,11 @@ impl Cards {
         let id = CardId::new(u16::try_from(self.list.len()).ok().filter(|&id| usize::from(id) < MAX_CARDS)?);
         self.changed.mark(self.list.len());
         self.list.push(card);
+        self.stamps.push(Cell::new(0));
         Some(id)
     }
 
-    // Card::set_status for the statuses every adjustment sets again: an unchanged card stays unmarked for sync_from.
+    // Card::set_status for the statuses every adjustment sets again: an unchanged card keeps its stamp, so copies skip it.
     pub fn set_status(&mut self, card: CardId, status: u32, enabled: bool) {
         let current = self[card].status;
         if current != if enabled { current | status } else { current & !status } {
@@ -231,9 +293,8 @@ impl Index<CardId> for Cards {
 
 impl IndexMut<CardId> for Cards {
     fn index_mut(&mut self, card: CardId) -> &mut Card {
-        let Self { list, scratch, changed } = self;
-        changed.mark(card.index());
-        list.get_mut(card.index()).unwrap_or(scratch)
+        self.changed.mark(card.index());
+        self.list.get_mut(card.index()).unwrap_or(&mut self.scratch)
     }
 }
 
@@ -3518,5 +3579,38 @@ impl Duel {
         self.get_cards_in_zone(&mut cards, zone, current.controler);
         self.get_cards_in_zone(&mut cards, zone >> 16, 1 - current.controler);
         cards
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_copy_every_card_either_duel_changed_since_they_were_copied() {
+        let mut source = Cards::default();
+        let cards: Vec<CardId> = (0..20).filter_map(|_| source.push(Card::default())).collect();
+        let (first, second) = (cards.get(3).copied().unwrap(), cards.get(11).copied().unwrap());
+        let (mut copy, mut sibling) = (source.clone(), source.clone());
+        std::thread::scope(|scope| {
+            scope.spawn(|| {
+                copy[first].fieldid = 1;
+                copy.clone()
+            });
+            scope.spawn(|| {
+                sibling[first].fieldid = 2;
+                sibling[second].fieldid = 2;
+                sibling.push(Card::default());
+                sibling.clone()
+            });
+        });
+        let fieldids = |cards: &Cards| (cards[first].fieldid, cards[second].fieldid, cards.list.len());
+        assert_eq!([&source, &copy, &sibling].map(fieldids), [(0, 0, 20), (1, 0, 20), (2, 2, 21)]);
+        copy.clone_from(&sibling);
+        assert_eq!(format!("{copy:?}"), format!("{sibling:?}"));
+        copy[second].fieldid = 3;
+        sibling.clone_from(&copy);
+        source.clone_from(&sibling);
+        assert_eq!([&source, &copy, &sibling].map(fieldids), [(2, 3, 21); 3]);
     }
 }

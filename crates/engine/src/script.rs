@@ -1,12 +1,13 @@
 // Script entry points and coroutines: a prompting function bails, then reruns from a snapshot with the logged answers, muted;
 // under a runner with its own stack (crate fiber) it waits at the prompt instead, and only copies of the duel rerun.
+use std::cell::Cell;
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
 
 use crate::action::Action;
 use crate::buffer::ProgressiveBuffer;
 use crate::card::{CardId, CardSet};
 use crate::duel::Duel;
-use crate::effect::{EffectId, Event};
+use crate::effect::{EffectId, Effects, Event};
 use crate::list::List;
 use crate::processor::{OcgStatus, Unit};
 
@@ -187,6 +188,11 @@ pub enum Resumed {
 // or None for a duel it does not run, which interrupts the function to be rerun from its snapshot.
 pub static SUSPEND: OnceLock<fn(&mut Duel) -> Option<Resumed>> = OnceLock::new();
 
+thread_local! {
+    // The copy the last check_mut on this thread ran on, kept for its buffers and for the cards a copy into it can skip.
+    static CHECK_COPY: Cell<Option<Box<Duel>>> = const { Cell::new(None) };
+}
+
 // Panics only follow bugs, so a poisoned snapshot is used as it is.
 pub(crate) fn lock(snapshot: &Snapshot) -> MutexGuard<'_, Duel> {
     snapshot.lock().unwrap_or_else(PoisonError::into_inner)
@@ -312,7 +318,13 @@ impl Duel {
 
     // A check whose Lua registers and resets effects, run on a copy; brings back what later lookups see (ids, resets, messages, assumes).
     pub fn check_mut<T>(&self, check: impl FnOnce(&mut Duel) -> T) -> T {
-        let mut copy = self.clone();
+        let mut copy = match CHECK_COPY.try_with(Cell::take).ok().flatten() {
+            Some(mut copy) => {
+                copy.as_mut().clone_from(self);
+                copy
+            }
+            None => Box::new(self.clone()),
+        };
         copy.reset_pending();
         let result = check(&mut copy);
         self.trace.buffer.swap(&copy.trace.buffer);
@@ -335,6 +347,10 @@ impl Duel {
         if self.unported.get().is_none() {
             self.unported.set(copy.unported.get());
         }
+        // Kept sharing no effect chunk or snapshot, so that this duel's next write to them copies nothing.
+        copy.effects.clone_from(&Effects::default());
+        copy.replay.snapshot = None;
+        let _ = CHECK_COPY.try_with(|kept| kept.set(Some(copy)));
         result
     }
 
@@ -391,8 +407,8 @@ impl Duel {
             };
         }
         copy_fields!(self <- source;
-            sync: cards, effects, field_effects;
-            clone: player, infos, relations, returns, return_cards, nil_event, random, result, library, database, script_state,
+            sync: effects, field_effects;
+            clone: cards, player, infos, relations, returns, return_cards, nil_event, random, result, library, database, script_state,
                 script_groups, values_reset, fusion_check_additional, synchro_check_additional, ritual_summoning_level, assumes,
                 call_depth, pending_resets, material_cards, overlay_cards, counters, card_targets, card_relations, announced_cards,
                 attacked_cards, indestructable_effects, battled_cards, immune_effects, equip_cards, unported, core;

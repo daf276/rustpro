@@ -308,8 +308,8 @@ impl<T: Copy + Default, const N: usize> Shared<T, N> {
     }
 }
 
-// One bit per item changed since a copy last synced; `mark` wraps an index past 64 * W, keeping a branch out of every write.
-#[derive(Debug, Clone)]
+// One bit per item changed since it was last taken; `mark` wraps an index past 64 * W, keeping a branch out of every write.
+#[derive(Debug)]
 pub struct Marks<const W: usize>([Cell<u64>; W]);
 
 impl<const W: usize> Default for Marks<W> {
@@ -325,10 +325,9 @@ impl<const W: usize> Marks<W> {
         }
     }
 
-    // The indices marked here or in `other`, clearing both.
-    pub fn take_with<'a>(&'a self, other: &'a Self) -> impl Iterator<Item = usize> + 'a {
-        (self.0.iter().zip(&other.0).enumerate()).flat_map(|(word, (mine, theirs))| {
-            let mut bits = mine.take() | theirs.take();
+    // The indices marked, clearing them.
+    pub fn take(&self) -> impl Iterator<Item = usize> {
+        (self.0.each_ref().map(Cell::take).into_iter().enumerate()).flat_map(|(word, mut bits)| {
             std::iter::from_fn(move || {
                 let bit = (bits != 0).then(|| bits.trailing_zeros() as usize)?;
                 bits &= bits - 1;

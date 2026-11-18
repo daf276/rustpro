@@ -168,10 +168,17 @@ impl Card {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct CardDatabase {
     cards: BTreeMap<u32, Card>,
     declarable: RwLock<HashMap<Vec<u64>, Arc<[u32]>>>,
+}
+
+// The declarable cache is left out: every duel shares it, so a duel's print would change as other duels fill it.
+impl std::fmt::Debug for CardDatabase {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.debug_struct("CardDatabase").field("cards", &self.cards.len()).finish_non_exhaustive()
+    }
 }
 
 impl FromIterator<Card> for CardDatabase {

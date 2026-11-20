@@ -64,8 +64,9 @@ impl Deck {
     }
 }
 
-// (official, pre-release) codes of the BETB-EN cards BabelCDB still lists as pre-release; goes away when upstream migrates BETB-EN.
-const PRERELEASE_CODES: [(u32, u32); 16] = [
+// (official, pre-release) codes of the BETB-EN and Glorious Victors (DBGV) Raise Moon cards BabelCDB still lists as pre-release;
+// goes away when upstream migrates them.
+const PRERELEASE_CODES: [(u32, u32); 27] = [
     (99630221, 101402082),
     (25024929, 101402083),
     (52123534, 101402084),
@@ -82,6 +83,17 @@ const PRERELEASE_CODES: [(u32, u32); 16] = [
     (12845564, 101402095),
     (48340269, 101402096),
     (52245126, 101402101),
+    (75934716, 100458016),
+    (11333460, 100458017),
+    (47828069, 100458018),
+    (74212164, 100458019),
+    (10611873, 100458020),
+    (47605577, 100458021),
+    (73090586, 100458022),
+    (9484285, 100458023),
+    (46983930, 100458024),
+    (72978038, 100458025),
+    (9362643, 100458026),
 ];
 
 fn original<'a>(codes: impl Iterator<Item = &'a str>, cards: &CardDatabase) -> Vec<u32> {
@@ -233,5 +245,11 @@ mod tests {
 ";
         let deck = Deck::parse_ydk(ydk, &CardDatabase::default());
         assert_eq!((deck.main, deck.extra), (vec![10, 20], vec![30]));
+    }
+
+    #[test]
+    fn should_read_official_codes_as_the_pre_release_codes_the_database_lists() {
+        let deck = Deck::parse_ydk("#main\n99630221\n75934716\n#extra\n73090586\n", &CardDatabase::default());
+        assert_eq!((deck.main, deck.extra), (vec![101402082, 100458016], vec![100458022]));
     }
 }

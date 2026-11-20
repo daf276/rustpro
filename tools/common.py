@@ -7,8 +7,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 OFFICIAL = ROOT / "crates/scripts/src/official"
 CONSTANT_SOURCES = ["constant.lua", "card_counter_constants.lua", "archetype_setcode_constants.lua"]
-# The TCG-only Blazing Eternity cards, still under their pre-release codes upstream; goes away when BabelCDB migrates them.
-PRERELEASE_CDB = "prerelease-betb-en.cdb"
+# The TCG-only Blazing Eternity cards and the Raise Moon set, still under their pre-release codes upstream; goes away when
+# BabelCDB migrates them.
+PRERELEASE_CDBS = ("prerelease-betb-en.cdb", "prerelease-dbgv.cdb")
 
 
 def lua_constants():
@@ -28,7 +29,7 @@ def strip_parentheses(expression):
 def cdb(query):
     rows = {}
     for path in sorted((ROOT / "vendor/BabelCDB").glob("*.cdb")):
-        if path.name in ("cards.cdb", PRERELEASE_CDB) or path.name.startswith("release-"):
+        if path.name == "cards.cdb" or path.name in PRERELEASE_CDBS or path.name.startswith("release-"):
             with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)) as database:
                 rows.update((row[0], row) for row in database.execute(query))
     return list(rows.values())

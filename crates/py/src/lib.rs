@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError};
 
 use carddata::{CardDatabase, Deck as Decklist};
-use engine::{DUEL_MODE_MR5, DuelRecord, PlayerOptions, Position, PositionError, Prompt, Xoshiro256StarStar};
+use engine::{DUEL_MODE_MR5, DuelRecord, PlayerOptions, Position, PositionError, Prompt, ReplayError, Xoshiro256StarStar};
 use fiber::Fiber;
 use numpy::{PyArray1, PyArray2, PyArrayDyn, PyArrayMethods, PyReadonlyArray1};
 use pyo3::create_exception;
@@ -13,10 +13,10 @@ use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
-use scripts::LIBRARY;
+use scripts::{CARD_SCRIPTS, LIBRARY};
 use sim::{
-    ACTION_FEATURES, ACTIONS, AutoAdvance, CARD_FEATURES, CHAIN_FEATURES, GLOBAL_FEATURES, MAX_CHAIN, MAX_OBS_CARDS, Options, PROMPTS,
-    SHAPES, Section, find, indices,
+    ACTION_FEATURES, ACTIONS, AutoAdvance, CARD_FEATURES, CHAIN_FEATURES, GLOBAL_FEATURES, Group, HIDDEN, MAX_CHAIN, MAX_OBS_CARDS, OTHER,
+    Options, PROMPTS, Place, SHAPES, Section, Tracker, find, indices,
 };
 
 create_exception!(ygo_sim, Error, PyException);
@@ -148,45 +148,72 @@ impl Tensors {
     }
 }
 
-/// One duel, for search: `record` holds how it came about unless it was taken from a batch or determinized.
+/// One duel, for search: `record` holds how it came about unless it was taken from a batch or determinized. A tracker per
+/// player follows what it knows (`features`); a determinized duel keeps the trackers of the duel it was drawn from.
 #[pyclass]
 struct Duel {
     duel: Mutex<Fiber>,
+    trackers: [Tracker; 2],
     record: Option<DuelRecord>,
 }
 
 impl Duel {
     fn replay(database: &Database, record: DuelRecord) -> PyResult<Self> {
-        Ok(Self {
-            duel: Mutex::new(Fiber::new(record.replay(database.0, &LIBRARY).map_err(fail)?)),
-            record: Some(record),
-        })
+        let mut duel = engine::Duel::from_position(&record.position, database.0, &LIBRARY, record.seed).map_err(fail)?;
+        duel.set_trace(true);
+        let mut replayed = Self {
+            trackers: [0, 1].map(|player| Tracker::new(&duel, player)),
+            duel: Mutex::new(Fiber::new(duel)),
+            record: None,
+        };
+        replayed.duel().process();
+        replayed.track();
+        for (index, &action) in record.actions.iter().enumerate() {
+            replayed
+                .duel()
+                .apply(action)
+                .map_err(|error| fail(ReplayError::Action { index, error }))?;
+            replayed.track();
+        }
+        replayed.record = Some(record);
+        Ok(replayed)
     }
 
     fn duel(&mut self) -> &mut Fiber {
         exclusive(&mut self.duel)
     }
 
+    fn track(&mut self) {
+        let duel = exclusive(&mut self.duel);
+        let messages = duel.take_trace();
+        self.trackers.iter_mut().for_each(|tracker| tracker.update(&messages, duel));
+    }
+
     // A copy written into `out`, reusing its buffers, if given; else a new duel `make` builds.
     fn copy(
         py: Python<'_>,
         out: Option<Py<Self>>,
-        record: Option<&DuelRecord>,
+        (record, trackers): (Option<&DuelRecord>, &[Tracker; 2]),
         write: impl FnOnce(&mut engine::Duel) -> PyResult<()>,
         make: impl FnOnce() -> PyResult<engine::Duel>,
     ) -> PyResult<Py<Self>> {
         let Some(out) = out else {
-            let duel = Mutex::new(Fiber::new(make()?));
+            let mut duel = make()?;
+            duel.set_trace(true);
             return Py::new(
                 py,
                 Self {
-                    duel,
+                    duel: Mutex::new(Fiber::new(duel)),
+                    trackers: trackers.clone(),
                     record: record.cloned(),
                 },
             );
         };
         let mut target = out.try_borrow_mut(py)?;
-        write(target.duel().duel_mut())?;
+        let duel = target.duel().duel_mut();
+        write(duel)?;
+        duel.set_trace(true);
+        target.trackers.clone_from(trackers);
         target.record = record.cloned();
         drop(target);
         Ok(out)
@@ -217,7 +244,8 @@ impl Duel {
     #[pyo3(signature = (out = None))]
     fn clone(&mut self, py: Python<'_>, out: Option<Py<Self>>) -> PyResult<Py<Self>> {
         let duel = &**exclusive(&mut self.duel);
-        Self::copy(py, out, self.record.as_ref(), |target| copy_into(duel, target), || Ok(duel.clone()))
+        let copied = (self.record.as_ref(), &self.trackers);
+        Self::copy(py, out, copied, |target| copy_into(duel, target), || Ok(duel.clone()))
     }
 
     /// The player the prompt waits for, None once the duel ended.
@@ -242,8 +270,18 @@ impl Duel {
         let duel = self.duel();
         let action = find(&duel.policy_actions(), index).ok_or_else(|| fail(format!("index {index} is not a legal action")))?;
         duel.apply(action).map_err(fail)?;
+        self.track();
         self.record.iter_mut().for_each(|record| record.actions.push(action));
         Ok(())
+    }
+
+    /// The sparse features of what `player` knows and remembers, sorted uint32 indices (see Vocabulary.groups).
+    fn features<'py>(&mut self, py: Python<'py>, vocabulary: &Vocabulary, player: u8) -> PyResult<Bound<'py, PyArray1<u32>>> {
+        let tracker = self.trackers.get(usize::from(player));
+        let tracker = tracker.ok_or_else(|| fail(format!("player {player} is not in the duel")))?;
+        let mut bag = Vec::new();
+        sim::features(exclusive(&mut self.duel), tracker, &vocabulary.0, &mut bag);
+        Ok(PyArray1::from_vec(py, bag))
     }
 
     /// Writes what `player` sees into row `row` of `out`, a new Tensors of one row if None.
@@ -260,9 +298,11 @@ impl Duel {
     #[pyo3(signature = (player, seed, pool, out = None))]
     fn determinize(&mut self, py: Python<'_>, player: u8, seed: u64, pool: Deck, out: Option<Py<Self>>) -> PyResult<Py<Self>> {
         let rng = || Xoshiro256StarStar::new(StdRng::seed_from_u64(seed).random());
-        let duel = &**self.duel();
+        let duel = &**exclusive(&mut self.duel);
         let write = |target: &mut engine::Duel| duel.determinize_into(player, &mut rng(), &pool.0, target).map_err(fail);
-        Self::copy(py, out, None, write, || duel.determinize(player, &mut rng(), &pool.0).map_err(fail))
+        Self::copy(py, out, (None, &self.trackers), write, || {
+            duel.determinize(player, &mut rng(), &pool.0).map_err(fail)
+        })
     }
 
     fn position<'py>(&mut self, py: Python<'py>) -> PyResult<Bound<'py, PyBytes>> {
@@ -325,9 +365,10 @@ struct Batch {
 
 #[pymethods]
 impl Batch {
-    /// `decks` holds one deck pair for every slot or one per slot; `auto_advance` is "off", "own" or "both".
+    /// `decks` holds one deck pair for every slot or one per slot; `auto_advance` is "off", "own" or "both"; `track` keeps a
+    /// tracker per player and slot for `features`.
     #[new]
-    #[pyo3(signature = (database, decks, size, seed = 0, auto_advance = "off", max_steps = None, duels = None))]
+    #[pyo3(signature = (database, decks, size, seed = 0, auto_advance = "off", max_steps = None, duels = None, track = false))]
     fn new(
         database: &Database,
         decks: Vec<(Deck, Deck)>,
@@ -336,6 +377,7 @@ impl Batch {
         auto_advance: &str,
         max_steps: Option<u64>,
         duels: Option<u64>,
+        track: bool,
     ) -> PyResult<Self> {
         if decks.len() != 1 && decks.len() != size {
             return Err(fail(format!("{} deck pairs for {size} slots", decks.len())));
@@ -355,6 +397,7 @@ impl Batch {
             options: Options {
                 auto_advance,
                 max_steps: max_steps.unwrap_or(u64::MAX),
+                track,
             },
         };
         Ok(Self {
@@ -427,15 +470,117 @@ impl Batch {
         Ok(out)
     }
 
-    /// A copy of the slot's duel, written into `out` if given; None for a retired slot.
+    /// Each slot's features for the player its prompt waits for, as EmbeddingBag takes them: the uint32 indices of all slots
+    /// and the int64 offset where each slot's start (a retired slot's are empty). Needs `track`.
+    fn features<'py>(&mut self, py: Python<'py>, vocabulary: &Vocabulary) -> PyResult<Bags<'py>> {
+        let batch = exclusive(&mut self.batch);
+        let (mut indices, mut starts) = (Vec::new(), Vec::new());
+        py.detach(|| batch.features(&vocabulary.0, &mut indices, &mut starts))
+            .map_err(fail)?;
+        let offsets = starts.into_iter().map(|start| start as i64).collect();
+        Ok((PyArray1::from_vec(py, indices), PyArray1::from_vec(py, offsets)))
+    }
+
+    /// A copy of the slot's duel, written into `out` if given; None for a retired slot. Its trackers are the slot's, or start
+    /// from the copy if the batch does not track.
     #[pyo3(signature = (slot, out = None))]
     fn duel(&mut self, py: Python<'_>, slot: usize, out: Option<Py<Duel>>) -> PyResult<Option<Py<Duel>>> {
-        let Some(duel) = exclusive(&mut self.batch).duel(slot) else {
+        let batch = exclusive(&mut self.batch);
+        let Some(duel) = batch.duel(slot) else {
             return Ok(None);
         };
-        Duel::copy(py, out, None, |target| copy_into(duel, target), || Ok(duel.clone())).map(Some)
+        let tracker = |player| batch.tracker(slot, player).cloned().unwrap_or_else(|| Tracker::new(duel, player));
+        let trackers = [tracker(0), tracker(1)];
+        Duel::copy(py, out, (None, &trackers), |target| copy_into(duel, target), || Ok(duel.clone())).map(Some)
     }
 }
+
+// Flat feature indices and where each bag starts.
+type Bags<'py> = (Bound<'py, PyArray1<u32>>, Bound<'py, PyArray1<i64>>);
+
+/// Card codes to feature rows: HIDDEN, OTHER, then every card with a ported script in ascending order, or the saved `codes`
+/// a network was trained with.
+#[pyclass(frozen)]
+struct Vocabulary(sim::Vocabulary);
+
+#[pymethods]
+impl Vocabulary {
+    #[new]
+    #[pyo3(signature = (codes = None))]
+    fn new(codes: Option<Vec<u32>>) -> Self {
+        let codes = codes.unwrap_or_else(|| CARD_SCRIPTS.iter().map(|card| card.code).collect());
+        Self(sim::Vocabulary::new(codes))
+    }
+
+    /// The codes of rows 2 onwards.
+    #[getter]
+    fn codes<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<u32>> {
+        PyArray1::from_slice(py, self.0.codes())
+    }
+
+    #[getter]
+    fn rows(&self) -> usize {
+        self.0.rows()
+    }
+
+    /// The number of features, one past the largest index.
+    #[getter]
+    fn size(&self) -> usize {
+        self.0.features()
+    }
+
+    /// Per feature group its name, first index and size; a Card feature is (row * 2 + player) * len(PLACES) + place, player 0
+    /// the one observing.
+    #[getter]
+    fn groups(&self) -> Vec<(String, usize, usize)> {
+        let rows = self.0.rows();
+        Group::ALL
+            .map(|group| (format!("{group:?}"), self.0.start(group), group.size(rows)))
+            .to_vec()
+    }
+
+    /// Per row the database's ATTRIBUTES as int64 [rows, len(ATTRIBUTES)], zeros for HIDDEN, OTHER and unknown codes.
+    fn attributes<'py>(&self, py: Python<'py>, database: &Database) -> PyResult<Bound<'py, PyArray2<i64>>> {
+        let row = |code: u32| {
+            let Some(card) = database.0.get(code) else {
+                return vec![0; ATTRIBUTES.len()];
+            };
+            let [first, second, third, fourth, _] = card.setcodes.map(i64::from);
+            let numbers = [
+                card.code,
+                card.alias,
+                card.card_type,
+                card.level,
+                card.lscale,
+                card.rscale,
+                card.attribute,
+            ];
+            let numbers = numbers.map(i64::from).into_iter();
+            let rest = [card.race as i64, card.attack.into(), card.defense.into(), card.link_marker.into()];
+            numbers.chain(rest).chain([first, second, third, fourth]).collect()
+        };
+        let rows: Vec<Vec<i64>> = [0, 0].into_iter().chain(self.0.codes().iter().copied()).map(row).collect();
+        PyArray2::from_vec2(py, &rows).map_err(fail)
+    }
+}
+
+const ATTRIBUTES: [&str; 15] = [
+    "code",
+    "alias",
+    "type",
+    "level",
+    "lscale",
+    "rscale",
+    "attribute",
+    "race",
+    "attack",
+    "defense",
+    "link_marker",
+    "setcode1",
+    "setcode2",
+    "setcode3",
+    "setcode4",
+];
 
 impl From<sim::Outcome> for Outcome {
     fn from(outcome: sim::Outcome) -> Self {
@@ -464,6 +609,7 @@ fn ygo_sim(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<Batch>()?;
     module.add_class::<Tensors>()?;
     module.add_class::<Outcome>()?;
+    module.add_class::<Vocabulary>()?;
     module.add("Error", module.py().get_type::<Error>())?;
     module.add("ACTIONS", ACTIONS)?;
     module.add("MAX_OBS_CARDS", MAX_OBS_CARDS)?;
@@ -475,5 +621,9 @@ fn ygo_sim(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add("PROMPTS", PROMPTS)?;
     // Per section of the action indices its name, first index and number of slots.
     let sections = Section::ALL.map(|section| (format!("{section:?}"), section.start(), section.slots()));
-    module.add("SECTIONS", sections)
+    module.add("SECTIONS", sections)?;
+    module.add("PLACES", Place::ALL.map(|place| format!("{place:?}")))?;
+    module.add("ATTRIBUTES", ATTRIBUTES)?;
+    module.add("HIDDEN", HIDDEN)?;
+    module.add("OTHER", OTHER)
 }

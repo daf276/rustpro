@@ -107,6 +107,26 @@ def test_determinize_shows_no_more_than_the_observation(database, deck):
     assert ygo_sim.Duel.from_position(database, duel.position(), 1).acting is not None
 
 
+def test_features_bag_what_each_acting_player_knows(database, deck):
+    vocabulary = ygo_sim.Vocabulary()
+    _, start, size = vocabulary.groups[-1]
+    assert vocabulary.groups[0][:2] == ("Card", 0) and start + size == vocabulary.size
+    assert vocabulary.attributes(database).shape == (vocabulary.rows, len(ygo_sim.ATTRIBUTES))
+    assert (ygo_sim.Vocabulary(list(vocabulary.codes)).codes == vocabulary.codes).all()
+    batch = ygo_sim.Batch(database, [(deck, deck)], 8, seed=3, track=True)
+    rng = np.random.default_rng(0)
+    for _ in range(100):
+        indices, offsets = batch.features(vocabulary)
+        assert (indices.dtype, offsets.shape) == (np.uint32, (8,)) and (indices < vocabulary.size).all()
+        for slot, (acting, bag) in enumerate(zip(batch.acting(), np.split(indices, offsets[1:]))):
+            assert (batch.duel(slot).features(vocabulary, acting) == bag).all()
+        batch.step(uniform(batch.masks(), rng))
+    duel = ygo_sim.Duel(database, (deck, deck), 21)
+    assert (duel.features(vocabulary, 1) == duel.clone().features(vocabulary, 1)).all()
+    with pytest.raises(ygo_sim.Error, match="does not track"):
+        ygo_sim.Batch(database, [(deck, deck)], 2).features(vocabulary)
+
+
 def test_throughput(database, deck):
     duels = int(os.environ.get("YGO_SIM_DUELS", SIZE))
     threads = os.environ.get("RAYON_NUM_THREADS", "all")

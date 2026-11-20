@@ -1,8 +1,7 @@
 use std::collections::BTreeMap;
 use std::io::Write;
-use std::sync::OnceLock;
 
-use diff::{Vendor, diff_scenario, each_state, records, scenario_records};
+use diff::{Vendor, all_records, diff_scenario, each_state, records};
 use engine::{Action, Duel, DuelRecord, Observation, Prompt, SeenCard};
 use fiber::Fiber;
 use rand::rngs::StdRng;
@@ -12,19 +11,6 @@ use scripts::LIBRARY;
 use sim::*;
 
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
-
-// Elfnote mirror records and one scenario per ported card, built once for the tests that share them.
-fn all_records() -> Result<&'static [(&'static Vendor, DuelRecord)]> {
-    static RECORDS: OnceLock<std::result::Result<Vec<(&'static Vendor, DuelRecord)>, String>> = OnceLock::new();
-    let build = || -> Result<Vec<_>> {
-        let (elfnote, scenarios) = (Vendor::leak(Vendor::elfnote)?, Vendor::leak(Vendor::scenarios)?);
-        let elfnote_records = records(elfnote, 0..40)?.into_iter().map(|record| (elfnote, record));
-        let scenario_records = scenario_records(scenarios)?.into_iter().map(|record| (scenarios, record));
-        Ok(elfnote_records.chain(scenario_records).collect())
-    };
-    let records = RECORDS.get_or_init(|| build().map_err(|error| error.to_string()));
-    Ok(records.as_ref().map_err(String::clone)?)
-}
 
 // Legal actions get distinct indices that decode back, the mask holds them and the choices line up; tracks longest lists.
 fn check_encoding(duel: &Duel, index: usize, longest: &mut BTreeMap<Section, usize>) -> Result {
@@ -305,6 +291,7 @@ fn should_step_a_batch_like_each_duel_alone() {
         let options = Options {
             auto_advance,
             max_steps: MAX_STEPS,
+            track: true,
         };
         let mut batch = Batch::new(SLOTS, options, generator).unwrap();
         let mut rngs: Vec<StdRng> = (0..SLOTS as u64).map(StdRng::seed_from_u64).collect();

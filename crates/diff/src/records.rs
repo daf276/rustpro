@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::ops::Range;
+use std::sync::OnceLock;
 
 use engine::{Duel, DuelRecord};
 use rayon::prelude::*;
@@ -18,6 +19,19 @@ pub fn scenario_records(vendor: &'static Vendor) -> Result<Vec<DuelRecord>, Diff
         .into_par_iter()
         .map(|code| Ok(diff_scenario(vendor, code, 0)?.record))
         .collect()
+}
+
+// Elfnote mirror records and one scenario per ported card, built once per process for the tests that share them.
+pub fn all_records() -> Result<&'static [(&'static Vendor, DuelRecord)], String> {
+    static RECORDS: OnceLock<Result<Vec<(&'static Vendor, DuelRecord)>, String>> = OnceLock::new();
+    let build = || -> Result<Vec<_>, DiffError> {
+        let (elfnote, scenarios) = (Vendor::leak(Vendor::elfnote)?, Vendor::leak(Vendor::scenarios)?);
+        let elfnote_records = records(elfnote, 0..40)?.into_iter().map(|record| (elfnote, record));
+        let scenario_records = scenario_records(scenarios)?.into_iter().map(|record| (scenarios, record));
+        Ok(elfnote_records.chain(scenario_records).collect())
+    };
+    let records = RECORDS.get_or_init(|| build().map_err(|error| error.to_string()));
+    records.as_deref().map_err(String::clone)
 }
 
 // Calls `check` at every prompt of the record, before the recorded action.

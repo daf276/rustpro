@@ -19,7 +19,7 @@ use rayon::prelude::*;
 use scripts::CLASSIC_CARDS;
 use scripts::testing::Check;
 
-pub use records::{each_state, median, records, scenario_records};
+pub use records::{all_records, each_state, median, records, scenario_records};
 pub use scenario::Scenario;
 
 mod cache;

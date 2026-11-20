@@ -94,6 +94,7 @@ pub fn run_batch(
     let options = Options {
         auto_advance,
         max_steps: MAX_ACTIONS,
+        track: false,
     };
     let mut rngs: Vec<StdRng> = (0..size as u64).map(StdRng::seed_from_u64).collect();
     let started = Instant::now();

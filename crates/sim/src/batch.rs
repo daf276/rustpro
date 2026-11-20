@@ -3,7 +3,9 @@ use fiber::Fiber;
 use rayon::prelude::*;
 
 use crate::encoding::{ACTIONS, EncodingError, find, write_mask};
+use crate::features::{Vocabulary, features};
 use crate::tensor::Tensors;
+use crate::tracker::Tracker;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AutoAdvance {
@@ -37,6 +39,8 @@ pub struct Options {
     pub auto_advance: AutoAdvance,
     // A duel cut off after this many policy actions ends without a result.
     pub max_steps: u64,
+    // A [Tracker] per player in each slot, for [Batch::features]; costs the duel's message trace.
+    pub track: bool,
 }
 
 impl Default for Options {
@@ -44,6 +48,7 @@ impl Default for Options {
         Self {
             auto_advance: AutoAdvance::Off,
             max_steps: u64::MAX,
+            track: false,
         }
     }
 }
@@ -72,11 +77,14 @@ pub enum BatchError {
     Setup { slot: usize, error: PositionError },
     #[error("buffers for {rows} observations for {slots} slots")]
     Rows { rows: usize, slots: usize },
+    #[error("the batch does not track its duels")]
+    Untracked,
 }
 
 // No duel once the generator has retired the slot.
 struct Slot {
     duel: Option<Fiber>,
+    trackers: Option<[Tracker; 2]>,
     legal: Vec<Action>,
     episode: u64,
     steps: u64,
@@ -98,6 +106,7 @@ impl<G: Fn(usize, u64) -> Generated + Sync> Batch<G> {
     pub fn new(size: usize, options: Options, generator: G) -> Result<Self, BatchError> {
         let slot = |_| Slot {
             duel: None,
+            trackers: None,
             legal: Vec::new(),
             episode: 0,
             steps: 0,
@@ -197,6 +206,45 @@ impl<G> Batch<G> {
             .par_write(self.slots.par_iter_mut().map(|slot| slot.duel.as_mut()))
             .map_err(|(slot, error)| BatchError::Encoding { slot, error })
     }
+
+    pub fn tracker(&self, slot: usize, player: u8) -> Option<&Tracker> {
+        Some(of(self.slots.get(slot)?.trackers.as_ref()?, player))
+    }
+
+    // Appends each slot's [features] for the player its prompt waits for and pushes where they start; empty for a retired slot.
+    pub fn features(&mut self, vocabulary: &Vocabulary, out: &mut Vec<u32>, starts: &mut Vec<usize>) -> Result<(), BatchError> {
+        if !self.options.track {
+            return Err(BatchError::Untracked);
+        }
+        let bags: Vec<Vec<u32>> = (self.slots.par_iter_mut())
+            .map(|slot| {
+                let mut bag = Vec::new();
+                if let (Some(duel), Some(trackers)) = (&slot.duel, &slot.trackers)
+                    && let Some(prompt) = duel.prompt()
+                {
+                    features(duel, of(trackers, prompt.player()), vocabulary, &mut bag);
+                }
+                bag
+            })
+            .collect();
+        for bag in bags {
+            starts.push(out.len());
+            out.extend(bag);
+        }
+        Ok(())
+    }
+}
+
+fn track(duel: &mut Fiber, trackers: &mut Option<[Tracker; 2]>) {
+    if let Some(trackers) = trackers {
+        let messages = duel.take_trace();
+        trackers.iter_mut().for_each(|tracker| tracker.update(&messages, duel));
+    }
+}
+
+fn of(trackers: &[Tracker; 2], player: u8) -> &Tracker {
+    let [first, second] = trackers;
+    if player == 0 { first } else { second }
 }
 
 impl Slot {
@@ -209,14 +257,21 @@ impl Slot {
     ) -> Result<(), BatchError> {
         loop {
             self.legal.clear();
-            self.duel = generator(index, self.episode)
-                .map_err(|error| BatchError::Setup { slot: index, error })?
-                .map(Fiber::new);
+            let generated = generator(index, self.episode).map_err(|error| BatchError::Setup { slot: index, error })?;
+            self.trackers = None;
+            self.duel = generated.map(|mut duel| {
+                if options.track {
+                    duel.set_trace(true);
+                    self.trackers = Some([0, 1].map(|player| Tracker::new(&duel, player)));
+                }
+                Fiber::new(duel)
+            });
             let Some(duel) = &mut self.duel else { break };
             duel.process();
             let player = duel.prompt().map_or(0, Prompt::player);
             self.skipped = auto_advance(duel, options.auto_advance, player, &mut self.legal)
                 .map_err(|error| BatchError::Action { slot: index, error })?;
+            track(duel, &mut self.trackers);
             self.steps = 0;
             if !self.legal.is_empty() {
                 break;
@@ -234,6 +289,7 @@ impl Slot {
             .apply(action)
             .and_then(|_| auto_advance(duel, options.auto_advance, player, &mut self.legal));
         self.skipped += advanced.map_err(|error| BatchError::Action { slot, error })?;
+        track(duel, &mut self.trackers);
         self.steps += 1;
         if !self.legal.is_empty() && self.steps < options.max_steps {
             return Ok(None);

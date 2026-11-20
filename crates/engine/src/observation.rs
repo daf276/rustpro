@@ -347,6 +347,11 @@ impl Duel {
         }
     }
 
+    // The Monster Zones face-up Link monsters point to, `player`'s in bits 0-6 and the opponent's in bits 16-22.
+    pub fn linked_zones(&self, player: u8) -> u32 {
+        self.get_linked_zone(&self.zones(), player & 1, true) & 0x007f_007f
+    }
+
     // Per player: Deck, hand, Monster Zones (each Xyz Monster then its materials), S/T Zones, GY, banished and Extra Deck.
     pub(crate) fn located_cards(&self) -> List<CardId, MAX_CARDS> {
         let mut cards = List::default();

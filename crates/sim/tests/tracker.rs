@@ -120,13 +120,14 @@ fn check_features(tracked: &Tracked, player: u8) -> Result<usize> {
 #[test]
 fn should_claim_only_what_is_true_and_encode_in_range() {
     let records = all_records().unwrap();
-    let checked = records.par_iter().map(|(vendor, record)| -> Result<[usize; 4]> {
+    let checked = records.par_iter().enumerate().map(|(index, (vendor, record))| -> Result<[usize; 4]> {
         let mut tracked = Tracked::new(vendor, record)?;
         let [mut states, mut known, mut features] = [0; 3];
-        for &action in &record.actions {
+        for (at, &action) in record.actions.iter().enumerate() {
+            let context = |error: Box<dyn std::error::Error + Send + Sync>| format!("record {index}, action {at}: {error}");
             for player in 0..2 {
-                known += check_truth(&tracked.duel, tracked.tracker(player), &record.position)?;
-                features += check_features(&tracked, player)?;
+                known += check_truth(&tracked.duel, tracked.tracker(player), &record.position).map_err(context)?;
+                features += check_features(&tracked, player).map_err(context)?;
             }
             states += 2;
             tracked.apply(action)?;
@@ -135,6 +136,9 @@ fn should_claim_only_what_is_true_and_encode_in_range() {
         Ok([states, known, features, drift])
     });
     let checked: Vec<[usize; 4]> = checked.collect::<Result<_>>().unwrap();
+    let drifted: Vec<usize> = (checked.iter().enumerate())
+        .filter_map(|(index, &[.., drift])| (drift > 0).then_some(index))
+        .collect();
     let sum = |[a, b, c, d]: [usize; 4], [e, f, g, h]: [usize; 4]| [a + e, b + f, c + g, d + h];
     let [states, known, features, drift] = checked.into_iter().fold([0; 4], sum);
     writeln!(
@@ -144,7 +148,7 @@ fn should_claim_only_what_is_true_and_encode_in_range() {
         features as f64 / states as f64
     )
     .unwrap();
-    assert_eq!(drift, 0);
+    assert!(drifted.is_empty(), "drifts in records {drifted:?}");
 }
 
 // The opponent's hand and Deck cards hidden from `player`, as the copy of `duel` that swaps them in pairs of different codes, if any.

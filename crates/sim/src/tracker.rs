@@ -4,6 +4,9 @@
 //   its cards of unknown code ("unplaced"); a shuffle the player does not see moves all its codes there.
 // - A card leaving a pile from a place of unknown code takes one copy of its shown code off the unplaced codes, or if unseen
 //   one copy of each code, as each could have been it; the codes stay in [Tracker::shown].
+// - A pile also keeps which of its places hold the other player's cards (an opponent's card added to a hand); a shuffle moves
+//   their codes among the pile's other cards of that player, and a card of such a code found in the pile is taken for one; a
+//   card leaving it unseen while it holds such codes has an unknown owner.
 // - Field zones keep their card's code and owner, so a card followed from a known place stays known face-down.
 // - [Tracker::shown]: per code of the opponent's cards, the most copies known at once, or 1 once seen.
 use std::collections::BTreeMap;
@@ -19,8 +22,17 @@ const ZONES: usize = 8;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct Pile {
-    codes: Vec<u32>,
+    places: Vec<Slot>,
     unplaced: Vec<u32>,
+    // The codes among `unplaced` of the other player's cards.
+    foreign: Vec<u32>,
+}
+
+// A pile's place: the code of its card (0 unknown) and whether the card is the other player's.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct Slot {
+    code: u32,
+    foreign: bool,
 }
 
 // A card as it moves: its code (0 unknown), owner and, on the field, its Xyz materials.
@@ -122,48 +134,54 @@ fn zone_index(location: u8) -> Option<usize> {
     }
 }
 
-fn remove_one(codes: &mut Vec<u32>, code: u32) {
-    if let Some(at) = codes.iter().position(|&other| other == code) {
-        codes.swap_remove(at);
-    }
+fn remove_one(codes: &mut Vec<u32>, code: u32) -> bool {
+    let at = codes.iter().position(|&other| other == code);
+    at.map(|at| codes.swap_remove(at)).is_some()
 }
 
 impl Pile {
-    // Takes the card at `sequence`, `code` as the message shows it; returns its code if known.
-    fn take(&mut self, sequence: usize, code: u32) -> u32 {
-        let known = if sequence < self.codes.len() {
-            self.codes.remove(sequence)
-        } else {
-            0
-        };
-        match (known, code) {
+    // Takes the card at `sequence`, `code` as the message shows it; returns its code and whether it is the other player's, if
+    // known.
+    fn take(&mut self, sequence: usize, code: u32) -> (u32, Option<bool>) {
+        let known = if sequence < self.places.len() { self.places.remove(sequence) } else { Slot::default() };
+        match (known.code, code) {
             (0, 0) => {
                 self.unplaced.sort_unstable();
                 let mut previous = None;
                 self.unplaced.retain(|&code| previous.replace(code) == Some(code));
+                (0, (known.foreign || self.foreign.is_empty()).then_some(known.foreign))
             }
-            (0, code) => remove_one(&mut self.unplaced, code),
-            _ => {}
+            (0, code) => {
+                remove_one(&mut self.unplaced, code);
+                (code, Some(known.foreign || remove_one(&mut self.foreign, code)))
+            }
+            (known_code, _) => (if code != 0 { code } else { known_code }, Some(known.foreign)),
         }
-        if code != 0 { code } else { known }
     }
 
     fn take_top(&mut self, code: u32) -> u32 {
-        self.take(self.codes.len().saturating_sub(1), code)
+        self.take(self.places.len().saturating_sub(1), code).0
     }
 
-    fn reveal(&mut self, sequence: usize, code: u32) {
-        if let Some(known) = self.codes.get_mut(sequence) {
-            if *known == 0 {
-                remove_one(&mut self.unplaced, code);
-            }
-            *known = code;
+    // Returns whether the card is the other player's.
+    fn reveal(&mut self, sequence: usize, code: u32) -> bool {
+        let Some(slot) = self.places.get_mut(sequence) else { return false };
+        if slot.code == 0 {
+            remove_one(&mut self.unplaced, code);
+            slot.foreign = slot.foreign || remove_one(&mut self.foreign, code);
         }
+        slot.code = code;
+        slot.foreign
     }
 
     fn shuffle(&mut self) {
-        self.unplaced.extend(self.codes.iter().filter(|&&code| code != 0));
-        self.codes.fill(0);
+        for slot in self.places.iter().filter(|slot| slot.code != 0) {
+            self.unplaced.push(slot.code);
+            if slot.foreign {
+                self.foreign.push(slot.code);
+            }
+        }
+        self.places.fill(Slot::default());
     }
 }
 
@@ -217,9 +235,8 @@ impl Tracker {
             return side
                 .piles
                 .get(pile)
-                .and_then(|pile| pile.codes.get(place.sequence))
-                .copied()
-                .unwrap_or(0);
+                .and_then(|pile| pile.places.get(place.sequence))
+                .map_or(0, |slot| slot.code);
         }
         let held = zone_index(place.location).and_then(|zone| side.zones.get(zone)?.get(place.sequence)?.as_ref());
         let held = match place.location & LOCATION_OVERLAY {
@@ -278,7 +295,7 @@ impl Tracker {
                 for entry in entries(5, 8) {
                     let side = &mut self.sides[player];
                     let code = side.piles[0].take_top(u32_at(body, entry));
-                    side.piles[1].codes.push(code);
+                    side.piles[1].places.push(Slot { code, foreign: false });
                     self.note(Some(player), code);
                 }
             }
@@ -305,7 +322,7 @@ impl Tracker {
                 }
             }
             MSG_DECK_TOP => {
-                let size = self.sides[player].piles[0].codes.len();
+                let size = self.sides[player].piles[0].places.len();
                 let place = Place {
                     controller: player,
                     location: LOCATION_DECK,
@@ -350,6 +367,16 @@ impl Tracker {
             MSG_SWAP_GRAVE_DECK => {
                 let side = &mut self.sides[player];
                 side.piles.swap(0, 2);
+                let flags = body.get(9..).unwrap_or_default();
+                let to_extra = |index: usize| flags.get(index / 8).is_some_and(|&byte| byte >> (index % 8) & 1 != 0);
+                let mut index = 0;
+                let extra: Vec<Slot> = (side.piles[0].places.extract_if(.., |_| {
+                    index += 1;
+                    to_extra(index - 1)
+                }))
+                .collect();
+                let at = (u32_at(body, 1) as usize).min(side.piles[4].places.len());
+                side.piles[4].places.splice(at..at, extra);
                 side.piles[0].shuffle();
             }
             _ => {}
@@ -365,9 +392,10 @@ impl Tracker {
                     ..place
                 })
             });
+            let (code, foreign) = pile.take(place.sequence, code);
             return Held {
-                code: pile.take(place.sequence, code),
-                owner: Some(place.controller),
+                code,
+                owner: foreign.map(|foreign| place.controller ^ u8::from(foreign)),
                 materials: staged.map(|(_, material)| material).collect(),
             };
         }
@@ -393,8 +421,10 @@ impl Tracker {
         let (owner, code) = (held.owner, held.code);
         let side = &mut self.sides[place.controller];
         if let Some(pile) = side.pile(place.location) {
-            pile.codes.insert(place.sequence.min(pile.codes.len()), code);
-            return self.note(Some(place.controller), code);
+            let owner = owner.unwrap_or(place.controller);
+            let slot = Slot { code, foreign: owner != place.controller };
+            pile.places.insert(place.sequence.min(pile.places.len()), slot);
+            return self.note(Some(owner), code);
         }
         let overlay = place.location & LOCATION_OVERLAY != 0;
         match side.zone(place.location, place.sequence) {
@@ -425,8 +455,8 @@ impl Tracker {
         }
         let side = &mut self.sides[place.controller];
         if let Some(pile) = side.pile(place.location) {
-            pile.reveal(place.sequence, code);
-            return self.note(Some(place.controller), code);
+            let owner = place.controller ^ u8::from(pile.reveal(place.sequence, code));
+            return self.note(Some(owner), code);
         }
         let held = match side.zone(place.location, place.sequence) {
             Some(Some(xyz)) if place.location & LOCATION_OVERLAY != 0 => xyz.materials.get_mut(place.position as usize),
@@ -447,7 +477,7 @@ impl Tracker {
             let place = Place::seen(card);
             let side = &mut shape[place.controller];
             if let Some(pile) = side.pile(place.location) {
-                pile.codes.push(0);
+                pile.places.push(Slot::default());
             } else if let Some(slot) = side.zone(place.location, place.sequence) {
                 let held = slot.get_or_insert_default();
                 if place.location & LOCATION_OVERLAY != 0 {
@@ -457,7 +487,7 @@ impl Tracker {
         }
         for (controller, (side, shape)) in (0..).zip(self.sides.0.iter_mut().zip(shape.0)) {
             for (pile, shape) in side.piles.iter_mut().zip(shape.piles) {
-                if pile.codes.len() != shape.codes.len() {
+                if pile.places.len() != shape.places.len() {
                     self.drift += 1;
                     *pile = shape;
                 }
@@ -491,11 +521,20 @@ impl Tracker {
 
     fn count_shown(&mut self) {
         let opponent = 1 - self.player;
-        let piles = (self.sides[opponent].piles.iter()).flat_map(|pile| pile.codes.iter().chain(&pile.unplaced).copied());
+        let mut piles = Vec::new();
+        for (controller, side) in (0..).zip(&self.sides.0) {
+            for pile in &side.piles {
+                let [mut own, mut other] = [Vec::new(), pile.foreign.clone()];
+                pile.places.iter().for_each(|slot| if slot.foreign { &mut other } else { &mut own }.push(slot.code));
+                own.extend(&pile.unplaced);
+                pile.foreign.iter().for_each(|&code| _ = remove_one(&mut own, code));
+                piles.extend(if controller == opponent { own } else { other });
+            }
+        }
         let field = self.sides.0.iter().flat_map(|side| side.zones.iter().flatten().flatten());
         let held = field.flat_map(|held| std::iter::once(held).chain(&held.materials));
         let held = held.filter(|held| held.owner == Some(opponent)).map(|held| held.code);
-        let mut codes: Vec<u32> = piles.chain(held).filter(|&code| code != 0).collect();
+        let mut codes: Vec<u32> = piles.into_iter().chain(held).filter(|&code| code != 0).collect();
         codes.sort_unstable();
         for run in codes.chunk_by(|a, b| a == b) {
             if let Some(&code) = run.first() {
@@ -544,13 +583,13 @@ mod tests {
         .concat()
     }
 
+    fn moved(code: u32, from: Vec<u8>, to: Vec<u8>) -> Vec<u8> {
+        [&[MSG_MOVE][..], &code.to_ne_bytes(), &from, &to, &0u32.to_ne_bytes()].concat()
+    }
+
     // Player 1 sets the hand card at `sequence` in its Spell & Trap Zone 2.
     fn set(sequence: u32, code: u32) -> Vec<u8> {
-        let [from, to] = [
-            place(1, LOCATION_HAND, sequence, POS_FACEDOWN),
-            place(1, LOCATION_SZONE, 2, POS_FACEDOWN),
-        ];
-        [&[MSG_MOVE][..], &code.to_ne_bytes(), &from, &to, &0u32.to_ne_bytes()].concat()
+        moved(code, place(1, LOCATION_HAND, sequence, POS_FACEDOWN), place(1, LOCATION_SZONE, 2, POS_FACEDOWN))
     }
 
     // What player 0 sees: player 1's hand of `hand` cards and, if `set`, a face-down card in its Spell & Trap Zone 2.
@@ -604,5 +643,12 @@ mod tests {
         ]);
         let zone = observation(2, true).cards.last().map_or(0, |card| set.code_at(card));
         assert_eq!((zone, set.unplaced(1, LOCATION_HAND)), (CONFIRMED, &[][..]));
+    }
+
+    #[test]
+    fn should_not_count_its_own_card_added_to_the_opponents_hand_as_the_opponents() {
+        let added = moved(CONFIRMED, place(0, LOCATION_DECK, 0, POS_FACEDOWN), place(1, LOCATION_HAND, 3, POS_FACEDOWN));
+        let shuffled = tracked(&[(vec![added, confirm(3), shuffle()], observation(4, false))]);
+        assert_eq!(shuffled.shown().count(), 0);
     }
 }

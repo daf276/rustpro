@@ -293,16 +293,17 @@ impl Duel {
         Ok(out)
     }
 
-    /// A duel agreeing with what `player` sees, the hidden cards drawn from `pool` (the opponent's deck, as known or assumed),
-    /// written into `out` if given.
+    /// A duel agreeing with what `player` sees and remembers, the other hidden cards drawn from `pool` (the opponent's deck, as
+    /// known or assumed), written into `out` if given.
     #[pyo3(signature = (player, seed, pool, out = None))]
     fn determinize(&mut self, py: Python<'_>, player: u8, seed: u64, pool: Deck, out: Option<Py<Self>>) -> PyResult<Py<Self>> {
         let rng = || Xoshiro256StarStar::new(StdRng::seed_from_u64(seed).random());
         let duel = &**exclusive(&mut self.duel);
-        let write = |target: &mut engine::Duel| duel.determinize_into(player, &mut rng(), &pool.0, target).map_err(fail);
-        Self::copy(py, out, (None, &self.trackers), write, || {
-            duel.determinize(player, &mut rng(), &pool.0).map_err(fail)
-        })
+        let memory = self.trackers.get(usize::from(player)).map(|tracker| tracker.memory(duel));
+        let determinizer = duel.determinizer_with(player, &pool.0, &memory.unwrap_or_default()).map_err(fail)?;
+        let write = |target: &mut engine::Duel| determinizer.determinize_into(&mut rng(), target).map_err(fail);
+        let make = || determinizer.determinize(&mut rng()).map_err(fail);
+        Self::copy(py, out, (None, &self.trackers), write, make)
     }
 
     fn position<'py>(&mut self, py: Python<'py>) -> PyResult<Bound<'py, PyBytes>> {

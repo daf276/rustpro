@@ -13,7 +13,7 @@ use std::collections::BTreeMap;
 use std::ops::{Index, IndexMut};
 
 use engine::constants::*;
-use engine::{Duel, Observation, SeenCard};
+use engine::{Duel, Memory, Observation, SeenCard};
 
 use crate::mask::{frames, mask, u32_at};
 
@@ -255,6 +255,21 @@ impl Tracker {
     // The opponent's cards shown this game: per code the most copies known at once.
     pub fn shown(&self) -> impl Iterator<Item = (u32, u32)> + '_ {
         self.shown.iter().map(|(&code, &count)| (code, count))
+    }
+
+    // What the player remembers of the cards `duel` hides from it, for [Duel::determinizer_with].
+    pub fn memory(&self, duel: &Duel) -> Memory {
+        let observation = duel.observe(self.player);
+        let piles = (0..2).flat_map(|controller| PILES.map(|location| (controller, location)));
+        let unplaced = piles.flat_map(|(controller, location)| {
+            let codes = self.unplaced(controller, location).iter();
+            codes.map(move |&code| (controller, location, code))
+        });
+        Memory {
+            codes: observation.cards.iter().map(|card| self.code_at(card)).collect(),
+            unplaced: unplaced.collect(),
+            shown: self.shown().collect(),
+        }
     }
 
     pub fn normal_summons(&self, controller: u8) -> u32 {

@@ -76,6 +76,28 @@ pub enum DeterminizeError {
     UnknownCard(u32),
     #[error("no sample in {RERUN_ATTEMPTS} reran the waiting function to what the player sees")]
     Rerun,
+    #[error("the pool has fewer copies of card {0} than the player was shown")]
+    Shown(u32),
+    #[error("no hidden card can be card {0}, which the player remembers among them")]
+    Remembered(u32),
+}
+
+// What a player remembers of the cards hidden from it now ([Duel::determinizer_with]); the default remembers nothing.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Memory {
+    // Per card of [Observation::cards], the code the player knows it has, 0 if none.
+    pub codes: Vec<u32>,
+    // Codes known to be among a pile's cards of unknown code, by controller and location.
+    pub unplaced: Vec<(u8, u8, u32)>,
+    // Per code of the opponent's cards, the most copies the player was shown at once.
+    pub shown: Vec<(u32, u32)>,
+}
+
+impl Memory {
+    // [Memory::codes], then 0 for any card past them.
+    fn known(&self) -> impl Iterator<Item = u32> + '_ {
+        self.codes.iter().copied().chain(std::iter::repeat(0))
+    }
 }
 
 const RERUN_ATTEMPTS: usize = 16;
@@ -122,25 +144,48 @@ pub struct Determinizer<'a> {
     player: u8,
     // None if the duel ended or has no database to draw codes from: samples are plain copies.
     hidden: Option<Hidden>,
-    // What a waiting function's rerun must show the player again.
-    shown: Option<(Observation, Option<Prompt>)>,
+    // What a waiting function's rerun must show the player again, and what it remembers.
+    shown: Option<(Observation, Option<Prompt>, Memory)>,
 }
 
 // Pool codes with their data, looked up once.
 type Pool = Vec<(u32, Option<&'static CardData>)>;
 
 // The opponent's hidden cards outside the hand and Deck (with the kind each takes), in the hand and Deck, the player's own hidden
-// cards, and the pool codes no card the player sees holds.
+// cards, and the pool codes no card the player sees or remembers holds. `known` are the opponent's hidden cards with the code
+// the player remembers, `unplaced` codes it remembers among the hidden cards of a pile (by location), and `missing` the pool
+// codes the samples must draw for the opponent to hold the copies it was shown.
 struct Hidden {
     database: &'static CardDatabase,
     slots: Vec<(CardId, (bool, Kind))>,
     piles: Vec<CardId>,
     own: Vec<CardId>,
+    known: Vec<(CardId, u32)>,
+    unplaced: Vec<(u32, &'static CardData, u8)>,
+    missing: Vec<u32>,
     main: Pool,
     extra: Pool,
 }
 
+impl Hidden {
+    fn take(&mut self, code: u32) -> bool {
+        take(&mut self.main, code).or_else(|| take(&mut self.extra, code)).is_some()
+    }
+}
+
 impl Determinizer<'_> {
+    // Per card of [Observation::cards], whether the samples draw it; a hidden card something refers to by identity is kept.
+    pub fn resampled(&self) -> Vec<bool> {
+        let drawn: CardSet = (self.hidden.iter())
+            .flat_map(|hidden| {
+                let slots = hidden.slots.iter().map(|&(card, _)| card);
+                let known = hidden.known.iter().map(|&(card, _)| card);
+                slots.chain(known).chain(hidden.piles.iter().chain(&hidden.own).copied())
+            })
+            .collect();
+        self.duel.located_cards().into_iter().map(|card| drawn.contains(card)).collect()
+    }
+
     pub fn determinize(&self, rng: &mut Xoshiro256StarStar) -> Result<Duel, DeterminizeError> {
         let mut duel = self.duel.clone();
         self.resample(rng, &mut duel)?;
@@ -158,7 +203,7 @@ impl Determinizer<'_> {
         let Some(hidden) = &self.hidden else {
             return Ok(());
         };
-        let Some((observation, prompt)) = &self.shown else {
+        let Some((observation, prompt, memory)) = &self.shown else {
             let changes = self.draw(hidden, rng)?;
             let trace = std::mem::take(&mut duel.trace);
             duel.change(&changes);
@@ -174,7 +219,8 @@ impl Determinizer<'_> {
                 *snapshot = Arc::new(Mutex::new(resampled));
             }
             duel.rerun_to_prompt();
-            if duel.prompt() == *prompt && duel.observe(self.player) == *observation && !duel.legal_actions().is_empty() {
+            let shows = duel.prompt() == *prompt && duel.observe(self.player) == *observation;
+            if shows && duel.holds(memory) && !duel.legal_actions().is_empty() {
                 return Ok(());
             }
             duel.clone_from(self.duel);
@@ -182,12 +228,32 @@ impl Determinizer<'_> {
         Err(DeterminizeError::Rerun)
     }
 
-    // Draws the opponent's hidden codes, restricted zones first, then hand and Deck, and a new order of the player's own Deck.
+    // Places the remembered codes in their piles, then draws the opponent's other hidden codes, restricted zones first, then hand
+    // and Deck, and a new order of the player's own Deck.
     fn draw(&self, hidden: &Hidden, rng: &mut Xoshiro256StarStar) -> Result<Changes, DeterminizeError> {
         let duel = self.duel;
-        let (mut main, mut extra) = (hidden.main.clone(), hidden.extra.clone());
-        let mut targets = Vec::with_capacity(hidden.slots.len() + hidden.piles.len() + hidden.own.len());
-        for &(card, (from_extra, kind)) in &hidden.slots {
+        let (mut main, mut extra, mut missing) = (hidden.main.clone(), hidden.extra.clone(), hidden.missing.clone());
+        let (mut slots, mut piles) = (hidden.slots.clone(), hidden.piles.clone());
+        let mut targets = Vec::with_capacity(hidden.known.len() + slots.len() + piles.len() + hidden.own.len());
+        targets.extend_from_slice(&hidden.known);
+        for &(code, data, location) in &hidden.unplaced {
+            let within = |card: CardId| duel.cards[card].current.location == location;
+            let from_extra = data.card_type & TYPE_MONSTER != 0 && data.card_type & duel.get_extra_deck_types() != 0;
+            let slot_fits = |&(card, (extra, kind)): &(CardId, (bool, Kind))| within(card) && extra == from_extra && kind.fits(data);
+            let pile_fits = |&card: &CardId| within(card) && !from_extra;
+            let in_slots = slots.iter().filter(|slot| slot_fits(slot)).count();
+            let in_piles = piles.iter().filter(|card| pile_fits(card)).count();
+            if in_slots + in_piles == 0 {
+                return Err(DeterminizeError::Remembered(code));
+            }
+            let pick = rng.get_next_integer(0, (in_slots + in_piles) as i32 - 1) as usize;
+            let card = match pick.checked_sub(in_slots) {
+                None => nth_position(&slots, slot_fits, pick).map(|at| slots.swap_remove(at).0),
+                Some(pick) => nth_position(&piles, pile_fits, pick).map(|at| piles.swap_remove(at)),
+            };
+            targets.extend(card.map(|card| (card, code)));
+        }
+        for &(card, (from_extra, kind)) in &slots {
             let list = if from_extra { &mut extra } else { &mut main };
             let fits = |&(_, data): &(u32, Option<&CardData>)| data.is_some_and(|data| kind.fits(data));
             let count = list.iter().filter(|code| fits(code)).count();
@@ -195,19 +261,27 @@ impl Determinizer<'_> {
                 return Err(DeterminizeError::Pool(duel.cards[card].current.location));
             }
             let pick = rng.get_next_integer(0, count as i32 - 1) as usize;
-            let at = list
-                .iter()
-                .enumerate()
-                .filter(|(_, code)| fits(code))
-                .nth(pick)
-                .map_or(0, |(at, _)| at);
-            targets.push((card, list.swap_remove(at).0));
+            let (code, _) = list.swap_remove(nth_position(list, fits, pick).unwrap_or(0));
+            if let Some(at) = missing.iter().position(|&other| other == code) {
+                missing.swap_remove(at);
+            }
+            targets.push((card, code));
         }
         shuffle(&mut main, rng);
-        if main.len() < hidden.piles.len() {
+        if !missing.is_empty() {
+            let mut drawn = Vec::with_capacity(main.len());
+            for code in missing {
+                drawn.push(take(&mut main, code).ok_or(DeterminizeError::Remembered(code))?);
+            }
+            drawn.append(&mut main);
+            drawn.truncate(piles.len());
+            shuffle(&mut drawn, rng);
+            main = drawn;
+        }
+        if main.len() < piles.len() {
             return Err(DeterminizeError::Pool(LOCATION_HAND | LOCATION_DECK));
         }
-        targets.extend(hidden.piles.iter().copied().zip(main.into_iter().map(|(code, _)| code)));
+        targets.extend(piles.into_iter().zip(main.into_iter().map(|(code, _)| code)));
         let mut own_codes: Vec<u32> = hidden.own.iter().map(|&card| duel.cards[card].data.code).collect();
         shuffle(&mut own_codes, rng);
         targets.extend(hidden.own.iter().copied().zip(own_codes));
@@ -225,12 +299,12 @@ impl Determinizer<'_> {
     }
 }
 
-fn take(codes: &mut Pool, code: u32) -> bool {
-    codes
-        .iter()
-        .position(|&(other, _)| other == code)
-        .map(|at| codes.swap_remove(at))
-        .is_some()
+fn take(codes: &mut Pool, code: u32) -> Option<(u32, Option<&'static CardData>)> {
+    codes.iter().position(|&(other, _)| other == code).map(|at| codes.swap_remove(at))
+}
+
+fn nth_position<T>(items: &[T], fits: impl Fn(&T) -> bool, nth: usize) -> Option<usize> {
+    items.iter().enumerate().filter(|(_, item)| fits(item)).nth(nth).map(|(at, _)| at)
 }
 
 fn shuffle<T>(items: &mut [T], rng: &mut Xoshiro256StarStar) {
@@ -514,7 +588,8 @@ impl Duel {
         actions.extend(known_declarable.chain(fallback).take(MAX_DECLARED_CODES).map(Action::Code));
     }
 
-    // A duel agreeing with what `player` sees, its hidden cards resampled from `pool` (in a waiting function's snapshot, rerun).
+    // A duel agreeing with what `player` sees, its hidden cards resampled from `pool` (in a waiting function's snapshot, rerun),
+    // as if it remembered nothing.
     pub fn determinize(&self, player: u8, rng: &mut Xoshiro256StarStar, pool: &Deck) -> Result<Duel, DeterminizeError> {
         self.determinizer(player, pool)?.determinize(rng)
     }
@@ -526,23 +601,44 @@ impl Duel {
 
     // What [Duel::determinize] finds before it draws, for drawing many samples of this duel.
     pub fn determinizer(&self, player: u8, pool: &Deck) -> Result<Determinizer<'_>, DeterminizeError> {
+        self.determinizer_with(player, pool, &Memory::default())
+    }
+
+    // [Duel::determinizer] for samples that also agree with what `player` remembers.
+    pub fn determinizer_with(&self, player: u8, pool: &Deck, memory: &Memory) -> Result<Determinizer<'_>, DeterminizeError> {
         if player > 1 {
             return Err(DeterminizeError::Player(player));
         }
         let hidden = self.database.filter(|_| self.result.is_none()).map(|database| {
             let running = self.replay.snapshot.as_ref().map(lock);
             self.unchanged(|| match running.as_deref() {
-                Some(running) => running.unchanged(|| self.hidden_cards(player, pool, database, Some(running))),
-                None => self.hidden_cards(player, pool, database, None),
+                Some(running) => running.unchanged(|| self.hidden_cards(player, pool, memory, database, Some(running))),
+                None => self.hidden_cards(player, pool, memory, database, None),
             })
         });
-        let shown = (hidden.is_some() && self.replay.snapshot.is_some()).then(|| (self.observe(player), self.prompt()));
+        let hidden = hidden.transpose()?;
+        let shown = (hidden.is_some() && self.replay.snapshot.is_some()).then(|| (self.observe(player), self.prompt(), memory.clone()));
         Ok(Determinizer {
             duel: self,
             player,
             hidden,
             shown,
         })
+    }
+
+    // Whether each code `memory` knows is at its place and each unplaced code among its pile's cards of unknown code.
+    fn holds(&self, memory: &Memory) -> bool {
+        let mut unknown = Vec::new();
+        for (card, known) in self.located_cards().into_iter().zip(memory.known()) {
+            let (code, current) = (self.cards[card].data.code, self.cards[card].current);
+            match known {
+                0 => unknown.push((current.controler, current.location, code)),
+                known if known != code => return false,
+                _ => {}
+            }
+        }
+        let mut placed = |entry: &(u8, u8, u32)| unknown.iter().position(|other| other == entry).map(|at| unknown.swap_remove(at));
+        memory.unplaced.iter().all(|entry| placed(entry).is_some())
     }
 
     // Reruns a waiting function from its snapshot up to its prompt, without a new answer, keeping the picks so far.
@@ -558,7 +654,14 @@ impl Duel {
     }
 
     // The opponent's hidden cards by where their codes come from and the player's own resampled cards, with the pool codes left.
-    fn hidden_cards(&self, player: u8, pool: &Deck, database: &'static CardDatabase, running: Option<&Duel>) -> Hidden {
+    fn hidden_cards(
+        &self,
+        player: u8,
+        pool: &Deck,
+        memory: &Memory,
+        database: &'static CardDatabase,
+        running: Option<&Duel>,
+    ) -> Result<Hidden, DeterminizeError> {
         let opponent = 1 - player;
         let pinned = self.referenced_cards();
         let resampled = |card: CardId| {
@@ -579,25 +682,68 @@ impl Duel {
             slots: Vec::with_capacity(located.len()),
             piles: Vec::with_capacity(located.len()),
             own: Vec::with_capacity(located.len()),
+            known: Vec::new(),
+            unplaced: Vec::new(),
+            missing: Vec::new(),
             main: with_data(&pool.main),
             extra: with_data(&pool.extra),
         };
-        for card in located {
+        // The codes of the opponent's cards the samples keep, and the places and codes of the hidden cards it controls that they
+        // keep unremembered, which may hold its unplaced codes.
+        let (mut kept, mut unseen) = (Vec::new(), Vec::new());
+        for (card, known) in located.into_iter().zip(memory.known()) {
             let target = &self.cards[card];
-            let (owner, current) = (target.owner, target.current);
-            match (owner == opponent, resampled(card)) {
-                (true, true) if current.location & (LOCATION_HAND | LOCATION_DECK) != 0 => hidden.piles.push(card),
-                (true, true) => hidden.slots.push((card, self.resampled_kind(card))),
-                (true, false) => {
-                    if !take(&mut hidden.main, target.data.code) {
-                        take(&mut hidden.extra, target.data.code);
-                    }
+            let (owner, current, resampled) = (target.owner, target.current, resampled(card));
+            match (owner == opponent, resampled, known) {
+                (true, true, 0) if current.location & (LOCATION_HAND | LOCATION_DECK) != 0 => hidden.piles.push(card),
+                (true, true, 0) => hidden.slots.push((card, self.resampled_kind(card))),
+                (true, true, code) => {
+                    hidden.take(code);
+                    hidden.known.push((card, code));
+                    kept.push(code);
                 }
-                (false, true) => hidden.own.push(card),
-                (false, false) => {}
+                (true, false, _) => {
+                    hidden.take(target.data.code);
+                    kept.push(target.data.code);
+                }
+                (false, true, 0) => hidden.own.push(card),
+                (false, ..) => {}
+            }
+            if !resampled && known == 0 && current.controler == opponent && !self.is_visible(card, player) {
+                unseen.push((current.location, target.data.code));
             }
         }
-        hidden
+        // The materials of an Xyz Monster on its way from the Extra Deck, which no place holds yet.
+        let staged = (self.overlay_cards.iter()).filter(|&card| {
+            let off_field = |xyz: CardId| self.cards[xyz].current.location & LOCATION_ONFIELD == 0;
+            self.cards[card].owner == opponent && self.cards[card].overlay_target.is_some_and(off_field)
+        });
+        for card in staged {
+            hidden.take(self.cards[card].data.code);
+            kept.push(self.cards[card].data.code);
+        }
+        let unplaced = memory.unplaced.iter().filter(|&&(controller, ..)| controller == opponent);
+        for &(_, location, code) in unplaced {
+            if let Some(at) = unseen.iter().position(|&other| other == (location, code)) {
+                unseen.swap_remove(at);
+                continue;
+            }
+            hidden.take(code);
+            let data = database.get(code).ok_or(DeterminizeError::UnknownCard(code))?;
+            hidden.unplaced.push((code, data, location));
+            kept.push(code);
+        }
+        for &(code, count) in &memory.shown {
+            let missing = (count as usize).saturating_sub(kept.iter().filter(|&&other| other == code).count());
+            let pooled = (hidden.main.iter().chain(&hidden.extra))
+                .filter(|&&(other, _)| other == code)
+                .count();
+            if missing > pooled {
+                return Err(DeterminizeError::Shown(code));
+            }
+            hidden.missing.extend(std::iter::repeat_n(code, missing));
+        }
+        Ok(hidden)
     }
 
     // A hidden card outside the hand and Deck: whether it is an Extra Deck card, and the kind its zone holds.

@@ -72,6 +72,8 @@ pub use effect::{
 pub use gamestate::{DuelRecord, FormatError, PlacedCard, Position, PositionError, ReplayError};
 pub use libduel::{ChainInfo, ExtraSummon, FromChainInfo, MonsterStats, ReleaseOptions};
 pub use libeffect::CountCode;
-pub use observation::{Choice, DeterminizeError, Determinizer, MAX_DECLARED_CODES, Observation, ObservationSink, SeenCard, SeenLink};
+pub use observation::{
+    Choice, DeterminizeError, Determinizer, MAX_DECLARED_CODES, Memory, Observation, ObservationSink, SeenCard, SeenLink,
+};
 pub use rng::Xoshiro256StarStar;
 pub use script::{Args, FusionCheck, InitialEffect, Interrupt, Library, Resumed, SUSPEND, Script, SynchroCheck};

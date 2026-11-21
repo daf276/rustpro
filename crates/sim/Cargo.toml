@@ -11,6 +11,7 @@ rayon = { version = "1", default-features = false }
 thiserror = { version = "2", default-features = false }
 
 [dev-dependencies]
+carddata = { path = "../carddata" }
 diff = { path = "../diff" }
 rand = { version = "0.9", default-features = false, features = ["alloc", "std_rng"] }
 scripts = { path = "../scripts" }

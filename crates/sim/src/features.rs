@@ -107,10 +107,13 @@ pub enum Group {
     Zone,
     // Per player and Monster Zone: a Link arrow points to it.
     LinkedZone,
+    // Per card row and player: face-up cards on the field with their effects negated, an index each. Last, so the indices of
+    // the groups before it stay those of networks and shards from before it.
+    Negated,
 }
 
 impl Group {
-    pub const ALL: [Self; 14] = [
+    pub const ALL: [Self; 15] = [
         Self::Card,
         Self::Shown,
         Self::Activated,
@@ -125,13 +128,14 @@ impl Group {
         Self::NormalSummon,
         Self::Zone,
         Self::LinkedZone,
+        Self::Negated,
     ];
 
     pub const fn size(self, rows: usize) -> usize {
         match self {
             Self::Card => rows * 2 * Place::ALL.len(),
             Self::Shown => rows,
-            Self::Activated => rows * 2,
+            Self::Activated | Self::Negated => rows * 2,
             Self::HandSize => 2 * (HAND_SIZES.len() + 1),
             Self::DeckSize => 2 * (DECK_SIZES.len() + 1),
             Self::ExtraSize => 2 * (EXTRA_SIZES.len() + 1),
@@ -256,6 +260,12 @@ pub fn features(duel: &Duel, tracker: &Tracker, vocabulary: &Vocabulary, out: &m
         };
         if let Some(zone) = zone.filter(|&zone| zone < ZONES) {
             bag.push(Group::Zone, bag.side(card.controller) * ZONES + zone);
+        }
+        let negated = || {
+            (duel.get_field_card(card.controller, card.location.into(), card.sequence.into())).is_some_and(|field| field.is_disabled(duel))
+        };
+        if zone.is_some() && u32::from(card.position) & POS_FACEDOWN == 0 && code != 0 && negated() {
+            bag.push(Group::Negated, bag.row(code) * 2 + bag.side(card.controller));
         }
     }
     unknown.sort_unstable();

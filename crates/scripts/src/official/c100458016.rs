@@ -84,7 +84,7 @@ pub(crate) fn track_searches<const ID: u32, const RESET: u32>(duel: &mut Duel, c
         let ge1 = duel.create_effect(c);
         ge1.set_type(duel, EFFECT_TYPE_FIELD + EFFECT_TYPE_CONTINUOUS);
         ge1.set_code(duel, EVENT_TO_HAND);
-        ge1.set_operation(duel, flag_searches::<ID, RESET>);
+        ge1.set_promptless_operation(duel, flag_searches::<ID, RESET>);
         duel.register_effect(ge1, 0);
     });
 }

@@ -225,11 +225,20 @@ impl<T: Copy + Default, const N: usize> IntoIterator for List<T, N> {
 }
 
 // A Vec in copy-on-write chunks of N items (a multiple of 8), marking the runs of 8 that changed so sync_from copies only those.
-#[derive(Debug)]
 pub struct Shared<T, const N: usize> {
     chunks: Vec<Arc<[T; N]>>,
     len: usize,
     changed: Cell<u64>,
+}
+
+// Without the marks, which depend on when copies last synced.
+impl<T: std::fmt::Debug, const N: usize> std::fmt::Debug for Shared<T, N> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Shared")
+            .field("chunks", &self.chunks)
+            .field("len", &self.len)
+            .finish()
+    }
 }
 
 clone_by_field!([T, const N: usize] Shared<T, N> { chunks, len, changed });

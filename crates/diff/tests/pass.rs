@@ -9,8 +9,9 @@ use rayon::prelude::*;
 
 type Result<T = ()> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 type Seen = (Status, Vec<Action>, u16, Option<u64>, [Observation; 2], Option<Prompt>, Vec<Action>);
-// What the duel shows after a pass, its messages, then its messages and result after playing on.
-type Played = (Seen, Vec<u8>, Vec<u8>, Option<(u8, u8)>);
+// What the duel shows after a pass, the whole duel as debug-printed (effect ids and the field id counter included), its messages,
+// then its messages and result after playing on.
+type Played = (Seen, String, Vec<u8>, Vec<u8>, Option<(u8, u8)>);
 
 // Turns are passed from every STEP-th prompt of a record, then played on for ONWARD decisions.
 const STEP: usize = 7;
@@ -56,6 +57,7 @@ fn played_on(duel: &mut Fiber, status: Status, actions: Vec<Action>) -> Result<P
         duel.prompt(),
         duel.legal_actions(),
     );
+    let printed = format!("{:?}", **duel);
     let passed = duel.take_trace();
     let (mut status, mut decision) = (status, 0usize);
     while status == Status::Awaiting && decision < ONWARD {
@@ -66,7 +68,7 @@ fn played_on(duel: &mut Fiber, status: Status, actions: Vec<Action>) -> Result<P
         status = duel.apply(*action)?;
         decision += 1;
     }
-    Ok((seen, passed, duel.take_trace(), duel.result()))
+    Ok((seen, printed, passed, duel.take_trace(), duel.result()))
 }
 
 // Fiber::pass_turn and Duel::pass_turn leave the duel as answering their pass actions one at a time does, and it plays on alike.
@@ -126,9 +128,8 @@ fn should_pass_the_turn_as_passing_one_prompt_at_a_time() {
 }
 
 // Passes up to `turns` times to the other player's first idle prompt after the turn, holding it first if `hold`, then opens
-// it: the position, the whole duel as debug-printed (effect ids and the field id counter included), and its play on; also
-// whether a hold stopped the duel.
-fn pass_to_idle(duel: &Duel, turns: usize, hold: bool) -> Result<(Position, String, Played, bool)> {
+// it: the position and its play on; also whether a hold stopped the duel.
+fn pass_to_idle(duel: &Duel, turns: usize, hold: bool) -> Result<(Position, Played, bool)> {
     let mut copy = duel.clone();
     copy.set_trace(true);
     let (mut duel, mut actions, mut held) = (Fiber::new(copy), Vec::new(), false);
@@ -152,8 +153,7 @@ fn pass_to_idle(duel: &Duel, turns: usize, hold: bool) -> Result<(Position, Stri
         held |= duel.prompt().is_none() && duel.result().is_none();
     }
     let status = duel.process();
-    let (position, printed) = (duel.position(), format!("{:?}", *duel));
-    Ok((position, printed, played_on(&mut duel, status, actions)?, held))
+    Ok((duel.position(), played_on(&mut duel, status, actions)?, held))
 }
 
 #[test]
@@ -171,9 +171,9 @@ fn should_open_a_held_idle_prompt_as_passing_up_to_it() {
                     return Ok(());
                 }
                 let turns = if index % (HOLD_STEP * TO_END) == 0 { TURNS } else { 1 };
-                let (position, printed, played, _) = pass_to_idle(duel, turns, false)?;
-                let (held_position, held_printed, held_played, held) = pass_to_idle(duel, turns, true)?;
-                if held_position != position || held_printed != printed || held_played != played {
+                let (position, played, _) = pass_to_idle(duel, turns, false)?;
+                let (held_position, held_played, held) = pass_to_idle(duel, turns, true)?;
+                if held_position != position || held_played != played {
                     return Err(format!("at prompt {index}, passing {turns} turns: the held pass differs").into());
                 }
                 passes.fetch_add(1, Ordering::Relaxed);

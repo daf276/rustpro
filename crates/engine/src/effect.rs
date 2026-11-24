@@ -425,7 +425,7 @@ impl Effect {
 }
 
 // effect::id and effect::status change while effects are only read, so they are Cells beside the Copy effects' shared chunks.
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct Effects {
     list: Shared<Effect, CHUNK>,
     cells: Vec<Cell<CellChunk>>,
@@ -442,6 +442,18 @@ clone_by_field!(Effects {
     free,
     scratch
 });
+
+// Without the marks, which depend on when copies last synced.
+impl std::fmt::Debug for Effects {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Effects")
+            .field("list", &self.list)
+            .field("cells", &self.cells)
+            .field("free", &self.free)
+            .field("scratch", &self.scratch)
+            .finish()
+    }
+}
 
 const CHUNK: usize = 32;
 
@@ -690,7 +702,6 @@ const NEXT_CARD: u64 = 1 << 48;
 
 // Every effect_container in one list of multimap equal ranges, grouped into a bucket per card and per container of the
 // field; counts of the codes and keys answer most misses.
-#[derive(Debug)]
 pub struct Registry {
     // A key with its effect in the low bits; sorted by key within a bucket, an equal range in insertion order.
     entries: Vec<u64>,
@@ -708,6 +719,18 @@ clone_by_field!(Registry {
     hashes,
     changed
 });
+
+// Without the mark, which depends on when copies last synced.
+impl std::fmt::Debug for Registry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Registry")
+            .field("entries", &self.entries)
+            .field("starts", &self.starts)
+            .field("codes", &self.codes)
+            .field("hashes", &self.hashes)
+            .finish()
+    }
+}
 
 impl Default for Registry {
     fn default() -> Self {

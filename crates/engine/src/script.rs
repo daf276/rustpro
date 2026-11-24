@@ -200,7 +200,7 @@ pub(crate) fn lock(snapshot: &Snapshot) -> MutexGuard<'_, Duel> {
 
 // The last finished function's snapshot, which the next one reuses unless a clone shares it; a clone starts without one, and a
 // duel cloned into keeps its own only for its buffers.
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct Spare {
     snapshot: Option<Snapshot>,
     synced: bool,
@@ -213,6 +213,13 @@ impl Clone for Spare {
 
     fn clone_from(&mut self, _: &Self) {
         self.synced = false;
+    }
+}
+
+// Left out, as a pass leaves an older spare than answering its prompts one at a time does.
+impl std::fmt::Debug for Spare {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Spare").finish_non_exhaustive()
     }
 }
 
@@ -250,7 +257,8 @@ impl Duel {
         self.call_script_mut(|duel| call(duel).unwrap_or(false))
     }
 
-    // The body of the Execute units; an outermost call snapshots first unless `promptless`. None if a prompt waits or the duel ended.
+    // The body of the Execute units; an outermost call snapshots first unless `promptless` or passing, as a pass answers its
+    // prompts in this run. None if a prompt waits or the duel ended.
     pub(crate) fn run_script<T>(
         &mut self,
         effect: EffectId,
@@ -280,15 +288,16 @@ impl Duel {
                     self.replay.log.push(answer);
                 }
                 self.copy_from(&lock(&snapshot));
-                (snapshot, self.trace.count.get() - self.replay.messages)
+                (Some(snapshot), self.trace.count.get() - self.replay.messages)
             }
-            None => (self.snapshot(), 0),
+            None if self.is_passing() => (None, 0),
+            None => (Some(self.snapshot()), 0),
         };
         self.core.units = units;
         self.replay.cursor = 0;
         self.trace.mute.set(mute);
         self.replay.messages = self.trace.count.get();
-        self.replay.snapshot = Some(snapshot);
+        self.replay.snapshot = snapshot;
         self.replay.stack.push((effect, player));
         self.enter_script();
         let result = call(self);
@@ -301,12 +310,17 @@ impl Duel {
                 debug_assert_eq!(self.trace.mute.get(), 0, "a rerun wrote fewer messages than its previous attempt");
                 self.replay.log.clear();
                 self.replay.messages = 0;
-                self.replay.spare = Spare { snapshot, synced: true };
+                if snapshot.is_some() {
+                    self.replay.spare = Spare { snapshot, synced: true };
+                }
                 Some(value)
             }
             // Still a live coroutine until its rerun, whose copy of the snapshot restores the depth.
             Err(Interrupt) => {
                 if self.result.is_none() {
+                    if snapshot.is_none() {
+                        self.reach_unported(concat!(file!(), ":", line!(), " (a passed function's prompt had no pass action)"));
+                    }
                     self.replay.snapshot = snapshot;
                 } else {
                     self.leave_script();

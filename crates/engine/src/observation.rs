@@ -219,7 +219,9 @@ impl Determinizer<'_> {
                 *snapshot = Arc::new(Mutex::new(resampled));
             }
             duel.rerun_to_prompt();
-            let shows = duel.prompt() == *prompt && duel.observe(self.player) == *observation;
+            let shows = duel.prompt() == *prompt
+                && duel.observe(self.player) == *observation
+                && duel.prompted_card(self.player) == self.duel.prompted_card(self.player);
             if shows && duel.holds(memory) && !duel.legal_actions().is_empty() {
                 return Ok(());
             }
@@ -624,6 +626,14 @@ impl Duel {
             hidden,
             shown,
         })
+    }
+
+    // The code and location of the card the player's own Place, Position or EffectYesNo prompt is for, which the observation
+    // leaves out: a rerun replays earlier picks by index, so a resampled Deck can put another card there.
+    fn prompted_card(&self, player: u8) -> Option<(u32, u8)> {
+        self.prompt().filter(|prompt| prompt.player() == player)?;
+        self.prompt_card()
+            .map(|card| (self.cards[card].data.code, self.cards[card].current.location))
     }
 
     // Whether each code `memory` knows is at its place and each unplaced code among its pile's cards of unknown code.

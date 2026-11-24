@@ -74,7 +74,14 @@ fn check_world(tracked: &Tracked, player: u8, pool: &Deck, start: &Position, rng
         return Ok(None);
     };
     let remembered = check_truth(&world, tracked.tracker(player), &holdings(&world, &tracked.duel, start))?;
-    if world.observe(player) != tracked.duel.observe(player) || world.prompt() != tracked.duel.prompt() {
+    let prompted = |duel: &Duel| {
+        let own = duel.prompt().is_some_and(|prompt| prompt.player() == player);
+        (duel.prompt_card().filter(|_| own)).map(|card| (card.get_code(duel), card.get_location(duel)))
+    };
+    if world.observe(player) != tracked.duel.observe(player)
+        || world.prompt() != tracked.duel.prompt()
+        || prompted(&world) != prompted(&tracked.duel)
+    {
         return Err(format!("player {player}'s world shows it something else").into());
     }
     for _ in 0..PLAYED {

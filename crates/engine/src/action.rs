@@ -688,9 +688,18 @@ impl Duel {
 
     // Stops the run where `player`'s next idle prompt would list its options, the duel waiting without a prompt; [Duel::process]
     // lists them and opens the prompt as the run would have. A pass to that prompt then skips lists no one asks for. The hold
-    // ends with the duel.
-    pub fn hold_idle(&mut self, player: u8) {
-        self.replay.hold = Hold::Armed(player);
+    // ends with the duel. With `skip` the chain windows and the other player's idle prompts on the way list no options and
+    // pass at once: the checks skipped can change the duel (field ids, script state), so the pass may differ from an exact one.
+    pub fn hold_idle(&mut self, player: u8, skip: bool) {
+        self.replay.hold = Hold::Armed { player, skip };
+    }
+
+    // The held player while [Duel::hold_idle] skips options.
+    pub(crate) fn skipping(&self) -> Option<u8> {
+        match self.replay.hold {
+            Hold::Armed { player, skip: true } => Some(player),
+            _ => None,
+        }
     }
 
     pub fn end_pass(&mut self, actions: &mut Vec<Action>) {

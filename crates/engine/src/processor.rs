@@ -558,25 +558,27 @@ impl Duel {
                         PHASE_BATTLE => TIMING_BATTLE_END,
                         _ => TIMING_END_PHASE,
                     };
-                    for (container, cteffect) in [(Container::Activate, true), (Container::QuickO, false)] {
-                        for effect in self.field_effect_range(container, EVENT_FREE_CHAIN) {
-                            self.set_activate_location(effect);
-                            if !self.is_chainable(effect, check_player) || !self.can_activate(effect, check_player, &nil_event) {
-                                continue;
+                    if self.skipping().is_none() {
+                        for (container, cteffect) in [(Container::Activate, true), (Container::QuickO, false)] {
+                            for effect in self.field_effect_range(container, EVENT_FREE_CHAIN) {
+                                self.set_activate_location(effect);
+                                if !self.is_chainable(effect, check_player) || !self.can_activate(effect, check_player, &nil_event) {
+                                    continue;
+                                }
+                                self.effects.set_id(effect, self.next_field_id());
+                                self.push_candidate(effect);
+                                if self.check_hint_timing(effect) || (cteffect && self.check_cteffect_hint(effect, check_player)) {
+                                    self.core.spe_effect[check_player] += 1;
+                                }
+                                fc_count += 1;
                             }
-                            self.effects.set_id(effect, self.next_field_id());
-                            self.push_candidate(effect);
-                            if self.check_hint_timing(effect) || (cteffect && self.check_cteffect_hint(effect, check_player)) {
-                                self.core.spe_effect[check_player] += 1;
-                            }
-                            fc_count += 1;
                         }
-                    }
-                    for effect in self.field_effect_range(Container::Continuous, EVENT_FREE_CHAIN) {
-                        if self.get_handler_player(effect) == check_player && self.can_activate(effect, check_player, &nil_event) {
-                            self.effects.set_id(effect, self.next_field_id());
-                            self.push_candidate(effect);
-                            fc_count += 1;
+                        for effect in self.field_effect_range(Container::Continuous, EVENT_FREE_CHAIN) {
+                            if self.get_handler_player(effect) == check_player && self.can_activate(effect, check_player, &nil_event) {
+                                self.effects.set_id(effect, self.next_field_id());
+                                self.push_candidate(effect);
+                                fc_count += 1;
+                            }
                         }
                     }
                 }
@@ -1116,6 +1118,11 @@ impl Duel {
                 if !self.core.ignition_priority_chains.is_empty() {
                     std::mem::swap(&mut self.core.select_chains, &mut self.core.ignition_priority_chains);
                 }
+                if self.skipping().is_some() {
+                    self.core.spe_effect[priority] = self.core.select_chains.len() as i32;
+                    self.returns.set_i32(0, -1);
+                    return false;
+                }
                 let mut index = 0;
                 while let Some(event) = self.core.point_event.iter().chain(&self.core.instant_event).nth(index).copied() {
                     index += 1;
@@ -1443,9 +1450,15 @@ impl Duel {
                     return false;
                 }
                 // Not with pending resets, which resuming would run before the lists instead of after.
-                if self.replay.hold == Hold::Armed(turn_player) && self.pending_resets.get_mut().is_empty() {
+                if matches!(self.replay.hold, Hold::Armed { player, .. } if player == turn_player)
+                    && self.pending_resets.get_mut().is_empty()
+                {
                     self.replay.hold = Hold::Reached;
                     arg.step = HELD_IDLE - 1;
+                    return false;
+                }
+                if self.core.to_ep && self.skipping().is_some_and(|held| held != turn_player) {
+                    self.returns.set_i32(0, 7);
                     return false;
                 }
                 self.list_idle_options(turn_player);

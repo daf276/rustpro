@@ -140,7 +140,7 @@ fn pass_to_idle(duel: &Duel, turns: usize, hold: bool) -> Result<(Position, Play
         }
         let player = 1 - duel.turn_player();
         if hold {
-            duel.hold_idle(player);
+            duel.hold_idle(player, false);
         }
         duel.pass_turn(&mut actions);
         while let Some(prompt) = duel.prompt()

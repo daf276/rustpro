@@ -88,8 +88,8 @@ impl Fiber {
     }
 
     // [Duel::hold_idle], leaving a function that waits at the prompt in place.
-    pub fn hold_idle(&mut self, player: u8) {
-        self.current_mut().hold_idle(player);
+    pub fn hold_idle(&mut self, player: u8, skip: bool) {
+        self.current_mut().hold_idle(player, skip);
     }
 
     // A script function waits at the prompt, which a clone reruns from its snapshot.

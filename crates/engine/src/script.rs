@@ -171,7 +171,10 @@ impl Clone for Passing {
 pub enum Hold {
     #[default]
     Off,
-    Armed(u8),
+    Armed {
+        player: u8,
+        skip: bool,
+    },
     Reached,
 }
 

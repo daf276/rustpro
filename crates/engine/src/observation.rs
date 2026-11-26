@@ -154,7 +154,9 @@ type Pool = Vec<(u32, Option<&'static CardData>)>;
 // The opponent's hidden cards outside the hand and Deck (with the kind each takes), in the hand and Deck, the player's own hidden
 // cards, and the pool codes no card the player sees or remembers holds. `known` are the opponent's hidden cards with the code
 // the player remembers, `unplaced` codes it remembers among the hidden cards of a pile (by location), and `missing` the pool
-// codes the samples must draw for the opponent to hold the copies it was shown.
+// codes the samples must draw for the opponent to hold the copies it was shown. `reserve` are the Main Deck pool codes the
+// opponent's kept cards hidden from the player took, for a hidden card the rest has none of its kind for, which a guessed pool
+// can run short of: the player cannot tell those kept cards from the drawn ones.
 struct Hidden {
     database: &'static CardDatabase,
     slots: Vec<(CardId, (bool, Kind))>,
@@ -165,6 +167,7 @@ struct Hidden {
     missing: Vec<u32>,
     main: Pool,
     extra: Pool,
+    reserve: Pool,
 }
 
 impl Hidden {
@@ -235,6 +238,7 @@ impl Determinizer<'_> {
     fn draw(&self, hidden: &Hidden, rng: &mut Xoshiro256StarStar) -> Result<Changes, DeterminizeError> {
         let duel = self.duel;
         let (mut main, mut extra, mut missing) = (hidden.main.clone(), hidden.extra.clone(), hidden.missing.clone());
+        let mut reserve = hidden.reserve.clone();
         let (mut slots, mut piles) = (hidden.slots.clone(), hidden.piles.clone());
         let mut targets = Vec::with_capacity(hidden.known.len() + slots.len() + piles.len() + hidden.own.len());
         targets.extend_from_slice(&hidden.known);
@@ -256,8 +260,12 @@ impl Determinizer<'_> {
             targets.extend(card.map(|card| (card, code)));
         }
         for &(card, (from_extra, kind)) in &slots {
-            let list = if from_extra { &mut extra } else { &mut main };
             let fits = |&(_, data): &(u32, Option<&CardData>)| data.is_some_and(|data| kind.fits(data));
+            let list = match (from_extra, main.iter().any(fits)) {
+                (true, _) => &mut extra,
+                (false, true) => &mut main,
+                (false, false) => &mut reserve,
+            };
             let count = list.iter().filter(|code| fits(code)).count();
             if count == 0 {
                 return Err(DeterminizeError::Pool(duel.cards[card].current.location));
@@ -697,6 +705,7 @@ impl Duel {
             missing: Vec::new(),
             main: with_data(&pool.main),
             extra: with_data(&pool.extra),
+            reserve: Vec::new(),
         };
         // The codes of the opponent's cards the samples keep, and the places and codes of the hidden cards it controls that they
         // keep unremembered, which may hold its unplaced codes.
@@ -713,8 +722,13 @@ impl Duel {
                     kept.push(code);
                 }
                 (true, false, _) => {
-                    hidden.take(target.data.code);
-                    kept.push(target.data.code);
+                    let code = target.data.code;
+                    match take(&mut hidden.main, code) {
+                        Some(taken) if known == 0 && !self.is_visible(card, player) => hidden.reserve.push(taken),
+                        Some(_) => {}
+                        None => _ = take(&mut hidden.extra, code),
+                    }
+                    kept.push(code);
                 }
                 (false, true, 0) => hidden.own.push(card),
                 (false, ..) => {}

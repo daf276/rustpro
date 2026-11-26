@@ -881,13 +881,15 @@ impl Duel {
         continuous.for_each(|continuous| remap(&mut continuous.event));
     }
 
-    // card::replace_effect for Card.Recreate, without its messages.
+    // card::replace_effect for Card.Recreate, without its messages; a resampled card's relations are stale ones to its own
+    // effects, dropped as those effects go and a new effect may take their ids.
     fn recode(&mut self, card: CardId, data: &'static CardData) {
         for effect in self.card_effects(card) {
             if self.effects[effect].is_flag(EFFECT_FLAG_INITIAL) {
                 self.card_remove_effect(card, effect);
             }
         }
+        self.clear_relate_effect(card);
         self.cards[card].data = data.into();
         self.register_card(card);
     }
@@ -944,7 +946,12 @@ impl Duel {
             );
         let pairs = self.card_relations.iter().map(|&(card, other, _)| [card, other]);
         let pairs = pairs.chain(self.card_targets.iter().map(|&(card, target)| [card, target]));
-        let related = self.relations.iter().map(|relation| relation.card);
+        // A trigger's handler stays related to its effect until it moves, even if declined; no chain of that id left, nothing reads it.
+        let pending = |chain_id| (core.chain_lists().into_iter().flatten()).any(|chain| chain.chain_id == chain_id);
+        let pending = |chain_id| pending(chain_id) || core.quick_f_chain.iter().any(|(_, chain)| chain.chain_id == chain_id);
+        let related = (self.relations.iter())
+            .filter(|relation| relation.chain_id == 0 || self.get_handler(relation.effect) != relation.card || pending(relation.chain_id))
+            .map(|relation| relation.card);
         for card in singles.chain(pairs.flatten()).chain(related) {
             cards.insert(card);
         }

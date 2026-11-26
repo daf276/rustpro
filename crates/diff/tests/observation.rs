@@ -236,6 +236,23 @@ fn should_sample_the_hidden_pool_evenly() {
     }
 }
 
+// Drawn Raise Moon cards stay related to their draw trigger's effect after its chain is gone.
+#[test]
+fn should_resample_the_raise_moon_cards_in_the_opponents_hand() {
+    let vendor = Vendor::leak(Vendor::elfnote).unwrap();
+    let record = diff_duel(vendor, 0).unwrap().record;
+    let mut position = record.position.clone();
+    let deck = (position.cards.iter_mut()).filter(|card| card.info.team == 1 && card.info.loc == u32::from(LOCATION_DECK));
+    deck.zip((100458016..=100458021).cycle())
+        .for_each(|(card, code)| card.info.code = code);
+    let duel = first_prompt_of_player_0(vendor, &position, record.seed).unwrap();
+    let resampled = duel.determinizer(0, &pool(vendor, &position, 1)).unwrap().resampled();
+    let hand = (duel.position().cards.into_iter().zip(resampled))
+        .filter(|(card, _)| card.info.team == 1 && card.info.loc == u32::from(LOCATION_HAND));
+    let kept: Vec<u32> = hand.filter(|(_, resampled)| !resampled).map(|(card, _)| card.info.code).collect();
+    assert!(kept.is_empty(), "{kept:?} kept");
+}
+
 // Each queried card shows where the core has it, its code if QUERY_IS_PUBLIC or controlled outside the Deck, as EDOPro sends it.
 fn probe_observations(oracle: &mut oracle::Duel<'_>, engine: &Duel) -> std::result::Result<(), String> {
     let observations = [engine.observe(0), engine.observe(1)];
